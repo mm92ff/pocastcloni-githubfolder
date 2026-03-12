@@ -13,6 +13,7 @@ import java.io.File
 import javax.inject.Inject
 
 data class PlayEpisodeResult(
+    val episode: EpisodeEntity,
     val startPosition: Long,
     val podcast: Podcast?,
     val playUri: String
@@ -22,11 +23,10 @@ class PreparePlaybackUseCase @Inject constructor(
     private val repository: PodcastRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {
-    suspend operator fun invoke(episode: EpisodeEntity): PlayEpisodeResult {
+    suspend operator fun invoke(guid: String): PlayEpisodeResult {
         return withContext(dispatcherProvider.io) {
-            // 1. Hole die aktuellsten Daten aus der DB (Source of Truth)
-            // Wir verlassen uns NICHT auf das übergebene Objekt, da es veraltet sein könnte.
-            val savedEpisode = repository.getEpisode(episode.guid) ?: episode
+            val savedEpisode = repository.getEpisode(guid)
+                ?: throw IllegalStateException("Episode not available for GUID $guid")
 
             // Podcast Infos laden
             val podcastEntity = repository.getPodcastEntityByUrl(savedEpisode.podcastRssUrl)
@@ -59,6 +59,7 @@ class PreparePlaybackUseCase @Inject constructor(
             }
 
             PlayEpisodeResult(
+                episode = savedEpisode,
                 startPosition = savedEpisode.playbackPositionMs,
                 podcast = podcast,
                 playUri = finalUri

@@ -1,8 +1,8 @@
 package com.example.pocastcloni.ui.favorites
 
 import androidx.compose.runtime.Immutable
-import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -13,7 +13,7 @@ import kotlinx.collections.immutable.persistentListOf
 @Immutable
 data class FavoriteUiItem(
     val id: String,                 // Stable key for LazyColumn (guid)
-    val episode: EpisodeEntity,     // Original data for actions
+    val episode: EpisodeDisplayModel,
     val podcast: Podcast?           // Associated podcast (if available)
 )
 
@@ -31,10 +31,10 @@ data class FavoritesUiState(
 )
 
 sealed interface FavoritesAction {
-    data class OnEpisodeClick(val episode: EpisodeEntity) : FavoritesAction
+    data class OnEpisodeClick(val guid: String) : FavoritesAction
     data class OnEpisodeImageClick(val item: FavoriteUiItem) : FavoritesAction
     data object OnDismissEpisodeDetails : FavoritesAction
-    data class OnEpisodeSwiped(val episode: EpisodeEntity) : FavoritesAction
+    data class OnEpisodeSwiped(val guid: String) : FavoritesAction
     data class OnReorder(val fromIndex: Int, val toIndex: Int) : FavoritesAction
     data object ToggleEditMode : FavoritesAction
 }

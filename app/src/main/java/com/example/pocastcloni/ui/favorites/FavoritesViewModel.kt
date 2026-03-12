@@ -2,10 +2,12 @@ package com.example.pocastcloni.ui.favorites
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pocastcloni.domain.model.EpisodeWithPodcastInfo
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.episode.GetFavoriteEpisodesWithPodcastInfoUseCase
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
 import com.example.pocastcloni.domain.usecase.favorite.ReorderFavoritesUseCase
+import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,12 +37,12 @@ class FavoritesViewModel @Inject constructor(
     private val _episodeForDetails = MutableStateFlow<FavoriteUiItem?>(null)
 
     private val dbFavoritesFlow = getFavoriteEpisodesWithPodcastInfoUseCase()
-        .map { map ->
-            map.entries.map { (episode, podcast) ->
+        .map { list ->
+            list.map { info ->
                 FavoriteUiItem(
-                    id = episode.guid,
-                    episode = episode,
-                    podcast = podcast
+                    id = info.episode.guid,
+                    episode = EpisodeDisplayModel.from(info.episode, info.podcast),
+                    podcast = info.podcast
                 )
             }
         }
@@ -67,7 +69,6 @@ class FavoritesViewModel @Inject constructor(
         _episodeForDetails
     ) { (dbFavorites, settings, isPlayerVisible), optimisticFavorites, isEditMode, episodeForDetails ->
 
-        // Optimistic nur nutzen, wenn die Größe passt (sonst stale durch DB-Änderung)
         val currentFavorites = if (optimisticFavorites != null && optimisticFavorites.size == dbFavorites.size) {
             optimisticFavorites
         } else {
@@ -76,7 +77,6 @@ class FavoritesViewModel @Inject constructor(
 
         FavoritesUiState(
             isLoading = false,
-            // FIX: Umwandlung in ImmutableList für UI Stability & Skipping
             favorites = currentFavorites.toImmutableList(),
             isEditMode = isEditMode,
             oneHandedMode = settings.oneHandedMode,
@@ -94,10 +94,9 @@ class FavoritesViewModel @Inject constructor(
     fun onAction(action: FavoritesAction) {
         when (action) {
             is FavoritesAction.OnEpisodeClick -> {
-                // FIX: Check für Edit-Mode hier statt in der UI (Lambda Stability)
                 if (!_isEditMode.value) {
                     viewModelScope.launch {
-                        audioPlayerController.play(action.episode)
+                        audioPlayerController.play(action.guid)
                     }
                 }
             }
@@ -112,7 +111,7 @@ class FavoritesViewModel @Inject constructor(
 
             is FavoritesAction.OnEpisodeSwiped -> {
                 viewModelScope.launch {
-                    toggleFavoriteEpisodeUseCase(action.episode.guid, true)
+                    toggleFavoriteEpisodeUseCase(action.guid, true)
                 }
             }
 
@@ -138,8 +137,7 @@ class FavoritesViewModel @Inject constructor(
 
             viewModelScope.launch {
                 try {
-                    val entities = currentList.map { it.episode }
-                    reorderFavoritesUseCase(entities)
+                    reorderFavoritesUseCase(currentList.map { it.episode.guid })
                 } catch (_: Exception) {
                     _optimisticFavorites.value = null
                 }

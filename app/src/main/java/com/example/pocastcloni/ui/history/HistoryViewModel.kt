@@ -2,9 +2,11 @@ package com.example.pocastcloni.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pocastcloni.domain.model.EpisodeWithPodcastInfo
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.episode.GetPlaybackHistoryWithPodcastInfoUseCase
+import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,17 +30,15 @@ class HistoryViewModel @Inject constructor(
 
     private val _showConfirmClearDialog = MutableStateFlow(false)
 
-    // Transformation Flow: Map -> UiItem List
-    // Läuft im Flow Context (meist Default/IO), entlastet UI Thread
     private val historyItemsFlow = getPlaybackHistoryWithPodcastInfoUseCase()
-        .map { map ->
-            map.entries.map { (episode, podcast) ->
+        .map { list ->
+            list.map { info ->
                 HistoryUiItem(
-                    id = episode.guid,
-                    episode = episode,
-                    podcast = podcast
+                    id = info.episode.guid,
+                    episode = EpisodeDisplayModel.from(info.episode, info.podcast),
+                    podcast = info.podcast
                 )
-            }.sortedByDescending { it.episode.datePlayed } // Optional: Sortierung sicherstellen
+            }.sortedByDescending { it.episode.datePlayedMs ?: 0L }
         }
         .distinctUntilChanged()
 
@@ -54,7 +54,6 @@ class HistoryViewModel @Inject constructor(
     ) { historyItems, settings, isPlayerVisible, showConfirmClearDialog ->
         HistoryUiState(
             isLoading = false,
-            // FIX: Umwandlung zu ImmutableList für UI-Skipping
             historyItems = historyItems.toImmutableList(),
             oneHandedMode = settings.oneHandedMode,
             isPlayerVisible = isPlayerVisible,
@@ -72,7 +71,7 @@ class HistoryViewModel @Inject constructor(
         when (action) {
             is HistoryAction.OnEpisodeClick -> {
                 viewModelScope.launch {
-                    audioPlayerController.play(action.episode)
+                    audioPlayerController.play(action.guid)
                 }
             }
 

@@ -1,9 +1,15 @@
+import org.gradle.accessors.dm.LibrariesForLibs
+import org.gradle.api.artifacts.VersionCatalogsExtension
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
 }
+
+val libs = the<LibrariesForLibs>()
+val libsCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 android {
     namespace = "com.example.pocastcloni"
@@ -46,7 +52,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
+        kotlinCompilerExtensionVersion = libsCatalog.findVersion("compose-compiler").get().requiredVersion
     }
     packaging {
         resources {
@@ -61,13 +67,14 @@ ksp {
 
 dependencies {
     // Core & Lifecycle
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     // Jetpack Compose BOM
-    implementation(platform("androidx.compose:compose-bom:2024.02.02"))
+    implementation(platform(libs.compose.bom))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -75,71 +82,71 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation(libsCatalog.findLibrary("androidx-navigation-navigation-compose").get())
 
     // Kotlinx Immutable Collections
-    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.7")
+    implementation(libs.kotlinx.collections.immutable)
 
     // Logging
-    implementation("com.jakewharton.timber:timber:5.0.1")
+    implementation(libs.timber)
 
     // HILT DEPENDENCIES (Core, Navigation & WorkManager)
-    implementation("com.google.dagger:hilt-android:2.51.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.51.1")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-    implementation("androidx.hilt:hilt-work:1.2.0")
-    ksp("androidx.hilt:hilt-compiler:1.2.0")
+    implementation(libs.dagger.hilt.android)
+    ksp(libs.dagger.hilt.compiler)
+    implementation(libsCatalog.findLibrary("androidx-hilt-navigation-compose").get())
+    implementation(libsCatalog.findLibrary("androidx-hilt-hilt-work").get())
+    ksp(libsCatalog.findLibrary("androidx-hilt-hilt-compiler").get())
 
     // Room Database
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // NEU: Paging 3 Dependencies (WICHTIG für Repository & Dao)
-    implementation("androidx.paging:paging-runtime-ktx:3.2.1")
-    implementation("androidx.paging:paging-compose:3.2.1")
-    implementation("androidx.room:room-paging:2.6.1")
+    implementation(libsCatalog.findLibrary("androidx-paging-paging-runtime-ktx").get())
+    implementation(libsCatalog.findLibrary("androidx-paging-paging-compose").get())
+    implementation(libsCatalog.findLibrary("androidx-room-room-paging").get())
 
     // Network (Retrofit & OkHttp)
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-jackson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.jackson)
+    implementation(libs.okhttp)
+    implementation(libsCatalog.findLibrary("okhttp-logging-interceptor").get())
 
     // Jackson XML Parsing Libraries
-    implementation("javax.xml.stream:stax-api:1.0-2")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.15.2")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
-    implementation("com.fasterxml.woodstox:woodstox-core:6.6.2")
+    implementation(libs.stax)
+    implementation(libs.jackson.dataformat.xml)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.woodstox.core)
 
     // Coil (Image Loading)
-    implementation("io.coil-kt:coil-compose:2.6.0")
-    implementation("io.coil-kt:coil-svg:2.6.0")
+    implementation(libs.coil.compose)
+    implementation(libs.coil.svg)
 
     // Media3 (Audio Player)
-    implementation("androidx.media3:media3-exoplayer:1.3.0")
-    implementation("androidx.media3:media3-session:1.3.0")
-    implementation("androidx.media3:media3-ui:1.3.0")
-    implementation("androidx.media:media:1.7.0")
-    implementation("androidx.media3:media3-database:1.3.0")
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
+    implementation(libs.media3.ui)
+    implementation(libs.androidx.media)
+    implementation(libs.media3.database)
 
     // Guava Support
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation(libs.kotlinx.coroutines.guava)
+    implementation(libs.kotlinx.coroutines.android)
 
     // DataStore (Settings)
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation(libs.androidx.datastore.preferences)
 
     // WorkManager (Downloads)
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation(libsCatalog.findLibrary("androidx-work-runtime-ktx").get())
 
     // Testing
     testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.02"))
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    androidTestImplementation(libs.mockwebserver)
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

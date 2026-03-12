@@ -1,15 +1,15 @@
 package com.example.pocastcloni.ui.history
 
 import androidx.compose.runtime.Immutable
-import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
 @Immutable
 data class HistoryUiItem(
     val id: String,
-    val episode: EpisodeEntity,
+    val episode: EpisodeDisplayModel,
     val podcast: Podcast?
 )
 
@@ -26,7 +26,7 @@ data class HistoryUiState(
 )
 
 sealed interface HistoryAction {
-    data class OnEpisodeClick(val episode: EpisodeEntity) : HistoryAction
+    data class OnEpisodeClick(val guid: String) : HistoryAction
     data object ClearHistory : HistoryAction
     data object ConfirmClearHistory : HistoryAction
     data object DismissClearHistoryDialog : HistoryAction

@@ -34,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
-import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.ui.common.EpisodeDetailsDialog
 import com.example.pocastcloni.ui.common.ListableEpisodeItem
 import com.example.pocastcloni.ui.common.ReorderableLazyColumn
+import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,27 +115,26 @@ fun FavoritesScreen(
                     ),
                     reverseLayout = uiState.oneHandedMode,
                     verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
-                ) { _, item, isDragging ->
+                ) { _, item, _ ->
                     // FIX: "isDragging" wird ignoriert, da die Animation jetzt intern im ReorderableLC passiert.
                     // SwipeToDelete wird nur aktiviert, wenn NICHT editiert wird (das bleibt gleich)
 
-                    SwipeToDeleteFavorite(
-                        episode = item.episode,
-                        onDelete = { viewModel.onAction(FavoritesAction.OnEpisodeSwiped(item.episode)) },
-                        enabled = !uiState.isEditMode
-                    ) {
-                        ListableEpisodeItem(
-                            episode = item.episode,
-                            podcast = item.podcast,
-                            // FIX: Lambda fängt uiState nicht mehr ein. Die Logik "if (!isEditMode)"
-                            // sollte idealerweise im ViewModel in onAction geprüft werden.
-                            // Hier feuern wir einfach immer, das ViewModel entscheidet.
-                            onClick = {
-                                viewModel.onAction(FavoritesAction.OnEpisodeClick(item.episode))
-                            },
-                            onImageClick = { viewModel.onAction(FavoritesAction.OnEpisodeImageClick(item)) }
-                        )
-                    }
+                        SwipeToDeleteFavorite(
+                            onDelete = { viewModel.onAction(FavoritesAction.OnEpisodeSwiped(item.episode.guid)) },
+                            enabled = !uiState.isEditMode
+                        ) {
+                            ListableEpisodeItem(
+                                episode = item.episode,
+                                podcast = item.podcast,
+                                // FIX: Lambda fängt uiState nicht mehr ein. Die Logik "if (!isEditMode)"
+                                // sollte idealerweise im ViewModel in onAction geprüft werden.
+                                // Hier feuern wir einfach immer, das ViewModel entscheidet.
+                                onClick = {
+                                    viewModel.onAction(FavoritesAction.OnEpisodeClick(item.episode.guid))
+                                },
+                                onImageClick = { viewModel.onAction(FavoritesAction.OnEpisodeImageClick(item)) }
+                            )
+                        }
                 }
             }
         }
@@ -145,7 +144,6 @@ fun FavoritesScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeToDeleteFavorite(
-    episode: EpisodeEntity,
     onDelete: () -> Unit,
     enabled: Boolean,
     content: @Composable () -> Unit

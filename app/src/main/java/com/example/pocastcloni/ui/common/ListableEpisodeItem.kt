@@ -23,13 +23,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
-import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.theme.Dimens
 
 @Composable
 fun ListableEpisodeItem(
-    episode: EpisodeEntity,
+    episode: EpisodeDisplayModel,
     podcast: Podcast?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -44,7 +44,7 @@ fun ListableEpisodeItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
-            model = podcast?.imageUrl ?: "",
+            model = episode.podcastImageUrl ?: podcast?.imageUrl ?: "",
             contentDescription = null,
             modifier = Modifier
                 .size(56.dp)
@@ -63,7 +63,7 @@ fun ListableEpisodeItem(
             )
             Spacer(modifier = Modifier.height(Dimens.PaddingExtraSmall))
             Text(
-                text = podcast?.title ?: stringResource(id = R.string.unknown_podcast_title),
+                text = episode.podcastTitle ?: podcast?.title ?: stringResource(id = R.string.unknown_podcast_title),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

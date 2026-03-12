@@ -123,7 +123,7 @@ fun HistoryScreen(
                         ListableEpisodeItem(
                             episode = item.episode,
                             podcast = item.podcast,
-                            onClick = { viewModel.onAction(HistoryAction.OnEpisodeClick(item.episode)) }
+                            onClick = { viewModel.onAction(HistoryAction.OnEpisodeClick(item.episode.guid)) }
                         )
                     }
                 }

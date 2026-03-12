@@ -1,6 +1,5 @@
 package com.example.pocastcloni.ui.player
 
-import com.example.pocastcloni.data.local.EpisodeEntity
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -9,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 // Interface für UI-Komponenten, die den Player STEUERN (Schreiben)
 interface PlayerActions {
-    suspend fun play(episode: EpisodeEntity)
+    suspend fun play(episodeGuid: String)
     fun pause()
     fun resume()
     fun onEvent(event: PlayerScreenEvent)

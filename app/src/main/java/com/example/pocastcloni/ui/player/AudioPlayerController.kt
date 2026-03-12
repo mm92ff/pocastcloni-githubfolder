@@ -176,9 +176,10 @@ class AudioPlayerController @Inject constructor(
             .launchIn(controllerScope)
     }
 
-    override suspend fun play(episode: EpisodeEntity) {
+    override suspend fun play(episodeGuid: String) {
         connectInternal()
-        val playbackInfo = preparePlaybackUseCase(episode)
+        val playbackInfo = preparePlaybackUseCase(episodeGuid)
+        val episode = playbackInfo.episode
         _internalPlayerState.update { it.copy(currentPodcastUrl = episode.podcastRssUrl) }
         val mediaController = controller ?: return
         withContext(mediaDispatcherOrFallback()) {
@@ -187,7 +188,11 @@ class AudioPlayerController @Inject constructor(
                 if (!mediaController.isPlaying) mediaController.play()
                 return@withContext
             }
-            val mediaItem = mapper.mapToMediaItem(episode, playbackInfo.podcast?.let { podcastRepository.getPodcastEntityByUrl(it.rssUrl) }, playbackInfo.playUri)
+            val mediaItem = mapper.mapToMediaItem(
+                episode,
+                playbackInfo.podcast?.let { podcastRepository.getPodcastEntityByUrl(it.rssUrl) },
+                playbackInfo.playUri
+            )
             mediaController.setMediaItem(mediaItem, playbackInfo.startPosition)
             mediaController.prepare()
             mediaController.play()
