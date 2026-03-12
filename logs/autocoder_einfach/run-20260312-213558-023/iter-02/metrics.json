@@ -1,0 +1,121 @@
+{
+  "index": 2,
+  "title": "Kotlin Android Studio: Architecture and Layer Boundaries",
+  "accepted": false,
+  "final_attempt": 2,
+  "required_checks_passed": false,
+  "reported_changed_files": [
+    "app/src/main/java/com/example/pocastcloni/domain/model/EpisodePresentation.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/model/EpisodeWithPodcastInfo.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/episode/GetFavoriteEpisodesWithPodcastInfoUseCase.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/episode/GetPlaybackHistoryWithPodcastInfoUseCase.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/favorite/ReorderFavoritesUseCase.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/episode/StartPlaybackUseCase.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/player/PreparePlaybackUseCase.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/common/EpisodeDisplayModel.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/favorites/FavoritesViewModel.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/history/HistoryViewModel.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/player/PlayerInterfaces.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/player/AudioPlayerController.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/common/ListableEpisodeItem.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/favorites/FavoritesContract.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/favorites/FavoritesScreen.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/history/HistoryContract.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/history/HistoryScreen.kt",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-02/checks-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-02/checks-attempt-2.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-02/evaluation-reeval-after-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-02/evaluation.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-02/implementation-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-02/implementation-attempt-2.md"
+  ],
+  "evaluation_success": true,
+  "implementation_success": false,
+  "review_success": null,
+  "denial_reason": "Required checks failed due to tooling/infrastructure issue (required_checks:tool_missing:./gradlew).",
+  "failure_category": "infra_tooling",
+  "web_search_events": 0,
+  "duration_seconds": 1529.135,
+  "tokens_by_phase": {
+    "evaluation": 298566,
+    "implementation": 832200,
+    "review": 0
+  },
+  "check_history": [
+    {
+      "attempt": 1,
+      "stage": "pre_review",
+      "results": [
+        {
+          "command": "./gradlew assemble",
+          "optional": false,
+          "exit_code": 1,
+          "duration_seconds": 0.108,
+          "timed_out": false
+        }
+      ],
+      "required_failures": [
+        "./gradlew assemble"
+      ],
+      "optional_failures": []
+    },
+    {
+      "attempt": 2,
+      "stage": "pre_review",
+      "results": [
+        {
+          "command": "./gradlew assemble",
+          "optional": false,
+          "exit_code": 1,
+          "duration_seconds": 0.115,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew test",
+          "optional": false,
+          "exit_code": 1,
+          "duration_seconds": 0.124,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew lint",
+          "optional": true,
+          "exit_code": 1,
+          "duration_seconds": 0.125,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew ktlintCheck",
+          "optional": true,
+          "exit_code": 1,
+          "duration_seconds": 0.124,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew detekt",
+          "optional": true,
+          "exit_code": 1,
+          "duration_seconds": 0.124,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew spotlessCheck",
+          "optional": true,
+          "exit_code": 1,
+          "duration_seconds": 0.123,
+          "timed_out": false
+        }
+      ],
+      "required_failures": [
+        "./gradlew assemble",
+        "./gradlew test"
+      ],
+      "optional_failures": [
+        "./gradlew lint",
+        "./gradlew ktlintCheck",
+        "./gradlew detekt",
+        "./gradlew spotlessCheck"
+      ]
+    }
+  ]
+}

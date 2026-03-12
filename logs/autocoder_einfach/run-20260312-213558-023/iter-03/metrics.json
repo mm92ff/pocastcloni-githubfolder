@@ -1,0 +1,87 @@
+{
+  "index": 3,
+  "title": "Kotlin Android Studio: Dependency Injection, KSP, and Coroutine Scope Contracts",
+  "accepted": false,
+  "final_attempt": 2,
+  "required_checks_passed": false,
+  "reported_changed_files": [
+    "app/src/main/java/com/example/pocastcloni/di/CoroutinesModule.kt",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-03/checks-attempt-2.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-03/evaluation-reeval-after-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-03/evaluation.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-03/implementation-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-213558-023/iter-03/implementation-attempt-2.md"
+  ],
+  "evaluation_success": true,
+  "implementation_success": false,
+  "review_success": null,
+  "denial_reason": "Required checks failed due to tooling/infrastructure issue (required_checks:tool_missing:./gradlew).",
+  "failure_category": "infra_tooling",
+  "web_search_events": 0,
+  "duration_seconds": 165.552,
+  "tokens_by_phase": {
+    "evaluation": 6705,
+    "implementation": 142847,
+    "review": 0
+  },
+  "check_history": [
+    {
+      "attempt": 2,
+      "stage": "pre_review",
+      "results": [
+        {
+          "command": "./gradlew assemble",
+          "optional": false,
+          "exit_code": 1,
+          "duration_seconds": 0.109,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew test",
+          "optional": false,
+          "exit_code": 1,
+          "duration_seconds": 0.108,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew lint",
+          "optional": true,
+          "exit_code": 1,
+          "duration_seconds": 0.109,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew ktlintCheck",
+          "optional": true,
+          "exit_code": 1,
+          "duration_seconds": 0.108,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew detekt",
+          "optional": true,
+          "exit_code": 1,
+          "duration_seconds": 0.108,
+          "timed_out": false
+        },
+        {
+          "command": "./gradlew spotlessCheck",
+          "optional": true,
+          "exit_code": 1,
+          "duration_seconds": 0.107,
+          "timed_out": false
+        }
+      ],
+      "required_failures": [
+        "./gradlew assemble",
+        "./gradlew test"
+      ],
+      "optional_failures": [
+        "./gradlew lint",
+        "./gradlew ktlintCheck",
+        "./gradlew detekt",
+        "./gradlew spotlessCheck"
+      ]
+    }
+  ]
+}
