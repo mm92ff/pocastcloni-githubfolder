@@ -1,0 +1,149 @@
+package com.example.pocastcloni.ui.favorites
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.pocastcloni.domain.repository.UserPreferencesRepository
+import com.example.pocastcloni.domain.usecase.episode.GetFavoriteEpisodesWithPodcastInfoUseCase
+import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
+import com.example.pocastcloni.domain.usecase.favorite.ReorderFavoritesUseCase
+import com.example.pocastcloni.ui.player.AudioPlayerController
+import com.example.pocastcloni.util.Constants
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.util.Collections
+import javax.inject.Inject
+
+@HiltViewModel
+class FavoritesViewModel @Inject constructor(
+    getFavoriteEpisodesWithPodcastInfoUseCase: GetFavoriteEpisodesWithPodcastInfoUseCase,
+    private val audioPlayerController: AudioPlayerController,
+    private val toggleFavoriteEpisodeUseCase: ToggleFavoriteEpisodeUseCase,
+    private val reorderFavoritesUseCase: ReorderFavoritesUseCase,
+    userPreferencesRepository: UserPreferencesRepository
+) : ViewModel() {
+
+    private val _isEditMode = MutableStateFlow(false)
+    private val _optimisticFavorites = MutableStateFlow<List<FavoriteUiItem>?>(null)
+    private val _episodeForDetails = MutableStateFlow<FavoriteUiItem?>(null)
+
+    private val dbFavoritesFlow = getFavoriteEpisodesWithPodcastInfoUseCase()
+        .map { map ->
+            map.entries.map { (episode, podcast) ->
+                FavoriteUiItem(
+                    id = episode.guid,
+                    episode = episode,
+                    podcast = podcast
+                )
+            }
+        }
+        .distinctUntilChanged()
+
+    private val isPlayerVisibleFlow = audioPlayerController.playerState
+        .map { !it.currentEpisodeGuid.isNullOrBlank() }
+        .distinctUntilChanged()
+
+    // STAGE 1: Data Consolidation
+    private val dataFlow = combine(
+        dbFavoritesFlow,
+        userPreferencesRepository.userSettingsFlow,
+        isPlayerVisibleFlow
+    ) { dbFavorites, settings, isPlayerVisible ->
+        Triple(dbFavorites, settings, isPlayerVisible)
+    }
+
+    // STAGE 2: Final Assembly
+    val uiState = combine(
+        dataFlow,
+        _optimisticFavorites,
+        _isEditMode,
+        _episodeForDetails
+    ) { (dbFavorites, settings, isPlayerVisible), optimisticFavorites, isEditMode, episodeForDetails ->
+
+        // Optimistic nur nutzen, wenn die Größe passt (sonst stale durch DB-Änderung)
+        val currentFavorites = if (optimisticFavorites != null && optimisticFavorites.size == dbFavorites.size) {
+            optimisticFavorites
+        } else {
+            dbFavorites
+        }
+
+        FavoritesUiState(
+            isLoading = false,
+            // FIX: Umwandlung in ImmutableList für UI Stability & Skipping
+            favorites = currentFavorites.toImmutableList(),
+            isEditMode = isEditMode,
+            oneHandedMode = settings.oneHandedMode,
+            isPlayerVisible = isPlayerVisible,
+            navBarHeight = settings.navBarHeight,
+            progressBarHeight = settings.progressBarHeight,
+            episodeForDetails = episodeForDetails
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
+        initialValue = FavoritesUiState(isLoading = true)
+    )
+
+    fun onAction(action: FavoritesAction) {
+        when (action) {
+            is FavoritesAction.OnEpisodeClick -> {
+                // FIX: Check für Edit-Mode hier statt in der UI (Lambda Stability)
+                if (!_isEditMode.value) {
+                    viewModelScope.launch {
+                        audioPlayerController.play(action.episode)
+                    }
+                }
+            }
+
+            is FavoritesAction.OnEpisodeImageClick -> {
+                _episodeForDetails.value = action.item
+            }
+
+            FavoritesAction.OnDismissEpisodeDetails -> {
+                _episodeForDetails.value = null
+            }
+
+            is FavoritesAction.OnEpisodeSwiped -> {
+                viewModelScope.launch {
+                    toggleFavoriteEpisodeUseCase(action.episode.guid, true)
+                }
+            }
+
+            is FavoritesAction.OnReorder -> {
+                handleReorder(action.fromIndex, action.toIndex)
+            }
+
+            FavoritesAction.ToggleEditMode -> {
+                _isEditMode.update { wasEditMode ->
+                    if (wasEditMode) _optimisticFavorites.value = null
+                    !wasEditMode
+                }
+            }
+        }
+    }
+
+    private fun handleReorder(fromIndex: Int, toIndex: Int) {
+        val currentList = uiState.value.favorites.toMutableList()
+
+        if (fromIndex in currentList.indices && toIndex in currentList.indices) {
+            Collections.swap(currentList, fromIndex, toIndex)
+            _optimisticFavorites.value = currentList.toList()
+
+            viewModelScope.launch {
+                try {
+                    val entities = currentList.map { it.episode }
+                    reorderFavoritesUseCase(entities)
+                } catch (_: Exception) {
+                    _optimisticFavorites.value = null
+                }
+            }
+        }
+    }
+}
