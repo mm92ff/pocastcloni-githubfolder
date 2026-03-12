@@ -5,3 +5,5 @@ build-debug-apk.bat
 run-app-on-emulator.bat
 
 run-gradle-android-studio-jdk.bat
+
+run-release-apk-on-emulator.bat
