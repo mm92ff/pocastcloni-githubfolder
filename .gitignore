@@ -3,3 +3,5 @@ alles.bat
 build-debug-apk.bat
 
 run-app-on-emulator.bat
+
+run-gradle-android-studio-jdk.bat
