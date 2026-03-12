@@ -11,3 +11,38 @@ run-release-apk-on-emulator.bat
 setup-java17-env.bat
 
 uninstall-app-from-emulator.bat
+
+# Gradle / Android build artifacts
+.gradle/
+build/
+**/build/
+
+# Local SDK path / local machine config
+local.properties
+
+# IDE (Android Studio / IntelliJ)
+.idea/
+*.iml
+
+# APK / AAB / signing artifacts
+*.apk
+*.aab
+*.ap_
+*.idsig
+
+# Logs
+*.log
+
+# Local runtime data
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Optional local signing files
+*.jks
+*.keystore
