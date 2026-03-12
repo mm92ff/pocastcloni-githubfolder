@@ -7,3 +7,5 @@ run-app-on-emulator.bat
 run-gradle-android-studio-jdk.bat
 
 run-release-apk-on-emulator.bat
+
+setup-java17-env.bat
