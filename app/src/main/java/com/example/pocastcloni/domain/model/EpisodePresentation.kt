@@ -1,6 +1,7 @@
 package com.example.pocastcloni.domain.model
 
 import androidx.compose.runtime.Immutable
+import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 
 @Immutable
@@ -15,7 +16,8 @@ data class EpisodePresentation(
     val playbackPositionMs: Long,
     val durationMs: Long,
     val pubDateMs: Long?,
-    val datePlayedMs: Long?
+    val datePlayedMs: Long?,
+    val downloadStatus: DownloadStatus
 ) {
     companion object {
         fun from(entity: EpisodeEntity): EpisodePresentation = EpisodePresentation(
@@ -29,7 +31,8 @@ data class EpisodePresentation(
             playbackPositionMs = entity.playbackPositionMs,
             durationMs = entity.duration,
             pubDateMs = entity.pubDate?.time,
-            datePlayedMs = entity.datePlayed?.time
+            datePlayedMs = entity.datePlayed?.time,
+            downloadStatus = entity.downloadStatus
         )
     }
 }

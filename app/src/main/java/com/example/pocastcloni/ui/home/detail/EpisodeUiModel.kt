@@ -2,7 +2,8 @@ package com.example.pocastcloni.ui.home.detail
 
 import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.data.local.EpisodeEntity
+import com.example.pocastcloni.domain.model.EpisodePresentation
+import com.example.pocastcloni.domain.model.EpisodeWithPodcastInfo
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -51,7 +52,7 @@ private fun formatDate(epochMs: Long): String {
     return dateFormatter.format(zonedDateTime)
 }
 
-private fun EpisodeEntity.toDownloadStatusUiModel(): DownloadStatusUiModel {
+private fun EpisodePresentation.toDownloadStatusUiModel(): DownloadStatusUiModel {
     return when (this.downloadStatus) {
         DownloadStatus.DOWNLOADED -> DownloadStatusUiModel.DOWNLOADED
         DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED -> DownloadStatusUiModel.DOWNLOADING
@@ -59,14 +60,14 @@ private fun EpisodeEntity.toDownloadStatusUiModel(): DownloadStatusUiModel {
     }
 }
 
-fun EpisodeEntity.toEpisodeUiModelCached(
+fun EpisodePresentation.toEpisodeUiModelCached(
     previous: EpisodeUiModel?,
     podcastName: String,
     podcastImageUrl: String?,
     downloadProgress: Float // <--- NEUER PARAMETER
 ): EpisodeUiModel {
-    val epochMs = this.pubDate?.time ?: 0L
-    val durationMs = this.duration // In EpisodeEntity als Millisekunden gespeichert
+    val epochMs = this.pubDateMs ?: 0L
+    val durationMs = this.durationMs
     val downloadStatusUiModel = this.toDownloadStatusUiModel()
 
     // Hier nutzen wir den übergebenen Wert (vom ViewModel/Worker), statt 0f hardcodiert.
@@ -101,9 +102,9 @@ fun EpisodeEntity.toEpisodeUiModelCached(
         )
     }
 
-    return EpisodeUiModel(
-        guid = this.guid,
-        podcastUrl = this.podcastRssUrl,
+        return EpisodeUiModel(
+            guid = this.guid,
+            podcastUrl = this.podcastRssUrl,
         title = this.title,
         podcastTitle = podcastName,
         date = formatDate(epochMs),
@@ -114,15 +115,15 @@ fun EpisodeEntity.toEpisodeUiModelCached(
         isPlayed = this.isPlayed,
         isFavorite = this.isFavorite,
         positionMs = this.playbackPositionMs,
-        description = this.description,
-        podcastImageUrl = podcastImageUrl,
-        pubDateEpochMs = epochMs,
-        durationSeconds = durationMs // Wir speichern hier Millisekunden, der Name 'durationSeconds' im UI Model ist etwas irreführend, aber wir lassen ihn zur Konsistenz vorerst so.
-    )
+            description = this.description,
+            podcastImageUrl = podcastImageUrl,
+            pubDateEpochMs = epochMs,
+            durationSeconds = durationMs // Wir speichern hier Millisekunden, der Name 'durationSeconds' im UI Model ist etwas irreführend, aber wir lassen ihn zur Konsistenz vorerst so.
+        )
 }
 
 // Auch die einfache Helper-Funktion muss den Parameter jetzt annehmen und weiterreichen
-fun EpisodeEntity.toEpisodeUiModel(
+fun EpisodePresentation.toEpisodeUiModel(
     podcastName: String,
     podcastImageUrl: String?,
     downloadProgress: Float // <--- NEUER PARAMETER
@@ -131,4 +132,14 @@ fun EpisodeEntity.toEpisodeUiModel(
     podcastName = podcastName,
     podcastImageUrl = podcastImageUrl,
     downloadProgress = downloadProgress // <--- Weitergabe
+)
+
+fun EpisodeWithPodcastInfo.toEpisodeUiModel(
+    downloadProgress: Float,
+    previous: EpisodeUiModel? = null
+): EpisodeUiModel = episode.toEpisodeUiModelCached(
+    previous = previous,
+    podcastName = podcast?.title ?: "",
+    podcastImageUrl = podcast?.imageUrl,
+    downloadProgress = downloadProgress
 )

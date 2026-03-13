@@ -9,6 +9,7 @@ import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
 import com.example.pocastcloni.domain.usecase.podcast.SearchPodcastsUseCase
+import com.example.pocastcloni.domain.usecase.podcast.RemovePodcastSubscriptionUseCase
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
@@ -38,7 +39,8 @@ class AddPodcastViewModel @Inject constructor(
     playerController: AudioPlayerController,
     private val addPodcastFromUrl: AddPodcastFromUrlUseCase,
     private val searchPodcasts: SearchPodcastsUseCase,
-    private val dispatcherProvider: DispatcherProvider
+    private val dispatcherProvider: DispatcherProvider,
+    private val removePodcastSubscription: RemovePodcastSubscriptionUseCase
 ) : ViewModel() {
 
     private val _internalState = MutableStateFlow(AddPodcastScreenUiState())
@@ -94,7 +96,7 @@ class AddPodcastViewModel @Inject constructor(
             _internalState.update { it.copy(addSuccess = false, searchError = null) }
             try {
                 if (isSubscribed) {
-                    repository.removePodcastByUrl(url)
+                    removePodcastSubscription(url)
                     _internalState.update { it.copy(addSuccess = false, searchError = null) }
                 } else {
                     addPodcastFromUrl(url)

@@ -3,9 +3,9 @@ package com.example.pocastcloni.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.domain.model.EpisodeWithPodcastInfo
-import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.episode.GetPlaybackHistoryWithPodcastInfoUseCase
+import com.example.pocastcloni.domain.usecase.history.ClearHistoryUseCase
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
@@ -24,7 +24,7 @@ import javax.inject.Inject
 class HistoryViewModel @Inject constructor(
     getPlaybackHistoryWithPodcastInfoUseCase: GetPlaybackHistoryWithPodcastInfoUseCase,
     private val audioPlayerController: AudioPlayerController,
-    private val podcastRepository: PodcastRepository,
+    private val clearHistoryUseCase: ClearHistoryUseCase,
     userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
@@ -81,7 +81,7 @@ class HistoryViewModel @Inject constructor(
 
             HistoryAction.ConfirmClearHistory -> {
                 viewModelScope.launch {
-                    podcastRepository.clearHistory()
+                    clearHistoryUseCase()
                 }
                 _showConfirmClearDialog.value = false
             }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
+import com.example.pocastcloni.domain.model.EpisodePresentation
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.episode.DownloadEpisodeUseCase
@@ -14,6 +15,7 @@ import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCa
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.player.AudioPlayerController
+import com.example.pocastcloni.domain.usecase.podcast.UpdatePodcastAutoDownloadUseCase
 import com.example.pocastcloni.ui.player.PlayerScreenEvent
 import com.example.pocastcloni.ui.settings.AppTheme
 import com.example.pocastcloni.ui.settings.ThemeUiModel
@@ -62,6 +64,7 @@ class PodcastDetailViewModel @Inject constructor(
     private val startPlaybackUseCase: StartPlaybackUseCase,
     private val toggleEpisodePlayedStatusUseCase: ToggleEpisodePlayedStatusUseCase,
     private val toggleFavoriteEpisodeUseCase: ToggleFavoriteEpisodeUseCase,
+    private val updatePodcastAutoDownloadUseCase: UpdatePodcastAutoDownloadUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
 
@@ -97,9 +100,10 @@ class PodcastDetailViewModel @Inject constructor(
             val podcastImageUrl = podcast.imageUrl
 
             val newList = episodes.map { entity ->
+                val presentation = EpisodePresentation.from(entity)
                 // HINWEIS: Hier muss entity.toEpisodeUiModel den Parameter 'downloadProgress' akzeptieren.
                 // Stelle sicher, dass du PodcastDetailModels.kt bzw. den Mapper aktualisiert hast.
-                entity.toEpisodeUiModel(
+                presentation.toEpisodeUiModel(
                     podcastName = podcastTitle,
                     podcastImageUrl = podcastImageUrl,
                     downloadProgress = progressMap[entity.guid] ?: 0f
@@ -215,8 +219,7 @@ class PodcastDetailViewModel @Inject constructor(
 
     private fun toggleAutoDownload(enabled: Boolean) {
         viewModelScope.launch(dispatcherProvider.io) {
-            val podcast = repository.getPodcast(podcastUrl) ?: return@launch
-            repository.updatePodcastSettings(podcast, enabled)
+            updatePodcastAutoDownloadUseCase(podcastUrl, enabled)
         }
     }
 

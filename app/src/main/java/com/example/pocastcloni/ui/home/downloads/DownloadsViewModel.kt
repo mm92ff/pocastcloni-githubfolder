@@ -9,6 +9,7 @@ import com.example.pocastcloni.domain.usecase.episode.GetDownloadedEpisodesWithP
 import com.example.pocastcloni.domain.usecase.episode.StartPlaybackUseCase
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
 import com.example.pocastcloni.ui.home.detail.EpisodeUiModel
+import com.example.pocastcloni.ui.home.detail.toEpisodeUiModel
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,7 +44,11 @@ class DownloadsViewModel @Inject constructor(
     private val _episodeToDelete = MutableStateFlow<EpisodeUiModel?>(null)
 
     private val downloadedEpisodesFlow = getDownloadedEpisodesWithPodcastInfo()
-        .map { it.toImmutableList() }
+        .map { episodes ->
+            episodes.map { episodeInfo ->
+                episodeInfo.toEpisodeUiModel(downloadProgress = 1.0f)
+            }.toImmutableList()
+        }
         .distinctUntilChanged()
 
     private val playerBitsFlow = playerController.playerState
