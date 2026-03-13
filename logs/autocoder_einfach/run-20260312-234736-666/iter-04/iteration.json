@@ -1,0 +1,8 @@
+{
+  "index": 4,
+  "title": "Kotlin Android Studio: Final Synthesis and Prioritized Roadmap",
+  "enabled": true,
+  "implementation_mode": "docs_only",
+  "prompt": "Kotlin Android Studio iterative mode is enabled.\n\nOverall goal:\nImprove Kotlin Android code quality for production readiness.\n\nCurrent focus area:\nFinal Synthesis and Prioritized Roadmap\n\nArea guidance:\nSynthesize findings from all previous Kotlin Android areas into a prioritized, dependency-aware execution roadmap with clear risk and impact ordering.\n\nExecution rules:\n- Keep scope limited to this focus area.\n- Respect phase boundaries:\n  - Evaluation and Review: analyze only, do not modify code.\n  - Implementation: documentation only (no code edits).\n- Make at least one meaningful documentation change, preferably in docs/final_synthesis_prioritized_roadmap.md.\n- If docs/final_synthesis_prioritized_roadmap.md is already complete, update another relevant docs/*.md file and explain why.\n- If adjacent issues are found, list them as dependencies but do not widen scope.\n- Include at least two irritation/failure scenarios for this area and define expected behavior.\n- Respect production-grade Android Kotlin standards (Compose, Room, resources, constants).\n- Evaluate whether required/optional checks are sufficient for this area and list missing or upgrade candidates.\n- Cover these focus points where relevant:\n  1. Focus Area Goal\n  2. Best Practices\n  3. Common Mistakes\n  4. Audit Criteria\n  5. Concrete Refactorings / Improvements\n  6. Small Kotlin Example\n  7. Priority\n  8. Dependencies To Other Areas\n  9. Irritations / Failure Injection and Expected Behavior",
+  "captured_at": "2026-03-13T00:03:10"
+}

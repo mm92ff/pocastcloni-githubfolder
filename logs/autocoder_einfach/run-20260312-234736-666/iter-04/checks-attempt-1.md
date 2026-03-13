@@ -1,0 +1,3 @@
+# Checks
+
+- No checks configured.

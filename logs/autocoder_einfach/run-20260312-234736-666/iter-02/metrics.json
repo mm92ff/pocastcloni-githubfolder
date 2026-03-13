@@ -1,0 +1,86 @@
+{
+  "index": 2,
+  "title": "Kotlin Android Studio: Architecture and Layer Boundaries",
+  "accepted": true,
+  "final_attempt": 1,
+  "required_checks_passed": true,
+  "reported_changed_files": [
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/podcast/RemovePodcastSubscriptionUseCase.kt#L1` – new use case that encapsulates the unsubscribe path so UI layers no longer call `PodcastRepository.removePodcastByUrl` directly.",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/podcast/UpdatePodcastAutoDownloadUseCase.kt#L1` – new use case that owns `autoDownloadEnabled` flips by loading the podcast and calling `updatePodcastSettings` inside an IO dispatcher.",
+    "app/src/main/java/com/example/pocastcloni/ui/home/add/AddPodcastViewModel.kt#L35` – injects the new unsubscribe use case and wires `onTogglePodcast` through it instead of touching the repository.",
+    "app/src/main/java/com/example/pocastcloni/ui/history/HistoryViewModel.kt#L24` – swaps the direct `clearHistory` repository call for `ClearHistoryUseCase`, keeping the ViewModel as the sole UI→domain gateway.",
+    "app/src/main/java/com/example/pocastcloni/ui/home/detail/PodcastDetailViewModel.kt#L220` – routes the auto-download toggle through `UpdatePodcastAutoDownloadUseCase`, preserving the ViewModel’s event handling while isolating domain logic.",
+    "app/src/main/java/com/example/pocastcloni/domain/model/EpisodePresentation.kt#L1` – exposes `downloadStatus` as part of the domain presentation so downstream UI mappers no longer read `EpisodeEntity`.",
+    "app/src/main/java/com/example/pocastcloni/ui/home/detail/EpisodeUiModel.kt#L1` – reworked the mapper to consume `EpisodePresentation`/`EpisodeWithPodcastInfo` and provide composables with `DownloadStatusUiModel` without ever importing `EpisodeEntity`.",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/episode/GetDownloadedEpisodesWithPodcastInfoUseCase.kt#L1` – now emits domain models (`EpisodeWithPodcastInfo`), so the UI layer builds its `EpisodeUiModel` without domain code referencing UI types.",
+    "app/src/main/java/com/example/pocastcloni/ui/home/downloads/DownloadsViewModel.kt#L19` – imports the new mapper and transforms the domain flow into UI models, keeping the downloaded-episode flow free of repository calls.",
+    "app/src/main/java/com/example/pocastcloni/domain/model/EpisodePresentation.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/episode/GetDownloadedEpisodesWithPodcastInfoUseCase.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/podcast/RemovePodcastSubscriptionUseCase.kt",
+    "app/src/main/java/com/example/pocastcloni/domain/usecase/podcast/UpdatePodcastAutoDownloadUseCase.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/history/HistoryViewModel.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/home/add/AddPodcastViewModel.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/home/detail/EpisodeUiModel.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/home/detail/PodcastDetailViewModel.kt",
+    "app/src/main/java/com/example/pocastcloni/ui/home/downloads/DownloadsViewModel.kt",
+    "docs/dependency-stability-policy.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/docs-context.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/governance-context.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-01/checks-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-01/checks-post-accept-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-01/evaluation.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-01/implementation-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-01/iteration.json",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-01/metrics.json",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-01/review-attempt-1-agent-1.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-02/checks-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-02/checks-post-accept-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-02/implementation-attempt-1.md",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-02/iteration.json",
+    "logs/autocoder_einfach/run-20260312-234736-666/iter-02/review-attempt-1-agent-1.md"
+  ],
+  "evaluation_success": true,
+  "implementation_success": true,
+  "review_success": true,
+  "denial_reason": "",
+  "failure_category": "",
+  "web_search_events": 0,
+  "duration_seconds": 679.421,
+  "tokens_by_phase": {
+    "evaluation": 131963,
+    "implementation": 413795,
+    "review": 5395
+  },
+  "check_history": [
+    {
+      "attempt": 1,
+      "stage": "pre_review",
+      "results": [
+        {
+          "command": ".\\gradlew.bat assemble",
+          "optional": false,
+          "exit_code": 0,
+          "duration_seconds": 13.325,
+          "timed_out": false
+        }
+      ],
+      "required_failures": [],
+      "optional_failures": []
+    },
+    {
+      "attempt": 1,
+      "stage": "post_accept_gate",
+      "results": [
+        {
+          "command": ".\\gradlew.bat test",
+          "optional": false,
+          "exit_code": 0,
+          "duration_seconds": 2.099,
+          "timed_out": false
+        }
+      ],
+      "required_failures": [],
+      "optional_failures": []
+    }
+  ]
+}
