@@ -10,7 +10,7 @@ import com.example.pocastcloni.util.Constants
 @Database(
     entities = [PodcastEntity::class, EpisodeEntity::class, EpisodeFts::class],
     version = Constants.Database.DATABASE_VERSION,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

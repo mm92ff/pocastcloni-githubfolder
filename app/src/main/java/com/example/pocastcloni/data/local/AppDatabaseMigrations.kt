@@ -4,37 +4,49 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object AppDatabaseMigrations {
-    private const val TARGET_VERSION = 10
 
-    val ALL_MIGRATIONS: Array<Migration> =
-        arrayOf(
-            migrationToTarget(1),
-            migrationToTarget(2),
-            migrationToTarget(3),
-            migrationToTarget(4),
-            migrationToTarget(5),
-            migrationToTarget(6),
-            migrationToTarget(7),
-            migrationToTarget(8),
-            migrationToTarget(9)
-        )
-
-    private fun migrationToTarget(fromVersion: Int): Migration {
-        return object : Migration(fromVersion, TARGET_VERSION) {
+    // -------------------------------------------------------------------------
+    // Legacy migrations (v1–v9 → v10)
+    // All pre-v10 databases are rebuilt in one pass to the v10 schema.
+    // Do NOT modify these — they are the committed migration history.
+    // -------------------------------------------------------------------------
+    private val legacyMigrations: Array<Migration> = (1..9).map { from ->
+        object : Migration(from, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                migrateToLatestSchema(db)
+                migrateToV10(db)
             }
         }
-    }
+    }.toTypedArray()
 
-    private fun migrateToLatestSchema(db: SupportSQLiteDatabase) {
+    // -------------------------------------------------------------------------
+    // Incremental migrations (v10 → v11, v11 → v12, …)
+    // Add one Migration(n, n+1) object here for every future DB version bump.
+    // Also update DATABASE_VERSION in Constants and add the schema JSON to VCS.
+    // Keep entries in ascending order.
+    // -------------------------------------------------------------------------
+    private val incrementalMigrations: Array<Migration> = arrayOf(
+        // Example for the next release:
+        // object : Migration(10, 11) {
+        //     override fun migrate(db: SupportSQLiteDatabase) {
+        //         db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `author` TEXT NOT NULL DEFAULT ''")
+        //     }
+        // }
+    )
+
+    val ALL_MIGRATIONS: Array<Migration> = legacyMigrations + incrementalMigrations
+
+    // =========================================================================
+    // v10 full-rebuild helpers (used by legacyMigrations only)
+    // =========================================================================
+
+    private fun migrateToV10(db: SupportSQLiteDatabase) {
         db.execSQL("PRAGMA foreign_keys=OFF")
         try {
             renameLegacyTableIfPresent(db, "podcasts")
             renameLegacyTableIfPresent(db, "episodes")
             db.execSQL("DROP TABLE IF EXISTS `episodes_fts`")
 
-            createLatestTables(db)
+            createV10Tables(db)
             copyPodcasts(db)
             copyEpisodes(db)
             rebuildPodcastDenormalizedColumns(db)
@@ -55,7 +67,7 @@ object AppDatabaseMigrations {
         db.execSQL("ALTER TABLE `$table` RENAME TO `${table}_legacy`")
     }
 
-    private fun createLatestTables(db: SupportSQLiteDatabase) {
+    private fun createV10Tables(db: SupportSQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS `podcasts` (" +
                 "`rssUrl` TEXT NOT NULL, " +

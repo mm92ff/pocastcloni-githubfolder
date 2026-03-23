@@ -65,6 +65,7 @@ android {
 
 ksp {
     arg("hilt.enableAggregatingTask", "true")
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
