@@ -20,27 +20,19 @@ data class UserSettings(
     val appColor: AppColor = AppColor.GREEN,
     val colorStrength: Float = 0.1f,
     val bufferMode: BufferMode = BufferMode.NORMAL,
-
     // NEU: Layout Modus (Grid oder List)
     val layoutMode: LayoutMode = LayoutMode.GRID,
-
     val gridSize: Int = Constants.Preferences.DEFAULT_GRID_SIZE,
     val showGridTitles: Boolean = Constants.Preferences.DEFAULT_SHOW_GRID_TITLES,
     val confirmDelete: Boolean = Constants.Preferences.DEFAULT_CONFIRM_DELETE,
     val progressBarHeight: Int = Constants.Preferences.DEFAULT_PROGRESS_BAR_HEIGHT,
-
     val navBarHeight: Int = Constants.Preferences.DEFAULT_NAV_BAR_HEIGHT,
-
     val oneHandedMode: Boolean = Constants.Preferences.DEFAULT_ONE_HANDED_MODE,
-
     val autoDownloadLimit: Int = Constants.Preferences.DEFAULT_AUTO_DOWNLOAD_LIMIT,
     val autoRefreshOnStart: Boolean = Constants.Preferences.DEFAULT_AUTO_REFRESH_ON_START,
     val backgroundCheckEnabled: Boolean = Constants.Preferences.DEFAULT_BACKGROUND_CHECK_ENABLED,
     val backgroundCheckInterval: Int = Constants.Preferences.DEFAULT_BACKGROUND_CHECK_INTERVAL,
-
     val markPlayedDurationSeconds: Int = 0,
-
     val feedUpdateMode: FeedUpdateMode = FeedUpdateMode.ALWAYS_FULL,
-
     val indicator: IndicatorSettings = IndicatorSettings()
 )

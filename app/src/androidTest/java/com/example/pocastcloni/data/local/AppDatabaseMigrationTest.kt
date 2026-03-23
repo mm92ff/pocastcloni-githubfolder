@@ -139,9 +139,10 @@ class AppDatabaseMigrationTest {
             close()
         }
 
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, TEST_DB)
-            .addMigrations(*AppDatabaseMigrations.ALL_MIGRATIONS)
-            .build()
+        val db =
+            Room.databaseBuilder(context, AppDatabase::class.java, TEST_DB)
+                .addMigrations(*AppDatabaseMigrations.ALL_MIGRATIONS)
+                .build()
 
         db.openHelper.writableDatabase
 

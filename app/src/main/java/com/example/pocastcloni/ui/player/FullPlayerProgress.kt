@@ -1,7 +1,6 @@
 package com.example.pocastcloni.ui.player
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column as LayoutColumn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +18,7 @@ import com.example.pocastcloni.util.formatTime
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import androidx.compose.foundation.layout.Column as LayoutColumn
 
 /**
  * Progress-Bereich: Bar + Time-Labels.
@@ -61,21 +61,23 @@ fun FullPlayerProgressBar(
 ) {
     val playbackStateState = playbackStateFlow.collectAsStateWithLifecycle()
 
-    val smoothState = rememberSmoothedProgressState(
-        playbackStateFlow = playbackStateFlow,
-        isPlaying = isPlaying
-    )
+    val smoothState =
+        rememberSmoothedProgressState(
+            playbackStateFlow = playbackStateFlow,
+            isPlaying = isPlaying
+        )
 
     val currentPositionProvider = remember(smoothState) { { smoothState.currentPosition.value } }
     val bufferedPositionProvider = remember(playbackStateState) { { playbackStateState.value.bufferedPositionMs } }
     val durationProvider = remember(playbackStateState) { { playbackStateState.value.durationMs } }
 
-    val onSeekWrapped: (Long) -> Unit = remember(onSeek, smoothState) {
-        { newPos ->
-            smoothState.jumpTo(newPos)
-            onSeek(newPos)
+    val onSeekWrapped: (Long) -> Unit =
+        remember(onSeek, smoothState) {
+            { newPos ->
+                smoothState.jumpTo(newPos)
+                onSeek(newPos)
+            }
         }
-    }
 
     CustomProgressBar(
         currentPositionMs = currentPositionProvider,
@@ -95,19 +97,18 @@ private data class TimeSeconds(
 )
 
 @Composable
-fun FullPlayerTimeLabels(
-    playbackStateFlow: StateFlow<PlaybackState>
-) {
-    val secondsFlow = remember(playbackStateFlow) {
-        playbackStateFlow
-            .map { state ->
-                TimeSeconds(
-                    positionSec = state.currentPositionMs / 1000L,
-                    durationSec = state.durationMs / 1000L
-                )
-            }
-            .distinctUntilChanged()
-    }
+fun FullPlayerTimeLabels(playbackStateFlow: StateFlow<PlaybackState>) {
+    val secondsFlow =
+        remember(playbackStateFlow) {
+            playbackStateFlow
+                .map { state ->
+                    TimeSeconds(
+                        positionSec = state.currentPositionMs / 1000L,
+                        durationSec = state.durationMs / 1000L
+                    )
+                }
+                .distinctUntilChanged()
+        }
 
     val seconds by secondsFlow.collectAsStateWithLifecycle(
         initialValue = TimeSeconds(positionSec = 0L, durationSec = 0L)

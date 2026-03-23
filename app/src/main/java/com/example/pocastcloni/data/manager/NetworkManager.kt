@@ -8,7 +8,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class NetworkManager @Inject constructor(
+class NetworkManager
+@Inject
+constructor(
     @ApplicationContext private val context: Context
 ) {
     fun isOnline(): Boolean {

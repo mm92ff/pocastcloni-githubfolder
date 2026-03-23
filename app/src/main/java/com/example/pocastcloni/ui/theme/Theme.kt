@@ -49,53 +49,55 @@ fun PocastCloniTheme(
     colorStrength: Float = 0.1f, // Default to a subtle tint
     content: @Composable () -> Unit
 ) {
-    val darkTheme = when (appTheme) {
-        AppTheme.LIGHT -> false
-        AppTheme.DARK -> true
-        AppTheme.SYSTEM -> isSystemInDarkTheme()
-    }
+    val darkTheme =
+        when (appTheme) {
+            AppTheme.LIGHT -> false
+            AppTheme.DARK -> true
+            AppTheme.SYSTEM -> isSystemInDarkTheme()
+        }
 
     val seedColor = Color(appColor.hexValue)
     val onSeedColor = seedColor.contrastColor()
 
-    val colorScheme = if (darkTheme) {
-        val backgroundFactor = 1f - (colorStrength * 0.9f) // Range from 1.0 (black) to 0.1 (strong color)
-        val surfaceFactor = 1f - (colorStrength * 0.85f)   // Slightly lighter than background
+    val colorScheme =
+        if (darkTheme) {
+            val backgroundFactor = 1f - (colorStrength * 0.9f) // Range from 1.0 (black) to 0.1 (strong color)
+            val surfaceFactor = 1f - (colorStrength * 0.85f) // Slightly lighter than background
 
-        val darkBackground = seedColor.darken(backgroundFactor)
-        val onDarkBackground = darkBackground.contrastColor()
-        val darkSurface = seedColor.darken(surfaceFactor)
-        val onDarkSurface = darkSurface.contrastColor()
+            val darkBackground = seedColor.darken(backgroundFactor)
+            val onDarkBackground = darkBackground.contrastColor()
+            val darkSurface = seedColor.darken(surfaceFactor)
+            val onDarkSurface = darkSurface.contrastColor()
 
-        darkColorScheme(
-            primary = seedColor,
-            onPrimary = onSeedColor,
-            secondary = seedColor.lighten(0.2f),
-            onSecondary = seedColor.lighten(0.2f).contrastColor(),
-            tertiary = seedColor.darken(0.8f),
-            background = darkBackground,
-            onBackground = onDarkBackground,
-            surface = darkSurface,
-            onSurface = onDarkSurface
-        )
-    } else {
-        val backgroundFactor = (1f - colorStrength) * 0.15f + 0.85f // Range from 1.0 (white) to 0.85 (strong color)
+            darkColorScheme(
+                primary = seedColor,
+                onPrimary = onSeedColor,
+                secondary = seedColor.lighten(0.2f),
+                onSecondary = seedColor.lighten(0.2f).contrastColor(),
+                tertiary = seedColor.darken(0.8f),
+                background = darkBackground,
+                onBackground = onDarkBackground,
+                surface = darkSurface,
+                onSurface = onDarkSurface
+            )
+        } else {
+            val backgroundFactor = (1f - colorStrength) * 0.15f + 0.85f // Range from 1.0 (white) to 0.85 (strong color)
 
-        val lightBackground = seedColor.lighten(backgroundFactor)
-        val onLightBackground = lightBackground.contrastColor()
+            val lightBackground = seedColor.lighten(backgroundFactor)
+            val onLightBackground = lightBackground.contrastColor()
 
-        lightColorScheme(
-            primary = seedColor,
-            onPrimary = onSeedColor,
-            secondary = seedColor.darken(0.8f),
-            onSecondary = seedColor.darken(0.8f).contrastColor(),
-            tertiary = seedColor.lighten(0.4f),
-            background = lightBackground,
-            onBackground = onLightBackground,
-            surface = lightBackground, // Surface is same as background in light theme
-            onSurface = onLightBackground
-        )
-    }
+            lightColorScheme(
+                primary = seedColor,
+                onPrimary = onSeedColor,
+                secondary = seedColor.darken(0.8f),
+                onSecondary = seedColor.darken(0.8f).contrastColor(),
+                tertiary = seedColor.lighten(0.4f),
+                background = lightBackground,
+                onBackground = onLightBackground,
+                surface = lightBackground, // Surface is same as background in light theme
+                onSurface = onLightBackground
+            )
+        }
 
     val view = LocalView.current
     if (!view.isInEditMode) {

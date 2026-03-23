@@ -9,9 +9,13 @@ import kotlinx.coroutines.flow.StateFlow
 // Interface für UI-Komponenten, die den Player STEUERN (Schreiben)
 interface PlayerActions {
     suspend fun play(episodeGuid: String)
+
     fun pause()
+
     fun resume()
+
     fun onEvent(event: PlayerScreenEvent)
+
     fun releaseResources()
 }
 

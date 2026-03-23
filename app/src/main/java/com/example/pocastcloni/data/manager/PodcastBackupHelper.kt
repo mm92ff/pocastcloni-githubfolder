@@ -20,11 +20,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class PodcastBackupHelper @Inject constructor(
+class PodcastBackupHelper
+@Inject
+constructor(
     private val objectMapper: ObjectMapper,
     private val dispatcherProvider: DispatcherProvider
 ) {
-
     suspend fun exportBackup(
         podcasts: List<BackupPodcast>,
         favorites: List<BackupFavorite>,
@@ -34,17 +35,19 @@ class PodcastBackupHelper @Inject constructor(
     ) {
         withContext(dispatcherProvider.io) {
             try {
-                val backupData = BackupData(
-                    version = Constants.Backup.BACKUP_VERSION,
-                    podcasts = podcasts,
-                    settings = settings,
-                    favorites = favorites
-                )
+                val backupData =
+                    BackupData(
+                        version = Constants.Backup.BACKUP_VERSION,
+                        podcasts = podcasts,
+                        settings = settings,
+                        favorites = favorites
+                    )
 
                 val json = objectMapper.writeValueAsString(backupData)
 
-                val outputStream = contentResolver.openOutputStream(uri, "wt")
-                    ?: throw IOException("Could not open the backup destination.")
+                val outputStream =
+                    contentResolver.openOutputStream(uri, "wt")
+                        ?: throw IOException("Could not open the backup destination.")
 
                 outputStream.use {
                     OutputStreamWriter(outputStream).use { writer ->
@@ -59,28 +62,36 @@ class PodcastBackupHelper @Inject constructor(
         }
     }
 
-    suspend fun importBackup(uri: Uri, contentResolver: ContentResolver): BackupData {
+    suspend fun importBackup(
+        uri: Uri,
+        contentResolver: ContentResolver
+    ): BackupData {
         return withContext(dispatcherProvider.io) {
-            val jsonString = try {
-                val inputStream = contentResolver.openInputStream(uri)
-                    ?: throw IOException("Could not open the backup file.")
+            val jsonString =
+                try {
+                    val inputStream =
+                        contentResolver.openInputStream(uri)
+                            ?: throw IOException("Could not open the backup file.")
 
-                inputStream.use {
-                    BufferedReader(InputStreamReader(inputStream)).use { reader ->
-                        reader.readText()
+                    inputStream.use {
+                        BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                            reader.readText()
+                        }
                     }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to read backup file from URI: $uri")
+                    throw e
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to read backup file from URI: $uri")
-                throw e
-            }
 
             parseBackupJson(jsonString, objectMapper)
         }
     }
 }
 
-internal fun parseBackupJson(jsonString: String, objectMapper: ObjectMapper): BackupData {
+internal fun parseBackupJson(
+    jsonString: String,
+    objectMapper: ObjectMapper
+): BackupData {
     if (jsonString.isBlank()) {
         throw IllegalArgumentException("Backup file is empty.")
     }
@@ -97,9 +108,10 @@ internal fun parseBackupJson(jsonString: String, objectMapper: ObjectMapper): Ba
         val listType = object : TypeReference<List<String>>() {}
         val oldUrls: List<String> = objectMapper.readValue(jsonString, listType)
 
-        val backupPodcasts = oldUrls.mapIndexed { index, url ->
-            BackupPodcast(url = url, sortOrder = index.toLong())
-        }
+        val backupPodcasts =
+            oldUrls.mapIndexed { index, url ->
+                BackupPodcast(url = url, sortOrder = index.toLong())
+            }
         Timber.i("Legacy backup restored with ${backupPodcasts.size} podcasts.")
         return validateBackupData(BackupData(podcasts = backupPodcasts))
     } catch (e: Exception) {

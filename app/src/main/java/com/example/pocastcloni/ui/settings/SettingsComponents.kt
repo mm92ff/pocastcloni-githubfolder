@@ -48,11 +48,13 @@ fun SettingsCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(
+        colors =
+        CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = Constants.UI.SETTINGS_CARD_ALPHA)
         ),
         shape = RoundedCornerShape(Dimens.RoundedCornerExtraLarge),
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimens.Zero)
@@ -78,7 +80,8 @@ fun SettingsSwitchCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .weight(Constants.Weights.FULL)
                     .padding(end = Dimens.PaddingMedium)
             ) {
@@ -135,9 +138,14 @@ fun SettingsSliderCard(
 // --- HILFS-KOMPONENTEN (WICHTIG: Werden von SettingsSections.kt benötigt) ---
 
 @Composable
-fun ColorCircle(colorHex: Long, isSelected: Boolean, onClick: () -> Unit) {
+fun ColorCircle(
+    colorHex: Long,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
     Box(
-        modifier = Modifier
+        modifier =
+        Modifier
             .size(Dimens.ColorCircleSize)
             .clip(CircleShape)
             .background(Color(colorHex))
@@ -164,9 +172,13 @@ fun ColorCircle(colorHex: Long, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun InfoRow(label: String, value: String) {
+fun InfoRow(
+    label: String,
+    value: String
+) {
     Row(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
             .padding(vertical = Dimens.PaddingTiny),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -186,12 +198,17 @@ fun InfoRow(label: String, value: String) {
 }
 
 @Composable
-fun ThemeChip(label: String, selected: Boolean, onClick: () -> Unit) {
+fun ThemeChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
     FilterChip(
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
-        leadingIcon = if (selected) {
+        leadingIcon =
+        if (selected) {
             {
                 Icon(
                     Icons.Default.Check,
@@ -199,6 +216,8 @@ fun ThemeChip(label: String, selected: Boolean, onClick: () -> Unit) {
                     modifier = Modifier.size(Dimens.SmallIconSize)
                 )
             }
-        } else null
+        } else {
+            null
+        }
     )
 }

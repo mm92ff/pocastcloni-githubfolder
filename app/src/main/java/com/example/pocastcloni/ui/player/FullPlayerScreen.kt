@@ -2,8 +2,6 @@ package com.example.pocastcloni.ui.player
 
 import android.text.Spanned
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column as LayoutColumn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,9 +35,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.StateFlow
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.theme.Dimens
+import kotlinx.coroutines.flow.StateFlow
+import androidx.compose.foundation.layout.Column as LayoutColumn
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,12 +65,13 @@ fun FullPlayerScreen(
     val rootHeightDp = with(density) { rootSize.height.toDp() }
 
     // AUTO: Abstand Progress/Time -> Controls passt sich an verfügbare Höhe an
-    val progressToControlsSpacing: Dp = when {
-        rootHeightDp <= 620.dp -> Dimens.PaddingMicro      // 2dp
-        rootHeightDp <= 720.dp -> Dimens.PaddingTiny       // 4dp
-        rootHeightDp <= 820.dp -> Dimens.PaddingVerySmall  // 8dp
-        else -> Dimens.PaddingSmall                        // 12dp
-    }
+    val progressToControlsSpacing: Dp =
+        when {
+            rootHeightDp <= 620.dp -> Dimens.PaddingMicro // 2dp
+            rootHeightDp <= 720.dp -> Dimens.PaddingTiny // 4dp
+            rootHeightDp <= 820.dp -> Dimens.PaddingVerySmall // 8dp
+            else -> Dimens.PaddingSmall // 12dp
+        }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
@@ -86,14 +86,16 @@ fun FullPlayerScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                colors =
+                TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
     ) { innerPadding ->
         LayoutColumn(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = Dimens.PaddingLarge)
@@ -102,13 +104,15 @@ fun FullPlayerScreen(
         ) {
             // TOP (flexibel)
             LayoutColumn(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 FullPlayerMetadataFlexibleCover(
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         .fillMaxWidth()
                         .weight(1f),
                     playerState = playerState,
@@ -150,7 +154,8 @@ fun FullPlayerScreen(
 private fun FullPlayerErrorBanner(message: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
             .background(
                 color = MaterialTheme.colorScheme.errorContainer,

@@ -7,7 +7,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-class AddPodcastFromUrlUseCase @Inject constructor(
+class AddPodcastFromUrlUseCase
+@Inject
+constructor(
     private val repository: PodcastRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val dispatcherProvider: DispatcherProvider

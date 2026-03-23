@@ -15,12 +15,17 @@ data class AppStatistics(
 )
 
 interface StatisticsRepository {
-
     val statsFlow: Flow<AppStatistics>
 
-    suspend fun addDownloadBytes(bytes: Long, isWifi: Boolean)
+    suspend fun addDownloadBytes(
+        bytes: Long,
+        isWifi: Boolean
+    )
 
-    suspend fun addStreamBytes(bytes: Long, isWifi: Boolean)
+    suspend fun addStreamBytes(
+        bytes: Long,
+        isWifi: Boolean
+    )
 
     suspend fun addUploadBytes(bytes: Long)
 

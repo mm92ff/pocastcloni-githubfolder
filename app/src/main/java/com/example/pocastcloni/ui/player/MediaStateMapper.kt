@@ -13,9 +13,14 @@ import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.util.Constants
 import javax.inject.Inject
 
-class MediaStateMapper @Inject constructor() {
-
-    fun mapToMediaItem(episode: EpisodeEntity, podcast: PodcastEntity?, playUri: String): MediaItem {
+class MediaStateMapper
+@Inject
+constructor() {
+    fun mapToMediaItem(
+        episode: EpisodeEntity,
+        podcast: PodcastEntity?,
+        playUri: String
+    ): MediaItem {
         val artworkUri = podcast?.imageUrl?.takeIf { it.isNotBlank() }?.toUri()
         return MediaItem.Builder()
             .setMediaId(episode.guid)
@@ -43,9 +48,10 @@ class MediaStateMapper @Inject constructor() {
 
         val title = episode?.title ?: meta.title?.toString() ?: Constants.EMPTY_STRING
         val subtitle = podcast?.title ?: meta.artist?.toString() ?: Constants.EMPTY_STRING
-        val cover = podcast?.imageUrl?.takeIf { it.isNotBlank() }
-            ?: meta.artworkUri?.toString()
-            ?: currentState.coverUrl
+        val cover =
+            podcast?.imageUrl?.takeIf { it.isNotBlank() }
+                ?: meta.artworkUri?.toString()
+                ?: currentState.coverUrl
 
         return currentState.copy(
             isPlaying = controller.isPlaying,
@@ -67,7 +73,8 @@ class MediaStateMapper @Inject constructor() {
         return when (error.errorCode) {
             // Netzwerk-Probleme
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
-            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+            ->
                 UiText.StringResource(R.string.error_no_internet)
 
             // Datei-Probleme (z.B. Download gelöscht)
@@ -76,7 +83,8 @@ class MediaStateMapper @Inject constructor() {
 
             // Decoder/Format-Probleme
             PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
-            PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED ->
+            PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED
+            ->
                 UiText.StringResource(R.string.error_decoder)
 
             // Fallback für alles andere

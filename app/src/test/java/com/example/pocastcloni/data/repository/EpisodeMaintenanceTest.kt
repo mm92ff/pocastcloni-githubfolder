@@ -11,14 +11,15 @@ import java.util.Date
 class EpisodeMaintenanceTest {
     @Test
     fun selectEpisodesToPrune_onlyReturnsOlderPlayedEpisodesThatAreSafeToDelete() {
-        val episodes = listOf(
-            episode("latest-unplayed", pubDateMs = 6_000, isPlayed = false),
-            episode("latest-favorite", pubDateMs = 5_000, isPlayed = true, isFavorite = true),
-            episode("played-safe", pubDateMs = 4_000, isPlayed = true),
-            episode("downloaded", pubDateMs = 3_000, isPlayed = true, downloadStatus = DownloadStatus.DOWNLOADED),
-            episode("in-progress", pubDateMs = 2_000, isPlayed = true, playbackPositionMs = 42_000),
-            episode("played-safe-2", pubDateMs = 1_000, isPlayed = true)
-        )
+        val episodes =
+            listOf(
+                episode("latest-unplayed", pubDateMs = 6_000, isPlayed = false),
+                episode("latest-favorite", pubDateMs = 5_000, isPlayed = true, isFavorite = true),
+                episode("played-safe", pubDateMs = 4_000, isPlayed = true),
+                episode("downloaded", pubDateMs = 3_000, isPlayed = true, downloadStatus = DownloadStatus.DOWNLOADED),
+                episode("in-progress", pubDateMs = 2_000, isPlayed = true, playbackPositionMs = 42_000),
+                episode("played-safe-2", pubDateMs = 1_000, isPlayed = true)
+            )
 
         val result = selectEpisodesToPrune(episodes, keepCount = 2)
 

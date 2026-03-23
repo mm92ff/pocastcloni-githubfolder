@@ -71,20 +71,23 @@ fun SearchArea(
                 onValueChange = onSearchQueryChange,
                 // Placeholder sieht in runden Feldern oft besser aus als Label
                 placeholder = { Text(stringResource(R.string.label_input)) },
-                modifier = Modifier
+                modifier =
+                Modifier
                     .weight(Constants.Weights.FULL)
                     .heightIn(min = Dimens.SearchFieldMinHeight),
                 singleLine = true,
                 // MACHT ES RUND:
                 shape = CircleShape,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
+                keyboardActions =
+                KeyboardActions(
                     onSearch = {
                         onSearchTriggered()
                         keyboardController?.hide()
                     }
                 ),
-                colors = TextFieldDefaults.colors(
+                colors =
+                TextFieldDefaults.colors(
                     // Entfernt den Unterstrich/Rahmen komplett
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
@@ -100,7 +103,8 @@ fun SearchArea(
                     onSearchTriggered()
                     keyboardController?.hide()
                 },
-                modifier = Modifier
+                modifier =
+                Modifier
                     // Macht den Button quadratisch (wichtig für Kreisform)
                     .size(Dimens.SearchFieldMinHeight)
                     .align(Alignment.CenterVertically),
@@ -166,7 +170,8 @@ fun PodcastSearchItem(
     onToggle: () -> Unit
 ) {
     Card(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
             .padding(vertical = Dimens.SearchCardOuterPaddingVertical),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimens.CardElevation),
@@ -179,7 +184,8 @@ fun PodcastSearchItem(
             AsyncImage(
                 model = podcast.artworkUrl,
                 contentDescription = stringResource(R.string.desc_cover),
-                modifier = Modifier
+                modifier =
+                Modifier
                     .size(Dimens.SearchImageSize)
                     .clip(RoundedCornerShape(Dimens.RoundedCornerMedium))
                     .background(MaterialTheme.colorScheme.surfaceVariant),

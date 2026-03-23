@@ -1,6 +1,5 @@
 package com.example.pocastcloni.util
 
-import android.text.Html
 import android.text.SpannableString
 import android.text.Spanned
 import androidx.core.text.HtmlCompat
@@ -15,14 +14,15 @@ fun String?.stripHtml(): String {
 
     // 1. Lightweight Entity decoding (Manual replacement is much faster than Html.fromHtml)
     // We only handle the most common ones for list previews.
-    val decoded = this
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&nbsp;", " ")
-        .replace("<br>", " ")
-        .replace("<br/>", " ")
+    val decoded =
+        this
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&nbsp;", " ")
+            .replace("<br>", " ")
+            .replace("<br/>", " ")
 
     // 2. Regex remove all other tags.
     // Replaces <p>, </div>, <b>, etc. with a single space to prevent words merging.

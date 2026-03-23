@@ -11,7 +11,9 @@ import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
 
-class ResetAppUseCase @Inject constructor(
+class ResetAppUseCase
+@Inject
+constructor(
     private val podcastRepository: PodcastRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val imageLoader: ImageLoader,

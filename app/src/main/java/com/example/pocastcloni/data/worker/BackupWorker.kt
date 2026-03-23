@@ -13,12 +13,13 @@ import dagger.assisted.AssistedInject
 import timber.log.Timber
 
 @HiltWorker
-class BackupWorker @AssistedInject constructor(
+class BackupWorker
+@AssistedInject
+constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val manageBackupUseCase: ManageBackupUseCase
 ) : CoroutineWorker(appContext, workerParams) {
-
     override suspend fun doWork(): Result {
         val actionType = inputData.getString(KEY_ACTION_TYPE)
         val path = inputData.getString(KEY_URI_PATH)
@@ -32,11 +33,12 @@ class BackupWorker @AssistedInject constructor(
         }
 
         return try {
-            val action = when (actionType) {
-                ACTION_EXPORT -> BackupAction.Export(path)
-                ACTION_IMPORT -> BackupAction.Import(path)
-                else -> throw IllegalArgumentException("Unknown action type: $actionType")
-            }
+            val action =
+                when (actionType) {
+                    ACTION_EXPORT -> BackupAction.Export(path)
+                    ACTION_IMPORT -> BackupAction.Import(path)
+                    else -> throw IllegalArgumentException("Unknown action type: $actionType")
+                }
 
             val result = manageBackupUseCase(action)
             createOutputData(result)

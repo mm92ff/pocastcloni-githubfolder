@@ -41,8 +41,8 @@ fun NotificationDotPreview(
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp.dp
 
-    val horizontalContentPadding = Dimens.PaddingLarge   // HomeScreen contentPadding start/end
-    val horizontalSpacing = Dimens.PaddingMedium         // HomeScreen spacedBy(...)
+    val horizontalContentPadding = Dimens.PaddingLarge // HomeScreen contentPadding start/end
+    val horizontalSpacing = Dimens.PaddingMedium // HomeScreen spacedBy(...)
     val minCellSize = gridSizeDp.dp
 
     val availableWidth =
@@ -64,7 +64,8 @@ fun NotificationDotPreview(
 
     // ---- WICHTIG: Stage-Background über die GANZE Previewfläche (damit Card-Grau verschwindet) ----
     Box(
-        modifier = modifier
+        modifier =
+        modifier
             .fillMaxWidth()
             .height(Dimens.IndicatorPreviewBoxHeight)
             .background(
@@ -103,7 +104,8 @@ private fun PreviewTile(
             elevation = CardDefaults.cardElevation(defaultElevation = Dimens.PaddingSmall)
         ) {
             Box(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
@@ -139,7 +141,8 @@ private fun ScaledFixedSizeBox(
         modifier = Modifier.size(displaySize),
         content = {
             Box(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .size(safeBase)
                     .graphicsLayer {
                         scaleX = scale

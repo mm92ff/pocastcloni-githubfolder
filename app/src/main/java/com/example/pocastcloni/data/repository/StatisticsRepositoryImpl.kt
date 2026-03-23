@@ -14,19 +14,20 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
-import java.util.concurrent.atomic.AtomicLong
 
 // DataStore Definition
 private val Context.statsDataStore: DataStore<Preferences> by preferencesDataStore(name = Constants.Statistics.DATASTORE_NAME)
 
 @Singleton
-class StatisticsRepositoryImpl @Inject constructor(
+class StatisticsRepositoryImpl
+@Inject
+constructor(
     @ApplicationContext private val context: Context,
     private val podcastDao: PodcastDao
 ) : StatisticsRepository {
-
     private object Keys {
         val DOWNLOAD_WIFI = longPreferencesKey(Constants.Statistics.KEY_DOWNLOAD_WIFI)
         val DOWNLOAD_MOBILE = longPreferencesKey(Constants.Statistics.KEY_DOWNLOAD_MOBILE)
@@ -49,33 +50,38 @@ class StatisticsRepositoryImpl @Inject constructor(
 
     // --- DATA FLOW ---
 
-    private val dataStoreStats: Flow<AppStatistics> = context.statsDataStore.data.map { prefs ->
-        AppStatistics(
-            downloadWifiBytes = prefs[Keys.DOWNLOAD_WIFI] ?: 0L,
-            downloadMobileBytes = prefs[Keys.DOWNLOAD_MOBILE] ?: 0L,
-            streamWifiBytes = prefs[Keys.STREAM_WIFI] ?: 0L,
-            streamMobileBytes = prefs[Keys.STREAM_MOBILE] ?: 0L,
-            uploadBytes = prefs[Keys.UPLOAD] ?: 0L,
-            totalListeningTimeMs = prefs[Keys.LISTENING_TIME] ?: 0L
-        )
-    }
+    private val dataStoreStats: Flow<AppStatistics> =
+        context.statsDataStore.data.map { prefs ->
+            AppStatistics(
+                downloadWifiBytes = prefs[Keys.DOWNLOAD_WIFI] ?: 0L,
+                downloadMobileBytes = prefs[Keys.DOWNLOAD_MOBILE] ?: 0L,
+                streamWifiBytes = prefs[Keys.STREAM_WIFI] ?: 0L,
+                streamMobileBytes = prefs[Keys.STREAM_MOBILE] ?: 0L,
+                uploadBytes = prefs[Keys.UPLOAD] ?: 0L,
+                totalListeningTimeMs = prefs[Keys.LISTENING_TIME] ?: 0L
+            )
+        }
 
-    override val statsFlow: Flow<AppStatistics> = combine(
-        dataStoreStats,
-        podcastDao.getTotalEpisodeCount(),
-        podcastDao.getEpisodesInProgressCount(),
-        podcastDao.getPlayedEpisodesCount()
-    ) { dsStats, total, inProgress, played ->
-        dsStats.copy(
-            totalEpisodes = total,
-            episodesInProgress = inProgress,
-            episodesPlayed = played
-        )
-    }
+    override val statsFlow: Flow<AppStatistics> =
+        combine(
+            dataStoreStats,
+            podcastDao.getTotalEpisodeCount(),
+            podcastDao.getEpisodesInProgressCount(),
+            podcastDao.getPlayedEpisodesCount()
+        ) { dsStats, total, inProgress, played ->
+            dsStats.copy(
+                totalEpisodes = total,
+                episodesInProgress = inProgress,
+                episodesPlayed = played
+            )
+        }
 
     // --- ACTIONS ---
 
-    override suspend fun addDownloadBytes(bytes: Long, isWifi: Boolean) {
+    override suspend fun addDownloadBytes(
+        bytes: Long,
+        isWifi: Boolean
+    ) {
         // Downloads kommen meist blockweise oder am Ende vom Worker,
         // daher ist hier kein aggressives Puffern nötig.
         context.statsDataStore.edit { prefs ->
@@ -85,7 +91,10 @@ class StatisticsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addStreamBytes(bytes: Long, isWifi: Boolean) {
+    override suspend fun addStreamBytes(
+        bytes: Long,
+        isWifi: Boolean
+    ) {
         // NEU: Puffer-Logik für Streaming
         // 1. Bytes nur im RAM addieren
         val buffer = if (isWifi) pendingStreamWifiBytes else pendingStreamMobileBytes

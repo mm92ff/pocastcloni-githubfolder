@@ -13,9 +13,12 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 @FlowPreview
-class GetFavoriteEpisodesWithPodcastInfoUseCase @Inject constructor(
+class GetFavoriteEpisodesWithPodcastInfoUseCase
+@Inject
+constructor(
     private val podcastRepository: PodcastRepository,
-    private val dispatcherProvider: DispatcherProvider) {
+    private val dispatcherProvider: DispatcherProvider
+) {
     operator fun invoke(): Flow<List<EpisodeWithPodcastInfo>> {
         return podcastRepository.getFavoriteEpisodesWithPodcastInfoFlow()
             .map { map ->

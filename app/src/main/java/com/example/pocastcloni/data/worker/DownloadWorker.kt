@@ -9,8 +9,8 @@ import androidx.work.workDataOf
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.StatisticsRepository
-import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.ConnectivityProvider
+import com.example.pocastcloni.util.Constants
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
@@ -23,7 +23,9 @@ import java.io.IOException
 import java.io.InputStream
 
 @HiltWorker
-class DownloadWorker @AssistedInject constructor(
+class DownloadWorker
+@AssistedInject
+constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val podcastRepository: PodcastRepository,
@@ -31,7 +33,6 @@ class DownloadWorker @AssistedInject constructor(
     private val connectivityProvider: ConnectivityProvider,
     private val okHttpClient: OkHttpClient
 ) : CoroutineWorker(context, params) {
-
     companion object {
         // Wir können jetzt sogar öfter updaten, da wir nicht mehr in die DB schreiben!
         private const val PROGRESS_MIN_INTERVAL_MS = 250L // War 750L
@@ -40,8 +41,9 @@ class DownloadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         val guid = inputData.getString(Constants.DOWNLOAD_WORKER_GUID) ?: return Result.failure()
         val url = inputData.getString(Constants.DOWNLOAD_WORKER_URL) ?: return Result.failure()
-        val fileName = inputData.getString(Constants.DOWNLOAD_WORKER_FILENAME)
-            ?: Constants.DOWNLOAD_WORKER_DEFAULT_FILENAME
+        val fileName =
+            inputData.getString(Constants.DOWNLOAD_WORKER_FILENAME)
+                ?: Constants.DOWNLOAD_WORKER_DEFAULT_FILENAME
 
         return try {
             podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADING, null)
@@ -74,7 +76,11 @@ class DownloadWorker @AssistedInject constructor(
         }
     }
 
-    private suspend fun downloadToFile(guid: String, url: String, fileName: String): File {
+    private suspend fun downloadToFile(
+        guid: String,
+        url: String,
+        fileName: String
+    ): File {
         val request = Request.Builder().url(url).build()
         val response = okHttpClient.newCall(request).execute()
 
@@ -116,9 +122,10 @@ class DownloadWorker @AssistedInject constructor(
                     bytesCopied += bytesRead
 
                     if (totalBytes > 0L) {
-                        val percent = ((bytesCopied * 100L) / totalBytes)
-                            .toInt()
-                            .coerceIn(0, 100)
+                        val percent =
+                            ((bytesCopied * 100L) / totalBytes)
+                                .toInt()
+                                .coerceIn(0, 100)
 
                         val now = SystemClock.elapsedRealtime()
                         val force = percent >= 100

@@ -29,6 +29,7 @@ object Constants {
     object Player {
         const val NORMAL_BUFFER_DURATION_MS = 15000 // 15 seconds
         const val MAX_BUFFER_DURATION_MS = 50000 // 50 seconds
+
         // Maximal-mode (formerly "whole podcast")
         const val MAXIMAL_BUFFER_DURATION_MS = 7200000 // 2 hours
         const val MAX_BUFFER_FOR_PLAYBACK_MS = 2500
@@ -102,7 +103,8 @@ object Constants {
         const val URL = "url"
         const val TYPE = "type"
         const val LENGTH = "length"
-        val DATE_FORMATS = listOf("EEE, dd MMM yyyy HH:mm:ss Z", "EEE, dd MMM yyyy HH:mm:ss z", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd HH:mm:ss")
+        val DATE_FORMATS =
+            listOf("EEE, dd MMM yyyy HH:mm:ss Z", "EEE, dd MMM yyyy HH:mm:ss z", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd HH:mm:ss")
         const val DEFAULT_ENCLOSURE_LENGTH = 0L
     }
 
@@ -220,6 +222,7 @@ object Constants {
         const val IMAGE_SIZE_LIST = 300
         const val IMAGE_SIZE_GRID = 400
     }
+
     // NEU HINZUFÜGEN:
     object Validation {
         // Erlaubt Daten bis zu 7 Tage in der Zukunft (wegen Zeitzonen/Server-Differenzen)

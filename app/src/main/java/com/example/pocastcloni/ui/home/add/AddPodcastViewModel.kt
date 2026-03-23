@@ -8,8 +8,8 @@ import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
-import com.example.pocastcloni.domain.usecase.podcast.SearchPodcastsUseCase
 import com.example.pocastcloni.domain.usecase.podcast.RemovePodcastSubscriptionUseCase
+import com.example.pocastcloni.domain.usecase.podcast.SearchPodcastsUseCase
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
@@ -33,7 +33,9 @@ import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
-class AddPodcastViewModel @Inject constructor(
+class AddPodcastViewModel
+@Inject
+constructor(
     private val repository: PodcastRepository,
     userPreferencesRepository: UserPreferencesRepository,
     playerController: AudioPlayerController,
@@ -42,35 +44,37 @@ class AddPodcastViewModel @Inject constructor(
     private val dispatcherProvider: DispatcherProvider,
     private val removePodcastSubscription: RemovePodcastSubscriptionUseCase
 ) : ViewModel() {
-
     private val _internalState = MutableStateFlow(AddPodcastScreenUiState())
 
-    private val isPlayerVisibleFlow = playerController.playerState
-        .map { !it.currentEpisodeGuid.isNullOrBlank() }
-        .distinctUntilChanged()
+    private val isPlayerVisibleFlow =
+        playerController.playerState
+            .map { !it.currentEpisodeGuid.isNullOrBlank() }
+            .distinctUntilChanged()
 
-    private val subscribedUrlsFlow = repository.getSubscribedUrlsFlow()
-        .map { it.toImmutableSet() }
-        .distinctUntilChanged()
+    private val subscribedUrlsFlow =
+        repository.getSubscribedUrlsFlow()
+            .map { it.toImmutableSet() }
+            .distinctUntilChanged()
 
-    val uiState: StateFlow<AddPodcastScreenUiState> = combine(
-        _internalState,
-        userPreferencesRepository.userSettingsFlow,
-        subscribedUrlsFlow,
-        isPlayerVisibleFlow
-    ) { state, settings, subscribedSet, isVisible ->
-        state.copy(
-            oneHandedMode = settings.oneHandedMode,
-            subscribedUrls = subscribedSet,
-            progressBarHeight = settings.progressBarHeight,
-            navBarHeight = settings.navBarHeight,
-            isPlayerVisible = isVisible
+    val uiState: StateFlow<AddPodcastScreenUiState> =
+        combine(
+            _internalState,
+            userPreferencesRepository.userSettingsFlow,
+            subscribedUrlsFlow,
+            isPlayerVisibleFlow
+        ) { state, settings, subscribedSet, isVisible ->
+            state.copy(
+                oneHandedMode = settings.oneHandedMode,
+                subscribedUrls = subscribedSet,
+                progressBarHeight = settings.progressBarHeight,
+                navBarHeight = settings.navBarHeight,
+                isPlayerVisible = isVisible
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
+            initialValue = AddPodcastScreenUiState()
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
-        initialValue = AddPodcastScreenUiState()
-    )
 
     private var searchJob: Job? = null
 
@@ -130,34 +134,37 @@ class AddPodcastViewModel @Inject constructor(
 
         searchJob?.cancel()
 
-        searchJob = viewModelScope.launch {
-            _internalState.update { it.copy(isSearching = true, searchError = null, addSuccess = false) }
+        searchJob =
+            viewModelScope.launch {
+                _internalState.update { it.copy(isSearching = true, searchError = null, addSuccess = false) }
 
-            try {
-                val results = withContext(dispatcherProvider.io) {
-                    searchPodcasts(query)
-                }
-                _internalState.update { state ->
-                    state.copy(
-                        isSearching = false,
-                        // FIX: Filtern von Duplikaten, um LazyColumn Crash zu verhindern
-                        searchResults = results
-                            .map { it.toPodcastSearchResult() }
-                            .distinctBy { it.feedUrl }
-                            .toImmutableList()
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: IOException) {
-                _internalState.update {
-                    it.copy(isSearching = false, searchError = UiText.StringResource(R.string.error_network))
-                }
-            } catch (_: Exception) {
-                _internalState.update {
-                    it.copy(isSearching = false, searchError = UiText.StringResource(R.string.error_unknown))
+                try {
+                    val results =
+                        withContext(dispatcherProvider.io) {
+                            searchPodcasts(query)
+                        }
+                    _internalState.update { state ->
+                        state.copy(
+                            isSearching = false,
+                            // FIX: Filtern von Duplikaten, um LazyColumn Crash zu verhindern
+                            searchResults =
+                            results
+                                .map { it.toPodcastSearchResult() }
+                                .distinctBy { it.feedUrl }
+                                .toImmutableList()
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: IOException) {
+                    _internalState.update {
+                        it.copy(isSearching = false, searchError = UiText.StringResource(R.string.error_network))
+                    }
+                } catch (_: Exception) {
+                    _internalState.update {
+                        it.copy(isSearching = false, searchError = UiText.StringResource(R.string.error_unknown))
+                    }
                 }
             }
-        }
     }
 }

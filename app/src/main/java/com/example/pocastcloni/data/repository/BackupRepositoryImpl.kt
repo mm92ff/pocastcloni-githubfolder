@@ -22,7 +22,9 @@ import javax.inject.Provider
 import javax.inject.Singleton
 
 @Singleton
-class BackupRepositoryImpl @Inject constructor(
+class BackupRepositoryImpl
+@Inject
+constructor(
     private val podcastDao: PodcastDao,
     private val backupHelper: PodcastBackupHelper,
     private val userPreferencesRepository: UserPreferencesRepository,
@@ -30,8 +32,10 @@ class BackupRepositoryImpl @Inject constructor(
     private val dispatcherProvider: DispatcherProvider,
     @ApplicationContext private val context: Context
 ) : BackupRepository {
-
-    override suspend fun exportFullBackup(uri: Uri, settings: UserSettings) {
+    override suspend fun exportFullBackup(
+        uri: Uri,
+        settings: UserSettings
+    ) {
         withContext(dispatcherProvider.io) {
             val podcasts = podcastDao.getAllPodcastsForExport()
             val favorites = podcastDao.getFavoriteEpisodesSync()
@@ -49,7 +53,11 @@ class BackupRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun importFullBackup(uri: Uri, downloadLimit: Int, mode: FeedUpdateMode): ImportResult {
+    override suspend fun importFullBackup(
+        uri: Uri,
+        downloadLimit: Int,
+        mode: FeedUpdateMode
+    ): ImportResult {
         return withContext(dispatcherProvider.io) {
             val backupData = backupHelper.importBackup(uri, context.contentResolver)
 
@@ -70,17 +78,18 @@ class BackupRepositoryImpl @Inject constructor(
                     // Das garantiert, dass der Podcast da ist, auch wenn der Sync fehlschlägt (Offline).
                     val orderToUse = if (backupPodcast.sortOrder > 0) backupPodcast.sortOrder else ++currentMaxSortOrder
 
-                    val stubEntity = PodcastEntity(
-                        rssUrl = url,
-                        title = backupPodcast.title ?: context.getString(R.string.import_fallback_title),
-                        description = backupPodcast.description ?: context.getString(R.string.import_fallback_description),
-                        imageUrl = backupPodcast.imageUrl ?: "",
-                        sortOrder = orderToUse,
-                        // Hier stellen wir die Caching-Header wieder her:
-                        lastModifiedHeader = backupPodcast.lastModifiedHeader,
-                        eTagHeader = backupPodcast.eTagHeader,
-                        lastRefreshed = Date(0) // Markiert als "braucht update"
-                    )
+                    val stubEntity =
+                        PodcastEntity(
+                            rssUrl = url,
+                            title = backupPodcast.title ?: context.getString(R.string.import_fallback_title),
+                            description = backupPodcast.description ?: context.getString(R.string.import_fallback_description),
+                            imageUrl = backupPodcast.imageUrl ?: "",
+                            sortOrder = orderToUse,
+                            // Hier stellen wir die Caching-Header wieder her:
+                            lastModifiedHeader = backupPodcast.lastModifiedHeader,
+                            eTagHeader = backupPodcast.eTagHeader,
+                            lastRefreshed = Date(0) // Markiert als "braucht update"
+                        )
 
                     // Insert Ignore: Wenn er schon da ist, überschreiben wir ihn NICHT (um lokale Updates zu schützen)
                     // Wenn er neu ist, ist er jetzt sichtbar.
@@ -112,14 +121,16 @@ class BackupRepositoryImpl @Inject constructor(
 
             // 3. Favorites wiederherstellen
             val favoriteGuids = backupData.favorites.map { it.episodeGuid }.distinct()
-            val existingFavoriteGuids = if (favoriteGuids.isEmpty()) {
-                emptySet()
-            } else {
-                podcastDao.getExistingGuids(favoriteGuids).toSet()
-            }
+            val existingFavoriteGuids =
+                if (favoriteGuids.isEmpty()) {
+                    emptySet()
+                } else {
+                    podcastDao.getExistingGuids(favoriteGuids).toSet()
+                }
 
-            val restorableFavorites = backupData.favorites
-                .filter { it.episodeGuid in existingFavoriteGuids }
+            val restorableFavorites =
+                backupData.favorites
+                    .filter { it.episodeGuid in existingFavoriteGuids }
             restorableFavorites.forEach { fav ->
                 podcastDao.setFavoriteStatus(fav.episodeGuid, true, fav.timestamp)
             }

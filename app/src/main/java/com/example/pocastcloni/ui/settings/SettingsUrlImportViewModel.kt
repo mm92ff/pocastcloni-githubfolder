@@ -20,11 +20,12 @@ import java.net.URL
 import javax.inject.Inject
 
 @HiltViewModel
-class SettingsUrlImportViewModel @Inject constructor(
+class SettingsUrlImportViewModel
+@Inject
+constructor(
     private val addPodcastFromUrl: AddPodcastFromUrlUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(SettingsAddUrlState())
     val uiState = _uiState.asStateFlow()
 
@@ -32,20 +33,22 @@ class SettingsUrlImportViewModel @Inject constructor(
      * One-time events (Snackbars/Toasts). Optional to use, but recommended to avoid replay on rotation.
      * If your UI already uses uiState.message, you can ignore this and call onMessageConsumed() after showing.
      */
-    private val _events = MutableSharedFlow<UiText>(
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private val _events =
+        MutableSharedFlow<UiText>(
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
     val events = _events.asSharedFlow()
 
     fun onEvent(event: SettingsUiEvent) {
         when (event) {
             is SettingsUiEvent.OnAddUrlQueryChange -> onUrlChange(event.url)
             SettingsUiEvent.AddPodcastViaUrl -> onAddPodcast()
-            else -> Timber.w(
-                "SettingsUrlImportViewModel ignoring event %s",
-                event::class.java.simpleName
-            )
+            else ->
+                Timber.w(
+                    "SettingsUrlImportViewModel ignoring event %s",
+                    event::class.java.simpleName
+                )
         }
     }
 

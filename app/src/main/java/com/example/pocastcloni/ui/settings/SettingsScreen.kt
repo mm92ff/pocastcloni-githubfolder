@@ -23,7 +23,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
-import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 
@@ -52,17 +51,19 @@ fun SettingsScreen(
 
     HandleBackupSideEffects(backupState, snackbarHostState, context)
 
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(Constants.Backup.MIME_TYPE_JSON)
-    ) { uri ->
-        uri?.let { backupViewModel.onEvent(SettingsUiEvent.ExportFullBackup(it.toString())) }
-    }
+    val exportLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument(Constants.Backup.MIME_TYPE_JSON)
+        ) { uri ->
+            uri?.let { backupViewModel.onEvent(SettingsUiEvent.ExportFullBackup(it.toString())) }
+        }
 
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let { backupViewModel.onEvent(SettingsUiEvent.ImportFullBackup(it.toString())) }
-    }
+    val importLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            uri?.let { backupViewModel.onEvent(SettingsUiEvent.ImportFullBackup(it.toString())) }
+        }
 
     val onExportClick = remember { { exportLauncher.launch(Constants.Backup.BACKUP_FILE_NAME) } }
     val onImportClick = remember { { importLauncher.launch(arrayOf(Constants.Backup.MIME_TYPE_JSON, Constants.Backup.MIME_TYPE_ALL)) } }
@@ -101,7 +102,8 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { innerPadding ->
         Box(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
@@ -165,7 +167,10 @@ private fun HandleBackupSideEffects(
 }
 
 @Composable
-private fun ResetAppDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+private fun ResetAppDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Warning, contentDescription = null) },
@@ -184,7 +189,10 @@ private fun ResetAppDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
 }
 
 @Composable
-fun HandleImportState(state: ImportUiState, onReset: () -> Unit) {
+fun HandleImportState(
+    state: ImportUiState,
+    onReset: () -> Unit
+) {
     val context = LocalContext.current
     when (state) {
         is ImportUiState.Loading -> {
@@ -222,7 +230,10 @@ fun HandleImportState(state: ImportUiState, onReset: () -> Unit) {
 }
 
 @Composable
-fun HandleExportState(state: ExportUiState, onReset: () -> Unit) {
+fun HandleExportState(
+    state: ExportUiState,
+    onReset: () -> Unit
+) {
     val context = LocalContext.current
     when (state) {
         is ExportUiState.Loading -> {

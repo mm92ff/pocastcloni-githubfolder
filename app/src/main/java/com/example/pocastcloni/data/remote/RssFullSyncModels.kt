@@ -21,22 +21,19 @@ data class RssFeed(
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class RssChannel(
     @field:JacksonXmlProperty(localName = Parsing.TITLE) var title: String? = null,
-
     @field:JacksonXmlCData
-    @field:JacksonXmlProperty(localName = Parsing.DESCRIPTION) var description: String? = null,
-
+    @field:JacksonXmlProperty(localName = Parsing.DESCRIPTION)
+    var description: String? = null,
     // 1. Standard RSS Image (<image><url>...</url></image>)
     @field:JacksonXmlProperty(localName = Parsing.IMAGE) var image: RssImage? = null,
-
     // 2. iTunes Image mit Namespace (<itunes:image href="..." />) - Der saubere Weg
     @field:JacksonXmlProperty(localName = Parsing.ITUNES_IMAGE, namespace = "itunes") var itunesImage: RssImage? = null,
-
     // 3. RESILIENCE FALLBACK: iTunes Image als "roher" Tag-Name, falls Namespaces ignoriert werden
     // Dies fängt Fälle ab, wo der Parser "itunes:image" als einfachen Namen liest.
     @field:JacksonXmlProperty(localName = "itunes:image") var itunesImageRaw: RssImage? = null,
-
     @field:JacksonXmlElementWrapper(useWrapping = false)
-    @field:JacksonXmlProperty(localName = Parsing.ITEM) var items: List<RssItem>? = null
+    @field:JacksonXmlProperty(localName = Parsing.ITEM)
+    var items: List<RssItem>? = null
 ) {
     // Nimmt das beste verfügbare Bild (Priorität: iTunes > Raw Fallback > Standard RSS)
     val finalImageUrl: String?
@@ -56,16 +53,16 @@ data class RssImage(
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class RssItem(
     @field:JacksonXmlProperty(localName = Parsing.TITLE) var title: String? = null,
-    @field:JacksonXmlCData @field:JacksonXmlProperty(localName = Parsing.DESCRIPTION) var description: String? = null,
+    @field:JacksonXmlCData
+    @field:JacksonXmlProperty(localName = Parsing.DESCRIPTION)
+    var description: String? = null,
     @field:JacksonXmlProperty(localName = Parsing.LINK) var link: String? = null,
     @field:JacksonXmlProperty(localName = Parsing.GUID) var guid: String? = null,
     @field:JacksonXmlProperty(localName = Parsing.PUB_DATE) var pubDate: String? = null,
     @field:JacksonXmlProperty(localName = Parsing.ENCLOSURE) var enclosure: RssEnclosure? = null,
     @field:JacksonXmlProperty(localName = Parsing.ITUNES_DURATION, namespace = "itunes") var itunesDuration: String? = null,
-
     // Auch hier: Bild mit Namespace...
     @field:JacksonXmlProperty(localName = Parsing.ITUNES_IMAGE, namespace = "itunes") var itunesImage: RssImage? = null,
-
     // ...und als Fallback ohne Namespace-Logik
     @field:JacksonXmlProperty(localName = "itunes:image") var itunesImageRaw: RssImage? = null
 ) {

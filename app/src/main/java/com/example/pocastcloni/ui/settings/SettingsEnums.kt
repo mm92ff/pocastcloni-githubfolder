@@ -1,11 +1,14 @@
 package com.example.pocastcloni.ui.settings
 
 enum class AppTheme {
-    SYSTEM, LIGHT, DARK
+    SYSTEM,
+    LIGHT,
+    DARK
 }
 
 enum class BufferMode {
-    NORMAL, MAXIMAL
+    NORMAL,
+    MAXIMAL
 }
 
 enum class AppColor(val hexValue: Long) {
@@ -15,7 +18,8 @@ enum class AppColor(val hexValue: Long) {
     YELLOW(0xFFFFEB3B),
     PURPLE(0xFF9C27B0),
     ORANGE(0xFFFF9800),
-    TURQUOISE(0xFF00BCD4);
+    TURQUOISE(0xFF00BCD4)
+    ;
 
     companion object {
         fun getByOrdinal(ordinal: Int): AppColor = entries.getOrElse(ordinal) { GREEN }

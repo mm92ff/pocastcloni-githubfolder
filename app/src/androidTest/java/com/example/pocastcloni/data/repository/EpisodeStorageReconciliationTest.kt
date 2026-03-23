@@ -35,17 +35,20 @@ class EpisodeStorageReconciliationTest {
     private val repository by lazy {
         PodcastRepositoryImpl(
             podcastDao = dao,
-            itunesSearchApi = object : ItunesSearchApi {
+            itunesSearchApi =
+            object : ItunesSearchApi {
                 override suspend fun searchPodcasts(term: String): ItunesResponse {
                     return ItunesResponse(resultCount = 0, results = emptyList())
                 }
             },
             dispatcherProvider = DefaultDispatcherProvider(),
-            downloader = PodcastDownloader(
+            downloader =
+            PodcastDownloader(
                 context,
                 Provider { throw IllegalStateException("PodcastDownloader is not used in this test.") }
             ),
-            syncFeedUseCase = Provider<SyncFeedUseCase> {
+            syncFeedUseCase =
+            Provider<SyncFeedUseCase> {
                 throw IllegalStateException("SyncFeedUseCase is not used in this test.")
             }
         )
@@ -55,69 +58,73 @@ class EpisodeStorageReconciliationTest {
         get() = File(context.filesDir, Constants.DOWNLOADS_DIR)
 
     @Before
-    fun setUp() = runBlocking {
-        downloadsDir.deleteRecursively()
-        dao.deleteAllPodcasts()
-    }
-
-    @After
-    fun tearDown() = runBlocking {
-        downloadsDir.deleteRecursively()
-        dao.deleteAllPodcasts()
-    }
-
-    @Test
-    fun reconcileEpisodeStorage_resetsBrokenAndTransientDownloadStates() = runBlocking {
-        dao.insertPodcast(
-            PodcastEntity(
-                rssUrl = "https://example.com/feed.xml",
-                title = "Example Podcast",
-                description = "Description",
-                imageUrl = "https://example.com/image.png"
-            )
-        )
-
-        val readableFile = File(downloadsDir, "kept.mp3").apply {
-            parentFile?.mkdirs()
-            writeText("audio")
+    fun setUp() =
+        runBlocking {
+            downloadsDir.deleteRecursively()
+            dao.deleteAllPodcasts()
         }
 
-        dao.insertEpisodes(
-            listOf(
-                episode(
-                    guid = "kept-downloaded",
-                    downloadStatus = DownloadStatus.DOWNLOADED,
-                    downloadPath = readableFile.absolutePath,
-                    pubDateMs = 4_000
-                ),
-                episode(
-                    guid = "missing-downloaded",
-                    downloadStatus = DownloadStatus.DOWNLOADED,
-                    downloadPath = File(downloadsDir, "missing.mp3").absolutePath,
-                    pubDateMs = 3_000
-                ),
-                episode(
-                    guid = "queued",
-                    downloadStatus = DownloadStatus.QUEUED,
-                    pubDateMs = 2_000
-                ),
-                episode(
-                    guid = "downloading",
-                    downloadStatus = DownloadStatus.DOWNLOADING,
-                    pubDateMs = 1_000
+    @After
+    fun tearDown() =
+        runBlocking {
+            downloadsDir.deleteRecursively()
+            dao.deleteAllPodcasts()
+        }
+
+    @Test
+    fun reconcileEpisodeStorage_resetsBrokenAndTransientDownloadStates() =
+        runBlocking {
+            dao.insertPodcast(
+                PodcastEntity(
+                    rssUrl = "https://example.com/feed.xml",
+                    title = "Example Podcast",
+                    description = "Description",
+                    imageUrl = "https://example.com/image.png"
                 )
             )
-        )
 
-        val correctedEntries = repository.reconcileEpisodeStorage()
+            val readableFile =
+                File(downloadsDir, "kept.mp3").apply {
+                    parentFile?.mkdirs()
+                    writeText("audio")
+                }
 
-        assertEquals(3, correctedEntries)
-        assertEquals(DownloadStatus.DOWNLOADED, dao.getEpisodeByGuid("kept-downloaded")?.downloadStatus)
-        assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("missing-downloaded")?.downloadStatus)
-        assertNull(dao.getEpisodeByGuid("missing-downloaded")?.downloadPath)
-        assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("queued")?.downloadStatus)
-        assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("downloading")?.downloadStatus)
-    }
+            dao.insertEpisodes(
+                listOf(
+                    episode(
+                        guid = "kept-downloaded",
+                        downloadStatus = DownloadStatus.DOWNLOADED,
+                        downloadPath = readableFile.absolutePath,
+                        pubDateMs = 4_000
+                    ),
+                    episode(
+                        guid = "missing-downloaded",
+                        downloadStatus = DownloadStatus.DOWNLOADED,
+                        downloadPath = File(downloadsDir, "missing.mp3").absolutePath,
+                        pubDateMs = 3_000
+                    ),
+                    episode(
+                        guid = "queued",
+                        downloadStatus = DownloadStatus.QUEUED,
+                        pubDateMs = 2_000
+                    ),
+                    episode(
+                        guid = "downloading",
+                        downloadStatus = DownloadStatus.DOWNLOADING,
+                        pubDateMs = 1_000
+                    )
+                )
+            )
+
+            val correctedEntries = repository.reconcileEpisodeStorage()
+
+            assertEquals(3, correctedEntries)
+            assertEquals(DownloadStatus.DOWNLOADED, dao.getEpisodeByGuid("kept-downloaded")?.downloadStatus)
+            assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("missing-downloaded")?.downloadStatus)
+            assertNull(dao.getEpisodeByGuid("missing-downloaded")?.downloadPath)
+            assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("queued")?.downloadStatus)
+            assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("downloading")?.downloadStatus)
+        }
 
     private fun episode(
         guid: String,

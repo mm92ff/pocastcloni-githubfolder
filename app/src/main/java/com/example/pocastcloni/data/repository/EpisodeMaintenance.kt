@@ -29,11 +29,13 @@ internal fun shouldResetDownloadState(
 ): Boolean {
     return when (status) {
         DownloadStatus.QUEUED,
-        DownloadStatus.DOWNLOADING -> true
+        DownloadStatus.DOWNLOADING
+        -> true
 
         DownloadStatus.DOWNLOADED -> downloadPath.isNullOrBlank() || !fileIsReadable(downloadPath)
 
         DownloadStatus.NOT_DOWNLOADED,
-        DownloadStatus.FAILED -> false
+        DownloadStatus.FAILED
+        -> false
     }
 }

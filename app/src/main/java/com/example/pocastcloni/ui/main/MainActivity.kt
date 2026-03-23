@@ -41,9 +41,9 @@ import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.ui.favorites.FavoritesScreen
 import com.example.pocastcloni.ui.history.HistoryScreen
 import com.example.pocastcloni.ui.home.add.AddPodcastScreen
+import com.example.pocastcloni.ui.home.detail.PodcastDetailScreen
 import com.example.pocastcloni.ui.home.downloads.DownloadsScreen
 import com.example.pocastcloni.ui.home.feed.HomeScreen
-import com.example.pocastcloni.ui.home.detail.PodcastDetailScreen
 import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.player.PlayerContainer
 import com.example.pocastcloni.ui.settings.SettingsScreen
@@ -58,16 +58,16 @@ private data class BottomNavItem(
     val labelResId: Int
 )
 
-private val bottomNavItems = listOf(
-    BottomNavItem(Screen.Settings, Icons.Default.Settings, R.string.nav_settings),
-    BottomNavItem(Screen.Home, Icons.Default.Home, R.string.nav_home),
-    BottomNavItem(Screen.Downloads, Icons.Default.Download, R.string.nav_downloads),
-    BottomNavItem(Screen.Search, Icons.Default.Search, R.string.nav_search)
-)
+private val bottomNavItems =
+    listOf(
+        BottomNavItem(Screen.Settings, Icons.Default.Settings, R.string.nav_settings),
+        BottomNavItem(Screen.Home, Icons.Default.Home, R.string.nav_home),
+        BottomNavItem(Screen.Downloads, Icons.Default.Download, R.string.nav_downloads),
+        BottomNavItem(Screen.Search, Icons.Default.Search, R.string.nav_search)
+    )
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -77,24 +77,26 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
 
             // ✅ Stable callback: kein Compose-State capture; backstack wird "on demand" gelesen
-            val onNavigateToPodcastDetail: (String) -> Unit = remember(navController) {
-                { url ->
-                    val entry = navController.currentBackStackEntry
-                    val currentRoute = entry?.destination?.route
+            val onNavigateToPodcastDetail: (String) -> Unit =
+                remember(navController) {
+                    { url ->
+                        val entry = navController.currentBackStackEntry
+                        val currentRoute = entry?.destination?.route
 
-                    if (currentRoute != Screen.PodcastDetail.route) {
-                        navController.navigate(Screen.PodcastDetail.createRoute(url))
-                    } else {
-                        val currentPodcastUrl = entry.arguments?.getString(Screen.PODCAST_URL)
-                        val decodedUrl = currentPodcastUrl?.let {
-                            URLDecoder.decode(it, StandardCharsets.UTF_8.name())
-                        }
-                        if (decodedUrl != url) {
+                        if (currentRoute != Screen.PodcastDetail.route) {
                             navController.navigate(Screen.PodcastDetail.createRoute(url))
+                        } else {
+                            val currentPodcastUrl = entry.arguments?.getString(Screen.PODCAST_URL)
+                            val decodedUrl =
+                                currentPodcastUrl?.let {
+                                    URLDecoder.decode(it, StandardCharsets.UTF_8.name())
+                                }
+                            if (decodedUrl != url) {
+                                navController.navigate(Screen.PodcastDetail.createRoute(url))
+                            }
                         }
                     }
                 }
-            }
 
             PocastCloniTheme(
                 appTheme = uiState.userSettings.theme,
@@ -131,7 +133,8 @@ class MainActivity : ComponentActivity() {
                             }
                         ) { innerPadding ->
                             Box(
-                                modifier = Modifier
+                                modifier =
+                                Modifier
                                     .fillMaxSize()
                                     .padding(innerPadding)
                             ) {
@@ -222,7 +225,8 @@ private fun AppBottomNavigation(
                         when (currentDestination?.route) {
                             Screen.Favorites.route,
                             Screen.History.route,
-                            Screen.PodcastDetail.route -> {
+                            Screen.PodcastDetail.route
+                            -> {
                                 navController.popBackStack()
                             }
                             else -> {

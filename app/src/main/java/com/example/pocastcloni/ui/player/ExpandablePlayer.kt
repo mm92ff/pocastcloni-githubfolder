@@ -33,13 +33,18 @@ fun ExpandablePlayer(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier
+        modifier =
+        modifier
             .fillMaxWidth()
             .then(if (isExpanded) Modifier.fillMaxSize() else Modifier.wrapContentHeight())
             .animateContentSize(animationSpec = tween(EXPAND_ANIMATION_DURATION_MS)),
         shadowElevation = Dimens.PaddingLarge,
-        shape = if (isExpanded) RoundedCornerShape(Dimens.Zero)
-        else RoundedCornerShape(topStart = Dimens.PaddingLarge, topEnd = Dimens.PaddingLarge),
+        shape =
+        if (isExpanded) {
+            RoundedCornerShape(Dimens.Zero)
+        } else {
+            RoundedCornerShape(topStart = Dimens.PaddingLarge, topEnd = Dimens.PaddingLarge)
+        },
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         if (isExpanded) {
@@ -52,7 +57,7 @@ fun ExpandablePlayer(
                 onCollapse = onExpandToggle,
                 onEvent = onEvent,
                 progressBarHeight = progressBarHeight,
-                navBarHeight = navBarHeight,
+                navBarHeight = navBarHeight
             )
         } else {
             // MiniPlayer braucht keine Description/Error Infos
@@ -66,7 +71,7 @@ fun ExpandablePlayer(
                     }
                 },
                 onEvent = onEvent,
-                progressBarHeight = progressBarHeight,
+                progressBarHeight = progressBarHeight
             )
         }
     }

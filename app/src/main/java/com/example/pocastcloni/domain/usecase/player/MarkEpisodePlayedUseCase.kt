@@ -6,7 +6,9 @@ import kotlinx.coroutines.withContext
 import java.util.Date
 import javax.inject.Inject
 
-class MarkEpisodePlayedUseCase @Inject constructor(
+class MarkEpisodePlayedUseCase
+@Inject
+constructor(
     private val repository: PodcastRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {

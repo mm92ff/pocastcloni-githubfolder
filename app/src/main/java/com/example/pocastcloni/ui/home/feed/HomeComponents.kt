@@ -28,7 +28,11 @@ import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 
 @Composable
-fun DeleteConfirmDialog(podcastTitle: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun DeleteConfirmDialog(
+    podcastTitle: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_delete_title)) },
@@ -46,21 +50,25 @@ fun SwipeToDeleteItem(
     confirmDismiss: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            if (it == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                confirmDismiss
-            } else false
-        }
-    )
+    val dismissState =
+        rememberSwipeToDismissBoxState(
+            confirmValueChange = {
+                if (it == SwipeToDismissBoxValue.EndToStart) {
+                    onDelete()
+                    confirmDismiss
+                } else {
+                    false
+                }
+            }
+        )
 
     SwipeToDismissBox(
         state = dismissState,
         modifier = modifier,
         backgroundContent = {
             Box(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(Dimens.RoundedCornerLarge))
                     .background(MaterialTheme.colorScheme.errorContainer)
@@ -94,7 +102,8 @@ fun BoxScope.IndicatorDot(
     val totalSize = size.dp + (borderWidthDp * 2)
 
     Box(
-        modifier = modifier
+        modifier =
+        modifier
             .align(Alignment.TopEnd)
             .zIndex(Constants.UI.INDICATOR_Z_INDEX)
             // PERFORMANCE FIX: Statt .offset() nutzen wir graphicsLayer.
@@ -113,10 +122,14 @@ fun BoxScope.IndicatorDot(
 }
 
 @Composable
-fun DeleteIconOverlay(modifier: Modifier, onClick: () -> Unit) {
+fun DeleteIconOverlay(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
     IconButton(
         onClick = onClick,
-        modifier = modifier
+        modifier =
+        modifier
             .offset(x = Dimens.PaddingMedium, y = (-Dimens.PaddingMedium))
             .zIndex(Constants.UI.DELETE_ICON_Z_INDEX)
             .clip(CircleShape)

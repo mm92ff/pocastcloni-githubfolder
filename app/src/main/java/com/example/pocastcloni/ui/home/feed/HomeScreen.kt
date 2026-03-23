@@ -102,24 +102,26 @@ fun HomeScreen(
     val currentOnPodcastClicked by rememberUpdatedState(onPodcastClicked)
 
     // Klick-Logik: Im EditMode wird selektiert, sonst geöffnet
-    val handlePodcastClick: (Podcast) -> Unit = remember(viewModel, uiState.isEditMode) {
-        { podcast ->
-            if (uiState.isEditMode) {
-                viewModel.toggleSelection(podcast.rssUrl)
-            } else {
-                currentOnPodcastClicked(podcast.rssUrl)
+    val handlePodcastClick: (Podcast) -> Unit =
+        remember(viewModel, uiState.isEditMode) {
+            { podcast ->
+                if (uiState.isEditMode) {
+                    viewModel.toggleSelection(podcast.rssUrl)
+                } else {
+                    currentOnPodcastClicked(podcast.rssUrl)
+                }
             }
         }
-    }
 
     // --- DELETE DIALOG (Multi-Select Support) ---
     if (uiState.showDeleteConfirmation) {
         val count = uiState.selectedPodcastsForDelete.size
-        val titleText = if (count == 1) {
-            uiState.selectedPodcastsForDelete.first().title
-        } else {
-            stringResource(R.string.delete_multiple_count, count)
-        }
+        val titleText =
+            if (count == 1) {
+                uiState.selectedPodcastsForDelete.first().title
+            } else {
+                stringResource(R.string.delete_multiple_count, count)
+            }
 
         DeleteConfirmDialog(
             podcastTitle = titleText,
@@ -180,7 +182,8 @@ fun HomeScreen(
                         }
                     }
                 },
-                colors = if (uiState.isEditMode) {
+                colors =
+                if (uiState.isEditMode) {
                     TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                 } else {
                     TopAppBarDefaults.topAppBarColors()
@@ -189,7 +192,8 @@ fun HomeScreen(
         }
     ) { innerPadding ->
         Box(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .nestedScroll(pullToRefreshState.nestedScrollConnection)
@@ -202,7 +206,8 @@ fun HomeScreen(
                 val screenError = uiState.screenError
                 if (screenError != null) {
                     Box(
-                        modifier = Modifier
+                        modifier =
+                        Modifier
                             .fillMaxSize()
                             .padding(horizontal = Dimens.PaddingLarge),
                         contentAlignment = Alignment.Center
@@ -276,36 +281,40 @@ fun PodcastListContent(
 ) {
     val commonModifier = Modifier.fillMaxSize()
 
-    val bottomPadding = if (isPlayerVisible) {
-        (navBarHeight + progressBarHeight).dp + Dimens.PaddingLarge
-    } else {
-        Dimens.PaddingLarge
-    }
-
-    val contentPadding = PaddingValues(
-        start = Dimens.PaddingLarge,
-        top = Dimens.PaddingLarge,
-        end = Dimens.PaddingLarge,
-        bottom = bottomPadding
-    )
-
-    val indicatorStyle = remember(indicatorColorArgb, indicatorSize, indicatorBorderWidth, indicatorXOffset, indicatorYOffset) {
-        PodcastIndicatorStyle(
-            xOffset = indicatorXOffset,
-            yOffset = indicatorYOffset,
-            borderWidth = indicatorBorderWidth,
-            size = indicatorSize,
-            colorArgb = indicatorColorArgb
-        )
-    }
-
-    val columns = remember(layoutMode, gridSize) {
-        if (layoutMode == LayoutMode.LIST) {
-            GridCells.Fixed(1)
+    val bottomPadding =
+        if (isPlayerVisible) {
+            (navBarHeight + progressBarHeight).dp + Dimens.PaddingLarge
         } else {
-            GridCells.Adaptive(minSize = gridSize.dp)
+            Dimens.PaddingLarge
         }
-    }
+
+    val contentPadding =
+        PaddingValues(
+            start = Dimens.PaddingLarge,
+            top = Dimens.PaddingLarge,
+            end = Dimens.PaddingLarge,
+            bottom = bottomPadding
+        )
+
+    val indicatorStyle =
+        remember(indicatorColorArgb, indicatorSize, indicatorBorderWidth, indicatorXOffset, indicatorYOffset) {
+            PodcastIndicatorStyle(
+                xOffset = indicatorXOffset,
+                yOffset = indicatorYOffset,
+                borderWidth = indicatorBorderWidth,
+                size = indicatorSize,
+                colorArgb = indicatorColorArgb
+            )
+        }
+
+    val columns =
+        remember(layoutMode, gridSize) {
+            if (layoutMode == LayoutMode.LIST) {
+                GridCells.Fixed(1)
+            } else {
+                GridCells.Adaptive(minSize = gridSize.dp)
+            }
+        }
 
     // NEU: Dynamischer vertikaler Abstand basierend auf LayoutMode
     // Grid: PaddingMedium (16dp) - Luftig
@@ -320,7 +329,8 @@ fun PodcastListContent(
         modifier = commonModifier,
         contentPadding = contentPadding,
         reverseLayout = oneHandedMode,
-        verticalArrangement = Arrangement.spacedBy(
+        verticalArrangement =
+        Arrangement.spacedBy(
             verticalSpacing, // Hier geändert
             if (oneHandedMode) Alignment.Bottom else Alignment.Top
         ),
@@ -332,7 +342,8 @@ fun PodcastListContent(
         }
     ) { _, podcast, isDragging ->
         Box(
-            modifier = Modifier.animateItemPlacement(
+            modifier =
+            Modifier.animateItemPlacement(
                 animationSpec = spring(stiffness = Constants.Animation.STIFFNESS)
             )
         ) {

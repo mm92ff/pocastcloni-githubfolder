@@ -7,7 +7,9 @@ import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
 
-class DeletePodcastUseCase @Inject constructor(
+class DeletePodcastUseCase
+@Inject
+constructor(
     private val repository: PodcastRepository
     // Optional: Hier könnte man den Downloader injecten, falls er public Methoden hat
 ) {
@@ -15,9 +17,10 @@ class DeletePodcastUseCase @Inject constructor(
         // 1. Sammle alle Downloads, bevor wir die DB löschen (da wir sonst die Pfade verlieren)
         // Wir nutzen getEpisodesForSync, da es eine einfache Liste zurückgibt.
         val episodes = repository.getEpisodesForSync(podcast.rssUrl)
-        val filesToDelete = episodes
-            .filter { it.downloadStatus == DownloadStatus.DOWNLOADED || it.downloadStatus == DownloadStatus.DOWNLOADING }
-            .mapNotNull { it.downloadPath }
+        val filesToDelete =
+            episodes
+                .filter { it.downloadStatus == DownloadStatus.DOWNLOADED || it.downloadStatus == DownloadStatus.DOWNLOADING }
+                .mapNotNull { it.downloadPath }
 
         // 2. Lösche aus der Datenbank (Source of Truth)
         // Wirft Exception bei Fehler -> Files bleiben erhalten -> Sicher!

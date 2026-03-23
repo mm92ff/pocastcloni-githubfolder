@@ -16,15 +16,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class CoroutinesModule {
-
     @Binds
     @Singleton
-    abstract fun bindDispatcherProvider(
-        impl: DefaultDispatcherProvider
-    ): DispatcherProvider
+    abstract fun bindDispatcherProvider(impl: DefaultDispatcherProvider): DispatcherProvider
 
     companion object {
-
         @Provides
         @DefaultDispatcher
         fun providesDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
@@ -72,7 +68,9 @@ interface DispatcherProvider {
     val default: CoroutineDispatcher
 }
 
-class DefaultDispatcherProvider @Inject constructor() : DispatcherProvider {
+class DefaultDispatcherProvider
+@Inject
+constructor() : DispatcherProvider {
     override val main: CoroutineDispatcher
         get() = Dispatchers.Main
     override val io: CoroutineDispatcher

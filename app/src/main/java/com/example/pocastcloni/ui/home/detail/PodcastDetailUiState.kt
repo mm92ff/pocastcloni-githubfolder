@@ -21,7 +21,7 @@ data class SettingsUiModel(
     val theme: ThemeUiModel = ThemeUiModel.SYSTEM,
     val oneHandedMode: Boolean = false,
     val navBarHeight: Int = Constants.ViewModel.DEFAULT_NAV_BAR_HEIGHT,
-    val progressBarHeight: Int = Constants.ViewModel.DEFAULT_PROGRESS_BAR_HEIGHT,
+    val progressBarHeight: Int = Constants.ViewModel.DEFAULT_PROGRESS_BAR_HEIGHT
 )
 
 @Immutable
@@ -34,8 +34,6 @@ data class PodcastDetailUiState(
     val isLoading: Boolean = false,
     val error: UiText? = null,
     val isPodcastDescriptionDialogVisible: Boolean = false,
-
     val playerState: PlayerStatusUiState = PlayerStatusUiState(),
-
-    val appSettings: SettingsUiModel = SettingsUiModel(),
+    val appSettings: SettingsUiModel = SettingsUiModel()
 )

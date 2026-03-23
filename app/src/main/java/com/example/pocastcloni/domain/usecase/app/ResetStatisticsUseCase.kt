@@ -5,7 +5,9 @@ import com.example.pocastcloni.domain.repository.StatisticsRepository
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-class ResetStatisticsUseCase @Inject constructor(
+class ResetStatisticsUseCase
+@Inject
+constructor(
     private val statisticsRepository: StatisticsRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {

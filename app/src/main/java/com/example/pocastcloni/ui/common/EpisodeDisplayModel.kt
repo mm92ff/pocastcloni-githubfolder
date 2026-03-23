@@ -24,19 +24,20 @@ data class EpisodeDisplayModel(
             presentation: EpisodePresentation,
             podcast: Podcast?,
             descriptionOverride: String? = null
-        ): EpisodeDisplayModel = EpisodeDisplayModel(
-            guid = presentation.guid,
-            title = if (presentation.title.isNotBlank()) presentation.title else presentation.link.orEmpty(),
-            description = descriptionOverride ?: presentation.description,
-            podcastRssUrl = presentation.podcastRssUrl,
-            podcastTitle = podcast?.title,
-            podcastImageUrl = podcast?.imageUrl,
-            isFavorite = presentation.isFavorite,
-            isPlayed = presentation.isPlayed,
-            playbackPositionMs = presentation.playbackPositionMs,
-            durationMs = presentation.durationMs,
-            pubDateMs = presentation.pubDateMs,
-            datePlayedMs = presentation.datePlayedMs
-        )
+        ): EpisodeDisplayModel =
+            EpisodeDisplayModel(
+                guid = presentation.guid,
+                title = if (presentation.title.isNotBlank()) presentation.title else presentation.link.orEmpty(),
+                description = descriptionOverride ?: presentation.description,
+                podcastRssUrl = presentation.podcastRssUrl,
+                podcastTitle = podcast?.title,
+                podcastImageUrl = podcast?.imageUrl,
+                isFavorite = presentation.isFavorite,
+                isPlayed = presentation.isPlayed,
+                playbackPositionMs = presentation.playbackPositionMs,
+                durationMs = presentation.durationMs,
+                pubDateMs = presentation.pubDateMs,
+                datePlayedMs = presentation.datePlayedMs
+            )
     }
 }

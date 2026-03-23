@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import com.example.pocastcloni.R
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
@@ -22,7 +21,10 @@ sealed class UiText {
         val args: ImmutableList<Any>
     ) : UiText() {
         // Sekundärer Konstruktor für vararg (einfachere Nutzung)
-        constructor(@StringRes resId: Int, vararg args: Any) : this(resId, args.toList().toImmutableList())
+        constructor(
+            @StringRes resId: Int,
+            vararg args: Any
+        ) : this(resId, args.toList().toImmutableList())
     }
 
     @Immutable
@@ -31,7 +33,11 @@ sealed class UiText {
         val count: Int,
         val args: ImmutableList<Any>
     ) : UiText() {
-        constructor(@PluralsRes resId: Int, count: Int, vararg args: Any) : this(resId, count, args.toList().toImmutableList())
+        constructor(
+            @PluralsRes resId: Int,
+            count: Int,
+            vararg args: Any
+        ) : this(resId, count, args.toList().toImmutableList())
     }
 
     /**

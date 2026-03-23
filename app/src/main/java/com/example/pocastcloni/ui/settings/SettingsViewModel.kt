@@ -42,14 +42,15 @@ import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
+class SettingsViewModel
+@Inject
+constructor(
     getUserSettings: GetUserSettingsUseCase,
     private val appMaintenanceUseCases: AppMaintenanceUseCases,
     private val updateUserSettings: UpdateUserSettingsUseCase,
     playerVisibilityProvider: PlayerVisibilityProvider,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
-
     private companion object {
         const val MAX_ATTEMPTS_TOTAL = 3L
         const val UPDATE_DEBOUNCE_MS = 300L
@@ -62,11 +63,12 @@ class SettingsViewModel @Inject constructor(
         data class Snackbar(val message: UiText) : SettingsUiEffect
     }
 
-    private val _effects = MutableSharedFlow<SettingsUiEffect>(
-        replay = 0,
-        extraBufferCapacity = UPDATE_ACTION_BUFFER,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private val _effects =
+        MutableSharedFlow<SettingsUiEffect>(
+            replay = 0,
+            extraBufferCapacity = UPDATE_ACTION_BUFFER,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
     val effects = _effects.asSharedFlow()
 
     private data class LocalUiState(
@@ -76,10 +78,11 @@ class SettingsViewModel @Inject constructor(
 
     private val _localUiState = MutableStateFlow(LocalUiState())
 
-    private val updateActions = MutableSharedFlow<UpdateUserSettingAction>(
-        extraBufferCapacity = UPDATE_ACTION_BUFFER,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private val updateActions =
+        MutableSharedFlow<UpdateUserSettingAction>(
+            extraBufferCapacity = UPDATE_ACTION_BUFFER,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
 
     init {
         val immediate = updateActions.filterNot { it.shouldDebounce() }
@@ -87,36 +90,38 @@ class SettingsViewModel @Inject constructor(
         merge(immediate, debounced).onEach { applySettingUpdate(it) }.launchIn(viewModelScope)
     }
 
-    private val settingsFlow: Flow<SettingsUiState> = getUserSettings()
-        .map<UserSettings, SettingsUiState> { it.toUiState() }
-        .onStart { emit(SettingsUiState.Loading) }
-        .distinctUntilChanged()
-        .flowOn(dispatcherProvider.io)
-        .retryWhen { cause, attempt -> cause !is CancellationException && attempt < (MAX_ATTEMPTS_TOTAL - 1) }
-        .catch { t ->
-            if (t is CancellationException) throw t
-            Timber.e(t, "Failed to load user settings after retries")
-            emit(SettingsUiState.Error(UiText.StringResource(R.string.settings_error_load)))
-        }
+    private val settingsFlow: Flow<SettingsUiState> =
+        getUserSettings()
+            .map<UserSettings, SettingsUiState> { it.toUiState() }
+            .onStart { emit(SettingsUiState.Loading) }
+            .distinctUntilChanged()
+            .flowOn(dispatcherProvider.io)
+            .retryWhen { cause, attempt -> cause !is CancellationException && attempt < (MAX_ATTEMPTS_TOTAL - 1) }
+            .catch { t ->
+                if (t is CancellationException) throw t
+                Timber.e(t, "Failed to load user settings after retries")
+                emit(SettingsUiState.Error(UiText.StringResource(R.string.settings_error_load)))
+            }
 
     private val isPlayerVisibleFlow: Flow<Boolean> = playerVisibilityProvider.isPlayerVisible
 
-    val uiState: StateFlow<SettingsScreenState> = combine(
-        settingsFlow,
-        isPlayerVisibleFlow,
-        _localUiState
-    ) { settings, isPlayerVisible, localState ->
-        SettingsScreenState(
-            settings = settings,
-            isPlayerVisible = isPlayerVisible,
-            showResetDialog = localState.showResetDialog,
-            isManualRefreshRunning = localState.isManualRefreshRunning
+    val uiState: StateFlow<SettingsScreenState> =
+        combine(
+            settingsFlow,
+            isPlayerVisibleFlow,
+            _localUiState
+        ) { settings, isPlayerVisible, localState ->
+            SettingsScreenState(
+                settings = settings,
+                isPlayerVisible = isPlayerVisible,
+                showResetDialog = localState.showResetDialog,
+                isManualRefreshRunning = localState.isManualRefreshRunning
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STATE_IN_TIMEOUT_MS),
+            initialValue = SettingsScreenState()
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(STATE_IN_TIMEOUT_MS),
-        initialValue = SettingsScreenState()
-    )
 
     fun onEvent(event: SettingsUiEvent) {
         when (event) {
@@ -151,9 +156,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _localUiState.update { it.copy(isManualRefreshRunning = true) }
             try {
-                val result = withTimeoutOrNull(MANUAL_REFRESH_TIMEOUT_MS) {
-                    appMaintenanceUseCases.manualFeedUpdate()
-                }
+                val result =
+                    withTimeoutOrNull(MANUAL_REFRESH_TIMEOUT_MS) {
+                        appMaintenanceUseCases.manualFeedUpdate()
+                    }
 
                 if (result == null) {
                     _effects.tryEmit(SettingsUiEffect.Snackbar(UiText.StringResource(R.string.error_timeout)))
@@ -198,23 +204,25 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun UpdateUserSettingAction.shouldDebounce(): Boolean = when (this) {
-        is UpdateUserSettingAction.SetColorStrength,
-        is UpdateUserSettingAction.SetGridSize,
-        is UpdateUserSettingAction.SetProgressBarHeight,
-        is UpdateUserSettingAction.SetNavBarHeight,
-        is UpdateUserSettingAction.SetAutoDownloadLimit,
-        is UpdateUserSettingAction.SetBackgroundCheckInterval,
-        is UpdateUserSettingAction.SetMarkPlayedDuration,
-        is UpdateUserSettingAction.SetIndicatorColor,
-        is UpdateUserSettingAction.SetIndicatorSize,
-        is UpdateUserSettingAction.SetIndicatorBorderWidth,
-        is UpdateUserSettingAction.SetIndicatorXOffset,
-        is UpdateUserSettingAction.SetIndicatorYOffset -> true
-        // NEU: Layout Mode nicht debouncen für direktes Feedback
-        is UpdateUserSettingAction.SetLayoutMode -> false
-        else -> false
-    }
+    private fun UpdateUserSettingAction.shouldDebounce(): Boolean =
+        when (this) {
+            is UpdateUserSettingAction.SetColorStrength,
+            is UpdateUserSettingAction.SetGridSize,
+            is UpdateUserSettingAction.SetProgressBarHeight,
+            is UpdateUserSettingAction.SetNavBarHeight,
+            is UpdateUserSettingAction.SetAutoDownloadLimit,
+            is UpdateUserSettingAction.SetBackgroundCheckInterval,
+            is UpdateUserSettingAction.SetMarkPlayedDuration,
+            is UpdateUserSettingAction.SetIndicatorColor,
+            is UpdateUserSettingAction.SetIndicatorSize,
+            is UpdateUserSettingAction.SetIndicatorBorderWidth,
+            is UpdateUserSettingAction.SetIndicatorXOffset,
+            is UpdateUserSettingAction.SetIndicatorYOffset
+            -> true
+            // NEU: Layout Mode nicht debouncen für direktes Feedback
+            is UpdateUserSettingAction.SetLayoutMode -> false
+            else -> false
+        }
 }
 
 private fun UserSettings.toUiState(): SettingsUiState.Success {
@@ -237,7 +245,8 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
         backgroundCheckInterval = backgroundCheckInterval,
         markPlayedDurationSeconds = markPlayedDurationSeconds,
         feedUpdateMode = feedUpdateMode,
-        indicator = IndicatorSettingsUiState(
+        indicator =
+        IndicatorSettingsUiState(
             colorArgb = this.indicator.colorArgb,
             size = this.indicator.size,
             borderWidth = this.indicator.borderWidth,

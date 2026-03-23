@@ -48,7 +48,8 @@ fun EpisodeDescriptionDialog(
 
     Dialog(onDismissRequest = rememberedOnDismissRequest) {
         Card(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxWidth()
                 .heightIn(max = Dimens.DialogMaxHeight)
         ) {
@@ -61,7 +62,8 @@ fun EpisodeDescriptionDialog(
                 )
 
                 Box(
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
@@ -69,24 +71,28 @@ fun EpisodeDescriptionDialog(
                     if (isParsing) {
                         val loadingDescription = stringResource(R.string.status_loading)
                         CircularProgressIndicator(
-                            modifier = Modifier.semantics {
+                            modifier =
+                            Modifier.semantics {
                                 this.contentDescription = loadingDescription
                             }
                         )
                     } else if (description != null) {
                         val scrollState = rememberScrollState()
                         val primaryColor = MaterialTheme.colorScheme.primary
-                        val annotatedString = remember(description, primaryColor) {
-                            description.toAnnotatedString(primaryColor)
-                        }
+                        val annotatedString =
+                            remember(description, primaryColor) {
+                                description.toAnnotatedString(primaryColor)
+                            }
                         val uriHandler = LocalUriHandler.current
 
                         ClickableText(
                             text = annotatedString,
-                            style = MaterialTheme.typography.bodyMedium.copy(
+                            style =
+                            MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
-                            modifier = Modifier
+                            modifier =
+                            Modifier
                                 .fillMaxWidth()
                                 .verticalScroll(scrollState),
                             onClick = { offset ->
@@ -114,28 +120,30 @@ fun EpisodeDescriptionDialog(
     }
 }
 
-private fun Spanned.toAnnotatedString(linkColor: Color): AnnotatedString = buildAnnotatedString {
-    val spanned = this@toAnnotatedString
-    append(spanned.toString())
+private fun Spanned.toAnnotatedString(linkColor: Color): AnnotatedString =
+    buildAnnotatedString {
+        val spanned = this@toAnnotatedString
+        append(spanned.toString())
 
-    val urlSpans = spanned.getSpans(0, spanned.length, URLSpan::class.java)
+        val urlSpans = spanned.getSpans(0, spanned.length, URLSpan::class.java)
 
-    urlSpans.forEach { span ->
-        val start = spanned.getSpanStart(span)
-        val end = spanned.getSpanEnd(span)
-        addStyle(
-            style = SpanStyle(
-                color = linkColor,
-                textDecoration = TextDecoration.Underline
-            ),
-            start = start,
-            end = end
-        )
-        addStringAnnotation(
-            tag = URL_TAG,
-            annotation = span.url,
-            start = start,
-            end = end
-        )
+        urlSpans.forEach { span ->
+            val start = spanned.getSpanStart(span)
+            val end = spanned.getSpanEnd(span)
+            addStyle(
+                style =
+                SpanStyle(
+                    color = linkColor,
+                    textDecoration = TextDecoration.Underline
+                ),
+                start = start,
+                end = end
+            )
+            addStringAnnotation(
+                tag = URL_TAG,
+                annotation = span.url,
+                start = start,
+                end = end
+            )
+        }
     }
-}

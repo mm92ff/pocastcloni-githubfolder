@@ -12,9 +12,9 @@ import kotlinx.collections.immutable.persistentListOf
  */
 @Immutable
 data class FavoriteUiItem(
-    val id: String,                 // Stable key for LazyColumn (guid)
+    val id: String, // Stable key for LazyColumn (guid)
     val episode: EpisodeDisplayModel,
-    val podcast: Podcast?           // Associated podcast (if available)
+    val podcast: Podcast? // Associated podcast (if available)
 )
 
 @Immutable
@@ -32,9 +32,14 @@ data class FavoritesUiState(
 
 sealed interface FavoritesAction {
     data class OnEpisodeClick(val guid: String) : FavoritesAction
+
     data class OnEpisodeImageClick(val item: FavoriteUiItem) : FavoritesAction
+
     data object OnDismissEpisodeDetails : FavoritesAction
+
     data class OnEpisodeSwiped(val guid: String) : FavoritesAction
+
     data class OnReorder(val fromIndex: Int, val toIndex: Int) : FavoritesAction
+
     data object ToggleEditMode : FavoritesAction
 }

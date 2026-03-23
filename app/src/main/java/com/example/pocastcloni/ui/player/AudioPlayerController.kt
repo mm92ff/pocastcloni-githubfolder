@@ -7,7 +7,6 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import com.example.pocastcloni.R
-import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
@@ -15,15 +14,17 @@ import com.example.pocastcloni.domain.usecase.player.PreparePlaybackUseCase
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
-import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AudioPlayerController @Inject constructor(
+class AudioPlayerController
+@Inject
+constructor(
     @ApplicationContext private val context: Context,
     private val dispatcherProvider: DispatcherProvider,
     private val userPreferencesRepository: UserPreferencesRepository,
@@ -34,12 +35,13 @@ class AudioPlayerController @Inject constructor(
     private val ticker: PlaybackTicker,
     private val preparePlaybackUseCase: PreparePlaybackUseCase
 ) : PlayerActions, PlayerStateObserver {
-
     // --- Scope ---
     private val controllerScope = CoroutineScope(dispatcherProvider.main + SupervisorJob())
 
     @Volatile private var mediaDispatcher: CoroutineDispatcher? = null
+
     @Volatile private var mediaScope: CoroutineScope? = null
+
     @Volatile private var controller: MediaController? = null
     private var controllerListener: Player.Listener? = null
 
@@ -48,20 +50,21 @@ class AudioPlayerController @Inject constructor(
     private val _internalPlaybackState = MutableStateFlow(PlaybackState())
 
     // --- Reactive Connection ---
-    override val playerState: StateFlow<PlayerUiState> = _internalPlayerState
-        .onStart { connectInternal() }
-        .stateIn(
-            scope = controllerScope,
-            started = SharingStarted.Lazily,
-            initialValue = PlayerUiState()
-        )
+    override val playerState: StateFlow<PlayerUiState> =
+        _internalPlayerState
+            .onStart { connectInternal() }
+            .stateIn(
+                scope = controllerScope,
+                started = SharingStarted.Lazily,
+                initialValue = PlayerUiState()
+            )
 
     override val playbackState: StateFlow<PlaybackState> = _internalPlaybackState.asStateFlow()
 
     // **FIX**: Use shareIn to wait for the first real value from DataStore, avoiding the default initialValue.
-    private val userSettings = userPreferencesRepository.userSettingsFlow
-        .shareIn(controllerScope, SharingStarted.Eagerly, replay = 1)
-
+    private val userSettings =
+        userPreferencesRepository.userSettingsFlow
+            .shareIn(controllerScope, SharingStarted.Eagerly, replay = 1)
 
     // Seek State
     @Volatile private var isUserSeeking: Boolean = false
@@ -75,10 +78,11 @@ class AudioPlayerController @Inject constructor(
     private suspend fun connectInternal() {
         if (controller != null) return
 
-        val connectedController = mediaConnection.connect() ?: run {
-            _internalPlayerState.update { it.copy(error = context.getString(R.string.playback_failed_error)) }
-            return
-        }
+        val connectedController =
+            mediaConnection.connect() ?: run {
+                _internalPlayerState.update { it.copy(error = context.getString(R.string.playback_failed_error)) }
+                return
+            }
 
         controller = connectedController
         ensureMediaScope(connectedController)
@@ -89,12 +93,13 @@ class AudioPlayerController @Inject constructor(
 
     private fun startReactiveTicker() {
         progressJob?.cancel()
-        progressJob = ticker.tick(TICK_INTERVAL_MS)
-            .onEach {
-                updateProgressAndAnalytics()
-            }
-            .flowOn(mediaDispatcher ?: dispatcherProvider.main)
-            .launchIn(mediaScope ?: controllerScope)
+        progressJob =
+            ticker.tick(TICK_INTERVAL_MS)
+                .onEach {
+                    updateProgressAndAnalytics()
+                }
+                .flowOn(mediaDispatcher ?: dispatcherProvider.main)
+                .launchIn(mediaScope ?: controllerScope)
     }
 
     private fun updateProgressAndAnalytics() {
@@ -142,27 +147,35 @@ class AudioPlayerController @Inject constructor(
 
     private fun attachListener(mediaController: MediaController) {
         if (controllerListener != null) return
-        val listener = object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                _internalPlayerState.update { it.copy(isBuffering = playbackState == Player.STATE_BUFFERING) }
-            }
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _internalPlayerState.update { it.copy(isPlaying = isPlaying) }
-            }
-            override fun onPlayerError(error: PlaybackException) {
-                Timber.e(error, "Player error code: ${error.errorCode}")
-                val errorUiText = mapper.mapError(error)
-                val errorString = errorUiText?.asString(context)
-                    ?: context.getString(R.string.playback_failed_error)
-                _internalPlayerState.update {
-                    it.copy(isPlaying = false, isBuffering = false, error = errorString)
+        val listener =
+            object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    _internalPlayerState.update { it.copy(isBuffering = playbackState == Player.STATE_BUFFERING) }
+                }
+
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    _internalPlayerState.update { it.copy(isPlaying = isPlaying) }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    Timber.e(error, "Player error code: ${error.errorCode}")
+                    val errorUiText = mapper.mapError(error)
+                    val errorString =
+                        errorUiText?.asString(context)
+                            ?: context.getString(R.string.playback_failed_error)
+                    _internalPlayerState.update {
+                        it.copy(isPlaying = false, isBuffering = false, error = errorString)
+                    }
+                }
+
+                override fun onMediaItemTransition(
+                    mediaItem: MediaItem?,
+                    reason: Int
+                ) {
+                    analyticsHandler.onMediaItemTransition()
+                    controllerScope.launch { syncCurrentEpisodeUi() }
                 }
             }
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                analyticsHandler.onMediaItemTransition()
-                controllerScope.launch { syncCurrentEpisodeUi() }
-            }
-        }
         controllerListener = listener
         launchOnMedia { runCatching { mediaController.addListener(listener) } }
         startFavoriteStatusLoop()
@@ -188,11 +201,12 @@ class AudioPlayerController @Inject constructor(
                 if (!mediaController.isPlaying) mediaController.play()
                 return@withContext
             }
-            val mediaItem = mapper.mapToMediaItem(
-                episode,
-                playbackInfo.podcast?.let { podcastRepository.getPodcastEntityByUrl(it.rssUrl) },
-                playbackInfo.playUri
-            )
+            val mediaItem =
+                mapper.mapToMediaItem(
+                    episode,
+                    playbackInfo.podcast?.let { podcastRepository.getPodcastEntityByUrl(it.rssUrl) },
+                    playbackInfo.playUri
+                )
             mediaController.setMediaItem(mediaItem, playbackInfo.startPosition)
             mediaController.prepare()
             mediaController.play()
@@ -200,14 +214,25 @@ class AudioPlayerController @Inject constructor(
         controllerScope.launch { syncCurrentEpisodeUi() }
     }
 
-    override fun pause() { launchOnMedia { controller?.pause() } }
-    override fun resume() { launchOnMedia { controller?.play() } }
+    override fun pause() {
+        launchOnMedia { controller?.pause() }
+    }
+
+    override fun resume() {
+        launchOnMedia { controller?.play() }
+    }
 
     override fun onEvent(event: PlayerScreenEvent) {
         when (event) {
             PlayerScreenEvent.TogglePlayPause -> if (playerState.value.isPlaying) pause() else resume()
-            PlayerScreenEvent.Rewind -> launchOnMedia { controller?.let { it.seekTo((it.currentPosition - Constants.PlayerDefaults.REWIND_INTERVAL_MS).coerceAtLeast(0L)) } }
-            PlayerScreenEvent.Forward -> launchOnMedia { controller?.let { it.seekTo(it.currentPosition + Constants.PlayerDefaults.FORWARD_INTERVAL_MS) } }
+            PlayerScreenEvent.Rewind ->
+                launchOnMedia {
+                    controller?.let { it.seekTo((it.currentPosition - Constants.PlayerDefaults.REWIND_INTERVAL_MS).coerceAtLeast(0L)) }
+                }
+            PlayerScreenEvent.Forward ->
+                launchOnMedia {
+                    controller?.let { it.seekTo(it.currentPosition + Constants.PlayerDefaults.FORWARD_INTERVAL_MS) }
+                }
             is PlayerScreenEvent.SeekTo -> {
                 val pos = event.positionMs.coerceAtLeast(0L)
                 _internalPlaybackState.update { it.copy(currentPositionMs = pos) }
@@ -234,7 +259,10 @@ class AudioPlayerController @Inject constructor(
     }
 
     override fun releaseResources() {
-        controller?.let { p -> analyticsHandler.saveProgressBestEffort(controllerScope, p.currentMediaItem?.mediaId, p.currentPosition) }
+        controller?.let {
+                p ->
+            analyticsHandler.saveProgressBestEffort(controllerScope, p.currentMediaItem?.mediaId, p.currentPosition)
+        }
         progressJob?.cancel()
         val ctrl = controller
         val listener = controllerListener

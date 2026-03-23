@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,16 +27,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.pocastcloni.R
-import com.example.pocastcloni.util.Constants
-import com.example.pocastcloni.util.Constants.SettingsDefaults
-import com.example.pocastcloni.util.formatBytes
-import com.example.pocastcloni.util.formatDuration
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.theme.Dimens
-import kotlin.math.roundToInt
+import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.Constants.SettingsDefaults
+import com.example.pocastcloni.util.formatBytes
+import com.example.pocastcloni.util.formatDuration
 
 // --- SECTIONS ---
 
@@ -108,7 +107,12 @@ fun SectionAppearance(
     onSetAppColor: (AppColor) -> Unit,
     onSetColorStrength: (Float) -> Unit
 ) {
-    Text(stringResource(R.string.settings_section_design), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall))
+    Text(
+        stringResource(R.string.settings_section_design),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
+    )
 
     SettingsCard {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -264,7 +268,12 @@ fun SectionAutomation(
     onSetBackgroundCheckInterval: (Int) -> Unit,
     onSetFeedUpdateMode: (FeedUpdateMode) -> Unit
 ) {
-    Text(stringResource(R.string.settings_section_automation), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall))
+    Text(
+        stringResource(R.string.settings_section_automation),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
+    )
 
     SettingsSwitchCard(
         title = stringResource(R.string.settings_auto_refresh_on_start),
@@ -299,16 +308,32 @@ fun SectionAutomation(
     SettingsCard {
         Text(stringResource(R.string.settings_update_method), style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onSetFeedUpdateMode(FeedUpdateMode.ALWAYS_FULL) }) {
-            RadioButton(selected = feedUpdateMode == FeedUpdateMode.ALWAYS_FULL, onClick = { onSetFeedUpdateMode(FeedUpdateMode.ALWAYS_FULL) })
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable { onSetFeedUpdateMode(FeedUpdateMode.ALWAYS_FULL) }
+        ) {
+            RadioButton(
+                selected = feedUpdateMode == FeedUpdateMode.ALWAYS_FULL,
+                onClick = { onSetFeedUpdateMode(FeedUpdateMode.ALWAYS_FULL) }
+            )
             Text(stringResource(R.string.settings_update_method_full), modifier = Modifier.padding(start = Dimens.PaddingVerySmall))
         }
         Spacer(modifier = Modifier.height(Dimens.PaddingTiny))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onSetFeedUpdateMode(FeedUpdateMode.SMART_STREAM) }) {
-            RadioButton(selected = feedUpdateMode == FeedUpdateMode.SMART_STREAM, onClick = { onSetFeedUpdateMode(FeedUpdateMode.SMART_STREAM) })
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable { onSetFeedUpdateMode(FeedUpdateMode.SMART_STREAM) }
+        ) {
+            RadioButton(
+                selected = feedUpdateMode == FeedUpdateMode.SMART_STREAM,
+                onClick = { onSetFeedUpdateMode(FeedUpdateMode.SMART_STREAM) }
+            )
             Column(modifier = Modifier.padding(start = Dimens.PaddingVerySmall)) {
                 Text(stringResource(R.string.settings_update_method_smart_stream))
-                Text(stringResource(R.string.settings_update_method_smart_stream_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.settings_update_method_smart_stream_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -322,7 +347,12 @@ fun SectionDownloads(
     onStartManualDownload: () -> Unit
 ) {
     val context = LocalContext.current
-    Text(stringResource(R.string.settings_section_downloads_data), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall))
+    Text(
+        stringResource(R.string.settings_section_downloads_data),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
+    )
 
     SettingsSliderCard(
         title = stringResource(R.string.settings_auto_download_limit),
@@ -341,20 +371,38 @@ fun SectionDownloads(
             Spacer(modifier = Modifier.width(Dimens.PaddingMedium))
             Column {
                 Text(stringResource(R.string.settings_manual_full_refresh), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.settings_manual_full_refresh_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.settings_manual_full_refresh_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
 
     if (message != null) {
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
-        Text(text = message.asString(context), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text(
+            text = message.asString(context),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.tertiary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
 @Composable
-fun SectionBackup(onExport: () -> Unit, onImport: () -> Unit) {
-    Text(stringResource(R.string.settings_section_backup_restore), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall))
+fun SectionBackup(
+    onExport: () -> Unit,
+    onImport: () -> Unit
+) {
+    Text(
+        stringResource(R.string.settings_section_backup_restore),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
+    )
 
     SettingsCard(onClick = onExport) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -392,7 +440,12 @@ fun SectionInterface(
     onSetNavBarHeight: (Int) -> Unit,
     onToggleConfirmDelete: (Boolean) -> Unit
 ) {
-    Text(stringResource(R.string.settings_section_interface), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall))
+    Text(
+        stringResource(R.string.settings_section_interface),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
+    )
 
     SettingsCard {
         // NEU: Auswahl Kacheln vs. Liste
@@ -547,7 +600,12 @@ fun SectionStatistics(
     onResetStatistics: () -> Unit
 ) {
     val context = LocalContext.current
-    Text(stringResource(R.string.settings_section_statistics), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall))
+    Text(
+        stringResource(R.string.settings_section_statistics),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
+    )
 
     SettingsCard {
         when (statsState) {
@@ -582,7 +640,11 @@ fun SectionStatistics(
                 Button(
                     onClick = onResetStatistics,
                     modifier = Modifier.align(Alignment.End),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
+                    colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(Dimens.PaddingMedium))
                     Spacer(modifier = Modifier.width(Dimens.PaddingVerySmall))
@@ -591,7 +653,8 @@ fun SectionStatistics(
             }
             is StatisticsScreenUiState.Loading -> {
                 Box(
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         .fillMaxWidth()
                         .padding(Dimens.PaddingLarge),
                     contentAlignment = Alignment.Center
@@ -648,7 +711,8 @@ fun IndicatorColorCircle(
     val luminance = (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue)
 
     Box(
-        modifier = Modifier
+        modifier =
+        Modifier
             .size(Dimens.ColorCircleSize)
             .clip(CircleShape)
             .background(color)
@@ -660,7 +724,8 @@ fun IndicatorColorCircle(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
                 tint = if (luminance > 0.5) Color.Black else Color.White,
-                modifier = Modifier
+                modifier =
+                Modifier
                     .size(Dimens.CheckIconSize)
                     .align(Alignment.Center)
             )

@@ -23,7 +23,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class DownloadEpisodeUseCase @Inject constructor(
+class DownloadEpisodeUseCase
+@Inject
+constructor(
     @ApplicationContext private val context: Context,
     private val podcastRepository: PodcastRepository,
     @ApplicationScope private val applicationScope: CoroutineScope
@@ -35,8 +37,9 @@ class DownloadEpisodeUseCase @Inject constructor(
             .map { workInfos ->
                 workInfos.filter { it.state == WorkInfo.State.RUNNING }
                     .associate {
-                        val guid = it.tags.firstOrNull { t -> t.startsWith(Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX) }
-                            ?.removePrefix(Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX) ?: ""
+                        val guid =
+                            it.tags.firstOrNull { t -> t.startsWith(Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX) }
+                                ?.removePrefix(Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX) ?: ""
                         val progress = it.progress.getFloat("progress", 0f)
                         guid to progress
                     }
@@ -46,7 +49,6 @@ class DownloadEpisodeUseCase @Inject constructor(
                 started = SharingStarted.WhileSubscribed(5000L),
                 initialValue = emptyMap()
             )
-
 
     suspend operator fun invoke(guid: String) {
         podcastRepository.getEpisode(guid)?.let { toggleDownload(it) }
@@ -69,17 +71,18 @@ class DownloadEpisodeUseCase @Inject constructor(
         val fileName = "${episode.guid.hashCode()}${Constants.DOWNLOAD_FILE_EXTENSION}"
         val uniqueWorkName = "${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${episode.guid}"
 
-        val request = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setInputData(
-                workDataOf(
-                    Constants.DOWNLOAD_WORKER_GUID to episode.guid,
-                    Constants.DOWNLOAD_WORKER_URL to episode.enclosureUrl,
-                    Constants.DOWNLOAD_WORKER_FILENAME to fileName
+        val request =
+            OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setInputData(
+                    workDataOf(
+                        Constants.DOWNLOAD_WORKER_GUID to episode.guid,
+                        Constants.DOWNLOAD_WORKER_URL to episode.enclosureUrl,
+                        Constants.DOWNLOAD_WORKER_FILENAME to fileName
+                    )
                 )
-            )
-            .addTag(Constants.DOWNLOAD_WORKER_TAG)
-            .addTag(uniqueWorkName) // Tagging with unique name to easily find guid
-            .build()
+                .addTag(Constants.DOWNLOAD_WORKER_TAG)
+                .addTag(uniqueWorkName) // Tagging with unique name to easily find guid
+                .build()
 
         workManager.enqueueUniqueWork(
             uniqueWorkName,

@@ -60,7 +60,8 @@ fun FullPlayerControls(
                     modifier = Modifier.size(Dimens.PlayPauseButtonSize)
                 ) {
                     Icon(
-                        imageVector = if (playerState.isPlaying) {
+                        imageVector =
+                        if (playerState.isPlaying) {
                             Icons.Default.PauseCircleFilled
                         } else {
                             Icons.Default.PlayCircleFilled
@@ -89,14 +90,16 @@ fun FullPlayerControls(
             modifier = Modifier.size(Dimens.LargeIconSize)
         ) {
             Icon(
-                imageVector = if (playerState.isCurrentEpisodeFavorite) {
+                imageVector =
+                if (playerState.isCurrentEpisodeFavorite) {
                     Icons.Default.Favorite
                 } else {
                     Icons.Default.FavoriteBorder
                 },
                 contentDescription = stringResource(R.string.favorites),
                 modifier = Modifier.size(Dimens.LargeIconSize),
-                tint = if (playerState.isCurrentEpisodeFavorite) {
+                tint =
+                if (playerState.isCurrentEpisodeFavorite) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.onSurface

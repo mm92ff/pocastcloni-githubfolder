@@ -15,12 +15,10 @@ data class BackupData(
 data class BackupPodcast(
     @JsonProperty(Constants.Backup.KEY_URL) val url: String = "",
     @JsonProperty(Constants.Backup.KEY_SORT_ORDER) val sortOrder: Long = 0,
-
     // Metadaten für Offline-Import-Resilienz
     @JsonProperty("title") val title: String? = null,
     @JsonProperty("description") val description: String? = null,
     @JsonProperty("image_url") val imageUrl: String? = null,
-
     // NEU: Caching Header für Smart Updates (Wichtig für Traffic-Sparmaßnahmen nach Restore)
     @JsonProperty("last_modified") val lastModifiedHeader: String? = null,
     @JsonProperty("etag") val eTagHeader: String? = null

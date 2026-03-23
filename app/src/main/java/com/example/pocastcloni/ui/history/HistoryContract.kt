@@ -27,7 +27,10 @@ data class HistoryUiState(
 
 sealed interface HistoryAction {
     data class OnEpisodeClick(val guid: String) : HistoryAction
+
     data object ClearHistory : HistoryAction
+
     data object ConfirmClearHistory : HistoryAction
+
     data object DismissClearHistoryDialog : HistoryAction
 }

@@ -6,7 +6,9 @@ import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
-class RefreshPodcastsUseCase @Inject constructor(
+class RefreshPodcastsUseCase
+@Inject
+constructor(
     private val podcastRepository: PodcastRepository,
     private val userPreferencesRepository: UserPreferencesRepository
 ) {

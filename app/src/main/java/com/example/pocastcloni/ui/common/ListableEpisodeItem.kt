@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.Podcast
-import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.theme.Dimens
 
 @Composable
@@ -36,7 +35,8 @@ fun ListableEpisodeItem(
     onImageClick: (() -> Unit)? = null // NEU: Optionaler Callback für Bild-Klick
 ) {
     Row(
-        modifier = modifier
+        modifier =
+        modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .background(MaterialTheme.colorScheme.surface)
@@ -46,7 +46,8 @@ fun ListableEpisodeItem(
         AsyncImage(
             model = episode.podcastImageUrl ?: podcast?.imageUrl ?: "",
             contentDescription = null,
-            modifier = Modifier
+            modifier =
+            Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(Dimens.RoundedCornerSmall))
                 // NEU: Klickbar machen, falls ein Callback übergeben wird

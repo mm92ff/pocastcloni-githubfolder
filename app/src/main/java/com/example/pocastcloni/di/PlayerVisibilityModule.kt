@@ -10,9 +10,6 @@ import dagger.hilt.components.SingletonComponent
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class PlayerVisibilityModule {
-
     @Binds
-    abstract fun bindPlayerVisibilityProvider(
-        impl: PlayerVisibilityProviderImpl
-    ): PlayerVisibilityProvider
+    abstract fun bindPlayerVisibilityProvider(impl: PlayerVisibilityProviderImpl): PlayerVisibilityProvider
 }

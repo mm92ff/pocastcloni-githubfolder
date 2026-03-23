@@ -16,13 +16,14 @@ import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
-class PlayerViewModel @Inject constructor(
+class PlayerViewModel
+@Inject
+constructor(
     private val dispatcherProvider: DispatcherProvider,
     val playerController: AudioPlayerController, // Implementiert jetzt PlayerActions & Observer
     private val toggleFavoriteEpisodeUseCase: ToggleFavoriteEpisodeUseCase,
     private val getEpisodeDescriptionUseCase: GetEpisodeDescriptionUseCase
 ) : ViewModel() {
-
     // UI State for Description
     private val _descriptionState = MutableStateFlow<Spanned?>(null)
     val descriptionState: StateFlow<Spanned?> = _descriptionState.asStateFlow()

@@ -37,7 +37,6 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.common.EpisodeDetailsDialog
 import com.example.pocastcloni.ui.common.ListableEpisodeItem
 import com.example.pocastcloni.ui.common.ReorderableLazyColumn
-import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,7 +80,8 @@ fun FavoritesScreen(
         }
     ) { innerPadding ->
         Box(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
@@ -92,24 +92,26 @@ fun FavoritesScreen(
                 Text(text = stringResource(id = R.string.favorites_empty))
             } else {
                 // PERFORMANCE: Padding-Berechnung cachen
-                val bottomPadding = remember(
-                    uiState.isPlayerVisible,
-                    uiState.navBarHeight,
-                    uiState.progressBarHeight
-                ) {
-                    if (uiState.isPlayerVisible) {
-                        (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingSmall
-                    } else {
-                        Dimens.PaddingSmall
+                val bottomPadding =
+                    remember(
+                        uiState.isPlayerVisible,
+                        uiState.navBarHeight,
+                        uiState.progressBarHeight
+                    ) {
+                        if (uiState.isPlayerVisible) {
+                            (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingSmall
+                        } else {
+                            Dimens.PaddingSmall
+                        }
                     }
-                }
 
                 ReorderableLazyColumn(
                     items = uiState.favorites, // Nimmt jetzt ImmutableList
                     key = { item -> item.id },
                     onReorder = { from, to -> viewModel.onAction(FavoritesAction.OnReorder(from, to)) },
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
+                    contentPadding =
+                    PaddingValues(
                         top = Dimens.PaddingSmall,
                         bottom = bottomPadding
                     ),
@@ -119,22 +121,22 @@ fun FavoritesScreen(
                     // FIX: "isDragging" wird ignoriert, da die Animation jetzt intern im ReorderableLC passiert.
                     // SwipeToDelete wird nur aktiviert, wenn NICHT editiert wird (das bleibt gleich)
 
-                        SwipeToDeleteFavorite(
-                            onDelete = { viewModel.onAction(FavoritesAction.OnEpisodeSwiped(item.episode.guid)) },
-                            enabled = !uiState.isEditMode
-                        ) {
-                            ListableEpisodeItem(
-                                episode = item.episode,
-                                podcast = item.podcast,
-                                // FIX: Lambda fängt uiState nicht mehr ein. Die Logik "if (!isEditMode)"
-                                // sollte idealerweise im ViewModel in onAction geprüft werden.
-                                // Hier feuern wir einfach immer, das ViewModel entscheidet.
-                                onClick = {
-                                    viewModel.onAction(FavoritesAction.OnEpisodeClick(item.episode.guid))
-                                },
-                                onImageClick = { viewModel.onAction(FavoritesAction.OnEpisodeImageClick(item)) }
-                            )
-                        }
+                    SwipeToDeleteFavorite(
+                        onDelete = { viewModel.onAction(FavoritesAction.OnEpisodeSwiped(item.episode.guid)) },
+                        enabled = !uiState.isEditMode
+                    ) {
+                        ListableEpisodeItem(
+                            episode = item.episode,
+                            podcast = item.podcast,
+                            // FIX: Lambda fängt uiState nicht mehr ein. Die Logik "if (!isEditMode)"
+                            // sollte idealerweise im ViewModel in onAction geprüft werden.
+                            // Hier feuern wir einfach immer, das ViewModel entscheidet.
+                            onClick = {
+                                viewModel.onAction(FavoritesAction.OnEpisodeClick(item.episode.guid))
+                            },
+                            onImageClick = { viewModel.onAction(FavoritesAction.OnEpisodeImageClick(item)) }
+                        )
+                    }
                 }
             }
         }
@@ -148,23 +150,25 @@ private fun SwipeToDeleteFavorite(
     enabled: Boolean,
     content: @Composable () -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            if (it == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                true
-            } else {
-                false
+    val dismissState =
+        rememberSwipeToDismissBoxState(
+            confirmValueChange = {
+                if (it == SwipeToDismissBoxValue.EndToStart) {
+                    onDelete()
+                    true
+                } else {
+                    false
+                }
             }
-        }
-    )
+        )
 
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromEndToStart = enabled,
         backgroundContent = {
             val color by animateColorAsState(
-                targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
+                targetValue =
+                if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
                     MaterialTheme.colorScheme.errorContainer
                 } else {
                     Color.Transparent

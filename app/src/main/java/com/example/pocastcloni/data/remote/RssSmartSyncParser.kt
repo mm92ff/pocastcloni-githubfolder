@@ -12,7 +12,6 @@ import org.xmlpull.v1.XmlPullParser
 import java.io.InputStream
 
 class RssSmartSyncParser {
-
     data class ParseResult(
         val channel: RssChannel,
         val newItems: List<RssItem>
@@ -48,7 +47,6 @@ class RssSmartSyncParser {
             when (eventType) {
                 XmlPullParser.START_TAG -> {
                     if (name == Constants.Parsing.ITEM) {
-
                         // Hard cap: always respect limit (when limit > 0), regardless of whether we have a known GUID.
                         if (limit > 0 && newItems.size >= limit) {
                             return buildResult(title, description, image, itunesImage, newItems)
@@ -66,7 +64,6 @@ class RssSmartSyncParser {
                                 return buildResult(title, description, image, itunesImage, newItems)
                             }
                         }
-
                     } else {
                         when (name) {
                             Constants.Parsing.TITLE -> title = readText(parser)
@@ -113,7 +110,10 @@ class RssSmartSyncParser {
         return imageUrl
     }
 
-    private suspend fun parseItem(parser: XmlPullParser, latestKnownGuid: String?): ItemParseResult {
+    private suspend fun parseItem(
+        parser: XmlPullParser,
+        latestKnownGuid: String?
+    ): ItemParseResult {
         var title: String? = null
         var description: String? = null
         var link: String? = null
@@ -166,15 +166,16 @@ class RssSmartSyncParser {
             }
         }
 
-        val item = RssItem(
-            title = title,
-            description = description,
-            link = link,
-            guid = guid,
-            pubDate = pubDate,
-            enclosure = enclosure,
-            itunesDuration = itunesDuration
-        )
+        val item =
+            RssItem(
+                title = title,
+                description = description,
+                link = link,
+                guid = guid,
+                pubDate = pubDate,
+                enclosure = enclosure,
+                itunesDuration = itunesDuration
+            )
         return ItemParseResult(item, false)
     }
 
@@ -194,12 +195,13 @@ class RssSmartSyncParser {
         itunesImage: RssImage?,
         newItems: List<RssItem>
     ): ParseResult {
-        val channel = RssChannel(
-            title = title,
-            description = description,
-            image = image,
-            itunesImage = itunesImage
-        )
+        val channel =
+            RssChannel(
+                title = title,
+                description = description,
+                image = image,
+                itunesImage = itunesImage
+            )
         return ParseResult(channel, newItems)
     }
 }

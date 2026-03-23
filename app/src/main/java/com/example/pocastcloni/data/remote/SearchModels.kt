@@ -19,5 +19,7 @@ data class ItunesPodcastDto(
 
 interface ItunesSearchApi {
     @GET(Constants.Itunes.SEARCH_URL)
-    suspend fun searchPodcasts(@Query(Constants.Itunes.TERM) term: String): ItunesResponse
+    suspend fun searchPodcasts(
+        @Query(Constants.Itunes.TERM) term: String
+    ): ItunesResponse
 }

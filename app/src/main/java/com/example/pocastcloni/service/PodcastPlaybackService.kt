@@ -33,8 +33,8 @@ import com.example.pocastcloni.domain.repository.StatisticsRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.ui.main.MainActivity
 import com.example.pocastcloni.ui.settings.BufferMode
-import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.ConnectivityProvider
+import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -51,11 +51,14 @@ import javax.inject.Inject
 @OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class PodcastPlaybackService : MediaSessionService() {
-
     @Inject lateinit var dispatcherProvider: DispatcherProvider
+
     @Inject lateinit var podcastRepository: PodcastRepository
+
     @Inject lateinit var userPreferencesRepository: UserPreferencesRepository
+
     @Inject lateinit var statisticsRepository: StatisticsRepository
+
     @Inject lateinit var connectivityProvider: ConnectivityProvider
 
     private lateinit var serviceScope: CoroutineScope
@@ -103,52 +106,59 @@ class PodcastPlaybackService : MediaSessionService() {
     }
 
     private fun initializeStaticComponents() {
-        cache = try {
-            val cacheFolder = File(cacheDir, "media_cache")
-            SimpleCache(cacheFolder, NoOpCacheEvictor(), StandaloneDatabaseProvider(this))
-        } catch (t: Throwable) {
-            Timber.e(t, "Cache init failed - continuing without cache")
-            null
-        }
+        cache =
+            try {
+                val cacheFolder = File(cacheDir, "media_cache")
+                SimpleCache(cacheFolder, NoOpCacheEvictor(), StandaloneDatabaseProvider(this))
+            } catch (t: Throwable) {
+                Timber.e(t, "Cache init failed - continuing without cache")
+                null
+            }
 
         // Listener for statistics (counts streamed bytes)
         val statsListener = StreamingStatsListener()
 
         // Attach stats listener to HTTP data source
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setTransferListener(statsListener)
+        val httpDataSourceFactory =
+            DefaultHttpDataSource.Factory()
+                .setTransferListener(statsListener)
 
         // DefaultDataSource wraps HTTP + file
         val upstreamFactory: DataSource.Factory = DefaultDataSource.Factory(this, httpDataSourceFactory)
 
         // Optional cache layer
-        val cacheFactory: DataSource.Factory = if (cache != null) {
-            CacheDataSource.Factory()
-                .setCache(cache!!)
-                .setUpstreamDataSourceFactory(upstreamFactory)
-                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-        } else {
-            upstreamFactory
-        }
+        val cacheFactory: DataSource.Factory =
+            if (cache != null) {
+                CacheDataSource.Factory()
+                    .setCache(cache!!)
+                    .setUpstreamDataSourceFactory(upstreamFactory)
+                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+            } else {
+                upstreamFactory
+            }
 
-        mediaSourceFactory = ProgressiveMediaSource.Factory(cacheFactory)
-            .setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy())
+        mediaSourceFactory =
+            ProgressiveMediaSource.Factory(cacheFactory)
+                .setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy())
 
         // Session activity intent for notification
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
-            ?: Intent(this, MainActivity::class.java)
+        val intent =
+            packageManager.getLaunchIntentForPackage(packageName)
+                ?: Intent(this, MainActivity::class.java)
 
-        sessionActivityPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        sessionActivityPendingIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
 
-        val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
-            .setChannelId(Constants.Notification.CHANNEL_PLAYBACK_ID)
-            .setChannelName(R.string.playback_channel_name)
-            .build()
+        val notificationProvider =
+            DefaultMediaNotificationProvider.Builder(this)
+                .setChannelId(Constants.Notification.CHANNEL_PLAYBACK_ID)
+                .setChannelName(R.string.playback_channel_name)
+                .build()
         setMediaNotificationProvider(notificationProvider)
     }
 
@@ -163,11 +173,12 @@ class PodcastPlaybackService : MediaSessionService() {
         oldPlayer?.release()
 
         val loadControl = createLoadControl(bufferMode)
-        val newPlayer = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(mediaSourceFactory)
-            .setLoadControl(loadControl)
-            .setAudioAttributes(audioAttributes, true)
-            .build()
+        val newPlayer =
+            ExoPlayer.Builder(this)
+                .setMediaSourceFactory(mediaSourceFactory)
+                .setLoadControl(loadControl)
+                .setAudioAttributes(audioAttributes, true)
+                .build()
 
         player = newPlayer
 
@@ -328,12 +339,13 @@ class PodcastPlaybackService : MediaSessionService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
-            val availablePlayerCommands = player.availableCommands.buildUpon()
-                .add(Player.COMMAND_PLAY_PAUSE)
-                .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-                .add(Player.COMMAND_SEEK_TO_NEXT)
-                .add(Player.COMMAND_SEEK_TO_PREVIOUS)
-                .build()
+            val availablePlayerCommands =
+                player.availableCommands.buildUpon()
+                    .add(Player.COMMAND_PLAY_PAUSE)
+                    .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    .add(Player.COMMAND_SEEK_TO_NEXT)
+                    .add(Player.COMMAND_SEEK_TO_PREVIOUS)
+                    .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailablePlayerCommands(availablePlayerCommands)
                 .build()

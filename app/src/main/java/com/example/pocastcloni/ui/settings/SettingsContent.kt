@@ -26,9 +26,6 @@ import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction
 import com.example.pocastcloni.ui.UiText
-import com.example.pocastcloni.ui.settings.AppColor
-import com.example.pocastcloni.ui.settings.AppTheme
-import com.example.pocastcloni.ui.settings.BufferMode
 import com.example.pocastcloni.ui.theme.Dimens
 
 /**
@@ -47,15 +44,17 @@ fun SettingsListContent(
     onExportClick: () -> Unit,
     onImportClick: () -> Unit
 ) {
-    val bottomPadding = if (isPlayerVisible) {
-        (settings.navBarHeight + settings.progressBarHeight).dp + Dimens.PaddingMedium
-    } else {
-        Dimens.PaddingMedium
-    }
+    val bottomPadding =
+        if (isPlayerVisible) {
+            (settings.navBarHeight + settings.progressBarHeight).dp + Dimens.PaddingMedium
+        } else {
+            Dimens.PaddingMedium
+        }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
+        contentPadding =
+        PaddingValues(
             start = Dimens.PaddingMedium,
             top = Dimens.PaddingMedium,
             end = Dimens.PaddingMedium,
@@ -113,9 +112,27 @@ private fun GeneralSettingsContent(
         theme = settings.theme,
         appColor = settings.appColor,
         colorStrength = settings.colorStrength,
-        onSetTheme = remember(onEvent) { { theme: AppTheme -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAppTheme(theme))) } },
-        onSetAppColor = remember(onEvent) { { color: AppColor -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAppColor(color))) } },
-        onSetColorStrength = remember(onEvent) { { strength: Float -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetColorStrength(strength))) } }
+        onSetTheme =
+        remember(onEvent) {
+            {
+                    theme: AppTheme ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAppTheme(theme)))
+            }
+        },
+        onSetAppColor =
+        remember(onEvent) {
+            {
+                    color: AppColor ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAppColor(color)))
+            }
+        },
+        onSetColorStrength =
+        remember(onEvent) {
+            {
+                    strength: Float ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetColorStrength(strength)))
+            }
+        }
     )
     Divider()
 
@@ -125,10 +142,34 @@ private fun GeneralSettingsContent(
         backgroundCheckEnabled = settings.backgroundCheckEnabled,
         backgroundCheckInterval = settings.backgroundCheckInterval,
         feedUpdateMode = settings.feedUpdateMode,
-        onToggleAutoRefreshOnStart = remember(onEvent) { { enabled: Boolean -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleAutoRefreshOnStart(enabled))) } },
-        onToggleBackgroundCheck = remember(onEvent) { { enabled: Boolean -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleBackgroundCheck(enabled))) } },
-        onSetBackgroundCheckInterval = remember(onEvent) { { hours: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetBackgroundCheckInterval(hours))) } },
-        onSetFeedUpdateMode = remember(onEvent) { { mode: FeedUpdateMode -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetFeedUpdateMode(mode))) } }
+        onToggleAutoRefreshOnStart =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleAutoRefreshOnStart(enabled)))
+            }
+        },
+        onToggleBackgroundCheck =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleBackgroundCheck(enabled)))
+            }
+        },
+        onSetBackgroundCheckInterval =
+        remember(onEvent) {
+            {
+                    hours: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetBackgroundCheckInterval(hours)))
+            }
+        },
+        onSetFeedUpdateMode =
+        remember(onEvent) {
+            {
+                    mode: FeedUpdateMode ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetFeedUpdateMode(mode)))
+            }
+        }
     )
     Divider()
 
@@ -136,7 +177,13 @@ private fun GeneralSettingsContent(
     SectionDownloads(
         autoDownloadLimit = settings.autoDownloadLimit,
         message = downloadMessage,
-        onSetAutoDownloadLimit = remember(onEvent) { { limit: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAutoDownloadLimit(limit))) } },
+        onSetAutoDownloadLimit =
+        remember(onEvent) {
+            {
+                    limit: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAutoDownloadLimit(limit)))
+            }
+        },
         onStartManualDownload = remember(onEvent) { { onEvent(SettingsUiEvent.StartManualDownload) } }
     )
     Divider()
@@ -146,11 +193,41 @@ private fun GeneralSettingsContent(
         gridSizeDp = settings.gridSize,
         indicatorState = settings.indicator,
         // FIX: Explizite Typangabe (Long, Int, etc.) behebt den "Cannot infer type"-Fehler
-        onColorClick = remember(onEvent) { { color: Long -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorColor(color))) } },
-        onSizeChange = remember(onEvent) { { size: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorSize(size))) } },
-        onBorderChange = remember(onEvent) { { width: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorBorderWidth(width))) } },
-        onXOffsetChange = remember(onEvent) { { x: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorXOffset(x))) } },
-        onYOffsetChange = remember(onEvent) { { y: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorYOffset(y))) } }
+        onColorClick =
+        remember(onEvent) {
+            {
+                    color: Long ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorColor(color)))
+            }
+        },
+        onSizeChange =
+        remember(onEvent) {
+            {
+                    size: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorSize(size)))
+            }
+        },
+        onBorderChange =
+        remember(onEvent) {
+            {
+                    width: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorBorderWidth(width)))
+            }
+        },
+        onXOffsetChange =
+        remember(onEvent) {
+            {
+                    x: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorXOffset(x)))
+            }
+        },
+        onYOffsetChange =
+        remember(onEvent) {
+            {
+                    y: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetIndicatorYOffset(y)))
+            }
+        }
     )
     Divider()
 
@@ -164,13 +241,55 @@ private fun GeneralSettingsContent(
         navBarHeight = settings.navBarHeight,
         confirmDelete = settings.confirmDelete,
         // FIX: Auch hier explizite Typen
-        onSetLayoutMode = remember(onEvent) { { mode: LayoutMode -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetLayoutMode(mode))) } },
-        onSetGridSize = remember(onEvent) { { size: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetGridSize(size))) } },
-        onToggleShowGridTitles = remember(onEvent) { { show: Boolean -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleShowGridTitles(show))) } },
-        onToggleOneHandedMode = remember(onEvent) { { enabled: Boolean -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleOneHandedMode(enabled))) } },
-        onSetProgressBarHeight = remember(onEvent) { { height: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetProgressBarHeight(height))) } },
-        onSetNavBarHeight = remember(onEvent) { { height: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetNavBarHeight(height))) } },
-        onToggleConfirmDelete = remember(onEvent) { { confirm: Boolean -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleConfirmDelete(confirm))) } }
+        onSetLayoutMode =
+        remember(onEvent) {
+            {
+                    mode: LayoutMode ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetLayoutMode(mode)))
+            }
+        },
+        onSetGridSize =
+        remember(onEvent) {
+            {
+                    size: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetGridSize(size)))
+            }
+        },
+        onToggleShowGridTitles =
+        remember(onEvent) {
+            {
+                    show: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleShowGridTitles(show)))
+            }
+        },
+        onToggleOneHandedMode =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleOneHandedMode(enabled)))
+            }
+        },
+        onSetProgressBarHeight =
+        remember(onEvent) {
+            {
+                    height: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetProgressBarHeight(height)))
+            }
+        },
+        onSetNavBarHeight =
+        remember(onEvent) {
+            {
+                    height: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetNavBarHeight(height)))
+            }
+        },
+        onToggleConfirmDelete =
+        remember(onEvent) {
+            {
+                    confirm: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleConfirmDelete(confirm)))
+            }
+        }
     )
     Divider()
 
@@ -178,8 +297,15 @@ private fun GeneralSettingsContent(
     SectionPlayback(
         markPlayedDurationSeconds = settings.markPlayedDurationSeconds,
         bufferMode = settings.bufferMode,
-        onSetMarkPlayedDuration = remember(onEvent) { { seconds: Int -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetMarkPlayedDuration(seconds))) } },
-        onSetBufferMode = remember(onEvent) {
+        onSetMarkPlayedDuration =
+        remember(onEvent) {
+            {
+                    seconds: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetMarkPlayedDuration(seconds)))
+            }
+        },
+        onSetBufferMode =
+        remember(onEvent) {
             { mode: BufferMode -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetBufferSettings(mode))) }
         }
     )
@@ -189,9 +315,7 @@ private fun GeneralSettingsContent(
 // --- Smart Sections bleiben unverändert ---
 
 @Composable
-fun SettingsUrlImportSectionSmart(
-    viewModel: SettingsUrlImportViewModel = hiltViewModel()
-) {
+fun SettingsUrlImportSectionSmart(viewModel: SettingsUrlImportViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SectionAddPodcast(
         urlInput = state.urlInput,
@@ -204,9 +328,7 @@ fun SettingsUrlImportSectionSmart(
 }
 
 @Composable
-fun SettingsStatisticsSectionSmart(
-    viewModel: SettingsStatisticsViewModel = hiltViewModel()
-) {
+fun SettingsStatisticsSectionSmart(viewModel: SettingsStatisticsViewModel = hiltViewModel()) {
     val state by viewModel.statsState.collectAsStateWithLifecycle()
     SectionStatistics(
         statsState = state,

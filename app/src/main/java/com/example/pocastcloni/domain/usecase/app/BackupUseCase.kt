@@ -11,16 +11,20 @@ import javax.inject.Inject
 
 sealed interface BackupAction {
     data class Export(val path: String) : BackupAction
+
     data class Import(val path: String) : BackupAction
 }
 
 sealed interface BackupResult {
     data object ExportSuccess : BackupResult
+
     data class ImportSuccess(val result: ImportResult) : BackupResult
 }
 
 // Der Klassenname bleibt ManageBackupUseCase, wie in deiner Originaldatei definiert
-class ManageBackupUseCase @Inject constructor(
+class ManageBackupUseCase
+@Inject
+constructor(
     private val backupRepository: BackupRepository, // FIX: BackupRepository statt PodcastRepository nutzen
     private val userPreferencesRepository: UserPreferencesRepository,
     private val dispatcherProvider: DispatcherProvider
@@ -37,11 +41,12 @@ class ManageBackupUseCase @Inject constructor(
                 is BackupAction.Import -> {
                     val settings = userPreferencesRepository.userSettingsFlow.first()
                     // Aufruf geht an das BackupRepository
-                    val result = backupRepository.importFullBackup(
-                        Uri.parse(action.path),
-                        settings.autoDownloadLimit,
-                        settings.feedUpdateMode
-                    )
+                    val result =
+                        backupRepository.importFullBackup(
+                            Uri.parse(action.path),
+                            settings.autoDownloadLimit,
+                            settings.feedUpdateMode
+                        )
                     BackupResult.ImportSuccess(result)
                 }
             }

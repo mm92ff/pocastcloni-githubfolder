@@ -83,7 +83,8 @@ fun HistoryScreen(
         }
     ) { innerPadding ->
         Box(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
@@ -96,21 +97,23 @@ fun HistoryScreen(
             } else {
                 // FIX: Keine 'remember' Logik mehr nötig für Listen-Konvertierung
 
-                val bottomPadding = remember(
-                    uiState.isPlayerVisible,
-                    uiState.navBarHeight,
-                    uiState.progressBarHeight
-                ) {
-                    if (uiState.isPlayerVisible) {
-                        (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingSmall
-                    } else {
-                        Dimens.PaddingSmall
+                val bottomPadding =
+                    remember(
+                        uiState.isPlayerVisible,
+                        uiState.navBarHeight,
+                        uiState.progressBarHeight
+                    ) {
+                        if (uiState.isPlayerVisible) {
+                            (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingSmall
+                        } else {
+                            Dimens.PaddingSmall
+                        }
                     }
-                }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
+                    contentPadding =
+                    PaddingValues(
                         top = Dimens.PaddingSmall,
                         bottom = bottomPadding
                     ),

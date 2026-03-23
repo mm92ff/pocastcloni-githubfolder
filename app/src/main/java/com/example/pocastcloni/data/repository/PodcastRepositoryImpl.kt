@@ -36,14 +36,15 @@ import javax.inject.Provider
 import javax.inject.Singleton
 
 @Singleton
-class PodcastRepositoryImpl @Inject constructor(
+class PodcastRepositoryImpl
+@Inject
+constructor(
     private val podcastDao: PodcastDao,
     private val itunesSearchApi: ItunesSearchApi,
     private val dispatcherProvider: DispatcherProvider,
     private val downloader: PodcastDownloader,
     private val syncFeedUseCase: Provider<SyncFeedUseCase>
 ) : PodcastRepository {
-
     private val updateSemaphore = Semaphore(4)
 
     // --- FLOWS --- (Unverändert)
@@ -81,7 +82,9 @@ class PodcastRepositoryImpl @Inject constructor(
             .catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
 
     override fun getDownloadedEpisodesWithPodcastLiteFlow(): Flow<List<EpisodeWithPodcastLite>> =
-        podcastDao.getDownloadedEpisodesWithPodcastLiteFlow(listOf(DownloadStatus.DOWNLOADED, DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED))
+        podcastDao.getDownloadedEpisodesWithPodcastLiteFlow(
+            listOf(DownloadStatus.DOWNLOADED, DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED)
+        )
             .catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
 
     override fun getFavoriteEpisodes(): Flow<List<EpisodeEntity>> =
@@ -93,7 +96,9 @@ class PodcastRepositoryImpl @Inject constructor(
             .catch { emit(emptyMap()) }.flowOn(dispatcherProvider.io)
 
     override fun isFavorite(guid: String): Flow<Boolean> =
-        podcastDao.isFavorite(guid).catch { emit(false) }.flowOn(dispatcherProvider.io)
+        podcastDao.isFavorite(
+            guid
+        ).catch { emit(false) }.flowOn(dispatcherProvider.io)
 
     override fun getPlaybackHistory(): Flow<List<EpisodeEntity>> =
         podcastDao.getPlaybackHistory().catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
@@ -110,7 +115,6 @@ class PodcastRepositoryImpl @Inject constructor(
         podcastDao.getUnplayedCountsFlow().map { list -> list.associate { it.rssUrl to it.count } }
             .catch { emit(emptyMap()) }.flowOn(dispatcherProvider.io)
 
-
     // --- PODCAST MANAGEMENT --- (Unverändert)
     override suspend fun updateAllPodcasts(
         downloadLimit: Int,
@@ -119,16 +123,17 @@ class PodcastRepositoryImpl @Inject constructor(
     ): PodcastUpdateSummary {
         return withContext(dispatcherProvider.io) {
             val urls = podcastDao.getAllPodcastUrls()
-            val results = urls.map { url ->
-                async {
-                    updateSemaphore.withPermit {
-                        runCatching {
-                            syncFeedUseCase.get().invoke(url, downloadLimit, mode, null, forceFull)
-                            true
-                        }.getOrElse { false }
+            val results =
+                urls.map { url ->
+                    async {
+                        updateSemaphore.withPermit {
+                            runCatching {
+                                syncFeedUseCase.get().invoke(url, downloadLimit, mode, null, forceFull)
+                                true
+                            }.getOrElse { false }
+                        }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
             val successfulCount = results.count { it }
             PodcastUpdateSummary(
                 totalCount = urls.size,
@@ -138,7 +143,13 @@ class PodcastRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addPodcast(url: String, downloadLimit: Int, mode: FeedUpdateMode, sortOrder: Long?, forceFull: Boolean) {
+    override suspend fun addPodcast(
+        url: String,
+        downloadLimit: Int,
+        mode: FeedUpdateMode,
+        sortOrder: Long?,
+        forceFull: Boolean
+    ) {
         withContext(dispatcherProvider.io) {
             val normalizedUrl = url.trim()
             if (podcastDao.getPodcastByUrl(normalizedUrl) != null) return@withContext
@@ -159,12 +170,13 @@ class PodcastRepositoryImpl @Inject constructor(
         withContext(dispatcherProvider.io) {
             // FIX: Verwende partielles Update, um nur sortOrder zu ändern.
             // Verhindert das Überschreiben anderer Felder (hasNewEpisodes, autoDownload) bei parallelen Syncs.
-            val updates = list.mapIndexed { index, item ->
-                PodcastSortUpdate(
-                    rssUrl = item.rssUrl,
-                    sortOrder = index.toLong()
-                )
-            }
+            val updates =
+                list.mapIndexed { index, item ->
+                    PodcastSortUpdate(
+                        rssUrl = item.rssUrl,
+                        sortOrder = index.toLong()
+                    )
+                }
             podcastDao.updatePodcastSortOrders(updates)
         }
     }
@@ -173,13 +185,18 @@ class PodcastRepositoryImpl @Inject constructor(
         withContext(dispatcherProvider.io) { podcastDao.getPodcastByUrl(rssUrl)?.toDomain() }
 
     override suspend fun getEpisode(guid: String): EpisodeEntity? =
-        withContext(dispatcherProvider.io) { podcastDao.getEpisodeByGuid(guid) }
-
+        withContext(
+            dispatcherProvider.io
+        ) { podcastDao.getEpisodeByGuid(guid) }
 
     // --- EPISODE ACTIONS ---
 
     // FIX: Jetzt wird auch der Dot aktualisiert!
-    override suspend fun markEpisodePlayed(guid: String, played: Boolean, datePlayed: Date?) {
+    override suspend fun markEpisodePlayed(
+        guid: String,
+        played: Boolean,
+        datePlayed: Date?
+    ) {
         withContext(dispatcherProvider.io) {
             podcastDao.markEpisodePlayed(guid, played, datePlayed)
             updatePodcastNewFlagIfLatest(guid, played)
@@ -197,7 +214,10 @@ class PodcastRepositoryImpl @Inject constructor(
     }
 
     // FIX: Helper Funktion, um Code-Duplizierung zu vermeiden und sicherzustellen, dass der Dot immer geupdated wird
-    private suspend fun updatePodcastNewFlagIfLatest(guid: String, isPlayed: Boolean) {
+    private suspend fun updatePodcastNewFlagIfLatest(
+        guid: String,
+        isPlayed: Boolean
+    ) {
         // Wir brauchen die RSS URL der Episode
         val episode = podcastDao.getEpisodeByGuid(guid) ?: return
         val rssUrl = episode.podcastRssUrl
@@ -213,7 +233,10 @@ class PodcastRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun savePlaybackProgress(guid: String, positionMs: Long) {
+    override suspend fun savePlaybackProgress(
+        guid: String,
+        positionMs: Long
+    ) {
         withContext(dispatcherProvider.io) {
             podcastDao.updateEpisodeProgressOnly(guid, positionMs)
 
@@ -244,7 +267,10 @@ class PodcastRepositoryImpl @Inject constructor(
         withContext(dispatcherProvider.io) { podcastDao.markAllAsSeenAtomic() }
     }
 
-    override suspend fun updatePodcastSettings(podcast: Podcast, autoDownloadEnabled: Boolean) {
+    override suspend fun updatePodcastSettings(
+        podcast: Podcast,
+        autoDownloadEnabled: Boolean
+    ) {
         withContext(dispatcherProvider.io) {
             podcastDao.updateAutoDownloadEnabled(podcast.rssUrl, autoDownloadEnabled)
         }
@@ -276,7 +302,11 @@ class PodcastRepositoryImpl @Inject constructor(
     }
 
     // --- FAVORITES & HISTORY & SYNC (Unverändert) ---
-    override suspend fun setFavoriteStatus(guid: String, isFavorite: Boolean, timestamp: Long?) {
+    override suspend fun setFavoriteStatus(
+        guid: String,
+        isFavorite: Boolean,
+        timestamp: Long?
+    ) {
         withContext(dispatcherProvider.io) {
             podcastDao.setFavoriteStatus(guid, isFavorite, timestamp ?: System.currentTimeMillis())
         }
@@ -290,36 +320,76 @@ class PodcastRepositoryImpl @Inject constructor(
         withContext(dispatcherProvider.io) { podcastDao.updateEpisodes(episodes) }
     }
 
-    override suspend fun updateDownloadStatus(guid: String, status: DownloadStatus, path: String?) {
+    override suspend fun updateDownloadStatus(
+        guid: String,
+        status: DownloadStatus,
+        path: String?
+    ) {
         withContext(dispatcherProvider.io) { podcastDao.updateDownloadStatus(guid, status, path) }
     }
 
-    override suspend fun getPodcastEntityByUrl(url: String): PodcastEntity? = withContext(dispatcherProvider.io) { podcastDao.getPodcastByUrl(url) }
-    override suspend fun insertPodcastEntity(entity: PodcastEntity) = withContext(dispatcherProvider.io) { podcastDao.insertPodcast(entity) }
-    override suspend fun updatePodcastEntity(entity: PodcastEntity) = withContext(dispatcherProvider.io) { podcastDao.updatePodcast(entity) }
+    override suspend fun getPodcastEntityByUrl(url: String): PodcastEntity? =
+        withContext(dispatcherProvider.io) {
+            podcastDao.getPodcastByUrl(url)
+        }
+
+    override suspend fun insertPodcastEntity(entity: PodcastEntity) =
+        withContext(
+            dispatcherProvider.io
+        ) { podcastDao.insertPodcast(entity) }
+
+    override suspend fun updatePodcastEntity(entity: PodcastEntity) =
+        withContext(
+            dispatcherProvider.io
+        ) { podcastDao.updatePodcast(entity) }
+
     override suspend fun getMaxSortOrder(): Long? = withContext(dispatcherProvider.io) { podcastDao.getMaxSortOrder() }
-    override suspend fun getEpisodesForSync(rssUrl: String): List<EpisodeEntity> = withContext(dispatcherProvider.io) { podcastDao.getEpisodesForPodcastSync(rssUrl) }
-    override suspend fun insertEpisodes(episodes: List<EpisodeEntity>) = withContext(dispatcherProvider.io) { podcastDao.upsertEpisodesEfficient(episodes) }
-    override suspend fun isLatestEpisodePlayed(rssUrl: String): Boolean? = withContext(dispatcherProvider.io) { podcastDao.isLatestEpisodePlayed(rssUrl) }
-    override suspend fun getLatestEpisodeGuid(rssUrl: String): String? = withContext(dispatcherProvider.io) { podcastDao.getLatestEpisodeGuid(rssUrl) }
-    override suspend fun updatePodcastNewFlag(rssUrl: String, hasNew: Boolean) = withContext(dispatcherProvider.io) { podcastDao.updatePodcastNewFlag(rssUrl, hasNew) }
+
+    override suspend fun getEpisodesForSync(rssUrl: String): List<EpisodeEntity> =
+        withContext(dispatcherProvider.io) {
+            podcastDao.getEpisodesForPodcastSync(rssUrl)
+        }
+
+    override suspend fun insertEpisodes(episodes: List<EpisodeEntity>) =
+        withContext(dispatcherProvider.io) {
+            podcastDao.upsertEpisodesEfficient(episodes)
+        }
+
+    override suspend fun isLatestEpisodePlayed(rssUrl: String): Boolean? =
+        withContext(dispatcherProvider.io) {
+            podcastDao.isLatestEpisodePlayed(rssUrl)
+        }
+
+    override suspend fun getLatestEpisodeGuid(rssUrl: String): String? =
+        withContext(dispatcherProvider.io) {
+            podcastDao.getLatestEpisodeGuid(rssUrl)
+        }
+
+    override suspend fun updatePodcastNewFlag(
+        rssUrl: String,
+        hasNew: Boolean
+    ) = withContext(dispatcherProvider.io) {
+        podcastDao.updatePodcastNewFlag(rssUrl, hasNew)
+    }
 
     override suspend fun reconcileEpisodeStorage(): Int {
         return withContext(dispatcherProvider.io) {
-            var correctedEntries = podcastDao.bulkResetDownloadStates(
-                listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING)
-            )
+            var correctedEntries =
+                podcastDao.bulkResetDownloadStates(
+                    listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING)
+                )
 
-            val brokenDownloads = podcastDao
-                .getEpisodeDownloadStates(listOf(DownloadStatus.DOWNLOADED))
-                .filter { row ->
-                    shouldResetDownloadState(
-                        status = row.downloadStatus,
-                        downloadPath = row.downloadPath
-                    ) { path ->
-                        File(path).let { it.exists() && it.isFile && it.canRead() }
+            val brokenDownloads =
+                podcastDao
+                    .getEpisodeDownloadStates(listOf(DownloadStatus.DOWNLOADED))
+                    .filter { row ->
+                        shouldResetDownloadState(
+                            status = row.downloadStatus,
+                            downloadPath = row.downloadPath
+                        ) { path ->
+                            File(path).let { it.exists() && it.isFile && it.canRead() }
+                        }
                     }
-                }
 
             brokenDownloads.forEach { row ->
                 podcastDao.updateDownloadStatus(row.guid, DownloadStatus.NOT_DOWNLOADED, null)
@@ -334,10 +404,11 @@ class PodcastRepositoryImpl @Inject constructor(
         withContext(dispatcherProvider.io) {
             val urls = podcastDao.getAllPodcastUrls()
             urls.forEach { url ->
-                val episodesToPrune = selectEpisodesToPrune(
-                    episodes = podcastDao.getEpisodesForPodcastSync(url),
-                    keepCount = limitPerPodcast
-                )
+                val episodesToPrune =
+                    selectEpisodesToPrune(
+                        episodes = podcastDao.getEpisodesForPodcastSync(url),
+                        keepCount = limitPerPodcast
+                    )
                 if (episodesToPrune.isNotEmpty()) {
                     podcastDao.deleteEpisodes(episodesToPrune)
                 }

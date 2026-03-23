@@ -31,7 +31,8 @@ fun PodcastDescriptionDialog(
 
     Dialog(onDismissRequest = rememberedOnDismissRequest) {
         Card(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxWidth()
                 .heightIn(max = Dimens.DialogMaxHeight)
         ) {
@@ -40,7 +41,8 @@ fun PodcastDescriptionDialog(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         .fillMaxWidth()
                         .verticalScroll(scrollState)
                         .weight(1f)

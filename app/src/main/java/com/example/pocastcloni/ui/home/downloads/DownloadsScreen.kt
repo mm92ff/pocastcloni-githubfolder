@@ -62,9 +62,7 @@ fun DownloadsDeleteDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DownloadsScreen(
-    viewModel: DownloadsViewModel = hiltViewModel()
-) {
+fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     uiState.episodeToDelete?.let { episode ->
@@ -80,7 +78,8 @@ fun DownloadsScreen(
     ) { innerPadding ->
         if (uiState.episodes.isEmpty()) {
             Box(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
@@ -88,23 +87,26 @@ fun DownloadsScreen(
                 Text(stringResource(R.string.no_downloads))
             }
         } else {
-            val bottomPadding = remember(
-                uiState.isPlayerVisible,
-                uiState.navBarHeight,
-                uiState.progressBarHeight
-            ) {
-                if (uiState.isPlayerVisible) {
-                    (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingLarge
-                } else {
-                    Dimens.PaddingLarge
+            val bottomPadding =
+                remember(
+                    uiState.isPlayerVisible,
+                    uiState.navBarHeight,
+                    uiState.progressBarHeight
+                ) {
+                    if (uiState.isPlayerVisible) {
+                        (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingLarge
+                    } else {
+                        Dimens.PaddingLarge
+                    }
                 }
-            }
 
             LazyColumn(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .padding(innerPadding)
                     .fillMaxSize(),
-                contentPadding = PaddingValues(
+                contentPadding =
+                PaddingValues(
                     top = Dimens.PaddingLarge,
                     bottom = bottomPadding
                 ),
@@ -126,7 +128,7 @@ fun DownloadsScreen(
                             isPlaying = isPlaying,
                             onPlayClick = onPlayClick,
                             onDownloadClick = { }, // Keine Aktion in Downloads-Screen nötig
-                            onTogglePlayed = { },  // Optional, falls gewünscht
+                            onTogglePlayed = { }, // Optional, falls gewünscht
                             onToggleFavorite = onFavoriteClick
                         )
                     }
@@ -143,14 +145,15 @@ private fun SwipeToDeleteBox(
     viewModel: DownloadsViewModel,
     content: @Composable () -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                viewModel.deleteEpisode(episode)
+    val dismissState =
+        rememberSwipeToDismissBoxState(
+            confirmValueChange = { value ->
+                if (value == SwipeToDismissBoxValue.EndToStart) {
+                    viewModel.deleteEpisode(episode)
+                }
+                false
             }
-            false
-        }
-    )
+        )
 
     SwipeToDismissBox(
         state = dismissState,
@@ -158,7 +161,8 @@ private fun SwipeToDeleteBox(
             val isDeleting = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
 
             val color by animateColorAsState(
-                targetValue = if (isDeleting) {
+                targetValue =
+                if (isDeleting) {
                     MaterialTheme.colorScheme.errorContainer
                 } else {
                     Color.Transparent

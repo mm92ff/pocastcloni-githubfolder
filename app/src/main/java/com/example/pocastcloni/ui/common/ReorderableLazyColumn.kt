@@ -60,7 +60,8 @@ fun <T> ReorderableLazyColumn(
 
     LazyColumn(
         state = state,
-        modifier = modifier.pointerInput(reverseLayout) {
+        modifier =
+        modifier.pointerInput(reverseLayout) {
             // NICHT als Compose-State halten (UI interessiert sich nicht, vermeidet Snapshot-Reads im pointerInput)
             var scrollJob: Job? = null
 
@@ -70,24 +71,27 @@ fun <T> ReorderableLazyColumn(
                     val visibleItems = layoutInfo.visibleItemsInfo
                     val viewportHeight = layoutInfo.viewportSize.height
 
-                    val hitItem = visibleItems.firstOrNull { item ->
-                        val itemTop = if (reverseLayout) {
-                            viewportHeight - item.offset - item.size - layoutInfo.beforeContentPadding
-                        } else {
-                            item.offset
+                    val hitItem =
+                        visibleItems.firstOrNull { item ->
+                            val itemTop =
+                                if (reverseLayout) {
+                                    viewportHeight - item.offset - item.size - layoutInfo.beforeContentPadding
+                                } else {
+                                    item.offset
+                                }
+                            val itemBottom = itemTop + item.size
+                            offset.y.toInt() in itemTop..itemBottom
                         }
-                        val itemBottom = itemTop + item.size
-                        offset.y.toInt() in itemTop..itemBottom
-                    }
 
                     hitItem?.let { itemInfo ->
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
 
-                        val initialVisualTop = if (reverseLayout) {
-                            viewportHeight - itemInfo.offset - itemInfo.size - layoutInfo.beforeContentPadding
-                        } else {
-                            itemInfo.offset
-                        }.toFloat()
+                        val initialVisualTop =
+                            if (reverseLayout) {
+                                viewportHeight - itemInfo.offset - itemInfo.size - layoutInfo.beforeContentPadding
+                            } else {
+                                itemInfo.offset
+                            }.toFloat()
 
                         dragDropState.startDrag(
                             index = itemInfo.index,
@@ -139,13 +143,14 @@ fun <T> ReorderableLazyColumn(
 
                     if (scrollAmount != 0f) {
                         if (scrollJob?.isActive != true) {
-                            scrollJob = scope.launch {
-                                while (true) {
-                                    val consumed = state.scrollBy(scrollAmount)
-                                    if (consumed == 0f) break
-                                    delay(10)
+                            scrollJob =
+                                scope.launch {
+                                    while (true) {
+                                        val consumed = state.scrollBy(scrollAmount)
+                                        if (consumed == 0f) break
+                                        delay(10)
+                                    }
                                 }
-                            }
                         }
                     } else {
                         scrollJob?.cancel()
@@ -153,18 +158,20 @@ fun <T> ReorderableLazyColumn(
                     }
 
                     // --- SWAP LOGIK ---
-                    val targetItem = visibleItems.find { itemInfo ->
-                        if (itemInfo.index == draggedIndex) return@find false
+                    val targetItem =
+                        visibleItems.find { itemInfo ->
+                            if (itemInfo.index == draggedIndex) return@find false
 
-                        val targetTop = if (reverseLayout) {
-                            viewportHeight - itemInfo.offset - itemInfo.size - layoutInfo.beforeContentPadding
-                        } else {
-                            itemInfo.offset
+                            val targetTop =
+                                if (reverseLayout) {
+                                    viewportHeight - itemInfo.offset - itemInfo.size - layoutInfo.beforeContentPadding
+                                } else {
+                                    itemInfo.offset
+                                }
+                            val targetBottom = targetTop + itemInfo.size
+
+                            currentItemCenter.toInt() in targetTop..targetBottom
                         }
-                        val targetBottom = targetTop + itemInfo.size
-
-                        currentItemCenter.toInt() in targetTop..targetBottom
-                    }
 
                     if (targetItem != null) {
                         val oldIndex = draggedIndex
@@ -203,30 +210,33 @@ fun <T> ReorderableLazyColumn(
             )
 
             Box(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .fillParentMaxWidth()
                     .zIndex(if (isDragging) 1f else 0f)
                     .graphicsLayer {
                         // High-frequency read NUR für das gezogene Item, und NUR in der Modifier-Phase.
-                        translationY = if (isDragging) {
-                            val layoutInfo = state.layoutInfo
-                            val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
-                            if (itemInfo != null) {
-                                val layoutTop = if (reverseLayout) {
-                                    layoutInfo.viewportSize.height -
-                                            itemInfo.offset -
-                                            itemInfo.size -
-                                            layoutInfo.beforeContentPadding
+                        translationY =
+                            if (isDragging) {
+                                val layoutInfo = state.layoutInfo
+                                val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+                                if (itemInfo != null) {
+                                    val layoutTop =
+                                        if (reverseLayout) {
+                                            layoutInfo.viewportSize.height -
+                                                itemInfo.offset -
+                                                itemInfo.size -
+                                                layoutInfo.beforeContentPadding
+                                        } else {
+                                            itemInfo.offset
+                                        }
+                                    dragDropState.draggedItemVisualTop - layoutTop
                                 } else {
-                                    itemInfo.offset
+                                    0f
                                 }
-                                dragDropState.draggedItemVisualTop - layoutTop
                             } else {
                                 0f
                             }
-                        } else {
-                            0f
-                        }
 
                         scaleX = 1f
                         scaleY = 1f
@@ -256,10 +266,15 @@ private class DragDropState {
     private var isDraggingRaw: Boolean = false
 
     fun hasActiveDrag(): Boolean = isDraggingRaw
+
     fun draggedIndexRaw(): Int = draggedItemIndexRaw
+
     fun draggedVisualTopRaw(): Float = draggedItemVisualTopRaw
 
-    fun startDrag(index: Int, initialVisualTop: Float) {
+    fun startDrag(
+        index: Int,
+        initialVisualTop: Float
+    ) {
         draggedItemIndexRaw = index
         draggedItemVisualTopRaw = initialVisualTop
         isDraggingRaw = true

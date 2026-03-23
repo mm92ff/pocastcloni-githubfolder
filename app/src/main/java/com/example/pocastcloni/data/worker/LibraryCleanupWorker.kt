@@ -10,12 +10,13 @@ import dagger.assisted.AssistedInject
 import timber.log.Timber
 
 @HiltWorker
-class LibraryCleanupWorker @AssistedInject constructor(
+class LibraryCleanupWorker
+@AssistedInject
+constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val podcastRepository: PodcastRepository
 ) : CoroutineWorker(appContext, workerParams) {
-
     companion object {
         const val WORK_NAME = "LibraryCleanupWork"
         private const val DEFAULT_EPISODE_LIMIT = 50

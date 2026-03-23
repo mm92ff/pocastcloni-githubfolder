@@ -22,7 +22,10 @@ fun formatTime(ms: Long): String {
  * Formatiert Sekunden in einen lesbaren String (z.B. "1h 45min").
  * Hier ist die Standard-Locale OK, da es "Prosa" ist.
  */
-fun formatDuration(context: Context, seconds: Long): String {
+fun formatDuration(
+    context: Context,
+    seconds: Long
+): String {
     if (seconds <= 0) return context.getString(R.string.duration_placeholder)
 
     val hours = seconds / Constants.SECONDS_IN_HOUR

@@ -14,17 +14,28 @@ import com.example.pocastcloni.util.Constants
 @Immutable
 sealed interface SettingsUiEvent {
     data class UpdateSetting(val action: UpdateUserSettingAction) : SettingsUiEvent
+
     data class OnAddUrlQueryChange(val url: String) : SettingsUiEvent
+
     data object AddPodcastViaUrl : SettingsUiEvent
+
     data object ResetStatistics : SettingsUiEvent
+
     data object StartManualDownload : SettingsUiEvent
+
     // Obsolete events removed: ClearDownloadMessage, ClearUserMessage (handled via Effects now)
     data object ResetImportState : SettingsUiEvent
+
     data object ResetExportState : SettingsUiEvent
+
     data class ExportFullBackup(val path: String) : SettingsUiEvent
+
     data class ImportFullBackup(val path: String) : SettingsUiEvent
+
     data object OnResetClicked : SettingsUiEvent
+
     data object OnResetDismissed : SettingsUiEvent
+
     data object OnResetConfirmed : SettingsUiEvent
 }
 
@@ -63,11 +74,9 @@ sealed interface SettingsUiState {
         val colorStrength: Float = 0.1f,
         val bufferMode: BufferMode = BufferMode.NORMAL,
         val bufferWholePodcast: Boolean = false,
-
         // --- NEU HINZUFÜGEN ---
         val layoutMode: LayoutMode = LayoutMode.GRID,
         // ----------------------
-
         val gridSize: Int = 120,
         val showGridTitles: Boolean = true,
         val confirmDelete: Boolean = true,
@@ -98,6 +107,7 @@ data class IndicatorSettingsUiState(
 @Immutable
 sealed interface StatisticsScreenUiState {
     data object Loading : StatisticsScreenUiState
+
     data class Success(
         val totalPlayTimeMs: Long,
         val totalEpisodes: Int,
@@ -106,8 +116,9 @@ sealed interface StatisticsScreenUiState {
         val downloadWifiBytes: Long,
         val downloadMobileBytes: Long,
         val streamWifiBytes: Long,
-        val streamMobileBytes: Long,
+        val streamMobileBytes: Long
     ) : StatisticsScreenUiState
+
     data class Error(val message: UiText) : StatisticsScreenUiState
 }
 
@@ -126,15 +137,21 @@ data class SettingsAddUrlState(
 @Immutable
 sealed interface ImportUiState {
     data object Idle : ImportUiState
+
     data object Loading : ImportUiState
+
     data class Success(val message: UiText) : ImportUiState
+
     data class Error(val message: UiText) : ImportUiState
 }
 
 @Immutable
 sealed interface ExportUiState {
     data object Idle : ExportUiState
+
     data object Loading : ExportUiState
+
     data class Success(val message: UiText) : ExportUiState
+
     data class Error(val message: UiText) : ExportUiState
 }

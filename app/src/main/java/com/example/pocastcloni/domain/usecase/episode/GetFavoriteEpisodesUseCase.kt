@@ -5,7 +5,9 @@ import com.example.pocastcloni.domain.repository.PodcastRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
-class GetFavoriteEpisodesUseCase @Inject constructor(
+class GetFavoriteEpisodesUseCase
+@Inject
+constructor(
     private val podcastRepository: PodcastRepository
 ) {
     operator fun invoke(): Flow<List<EpisodeEntity>> {

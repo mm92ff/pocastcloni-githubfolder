@@ -18,12 +18,13 @@ class SyncFeedUseCaseAutoDownloadTest {
 
     @Test
     fun selectsOnlyNewestEpisodesWithinConfiguredLimit() {
-        val episodes = listOf(
-            episode(guid = "episode-1", pubDateMs = 1_000),
-            episode(guid = "episode-2", pubDateMs = 3_000),
-            episode(guid = "episode-3", pubDateMs = 2_000),
-            episode(guid = "episode-4", pubDateMs = 4_000)
-        )
+        val episodes =
+            listOf(
+                episode(guid = "episode-1", pubDateMs = 1_000),
+                episode(guid = "episode-2", pubDateMs = 3_000),
+                episode(guid = "episode-3", pubDateMs = 2_000),
+                episode(guid = "episode-4", pubDateMs = 4_000)
+            )
 
         val result = selectEpisodesForAutoDownload(episodes, downloadLimit = 2)
 
@@ -32,13 +33,14 @@ class SyncFeedUseCaseAutoDownloadTest {
 
     @Test
     fun skipsEpisodesThatAreAlreadyHandledOrMissingAudio() {
-        val episodes = listOf(
-            episode(guid = "downloaded", pubDateMs = 5_000, status = DownloadStatus.DOWNLOADED),
-            episode(guid = "queued", pubDateMs = 4_000, status = DownloadStatus.QUEUED),
-            episode(guid = "blank", pubDateMs = 3_000, enclosureUrl = ""),
-            episode(guid = "candidate", pubDateMs = 2_000),
-            episode(guid = "older", pubDateMs = 1_000)
-        )
+        val episodes =
+            listOf(
+                episode(guid = "downloaded", pubDateMs = 5_000, status = DownloadStatus.DOWNLOADED),
+                episode(guid = "queued", pubDateMs = 4_000, status = DownloadStatus.QUEUED),
+                episode(guid = "blank", pubDateMs = 3_000, enclosureUrl = ""),
+                episode(guid = "candidate", pubDateMs = 2_000),
+                episode(guid = "older", pubDateMs = 1_000)
+            )
 
         val result = selectEpisodesForAutoDownload(episodes, downloadLimit = 4)
 

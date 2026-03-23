@@ -81,7 +81,6 @@ data class PodcastSortUpdate(
 
 @Dao
 interface PodcastDao {
-
     // --- PODCASTS ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPodcast(podcast: PodcastEntity)
@@ -118,7 +117,10 @@ interface PodcastDao {
     }
 
     @Query("UPDATE podcasts SET autoDownloadEnabled = :enabled WHERE rssUrl = :url")
-    suspend fun updateAutoDownloadEnabled(url: String, enabled: Boolean)
+    suspend fun updateAutoDownloadEnabled(
+        url: String,
+        enabled: Boolean
+    )
 
     @Transaction
     @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC")
@@ -152,7 +154,10 @@ interface PodcastDao {
     suspend fun markAllAsSeen()
 
     @Query("UPDATE podcasts SET hasNewEpisodes = :hasNew WHERE rssUrl = :url")
-    suspend fun updatePodcastNewFlag(url: String, hasNew: Boolean)
+    suspend fun updatePodcastNewFlag(
+        url: String,
+        hasNew: Boolean
+    )
 
     @Transaction
     suspend fun markAllAsSeenAtomic() {
@@ -172,7 +177,10 @@ interface PodcastDao {
         WHERE rssUrl IN (:url1, :url2)
         """
     )
-    suspend fun swapSortOrder(url1: String, url2: String)
+    suspend fun swapSortOrder(
+        url1: String,
+        url2: String
+    )
 
     // --- EPISODEN ---
 
@@ -204,18 +212,19 @@ interface PodcastDao {
 
         // 2. Metadaten-Update für ALLE Episoden (auch die existierenden)
         // Hier wird auf die Felder in EpisodeEntity zugegriffen
-        val updates = episodes.map {
-            EpisodeRssUpdate(
-                guid = it.guid,
-                title = it.title,
-                description = it.description,
-                pubDate = it.pubDate,
-                duration = it.duration,
-                enclosureUrl = it.enclosureUrl,
-                fileSize = it.fileSize,
-                type = it.type
-            )
-        }
+        val updates =
+            episodes.map {
+                EpisodeRssUpdate(
+                    guid = it.guid,
+                    title = it.title,
+                    description = it.description,
+                    pubDate = it.pubDate,
+                    duration = it.duration,
+                    enclosureUrl = it.enclosureUrl,
+                    fileSize = it.fileSize,
+                    type = it.type
+                )
+            }
         updateEpisodesMetadata(updates)
     }
 
@@ -251,9 +260,7 @@ interface PodcastDao {
         ORDER BY COALESCE(e.pubDate, 0) DESC
         """
     )
-    fun getDownloadedEpisodesWithPodcastLiteFlow(
-        statuses: List<DownloadStatus>
-    ): Flow<List<EpisodeWithPodcastLite>>
+    fun getDownloadedEpisodesWithPodcastLiteFlow(statuses: List<DownloadStatus>): Flow<List<EpisodeWithPodcastLite>>
 
     @Query("SELECT * FROM episodes WHERE downloadStatus = 'DOWNLOADED' AND isPlayed = 1")
     suspend fun getPlayedDownloadedEpisodes(): List<EpisodeEntity>
@@ -313,10 +320,17 @@ interface PodcastDao {
     // --- FAVORITES ---
 
     @Query("UPDATE episodes SET isFavorite = :isFavorite, favoriteTimestamp = :timestamp WHERE guid = :guid")
-    suspend fun setFavoriteStatus(guid: String, isFavorite: Boolean, timestamp: Long?)
+    suspend fun setFavoriteStatus(
+        guid: String,
+        isFavorite: Boolean,
+        timestamp: Long?
+    )
 
     @Query("UPDATE episodes SET isFavorite = 1, favoriteTimestamp = :timestamp WHERE guid IN (:guids)")
-    suspend fun setFavoritesBatch(guids: List<String>, timestamp: Long)
+    suspend fun setFavoritesBatch(
+        guids: List<String>,
+        timestamp: Long
+    )
 
     @Query("SELECT * FROM episodes WHERE isFavorite = 1 ORDER BY favoriteTimestamp DESC")
     fun getFavoriteEpisodes(): Flow<List<EpisodeEntity>>
@@ -345,16 +359,30 @@ interface PodcastDao {
     // --- STATUS UPDATES ---
 
     @Query("UPDATE episodes SET playbackPositionMs = :pos WHERE guid = :guid")
-    suspend fun updateEpisodeProgressOnly(guid: String, pos: Long)
+    suspend fun updateEpisodeProgressOnly(
+        guid: String,
+        pos: Long
+    )
 
     @Query("UPDATE episodes SET isPlayed = :isPlayed, datePlayed = :datePlayed WHERE guid = :guid")
-    suspend fun markEpisodePlayed(guid: String, isPlayed: Boolean, datePlayed: Date?)
+    suspend fun markEpisodePlayed(
+        guid: String,
+        isPlayed: Boolean,
+        datePlayed: Date?
+    )
 
     @Query("UPDATE episodes SET isPlayed = 1, datePlayed = :datePlayed WHERE podcastRssUrl = :rssUrl AND isPlayed = 0")
-    suspend fun markPodcastEpisodesPlayed(rssUrl: String, datePlayed: Date = Date())
+    suspend fun markPodcastEpisodesPlayed(
+        rssUrl: String,
+        datePlayed: Date = Date()
+    )
 
     @Query("UPDATE episodes SET downloadStatus = :status, downloadPath = :path WHERE guid = :guid")
-    suspend fun updateDownloadStatus(guid: String, status: DownloadStatus, path: String?)
+    suspend fun updateDownloadStatus(
+        guid: String,
+        status: DownloadStatus,
+        path: String?
+    )
 
     @Query(
         """
@@ -381,7 +409,10 @@ interface PodcastDao {
           )
         """
     )
-    suspend fun getOldEpisodesToRemove(rssUrl: String, keepCount: Int): List<EpisodeEntity>
+    suspend fun getOldEpisodesToRemove(
+        rssUrl: String,
+        keepCount: Int
+    ): List<EpisodeEntity>
 
     @Query(
         """
@@ -395,7 +426,10 @@ interface PodcastDao {
           )
         """
     )
-    suspend fun deleteOldEpisodesExceedingCount(rssUrl: String, keepCount: Int)
+    suspend fun deleteOldEpisodesExceedingCount(
+        rssUrl: String,
+        keepCount: Int
+    )
 
     // --- HISTORY / IN PROGRESS ---
     @Query("SELECT * FROM episodes WHERE isPlayed = 1 ORDER BY datePlayed DESC")

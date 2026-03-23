@@ -11,12 +11,13 @@ import timber.log.Timber
 import javax.inject.Inject
 import kotlin.math.abs
 
-class PlaybackAnalyticsHandler @Inject constructor(
+class PlaybackAnalyticsHandler
+@Inject
+constructor(
     private val savePlaybackProgressUseCase: SavePlaybackProgressUseCase,
     private val markEpisodePlayedUseCase: MarkEpisodePlayedUseCase,
     private val addListeningTimeUseCase: AddListeningTimeUseCase
 ) {
-
     private companion object {
         private const val LISTENING_FLUSH_INTERVAL_MS = 60_000L
         private const val AUTO_SAVE_INTERVAL_MS = 15_000L
@@ -56,8 +57,10 @@ class PlaybackAnalyticsHandler @Inject constructor(
 
         // --- DEBUG LOGGING (Alle 5 Sekunden) ---
         if (nowMs - lastDebugLogMs > DEBUG_LOG_INTERVAL_MS) {
-            Timber.v("Analytics Debug: Pos=$currentPositionMs ms, Dur=$durationMs ms, " +
-                    "ThresholdSeconds=$markPlayedThresholdSeconds, Marked=$hasBeenMarkedAsPlayed")
+            Timber.v(
+                "Analytics Debug: Pos=$currentPositionMs ms, Dur=$durationMs ms, " +
+                    "ThresholdSeconds=$markPlayedThresholdSeconds, Marked=$hasBeenMarkedAsPlayed"
+            )
             lastDebugLogMs = nowMs
         }
         // ---------------------------------------
@@ -128,10 +131,15 @@ class PlaybackAnalyticsHandler @Inject constructor(
         }
     }
 
-    fun saveProgressBestEffort(scope: CoroutineScope, guid: String?, positionMs: Long) {
+    fun saveProgressBestEffort(
+        scope: CoroutineScope,
+        guid: String?,
+        positionMs: Long
+    ) {
         if (guid.isNullOrBlank()) return
         val now = SystemClock.elapsedRealtime()
-        val isRedundant = (guid == lastSavedGuid) &&
+        val isRedundant =
+            (guid == lastSavedGuid) &&
                 (abs(positionMs - lastPersistedPositionMs) < MIN_MANUAL_SAVE_DELTA_MS) &&
                 ((now - lastPersistedAtMs) < MIN_MANUAL_SAVE_INTERVAL_MS)
         if (!isRedundant) {

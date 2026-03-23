@@ -55,21 +55,23 @@ fun AddPodcastScreen(
         }
     ) { innerPadding ->
 
-        val bottomPlayerPadding = remember(
-            reserveSpaceForPlayer,
-            uiState.isPlayerVisible,
-            uiState.navBarHeight,
-            uiState.progressBarHeight
-        ) {
-            if (reserveSpaceForPlayer && uiState.isPlayerVisible) {
-                (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingMedium
-            } else {
-                Dimens.Zero
+        val bottomPlayerPadding =
+            remember(
+                reserveSpaceForPlayer,
+                uiState.isPlayerVisible,
+                uiState.navBarHeight,
+                uiState.progressBarHeight
+            ) {
+                if (reserveSpaceForPlayer && uiState.isPlayerVisible) {
+                    (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingMedium
+                } else {
+                    Dimens.Zero
+                }
             }
-        }
 
         Column(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 // vorher: PaddingLarge -> kompakter

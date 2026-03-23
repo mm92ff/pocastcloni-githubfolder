@@ -6,17 +6,18 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 object AppDatabaseMigrations {
     private const val TARGET_VERSION = 10
 
-    val ALL_MIGRATIONS: Array<Migration> = arrayOf(
-        migrationToTarget(1),
-        migrationToTarget(2),
-        migrationToTarget(3),
-        migrationToTarget(4),
-        migrationToTarget(5),
-        migrationToTarget(6),
-        migrationToTarget(7),
-        migrationToTarget(8),
-        migrationToTarget(9)
-    )
+    val ALL_MIGRATIONS: Array<Migration> =
+        arrayOf(
+            migrationToTarget(1),
+            migrationToTarget(2),
+            migrationToTarget(3),
+            migrationToTarget(4),
+            migrationToTarget(5),
+            migrationToTarget(6),
+            migrationToTarget(7),
+            migrationToTarget(8),
+            migrationToTarget(9)
+        )
 
     private fun migrationToTarget(fromVersion: Int): Migration {
         return object : Migration(fromVersion, TARGET_VERSION) {
@@ -46,7 +47,10 @@ object AppDatabaseMigrations {
         }
     }
 
-    private fun renameLegacyTableIfPresent(db: SupportSQLiteDatabase, table: String) {
+    private fun renameLegacyTableIfPresent(
+        db: SupportSQLiteDatabase,
+        table: String
+    ) {
         if (!tableExists(db, table)) return
         db.execSQL("ALTER TABLE `$table` RENAME TO `${table}_legacy`")
     }
@@ -94,9 +98,13 @@ object AppDatabaseMigrations {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl` ON `episodes` (`podcastRssUrl`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl_pubDate` ON `episodes` (`podcastRssUrl`, `pubDate`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_downloadStatus_pubDate` ON `episodes` (`downloadStatus`, `pubDate`)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteTimestamp` ON `episodes` (`isFavorite`, `favoriteTimestamp`)")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteTimestamp` ON `episodes` (`isFavorite`, `favoriteTimestamp`)"
+        )
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isPlayed_datePlayed` ON `episodes` (`isPlayed`, `datePlayed`)")
-        db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `episodes_fts` USING FTS4(`title` TEXT NOT NULL, `description` TEXT NOT NULL, content=`episodes`)")
+        db.execSQL(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS `episodes_fts` USING FTS4(`title` TEXT NOT NULL, `description` TEXT NOT NULL, content=`episodes`)"
+        )
     }
 
     private fun copyPodcasts(db: SupportSQLiteDatabase) {
@@ -234,7 +242,10 @@ object AppDatabaseMigrations {
         )
     }
 
-    private fun tableExists(db: SupportSQLiteDatabase, table: String): Boolean {
+    private fun tableExists(
+        db: SupportSQLiteDatabase,
+        table: String
+    ): Boolean {
         val cursor = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='$table'")
         return try {
             cursor.moveToFirst()
@@ -243,7 +254,10 @@ object AppDatabaseMigrations {
         }
     }
 
-    private fun getColumns(db: SupportSQLiteDatabase, table: String): Set<String> {
+    private fun getColumns(
+        db: SupportSQLiteDatabase,
+        table: String
+    ): Set<String> {
         val cursor = db.query("PRAGMA table_info(`$table`)")
         return try {
             val nameIndex = cursor.getColumnIndex("name")
@@ -288,11 +302,18 @@ object AppDatabaseMigrations {
         return if (name in columns) "COALESCE($columnRef, $defaultSql)" else defaultSql
     }
 
-    private fun nullableColumn(columns: Set<String>, name: String, tableAlias: String? = null): String {
+    private fun nullableColumn(
+        columns: Set<String>,
+        name: String,
+        tableAlias: String? = null
+    ): String {
         return if (name in columns) columnReference(name, tableAlias) else "NULL"
     }
 
-    private fun columnReference(name: String, tableAlias: String? = null): String {
+    private fun columnReference(
+        name: String,
+        tableAlias: String? = null
+    ): String {
         return if (tableAlias.isNullOrBlank()) {
             "`$name`"
         } else {

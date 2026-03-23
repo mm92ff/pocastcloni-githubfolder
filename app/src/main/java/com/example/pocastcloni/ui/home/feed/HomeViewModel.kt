@@ -65,7 +65,9 @@ sealed interface HomeUiEvent {
 }
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(
+class HomeViewModel
+@Inject
+constructor(
     private val getAllPodcasts: GetAllPodcastsUseCase,
     private val getUserSettings: GetUserSettingsUseCase,
     private val refreshPodcasts: RefreshPodcastsUseCase,
@@ -75,7 +77,6 @@ class HomeViewModel @Inject constructor(
     playerController: AudioPlayerController,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
-
     private val refreshMutex = Mutex()
     private val didRunStartRefresh = AtomicBoolean(false)
     private var lastStartRefreshAtMs: Long = 0L
@@ -101,105 +102,106 @@ class HomeViewModel @Inject constructor(
     val events = _events.receiveAsFlow()
 
     // Player State Flow (GUID-basiert, stabil)
-    private val isPlayerVisibleFlow = playerController.playerState
-        .map { !it.currentEpisodeGuid.isNullOrBlank() }
-        .distinctUntilChanged()
+    private val isPlayerVisibleFlow =
+        playerController.playerState
+            .map { !it.currentEpisodeGuid.isNullOrBlank() }
+            .distinctUntilChanged()
 
-    private val podcastsFlow = getAllPodcasts()
-        .map { it.toImmutableList() }
-        .distinctUntilChanged()
+    private val podcastsFlow =
+        getAllPodcasts()
+            .map { it.toImmutableList() }
+            .distinctUntilChanged()
 
     // 1. Stage: Daten kombinieren (Intermediate State)
-    private val intermediateStateFlow: Flow<IntermediateHomeState> = combine(
-        podcastsFlow,
-        _optimisticPodcasts,
-        getUserSettings(),
-        _editState,
-        _isRefreshing,
-        isPlayerVisibleFlow,
-        _showDeleteConfirmation,
-        _screenError
-    ) { args ->
-        @Suppress("UNCHECKED_CAST")
-        val dbPodcasts = args[0] as ImmutableList<Podcast>
-        @Suppress("UNCHECKED_CAST")
-        val optimisticPodcasts = args[1] as List<Podcast>?
-        val settings = args[2] as UserSettings
-        val editState = args[3] as EditState
-        val isRefreshing = args[4] as Boolean
-        val isPlayerVisible = args[5] as Boolean
-        val showDeleteConfirmation = args[6] as Boolean
-        val screenError = args[7] as UiText?
+    private val intermediateStateFlow: Flow<IntermediateHomeState> =
+        combine(
+            podcastsFlow,
+            _optimisticPodcasts,
+            getUserSettings(),
+            _editState,
+            _isRefreshing,
+            isPlayerVisibleFlow,
+            _showDeleteConfirmation,
+            _screenError
+        ) { args ->
+            @Suppress("UNCHECKED_CAST")
+            val dbPodcasts = args[0] as ImmutableList<Podcast>
 
-        // Wenn optimistische Daten existieren (während Drag & Drop), nutzen wir diese.
-        val finalPodcasts = if (optimisticPodcasts != null && optimisticPodcasts.size == dbPodcasts.size) {
-            optimisticPodcasts.toImmutableList()
-        } else {
-            dbPodcasts
-        }
+            @Suppress("UNCHECKED_CAST")
+            val optimisticPodcasts = args[1] as List<Podcast>?
+            val settings = args[2] as UserSettings
+            val editState = args[3] as EditState
+            val isRefreshing = args[4] as Boolean
+            val isPlayerVisible = args[5] as Boolean
+            val showDeleteConfirmation = args[6] as Boolean
+            val screenError = args[7] as UiText?
 
-        IntermediateHomeState(
-            podcasts = finalPodcasts,
-            settings = settings,
-            editState = editState,
-            isRefreshing = isRefreshing,
-            isPlayerVisible = isPlayerVisible,
-            showDeleteConfirmation = showDeleteConfirmation,
-            screenError = screenError
-        )
-    }
+            // Wenn optimistische Daten existieren (während Drag & Drop), nutzen wir diese.
+            val finalPodcasts =
+                if (optimisticPodcasts != null && optimisticPodcasts.size == dbPodcasts.size) {
+                    optimisticPodcasts.toImmutableList()
+                } else {
+                    dbPodcasts
+                }
 
-    // 2. Stage: Finaler UI State
-    val uiState: StateFlow<HomeUiState> = intermediateStateFlow
-        .map { state ->
-            // Helper: Berechne die Liste der aktuell selektierten Podcasts für die UI
-            val selectedPodcasts = if (state.editState.selectedPodcastGuids.isNotEmpty()) {
-                state.podcasts.filter { it.rssUrl in state.editState.selectedPodcastGuids }
-            } else {
-                emptyList()
-            }
-
-            HomeUiState(
-                podcasts = state.podcasts,
-                isLoading = false,
-
-                // -------------------------------------------------------------
-                // KORREKTUR: Layout Mode wird jetzt korrekt übertragen!
-                // -------------------------------------------------------------
-                layoutMode = state.settings.layoutMode,
-
-                gridSize = state.settings.gridSize,
-                showGridTitles = state.settings.showGridTitles,
-                oneHandedMode = state.settings.oneHandedMode,
-                isEditMode = state.editState.isEditMode,
-
-                // FIX: Set übertragen
-                selectedPodcastGuids = state.editState.selectedPodcastGuids,
-
-                confirmDelete = state.settings.confirmDelete,
-                indicatorColorArgb = state.settings.indicator.colorArgb,
-                indicatorSize = state.settings.indicator.size,
-                indicatorBorderWidth = state.settings.indicator.borderWidth,
-                indicatorXOffset = state.settings.indicator.xOffset,
-                indicatorYOffset = state.settings.indicator.yOffset,
-                isRefreshing = state.isRefreshing,
-                progressBarHeight = state.settings.progressBarHeight,
-                navBarHeight = state.settings.navBarHeight,
-                isPlayerVisible = state.isPlayerVisible,
-                userMessage = null,
-
-                // FIX: Dialog State und Liste
-                showDeleteConfirmation = state.showDeleteConfirmation,
-                selectedPodcastsForDelete = selectedPodcasts,
-
-                screenError = state.screenError
+            IntermediateHomeState(
+                podcasts = finalPodcasts,
+                settings = settings,
+                editState = editState,
+                isRefreshing = isRefreshing,
+                isPlayerVisible = isPlayerVisible,
+                showDeleteConfirmation = showDeleteConfirmation,
+                screenError = screenError
             )
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
-            initialValue = HomeUiState(isLoading = true)
-        )
+
+    // 2. Stage: Finaler UI State
+    val uiState: StateFlow<HomeUiState> =
+        intermediateStateFlow
+            .map { state ->
+                // Helper: Berechne die Liste der aktuell selektierten Podcasts für die UI
+                val selectedPodcasts =
+                    if (state.editState.selectedPodcastGuids.isNotEmpty()) {
+                        state.podcasts.filter { it.rssUrl in state.editState.selectedPodcastGuids }
+                    } else {
+                        emptyList()
+                    }
+
+                HomeUiState(
+                    podcasts = state.podcasts,
+                    isLoading = false,
+                    // -------------------------------------------------------------
+                    // KORREKTUR: Layout Mode wird jetzt korrekt übertragen!
+                    // -------------------------------------------------------------
+                    layoutMode = state.settings.layoutMode,
+                    gridSize = state.settings.gridSize,
+                    showGridTitles = state.settings.showGridTitles,
+                    oneHandedMode = state.settings.oneHandedMode,
+                    isEditMode = state.editState.isEditMode,
+                    // FIX: Set übertragen
+                    selectedPodcastGuids = state.editState.selectedPodcastGuids,
+                    confirmDelete = state.settings.confirmDelete,
+                    indicatorColorArgb = state.settings.indicator.colorArgb,
+                    indicatorSize = state.settings.indicator.size,
+                    indicatorBorderWidth = state.settings.indicator.borderWidth,
+                    indicatorXOffset = state.settings.indicator.xOffset,
+                    indicatorYOffset = state.settings.indicator.yOffset,
+                    isRefreshing = state.isRefreshing,
+                    progressBarHeight = state.settings.progressBarHeight,
+                    navBarHeight = state.settings.navBarHeight,
+                    isPlayerVisible = state.isPlayerVisible,
+                    userMessage = null,
+                    // FIX: Dialog State und Liste
+                    showDeleteConfirmation = state.showDeleteConfirmation,
+                    selectedPodcastsForDelete = selectedPodcasts,
+                    screenError = state.screenError
+                )
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
+                initialValue = HomeUiState(isLoading = true)
+            )
 
     fun markAllAsSeen() {
         viewModelScope.launch(dispatcherProvider.io) {
@@ -300,7 +302,10 @@ class HomeViewModel @Inject constructor(
         _optimisticPodcasts.value = null
     }
 
-    fun onReorder(fromIndex: Int, toIndex: Int) {
+    fun onReorder(
+        fromIndex: Int,
+        toIndex: Int
+    ) {
         val currentList = uiState.value.podcasts.toMutableList()
 
         if (fromIndex in currentList.indices && toIndex in currentList.indices) {
@@ -324,11 +329,12 @@ class HomeViewModel @Inject constructor(
         _editState.update { state ->
             val current = state.selectedPodcastGuids
             // Nutzung von '+' und '-' erstellt neue ImmutableSets
-            val newSet = if (current.contains(podcastUrl)) {
-                current - podcastUrl
-            } else {
-                current + podcastUrl
-            }
+            val newSet =
+                if (current.contains(podcastUrl)) {
+                    current - podcastUrl
+                } else {
+                    current + podcastUrl
+                }
             // Wichtig: Explizit in ImmutableSet wandeln, um Typfehler zu vermeiden
             state.copy(selectedPodcastGuids = newSet.toImmutableSet())
         }

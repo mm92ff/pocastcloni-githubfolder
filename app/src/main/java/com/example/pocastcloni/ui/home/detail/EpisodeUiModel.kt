@@ -36,7 +36,7 @@ data class EpisodeUiModel(
     val description: String?,
     val podcastImageUrl: String?,
     val pubDateEpochMs: Long = 0L,
-    val durationSeconds: Long = 0L,
+    val durationSeconds: Long = 0L
 )
 
 private fun formatDuration(durationMs: Long): String {
@@ -86,10 +86,10 @@ fun EpisodePresentation.toEpisodeUiModelCached(
     ) {
         val dynamicUnchanged =
             previous.downloadStatus == downloadStatusUiModel &&
-                    previous.downloadProgress == currentProgress && // Vergleich mit aktuellem Wert
-                    previous.isPlayed == this.isPlayed &&
-                    previous.isFavorite == this.isFavorite &&
-                    previous.positionMs == this.playbackPositionMs
+                previous.downloadProgress == currentProgress && // Vergleich mit aktuellem Wert
+                previous.isPlayed == this.isPlayed &&
+                previous.isFavorite == this.isFavorite &&
+                previous.positionMs == this.playbackPositionMs
 
         if (dynamicUnchanged) return previous
 
@@ -102,9 +102,9 @@ fun EpisodePresentation.toEpisodeUiModelCached(
         )
     }
 
-        return EpisodeUiModel(
-            guid = this.guid,
-            podcastUrl = this.podcastRssUrl,
+    return EpisodeUiModel(
+        guid = this.guid,
+        podcastUrl = this.podcastRssUrl,
         title = this.title,
         podcastTitle = podcastName,
         date = formatDate(epochMs),
@@ -115,11 +115,11 @@ fun EpisodePresentation.toEpisodeUiModelCached(
         isPlayed = this.isPlayed,
         isFavorite = this.isFavorite,
         positionMs = this.playbackPositionMs,
-            description = this.description,
-            podcastImageUrl = podcastImageUrl,
-            pubDateEpochMs = epochMs,
-            durationSeconds = durationMs // Wir speichern hier Millisekunden, der Name 'durationSeconds' im UI Model ist etwas irreführend, aber wir lassen ihn zur Konsistenz vorerst so.
-        )
+        description = this.description,
+        podcastImageUrl = podcastImageUrl,
+        pubDateEpochMs = epochMs,
+        durationSeconds = durationMs // Wir speichern hier Millisekunden, der Name 'durationSeconds' im UI Model ist etwas irreführend, aber wir lassen ihn zur Konsistenz vorerst so.
+    )
 }
 
 // Auch die einfache Helper-Funktion muss den Parameter jetzt annehmen und weiterreichen
@@ -127,19 +127,21 @@ fun EpisodePresentation.toEpisodeUiModel(
     podcastName: String,
     podcastImageUrl: String?,
     downloadProgress: Float // <--- NEUER PARAMETER
-): EpisodeUiModel = toEpisodeUiModelCached(
-    previous = null,
-    podcastName = podcastName,
-    podcastImageUrl = podcastImageUrl,
-    downloadProgress = downloadProgress // <--- Weitergabe
-)
+): EpisodeUiModel =
+    toEpisodeUiModelCached(
+        previous = null,
+        podcastName = podcastName,
+        podcastImageUrl = podcastImageUrl,
+        downloadProgress = downloadProgress // <--- Weitergabe
+    )
 
 fun EpisodeWithPodcastInfo.toEpisodeUiModel(
     downloadProgress: Float,
     previous: EpisodeUiModel? = null
-): EpisodeUiModel = episode.toEpisodeUiModelCached(
-    previous = previous,
-    podcastName = podcast?.title ?: "",
-    podcastImageUrl = podcast?.imageUrl,
-    downloadProgress = downloadProgress
-)
+): EpisodeUiModel =
+    episode.toEpisodeUiModelCached(
+        previous = previous,
+        podcastName = podcast?.title ?: "",
+        podcastImageUrl = podcast?.imageUrl,
+        downloadProgress = downloadProgress
+    )

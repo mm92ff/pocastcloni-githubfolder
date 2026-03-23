@@ -30,12 +30,10 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class NetworkModule {
-
     @Binds
     abstract fun bindConnectivityProvider(impl: NetworkConnectivityProvider): ConnectivityProvider
 
     companion object {
-
         @Provides
         @Singleton
         fun provideObjectMapper(): ObjectMapper {
@@ -109,13 +107,17 @@ abstract class NetworkModule {
 
         @Provides
         @Singleton
-        fun providePodcastService(@Named("RssRetrofit") retrofit: Retrofit): PodcastService {
+        fun providePodcastService(
+            @Named("RssRetrofit") retrofit: Retrofit
+        ): PodcastService {
             return retrofit.create(PodcastService::class.java)
         }
 
         @Provides
         @Singleton
-        fun provideItunesSearchApi(@Named("ItunesRetrofit") retrofit: Retrofit): ItunesSearchApi {
+        fun provideItunesSearchApi(
+            @Named("ItunesRetrofit") retrofit: Retrofit
+        ): ItunesSearchApi {
             return retrofit.create(ItunesSearchApi::class.java)
         }
     }

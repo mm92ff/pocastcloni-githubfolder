@@ -19,14 +19,17 @@ data class PlayEpisodeResult(
     val playUri: String
 )
 
-class PreparePlaybackUseCase @Inject constructor(
+class PreparePlaybackUseCase
+@Inject
+constructor(
     private val repository: PodcastRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {
     suspend operator fun invoke(guid: String): PlayEpisodeResult {
         return withContext(dispatcherProvider.io) {
-            val savedEpisode = repository.getEpisode(guid)
-                ?: throw IllegalStateException("Episode not available for GUID $guid")
+            val savedEpisode =
+                repository.getEpisode(guid)
+                    ?: throw IllegalStateException("Episode not available for GUID $guid")
 
             // Podcast Infos laden
             val podcastEntity = repository.getPodcastEntityByUrl(savedEpisode.podcastRssUrl)

@@ -6,16 +6,22 @@ import com.example.pocastcloni.util.Constants
 
 sealed interface PlayerScreenEvent {
     data object TogglePlayPause : PlayerScreenEvent
+
     data object Rewind : PlayerScreenEvent
+
     data object Forward : PlayerScreenEvent
+
     data class SeekTo(val positionMs: Long) : PlayerScreenEvent
 
     // NEW: used to pause frequent progress emissions while user scrubs
     data object SeekStarted : PlayerScreenEvent
+
     data object SeekFinished : PlayerScreenEvent
 
     data object ShowDescription : PlayerScreenEvent
+
     data object DismissDescription : PlayerScreenEvent
+
     data object ToggleFavorite : PlayerScreenEvent
 }
 

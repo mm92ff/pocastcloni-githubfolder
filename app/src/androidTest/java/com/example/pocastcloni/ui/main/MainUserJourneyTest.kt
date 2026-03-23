@@ -44,7 +44,6 @@ import java.util.Base64
 @LargeTest
 @RunWith(AndroidJUnit4::class)
 class MainUserJourneyTest {
-
     @get:Rule
     val composeRule = createEmptyComposeRule()
 
@@ -57,10 +56,11 @@ class MainUserJourneyTest {
     @Before
     fun setUp() {
         runBlocking { resetAppState() }
-        server = MockWebServer().apply {
-            dispatcher = IntegrationFeedDispatcher()
-            start()
-        }
+        server =
+            MockWebServer().apply {
+                dispatcher = IntegrationFeedDispatcher()
+                start()
+            }
     }
 
     @After
@@ -75,9 +75,10 @@ class MainUserJourneyTest {
 
     @Test
     fun settingsImport_drivesCoreUserJourney() {
-        scenario = ActivityScenario.launch(MainActivity::class.java).also {
-            it.moveToState(Lifecycle.State.RESUMED)
-        }
+        scenario =
+            ActivityScenario.launch(MainActivity::class.java).also {
+                it.moveToState(Lifecycle.State.RESUMED)
+            }
 
         waitForText(HOME_EMPTY_TEXT)
 
@@ -163,17 +164,21 @@ class MainUserJourneyTest {
         downloadsDir.listFiles()?.forEach { file -> file.delete() }
     }
 
-    private fun waitForText(text: String, timeoutMillis: Long = 10_000) {
+    private fun waitForText(
+        text: String,
+        timeoutMillis: Long = 10_000
+    ) {
         waitUntil(timeoutMillis) { hasNodeWithText(text) }
     }
 
     private fun clickBottomNav(label: String) {
         when {
             hasNodeWithText(label) -> composeRule.onAllNodesWithText(label).onFirst().performClick()
-            hasNodeWithContentDescription(label) -> composeRule.onAllNodes(
-                hasContentDescription(label),
-                useUnmergedTree = true
-            ).onFirst().performClick()
+            hasNodeWithContentDescription(label) ->
+                composeRule.onAllNodes(
+                    hasContentDescription(label),
+                    useUnmergedTree = true
+                ).onFirst().performClick()
             else -> error("No bottom navigation node found for '$label'")
         }
     }
@@ -188,14 +193,21 @@ class MainUserJourneyTest {
         }
     }
 
-    private fun waitForDownloadStatus(guid: String, expected: DownloadStatus, timeoutMillis: Long = 20_000) {
+    private fun waitForDownloadStatus(
+        guid: String,
+        expected: DownloadStatus,
+        timeoutMillis: Long = 20_000
+    ) {
         waitUntil(timeoutMillis) {
             val episode = runBlocking { AppDatabase.getDatabase(context).podcastDao().getEpisodeByGuid(guid) }
             episode?.downloadStatus == expected
         }
     }
 
-    private fun waitUntil(timeoutMillis: Long, condition: () -> Boolean) {
+    private fun waitUntil(
+        timeoutMillis: Long,
+        condition: () -> Boolean
+    ) {
         composeRule.waitUntil(timeoutMillis) {
             runCatching(condition).getOrDefault(false)
         }
@@ -213,15 +225,18 @@ class MainUserJourneyTest {
     private inner class IntegrationFeedDispatcher : Dispatcher() {
         override fun dispatch(request: RecordedRequest): MockResponse {
             return when (request.path) {
-                FEED_PATH -> MockResponse()
-                    .setHeader("Content-Type", "application/rss+xml")
-                    .setBody(feedXml())
-                COVER_PATH -> MockResponse()
-                    .setHeader("Content-Type", "image/png")
-                    .setBody(Buffer().write(TINY_PNG))
-                AUDIO_PATH -> MockResponse()
-                    .setHeader("Content-Type", "audio/wav")
-                    .setBody(Buffer().write(buildSilentWav()))
+                FEED_PATH ->
+                    MockResponse()
+                        .setHeader("Content-Type", "application/rss+xml")
+                        .setBody(feedXml())
+                COVER_PATH ->
+                    MockResponse()
+                        .setHeader("Content-Type", "image/png")
+                        .setBody(Buffer().write(TINY_PNG))
+                AUDIO_PATH ->
+                    MockResponse()
+                        .setHeader("Content-Type", "audio/wav")
+                        .setBody(Buffer().write(buildSilentWav()))
                 else -> MockResponse().setResponseCode(404)
             }
         }
@@ -287,9 +302,10 @@ class MainUserJourneyTest {
         const val BACK = "Back"
 
         val SILENT_WAV: ByteArray = createSilentWav(seconds = 2)
-        val TINY_PNG: ByteArray = Base64.getDecoder().decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0Z0AAAAASUVORK5CYII="
-        )
+        val TINY_PNG: ByteArray =
+            Base64.getDecoder().decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0Z0AAAAASUVORK5CYII="
+            )
 
         private fun createSilentWav(seconds: Int): ByteArray {
             val sampleRate = 44_100

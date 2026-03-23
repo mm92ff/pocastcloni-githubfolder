@@ -23,14 +23,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AppInitializer @Inject constructor(
+class AppInitializer
+@Inject
+constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val podcastRepository: PodcastRepository,
     @ApplicationScope private val scope: CoroutineScope,
     private val workManager: WorkManager,
     private val dispatcherProvider: DispatcherProvider
 ) {
-
     fun initialize() {
         reconcileEpisodeStorage()
         // Bereinigungs-Job einplanen (Täglich)
@@ -76,14 +77,16 @@ class AppInitializer @Inject constructor(
     }
 
     private fun setupLibraryCleanup() {
-        val constraints = Constraints.Builder()
-            .setRequiresDeviceIdle(true) // Läuft nur, wenn Handy nicht genutzt wird
-            .setRequiresBatteryNotLow(true)
-            .build()
+        val constraints =
+            Constraints.Builder()
+                .setRequiresDeviceIdle(true) // Läuft nur, wenn Handy nicht genutzt wird
+                .setRequiresBatteryNotLow(true)
+                .build()
 
-        val cleanupRequest = PeriodicWorkRequestBuilder<LibraryCleanupWorker>(24, TimeUnit.HOURS)
-            .setConstraints(constraints)
-            .build()
+        val cleanupRequest =
+            PeriodicWorkRequestBuilder<LibraryCleanupWorker>(24, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .build()
 
         workManager.enqueueUniquePeriodicWork(
             LibraryCleanupWorker.WORK_NAME,
@@ -94,19 +97,22 @@ class AppInitializer @Inject constructor(
     }
 
     private fun setupBackgroundSync(intervalHours: Int) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .setRequiresBatteryNotLow(true)
-            .build()
+        val constraints =
+            Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
+                .build()
 
-        val safeHours = intervalHours
-            .coerceAtLeast(Constants.MIN_BACKGROUND_SYNC_INTERVAL_HOURS)
-            .toLong()
+        val safeHours =
+            intervalHours
+                .coerceAtLeast(Constants.MIN_BACKGROUND_SYNC_INTERVAL_HOURS)
+                .toLong()
 
-        val updateRequest = PeriodicWorkRequestBuilder<FeedUpdateWorker>(safeHours, TimeUnit.HOURS)
-            .setConstraints(constraints)
-            .addTag(Constants.FEED_UPDATE_WORK_TAG)
-            .build()
+        val updateRequest =
+            PeriodicWorkRequestBuilder<FeedUpdateWorker>(safeHours, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .addTag(Constants.FEED_UPDATE_WORK_TAG)
+                .build()
 
         workManager.enqueueUniquePeriodicWork(
             Constants.FEED_UPDATE_WORK_NAME,

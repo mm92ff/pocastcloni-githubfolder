@@ -47,15 +47,17 @@ fun MiniPlayer(
     progressBarHeight: Dp,
     modifier: Modifier = Modifier,
     onCoverClick: () -> Unit,
-    onExpand: () -> Unit,
+    onExpand: () -> Unit
 ) {
     Card(
-        modifier = modifier
+        modifier =
+        modifier
             .fillMaxWidth()
             .padding(Dimens.PaddingVerySmall)
             .clickable(onClick = onExpand),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimens.MiniPlayerElevation),
-        colors = CardDefaults.cardColors(
+        colors =
+        CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
@@ -94,10 +96,11 @@ private fun MiniPlayerProgressBar(
     val playbackStateState = playbackStateFlow.collectAsStateWithLifecycle()
 
     // 2. Interpolation Hook nutzen (60 FPS Smoothness)
-    val smoothState = rememberSmoothedProgressState(
-        playbackStateFlow = playbackStateFlow,
-        isPlaying = isPlaying
-    )
+    val smoothState =
+        rememberSmoothedProgressState(
+            playbackStateFlow = playbackStateFlow,
+            isPlaying = isPlaying
+        )
 
     // 3. Provider Lambdas für Phase-Awareness erstellen
     val currentPositionProvider = remember(smoothState) { { smoothState.currentPosition.value } }
@@ -105,12 +108,13 @@ private fun MiniPlayerProgressBar(
     val durationProvider = remember(playbackStateState) { { playbackStateState.value.durationMs } }
 
     // 4. Seek Wrapper für sofortiges Feedback
-    val onSeekWrapped: (Long) -> Unit = remember(onSeek, smoothState) {
-        { newPos ->
-            smoothState.jumpTo(newPos)
-            onSeek(newPos)
+    val onSeekWrapped: (Long) -> Unit =
+        remember(onSeek, smoothState) {
+            { newPos ->
+                smoothState.jumpTo(newPos)
+                onSeek(newPos)
+            }
         }
-    }
 
     // Nur zeichnen, wenn Duration bekannt ist, sonst flackert es beim Laden
     // Wir prüfen hier den State Value direkt im if, das ist okay.
@@ -136,7 +140,8 @@ private fun MiniPlayerContent(
     onCoverClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
             .padding(Dimens.PaddingVerySmall),
         verticalAlignment = Alignment.CenterVertically
@@ -145,7 +150,8 @@ private fun MiniPlayerContent(
         AsyncImage(
             model = playerState.coverUrl.ifBlank { android.R.drawable.ic_menu_gallery },
             contentDescription = stringResource(R.string.desc_cover),
-            modifier = Modifier
+            modifier =
+            Modifier
                 .size(Dimens.MiniPlayerImageSize)
                 .clip(RoundedCornerShape(Dimens.RoundedCornerSmall))
                 .background(MaterialTheme.colorScheme.surfaceVariant)

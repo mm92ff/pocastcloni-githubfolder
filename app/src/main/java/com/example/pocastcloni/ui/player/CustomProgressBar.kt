@@ -45,7 +45,8 @@ fun CustomProgressBar(
     val bufferedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA)
 
     Canvas(
-        modifier = modifier
+        modifier =
+        modifier
             .fillMaxWidth()
             .height(height)
             .pointerInput(Unit) {

@@ -5,7 +5,9 @@ import com.example.pocastcloni.domain.repository.PodcastRepository
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-class RemovePodcastSubscriptionUseCase @Inject constructor(
+class RemovePodcastSubscriptionUseCase
+@Inject
+constructor(
     private val repository: PodcastRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {

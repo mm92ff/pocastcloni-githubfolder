@@ -22,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.theme.Dimens
@@ -48,38 +47,44 @@ fun FullPlayerMetadataFlexibleCover(
     // Dieser Wert kommt vom Parent (durch weight) und ist stabil,
     // egal wie groß der Text im Inneren tatsächlich wird.
     BoxWithConstraints(modifier = modifier) {
-
         // Berechnung des Skalierungsfaktors basierend auf dem verfügbaren Platz
-        val scale = remember(maxHeight) {
-            val availableHeightDp = maxHeight.value
-            // Wenn Höhe = 0 (Start), dann 1f, sonst Verhältnis zur Referenz
-            if (availableHeightDp <= 0f) 1f else {
-                (availableHeightDp / TOTAL_HEIGHT_REFERENCE_DP).coerceIn(TITLE_SCALE_MIN, 1f)
+        val scale =
+            remember(maxHeight) {
+                val availableHeightDp = maxHeight.value
+                // Wenn Höhe = 0 (Start), dann 1f, sonst Verhältnis zur Referenz
+                if (availableHeightDp <= 0f) {
+                    1f
+                } else {
+                    (availableHeightDp / TOTAL_HEIGHT_REFERENCE_DP).coerceIn(TITLE_SCALE_MIN, 1f)
+                }
             }
-        }
 
         val baseTitleStyle = MaterialTheme.typography.headlineSmall
-        val titleStyle = remember(scale, baseTitleStyle) {
-            baseTitleStyle.copy(
-                fontSize = baseTitleStyle.fontSize * scale,
-                lineHeight = baseTitleStyle.lineHeight * scale
-            )
-        }
+        val titleStyle =
+            remember(scale, baseTitleStyle) {
+                baseTitleStyle.copy(
+                    fontSize = baseTitleStyle.fontSize * scale,
+                    lineHeight = baseTitleStyle.lineHeight * scale
+                )
+            }
 
         Column(
             modifier = Modifier.fillMaxSize(), // Füllt die BoxWithConstraints aus
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .fillMaxWidth()
-                    .weight(1f), // Nimmt den restlichen Platz ein
+                    .weight(1f),
+                // Nimmt den restlichen Platz ein
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
                     model = playerState.coverUrl.ifBlank { android.R.drawable.ic_menu_gallery },
                     contentDescription = stringResource(R.string.desc_cover),
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         // onSizeChanged wurde entfernt, um den Layout-Loop zu verhindern
                         .aspectRatio(IMAGE_ASPECT_RATIO, matchHeightConstraintsFirst = true)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(Dimens.RoundedCornerLarge))

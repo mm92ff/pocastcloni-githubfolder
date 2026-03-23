@@ -44,7 +44,6 @@ import coil.request.ImageRequest
 import coil.size.Precision
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.Podcast
-import com.example.pocastcloni.ui.home.feed.DeleteIconOverlay
 import com.example.pocastcloni.ui.home.feed.IndicatorDot
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
@@ -59,7 +58,10 @@ data class PodcastIndicatorStyle(
 )
 
 @Composable
-private fun rememberPodcastImageRequest(url: String, size: Int): ImageRequest {
+private fun rememberPodcastImageRequest(
+    url: String,
+    size: Int
+): ImageRequest {
     val context = LocalContext.current
     return remember(url, context, size) {
         ImageRequest.Builder(context)
@@ -103,7 +105,7 @@ fun PodcastItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onDeleteClick: () -> Unit,
-    indicatorStyle: PodcastIndicatorStyle,
+    indicatorStyle: PodcastIndicatorStyle
 ) {
     val animatedPadding by animateDpAsState(
         targetValue = if (isSelected) Dimens.Zero else Dimens.PaddingTiny,
@@ -117,25 +119,29 @@ fun PodcastItem(
     val elevation = if (isSelected) Dimens.PaddingSix else Dimens.CardElevation
     val alpha = if (isEditMode && !isSelected) Constants.UI.EDIT_MODE_NON_SELECTED_ALPHA else 1f
 
-    val clickableModifier = if (onLongClick != null) {
-        Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
-    } else {
-        Modifier.clickable(onClick = onClick)
-    }
+    val clickableModifier =
+        if (onLongClick != null) {
+            Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+        } else {
+            Modifier.clickable(onClick = onClick)
+        }
 
     Box(
-        modifier = Modifier
+        modifier =
+        Modifier
             .background(MaterialTheme.colorScheme.background)
             .padding(vertical = animatedPadding / 2, horizontal = animatedPadding)
     ) {
         Card(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxWidth()
                 .alpha(alpha)
                 .then(clickableModifier),
             shape = RoundedCornerShape(Dimens.RoundedCornerLarge),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation),
-            colors = CardDefaults.cardColors(
+            colors =
+            CardDefaults.cardColors(
                 containerColor = containerColor,
                 contentColor = contentColor
             )
@@ -150,7 +156,8 @@ fun PodcastItem(
                 AsyncImage(
                     model = imageRequest,
                     contentDescription = stringResource(id = R.string.desc_cover),
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         .size(Dimens.PodcastItemImageSize)
                         .clip(RoundedCornerShape(Dimens.RoundedCornerMedium))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
@@ -201,7 +208,7 @@ fun PodcastGridItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
     onDeleteClick: () -> Unit,
-    indicatorStyle: PodcastIndicatorStyle,
+    indicatorStyle: PodcastIndicatorStyle
 ) {
     val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
     val borderWidth = if (isSelected) Dimens.BorderWidthSelected else Dimens.Zero
@@ -209,13 +216,15 @@ fun PodcastGridItem(
     val alpha = if (isEditMode && !isSelected) Constants.UI.EDIT_MODE_NON_SELECTED_ALPHA_GRID else 1f
 
     Column(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
             .alpha(alpha),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .graphicsLayer(scaleX = scale, scaleY = scale)
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
         ) {
@@ -229,7 +238,8 @@ fun PodcastGridItem(
                 AsyncImage(
                     model = imageRequest,
                     contentDescription = stringResource(id = R.string.desc_cover),
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         .aspectRatio(Constants.UI.ASPECT_RATIO_1F)
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentScale = ContentScale.Crop

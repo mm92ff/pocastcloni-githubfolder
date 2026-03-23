@@ -2,9 +2,7 @@ package com.example.pocastcloni.ui.home.detail
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -95,7 +93,8 @@ fun PodcastDetailScreen(
 
             state.error != null -> {
                 Box(
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
                         .padding(Dimens.PaddingLarge),
@@ -113,18 +112,20 @@ fun PodcastDetailScreen(
                 val playerState = state.playerState
                 val settings = state.appSettings
 
-                val bottomPadding = if (playerState.isPlayerVisible) {
-                    Dimens.MiniPlayerImageSize + (Dimens.PaddingMedium * 2) + settings.progressBarHeight.dp
-                } else {
-                    Dimens.Zero
-                }
+                val bottomPadding =
+                    if (playerState.isPlayerVisible) {
+                        Dimens.MiniPlayerImageSize + (Dimens.PaddingMedium * 2) + settings.progressBarHeight.dp
+                    } else {
+                        Dimens.Zero
+                    }
 
                 // Patch 3: Werte einmal ziehen (statt in jedem Item mehrfach)
                 val playingGuid = playerState.currentPlayingGuid
                 val isPlayerPlaying = playerState.isPlayerPlaying
 
                 LazyColumn(
-                    modifier = Modifier
+                    modifier =
+                    Modifier
                         .fillMaxSize()
                         .padding(innerPadding),
                     contentPadding = PaddingValues(bottom = bottomPadding),
@@ -146,23 +147,28 @@ fun PodcastDetailScreen(
                         val guid = episode.guid
 
                         // Patch 3: stabile Callbacks (verhindert Recompose nur wegen neuer Lambda-Instanzen)
-                        val onPlayClick = remember(guid) {
-                            { viewModel.onAction(PodcastDetailAction.PlayEpisode(guid)) }
-                        }
-                        val onDownloadClick = remember(guid) {
-                            { viewModel.onAction(PodcastDetailAction.ToggleDownload(guid)) }
-                        }
-                        val onTogglePlayed = remember(guid) {
-                            { viewModel.onAction(PodcastDetailAction.TogglePlayedStatus(guid)) }
-                        }
-                        val onToggleFavorite = remember(guid) {
-                            { viewModel.onAction(PodcastDetailAction.ToggleFavorite(guid)) }
-                        }
+                        val onPlayClick =
+                            remember(guid) {
+                                { viewModel.onAction(PodcastDetailAction.PlayEpisode(guid)) }
+                            }
+                        val onDownloadClick =
+                            remember(guid) {
+                                { viewModel.onAction(PodcastDetailAction.ToggleDownload(guid)) }
+                            }
+                        val onTogglePlayed =
+                            remember(guid) {
+                                { viewModel.onAction(PodcastDetailAction.TogglePlayedStatus(guid)) }
+                            }
+                        val onToggleFavorite =
+                            remember(guid) {
+                                { viewModel.onAction(PodcastDetailAction.ToggleFavorite(guid)) }
+                            }
 
                         // Patch 3: isPlaying wird pro Item nur neu berechnet, wenn sich Player-Status ändert
-                        val isPlaying = remember(guid, playingGuid, isPlayerPlaying) {
-                            guid == playingGuid && isPlayerPlaying
-                        }
+                        val isPlaying =
+                            remember(guid, playingGuid, isPlayerPlaying) {
+                                guid == playingGuid && isPlayerPlaying
+                            }
 
                         EpisodeListItem(
                             episode = episode,

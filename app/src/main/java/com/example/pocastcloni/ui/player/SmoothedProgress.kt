@@ -97,19 +97,20 @@ fun rememberSmoothedProgressState(
     }
 
     // 3) Jump-Funktion für sofortiges UI-Feedback beim User-Seek
-    val jumpTo: (Long) -> Unit = remember {
-        { newPos ->
-            val dur = latestDurationMs.longValue
-            val clamped = if (dur > 0L) newPos.coerceIn(0L, dur) else newPos.coerceAtLeast(0L)
+    val jumpTo: (Long) -> Unit =
+        remember {
+            { newPos ->
+                val dur = latestDurationMs.longValue
+                val clamped = if (dur > 0L) newPos.coerceIn(0L, dur) else newPos.coerceAtLeast(0L)
 
-            // Basis sofort setzen
-            basePositionMs.longValue = clamped
-            smoothedMs.longValue = clamped
+                // Basis sofort setzen
+                basePositionMs.longValue = clamped
+                smoothedMs.longValue = clamped
 
-            // Timebase im nächsten Frame setzen (passend zur withFrameNanos Zeitbasis)
-            needsTimebaseReset.value = true
+                // Timebase im nächsten Frame setzen (passend zur withFrameNanos Zeitbasis)
+                needsTimebaseReset.value = true
+            }
         }
-    }
 
     return remember(smoothedMs, jumpTo) {
         SmoothedProgressState(

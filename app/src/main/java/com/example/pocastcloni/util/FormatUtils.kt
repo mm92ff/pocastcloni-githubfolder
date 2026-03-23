@@ -6,7 +6,10 @@ import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
 
-fun formatBytes(context: Context, bytes: Long): String {
+fun formatBytes(
+    context: Context,
+    bytes: Long
+): String {
     if (bytes <= 0) return Constants.Format.ZERO_BYTES
 
     // OPTIMIZATION: In a RecyclerView, calling getStringArray every time is expensive.

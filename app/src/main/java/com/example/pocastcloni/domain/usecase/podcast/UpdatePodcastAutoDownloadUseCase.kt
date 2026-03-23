@@ -6,11 +6,16 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 
-class UpdatePodcastAutoDownloadUseCase @Inject constructor(
+class UpdatePodcastAutoDownloadUseCase
+@Inject
+constructor(
     private val repository: PodcastRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {
-    suspend operator fun invoke(podcastUrl: String, enabled: Boolean) {
+    suspend operator fun invoke(
+        podcastUrl: String,
+        enabled: Boolean
+    ) {
         withContext(dispatcherProvider.io) {
             val podcast = repository.getPodcast(podcastUrl)
             if (podcast == null) {

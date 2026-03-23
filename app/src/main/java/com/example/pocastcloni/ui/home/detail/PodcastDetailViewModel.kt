@@ -12,10 +12,10 @@ import com.example.pocastcloni.domain.usecase.episode.DownloadEpisodeUseCase
 import com.example.pocastcloni.domain.usecase.episode.StartPlaybackUseCase
 import com.example.pocastcloni.domain.usecase.episode.ToggleEpisodePlayedStatusUseCase
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
+import com.example.pocastcloni.domain.usecase.podcast.UpdatePodcastAutoDownloadUseCase
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.player.AudioPlayerController
-import com.example.pocastcloni.domain.usecase.podcast.UpdatePodcastAutoDownloadUseCase
 import com.example.pocastcloni.ui.player.PlayerScreenEvent
 import com.example.pocastcloni.ui.settings.AppTheme
 import com.example.pocastcloni.ui.settings.ThemeUiModel
@@ -45,17 +45,26 @@ import javax.inject.Inject
 
 sealed class PodcastDetailAction {
     data class PlayEpisode(val guid: String) : PodcastDetailAction()
+
     data class ToggleDownload(val guid: String) : PodcastDetailAction()
+
     data class TogglePlayedStatus(val guid: String) : PodcastDetailAction()
+
     data class ToggleFavorite(val guid: String) : PodcastDetailAction()
+
     data class ToggleAutoDownload(val enabled: Boolean) : PodcastDetailAction()
+
     data object ShowPodcastDescription : PodcastDetailAction()
+
     data object DismissPodcastDescription : PodcastDetailAction()
+
     data object NavigateBack : PodcastDetailAction()
 }
 
 @HiltViewModel
-class PodcastDetailViewModel @Inject constructor(
+class PodcastDetailViewModel
+@Inject
+constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: PodcastRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
@@ -67,12 +76,12 @@ class PodcastDetailViewModel @Inject constructor(
     private val updatePodcastAutoDownloadUseCase: UpdatePodcastAutoDownloadUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
-
     // FIX: StandardCharsets Korrektur (kein doppeltes StandardCharsets mehr)
-    private val podcastUrl: String = URLDecoder.decode(
-        checkNotNull(savedStateHandle.get<String>(Screen.PODCAST_URL)),
-        StandardCharsets.UTF_8.name()
-    )
+    private val podcastUrl: String =
+        URLDecoder.decode(
+            checkNotNull(savedStateHandle.get<String>(Screen.PODCAST_URL)),
+            StandardCharsets.UTF_8.name()
+        )
 
     private val _userMessageChannel = Channel<UiText>()
     val userMessageFlow = _userMessageChannel.receiveAsFlow()
@@ -88,96 +97,101 @@ class PodcastDetailViewModel @Inject constructor(
         val error: UiText? = null
     )
 
-    private val podcastDetailsFlow = combine(
-        repository.getPodcastFlow(podcastUrl),
-        repository.getEpisodesFlow(podcastUrl),
-        downloader.downloadProgressFlow
-    ) { podcast, episodes, progressMap ->
-        if (podcast == null) {
-            PodcastDetails(error = UiText.StringResource(R.string.detail_not_found))
-        } else {
-            val podcastTitle = podcast.title.stripHtml()
-            val podcastImageUrl = podcast.imageUrl
+    private val podcastDetailsFlow =
+        combine(
+            repository.getPodcastFlow(podcastUrl),
+            repository.getEpisodesFlow(podcastUrl),
+            downloader.downloadProgressFlow
+        ) { podcast, episodes, progressMap ->
+            if (podcast == null) {
+                PodcastDetails(error = UiText.StringResource(R.string.detail_not_found))
+            } else {
+                val podcastTitle = podcast.title.stripHtml()
+                val podcastImageUrl = podcast.imageUrl
 
-            val newList = episodes.map { entity ->
-                val presentation = EpisodePresentation.from(entity)
-                // HINWEIS: Hier muss entity.toEpisodeUiModel den Parameter 'downloadProgress' akzeptieren.
-                // Stelle sicher, dass du PodcastDetailModels.kt bzw. den Mapper aktualisiert hast.
-                presentation.toEpisodeUiModel(
-                    podcastName = podcastTitle,
-                    podcastImageUrl = podcastImageUrl,
-                    downloadProgress = progressMap[entity.guid] ?: 0f
+                val newList =
+                    episodes.map { entity ->
+                        val presentation = EpisodePresentation.from(entity)
+                        // HINWEIS: Hier muss entity.toEpisodeUiModel den Parameter 'downloadProgress' akzeptieren.
+                        // Stelle sicher, dass du PodcastDetailModels.kt bzw. den Mapper aktualisiert hast.
+                        presentation.toEpisodeUiModel(
+                            podcastName = podcastTitle,
+                            podcastImageUrl = podcastImageUrl,
+                            downloadProgress = progressMap[entity.guid] ?: 0f
+                        )
+                    }.toImmutableList()
+
+                PodcastDetails(
+                    title = podcastTitle,
+                    description = podcast.description.stripHtml(),
+                    imageUrl = podcastImageUrl,
+                    autoDownloadEnabled = podcast.autoDownloadEnabled,
+                    episodes = newList,
+                    error = null
                 )
-            }.toImmutableList()
+            }
+        }.catch { throwable ->
+            Timber.e(throwable, "podcastDetailsFlow failed")
+            emit(PodcastDetails(error = UiText.StringResource(R.string.error_unknown)))
+        }.flowOn(dispatcherProvider.default)
 
-            PodcastDetails(
-                title = podcastTitle,
-                description = podcast.description.stripHtml(),
-                imageUrl = podcastImageUrl,
-                autoDownloadEnabled = podcast.autoDownloadEnabled,
-                episodes = newList,
-                error = null
+    private val settingsUiModelFlow =
+        userPreferencesRepository.userSettingsFlow
+            .map { settings ->
+                SettingsUiModel(
+                    theme =
+                    when (settings.theme) {
+                        AppTheme.LIGHT -> ThemeUiModel.LIGHT
+                        AppTheme.DARK -> ThemeUiModel.DARK
+                        else -> ThemeUiModel.SYSTEM
+                    },
+                    oneHandedMode = settings.oneHandedMode,
+                    navBarHeight = settings.navBarHeight,
+                    progressBarHeight = settings.progressBarHeight
+                )
+            }
+            .distinctUntilChanged()
+            .flowOn(dispatcherProvider.default)
+
+    private val playerStatusFlow =
+        playerController.playerState
+            .map { playerState ->
+                PlayerStatusUiState(
+                    currentPlayingGuid = playerState.currentEpisodeGuid ?: "",
+                    isPlayerPlaying = playerState.isPlaying,
+                    isPlayerVisible = !playerState.currentEpisodeGuid.isNullOrBlank()
+                )
+            }
+            .distinctUntilChanged()
+            .flowOn(dispatcherProvider.default)
+
+    val uiState: StateFlow<PodcastDetailUiState> =
+        combine(
+            podcastDetailsFlow,
+            settingsUiModelFlow,
+            playerStatusFlow,
+            _isPodcastDescriptionDialogVisible
+        ) { details, settingsUiModel, playerStatus, isDialogVisible ->
+            PodcastDetailUiState(
+                podcastTitle = details.title,
+                podcastDescription = details.description,
+                podcastImageUrl = details.imageUrl,
+                isAutoDownloadEnabled = details.autoDownloadEnabled,
+                episodes = details.episodes,
+                isLoading = false,
+                error = details.error,
+                isPodcastDescriptionDialogVisible = isDialogVisible,
+                playerState = playerStatus,
+                appSettings = settingsUiModel
             )
-        }
-    }.catch { throwable ->
-        Timber.e(throwable, "podcastDetailsFlow failed")
-        emit(PodcastDetails(error = UiText.StringResource(R.string.error_unknown)))
-    }.flowOn(dispatcherProvider.default)
-
-
-    private val settingsUiModelFlow = userPreferencesRepository.userSettingsFlow
-        .map { settings ->
-            SettingsUiModel(
-                theme = when (settings.theme) {
-                    AppTheme.LIGHT -> ThemeUiModel.LIGHT
-                    AppTheme.DARK -> ThemeUiModel.DARK
-                    else -> ThemeUiModel.SYSTEM
-                },
-                oneHandedMode = settings.oneHandedMode,
-                navBarHeight = settings.navBarHeight,
-                progressBarHeight = settings.progressBarHeight
-            )
-        }
-        .distinctUntilChanged()
-        .flowOn(dispatcherProvider.default)
-
-    private val playerStatusFlow = playerController.playerState
-        .map { playerState ->
-            PlayerStatusUiState(
-                currentPlayingGuid = playerState.currentEpisodeGuid ?: "",
-                isPlayerPlaying = playerState.isPlaying,
-                isPlayerVisible = !playerState.currentEpisodeGuid.isNullOrBlank()
-            )
-        }
-        .distinctUntilChanged()
-        .flowOn(dispatcherProvider.default)
-
-    val uiState: StateFlow<PodcastDetailUiState> = combine(
-        podcastDetailsFlow,
-        settingsUiModelFlow,
-        playerStatusFlow,
-        _isPodcastDescriptionDialogVisible
-    ) { details, settingsUiModel, playerStatus, isDialogVisible ->
-        PodcastDetailUiState(
-            podcastTitle = details.title,
-            podcastDescription = details.description,
-            podcastImageUrl = details.imageUrl,
-            isAutoDownloadEnabled = details.autoDownloadEnabled,
-            episodes = details.episodes,
-            isLoading = false,
-            error = details.error,
-            isPodcastDescriptionDialogVisible = isDialogVisible,
-            playerState = playerStatus,
-            appSettings = settingsUiModel
+        }.catch { throwable ->
+            Timber.e(throwable, "Error creating UI state")
+            emit(PodcastDetailUiState(error = UiText.StringResource(R.string.error_unknown)))
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
+            initialValue = PodcastDetailUiState(isLoading = true)
         )
-    }.catch { throwable ->
-        Timber.e(throwable, "Error creating UI state")
-        emit(PodcastDetailUiState(error = UiText.StringResource(R.string.error_unknown)))
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
-        initialValue = PodcastDetailUiState(isLoading = true)
-    )
 
     fun onAction(action: PodcastDetailAction) {
         when (action) {

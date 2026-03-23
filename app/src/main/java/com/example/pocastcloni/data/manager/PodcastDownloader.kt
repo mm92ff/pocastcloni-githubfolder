@@ -5,9 +5,9 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.example.pocastcloni.data.worker.DownloadWorker
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
+import com.example.pocastcloni.data.worker.DownloadWorker
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,7 +21,9 @@ import javax.inject.Singleton
  * Encapsulates Android-specific WorkManager logic.
  */
 @Singleton
-class PodcastDownloader @Inject constructor(
+class PodcastDownloader
+@Inject
+constructor(
     @ApplicationContext context: Context,
     private val podcastRepositoryProvider: Provider<PodcastRepository>
 ) {
@@ -29,7 +31,8 @@ class PodcastDownloader @Inject constructor(
 
     suspend fun toggleDownload(episode: EpisodeEntity) {
         if (episode.downloadStatus == DownloadStatus.DOWNLOADED ||
-            episode.downloadStatus == DownloadStatus.DOWNLOADING) {
+            episode.downloadStatus == DownloadStatus.DOWNLOADING
+        ) {
             deleteDownload(episode)
         } else {
             startDownload(episode)
@@ -39,15 +42,16 @@ class PodcastDownloader @Inject constructor(
     private fun startDownload(episode: EpisodeEntity) {
         val fileName = "${episode.guid.hashCode()}${Constants.DOWNLOAD_FILE_EXTENSION}"
 
-        val request = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setInputData(
-                workDataOf(
-                    Constants.DOWNLOAD_WORKER_GUID to episode.guid,
-                    Constants.DOWNLOAD_WORKER_URL to episode.enclosureUrl,
-                    Constants.DOWNLOAD_WORKER_FILENAME to fileName
+        val request =
+            OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setInputData(
+                    workDataOf(
+                        Constants.DOWNLOAD_WORKER_GUID to episode.guid,
+                        Constants.DOWNLOAD_WORKER_URL to episode.enclosureUrl,
+                        Constants.DOWNLOAD_WORKER_FILENAME to fileName
+                    )
                 )
-            )
-            .build()
+                .build()
 
         workManager.enqueueUniqueWork(
             "${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${episode.guid}",

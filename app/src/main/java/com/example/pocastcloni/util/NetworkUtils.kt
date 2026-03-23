@@ -21,34 +21,46 @@ interface ConnectivityProvider {
 }
 
 @Singleton
-class NetworkConnectivityProvider @Inject constructor(
+class NetworkConnectivityProvider
+@Inject
+constructor(
     @ApplicationContext private val context: Context,
     // FIX: Inject the central Application Scope instead of creating a new one
     @ApplicationScope private val externalScope: CoroutineScope
 ) : ConnectivityProvider {
-
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    override val wifiStatus: StateFlow<Boolean> = callbackFlow {
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) { trySend(isWifiConnected()) }
-            override fun onLost(network: Network) { trySend(false) }
-            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                trySend(caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
-            }
-        }
+    override val wifiStatus: StateFlow<Boolean> =
+        callbackFlow {
+            val callback =
+                object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        trySend(isWifiConnected())
+                    }
 
-        trySend(isWifiConnected())
-        connectivityManager.registerDefaultNetworkCallback(callback)
-        awaitClose { connectivityManager.unregisterNetworkCallback(callback) }
-    }
-        .distinctUntilChanged()
-        .stateIn(
-            scope = externalScope, // Use injected scope
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = isWifiConnected()
-        )
+                    override fun onLost(network: Network) {
+                        trySend(false)
+                    }
+
+                    override fun onCapabilitiesChanged(
+                        network: Network,
+                        caps: NetworkCapabilities
+                    ) {
+                        trySend(caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+                    }
+                }
+
+            trySend(isWifiConnected())
+            connectivityManager.registerDefaultNetworkCallback(callback)
+            awaitClose { connectivityManager.unregisterNetworkCallback(callback) }
+        }
+            .distinctUntilChanged()
+            .stateIn(
+                scope = externalScope, // Use injected scope
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = isWifiConnected()
+            )
 
     private fun isWifiConnected(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false

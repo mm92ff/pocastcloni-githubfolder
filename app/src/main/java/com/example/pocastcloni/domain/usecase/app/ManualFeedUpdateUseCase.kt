@@ -8,7 +8,9 @@ import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-class ManualFeedUpdateUseCase @Inject constructor(
+class ManualFeedUpdateUseCase
+@Inject
+constructor(
     private val repository: PodcastRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {

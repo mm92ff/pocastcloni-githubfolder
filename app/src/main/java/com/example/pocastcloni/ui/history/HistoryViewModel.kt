@@ -2,7 +2,6 @@ package com.example.pocastcloni.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.pocastcloni.domain.model.EpisodeWithPodcastInfo
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.episode.GetPlaybackHistoryWithPodcastInfoUseCase
 import com.example.pocastcloni.domain.usecase.history.ClearHistoryUseCase
@@ -21,51 +20,55 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class HistoryViewModel @Inject constructor(
+class HistoryViewModel
+@Inject
+constructor(
     getPlaybackHistoryWithPodcastInfoUseCase: GetPlaybackHistoryWithPodcastInfoUseCase,
     private val audioPlayerController: AudioPlayerController,
     private val clearHistoryUseCase: ClearHistoryUseCase,
     userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
-
     private val _showConfirmClearDialog = MutableStateFlow(false)
 
-    private val historyItemsFlow = getPlaybackHistoryWithPodcastInfoUseCase()
-        .map { list ->
-            list.map { info ->
-                HistoryUiItem(
-                    id = info.episode.guid,
-                    episode = EpisodeDisplayModel.from(info.episode, info.podcast),
-                    podcast = info.podcast
-                )
-            }.sortedByDescending { it.episode.datePlayedMs ?: 0L }
-        }
-        .distinctUntilChanged()
+    private val historyItemsFlow =
+        getPlaybackHistoryWithPodcastInfoUseCase()
+            .map { list ->
+                list.map { info ->
+                    HistoryUiItem(
+                        id = info.episode.guid,
+                        episode = EpisodeDisplayModel.from(info.episode, info.podcast),
+                        podcast = info.podcast
+                    )
+                }.sortedByDescending { it.episode.datePlayedMs ?: 0L }
+            }
+            .distinctUntilChanged()
 
-    private val isPlayerVisibleFlow = audioPlayerController.playerState
-        .map { !it.currentEpisodeGuid.isNullOrBlank() }
-        .distinctUntilChanged()
+    private val isPlayerVisibleFlow =
+        audioPlayerController.playerState
+            .map { !it.currentEpisodeGuid.isNullOrBlank() }
+            .distinctUntilChanged()
 
-    val uiState = combine(
-        historyItemsFlow,
-        userPreferencesRepository.userSettingsFlow,
-        isPlayerVisibleFlow,
-        _showConfirmClearDialog
-    ) { historyItems, settings, isPlayerVisible, showConfirmClearDialog ->
-        HistoryUiState(
-            isLoading = false,
-            historyItems = historyItems.toImmutableList(),
-            oneHandedMode = settings.oneHandedMode,
-            isPlayerVisible = isPlayerVisible,
-            navBarHeight = settings.navBarHeight,
-            progressBarHeight = settings.progressBarHeight,
-            showConfirmClearDialog = showConfirmClearDialog
+    val uiState =
+        combine(
+            historyItemsFlow,
+            userPreferencesRepository.userSettingsFlow,
+            isPlayerVisibleFlow,
+            _showConfirmClearDialog
+        ) { historyItems, settings, isPlayerVisible, showConfirmClearDialog ->
+            HistoryUiState(
+                isLoading = false,
+                historyItems = historyItems.toImmutableList(),
+                oneHandedMode = settings.oneHandedMode,
+                isPlayerVisible = isPlayerVisible,
+                navBarHeight = settings.navBarHeight,
+                progressBarHeight = settings.progressBarHeight,
+                showConfirmClearDialog = showConfirmClearDialog
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
+            initialValue = HistoryUiState()
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
-        initialValue = HistoryUiState()
-    )
 
     fun onAction(action: HistoryAction) {
         when (action) {

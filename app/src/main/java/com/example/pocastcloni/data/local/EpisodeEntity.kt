@@ -32,12 +32,10 @@ data class EpisodeEntity(
     val description: String,
     val pubDate: Date?,
     val link: String,
-
     // RSS enclosure (Audio-Datei)
     val enclosureUrl: String,
     val type: String = "audio/mpeg",
     val fileSize: Long = 0,
-
     // Status Felder
     val isPlayed: Boolean = false,
     val playbackPositionMs: Long = 0,
@@ -46,6 +44,5 @@ data class EpisodeEntity(
     val isFavorite: Boolean = false,
     val datePlayed: Date? = null,
     val favoriteTimestamp: Long? = null,
-
     val duration: Long = 0
 )

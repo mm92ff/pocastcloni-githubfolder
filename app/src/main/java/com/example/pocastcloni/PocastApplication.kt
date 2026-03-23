@@ -6,11 +6,9 @@ import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import javax.inject.Inject
-import com.example.pocastcloni.BuildConfig
 
 @HiltAndroidApp
 class PocastApplication : Application(), Configuration.Provider {
-
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
@@ -26,7 +24,8 @@ class PocastApplication : Application(), Configuration.Provider {
     }
 
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
-            .build()
+        get() =
+            Configuration.Builder()
+                .setWorkerFactory(workerFactory)
+                .build()
 }

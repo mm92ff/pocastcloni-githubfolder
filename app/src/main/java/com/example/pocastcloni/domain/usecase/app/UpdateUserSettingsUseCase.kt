@@ -7,7 +7,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-class UpdateUserSettingsUseCase @Inject constructor(
+class UpdateUserSettingsUseCase
+@Inject
+constructor(
     private val repository: UserPreferencesRepository,
     private val updateBackgroundWorker: UpdateBackgroundWorkerUseCase,
     private val dispatcherProvider: DispatcherProvider

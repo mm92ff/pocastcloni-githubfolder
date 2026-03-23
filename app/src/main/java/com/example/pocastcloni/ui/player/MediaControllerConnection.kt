@@ -18,10 +18,11 @@ import javax.inject.Singleton
  * Hides ListenableFuture complexity and connection retries.
  */
 @Singleton
-class MediaControllerConnection @Inject constructor(
+class MediaControllerConnection
+@Inject
+constructor(
     @ApplicationContext private val context: Context
 ) {
-
     private companion object {
         private const val RETRY_DELAY_MS = 500L
         private const val MAX_RETRIES = 20
@@ -44,10 +45,11 @@ class MediaControllerConnection @Inject constructor(
             }
         }
 
-        val sessionToken = SessionToken(
-            context,
-            ComponentName(context, PodcastPlaybackService::class.java)
-        )
+        val sessionToken =
+            SessionToken(
+                context,
+                ComponentName(context, PodcastPlaybackService::class.java)
+            )
 
         var attempt = 0
         while (attempt < MAX_RETRIES) {

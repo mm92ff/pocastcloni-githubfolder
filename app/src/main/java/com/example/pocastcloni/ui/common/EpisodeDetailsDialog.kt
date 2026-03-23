@@ -33,13 +33,15 @@ fun EpisodeDetailsDialog(
 ) {
     // PERFORMANCE FIX: HTML Parsing cachen
     // Wird nur neu berechnet, wenn sich episodeDescription ändert.
-    val formattedDescription = remember(episodeDescription) {
-        episodeDescription.parseHtml().toString()
-    }
+    val formattedDescription =
+        remember(episodeDescription) {
+            episodeDescription.parseHtml().toString()
+        }
 
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxWidth()
                 .heightIn(max = Dimens.DialogMaxHeight)
         ) {
@@ -62,7 +64,8 @@ fun EpisodeDetailsDialog(
                     Text(
                         text = formattedDescription, // FIX: Nutzung des gecachten Wertes
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
+                        modifier =
+                        Modifier
                             .verticalScroll(scrollState)
                     )
                 }

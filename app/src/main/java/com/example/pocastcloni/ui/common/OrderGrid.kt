@@ -24,7 +24,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
@@ -65,44 +64,49 @@ fun <T> ReorderableLazyVerticalGrid(
     LazyVerticalGrid(
         state = state,
         columns = columns,
-        modifier = modifier.pointerInput(reverseLayout) {
+        modifier =
+        modifier.pointerInput(reverseLayout) {
             detectDragGesturesAfterLongPress(
                 onDragStart = { offset ->
                     val layoutInfo = state.layoutInfo
                     val viewportHeight = layoutInfo.viewportSize.height
 
                     // Hit-Test: welche Kachel wurde "gegriffen"?
-                    val hitItem = layoutInfo.visibleItemsInfo.firstOrNull { item ->
-                        val left = item.offset.x
-                        val right = left + item.size.width
+                    val hitItem =
+                        layoutInfo.visibleItemsInfo.firstOrNull { item ->
+                            val left = item.offset.x
+                            val right = left + item.size.width
 
-                        val top = if (reverseLayout) {
-                            viewportHeight -
-                                    item.offset.y -
-                                    item.size.height -
-                                    layoutInfo.beforeContentPadding
-                        } else {
-                            item.offset.y
-                        }
-                        val bottom = top + item.size.height
+                            val top =
+                                if (reverseLayout) {
+                                    viewportHeight -
+                                        item.offset.y -
+                                        item.size.height -
+                                        layoutInfo.beforeContentPadding
+                                } else {
+                                    item.offset.y
+                                }
+                            val bottom = top + item.size.height
 
-                        val x = offset.x.toInt()
-                        val y = offset.y.toInt()
-                        (x in left until right) && (y in top until bottom)
-                    } ?: return@detectDragGesturesAfterLongPress
+                            val x = offset.x.toInt()
+                            val y = offset.y.toInt()
+                            (x in left until right) && (y in top until bottom)
+                        } ?: return@detectDragGesturesAfterLongPress
 
                     val initialX = hitItem.offset.x.toFloat()
-                    val initialY = run {
-                        val top = if (reverseLayout) {
-                            viewportHeight -
-                                    hitItem.offset.y -
-                                    hitItem.size.height -
-                                    layoutInfo.beforeContentPadding
-                        } else {
-                            hitItem.offset.y
+                    val initialY =
+                        run {
+                            val top =
+                                if (reverseLayout) {
+                                    viewportHeight -
+                                        hitItem.offset.y -
+                                        hitItem.size.height -
+                                        layoutInfo.beforeContentPadding
+                                } else {
+                                    hitItem.offset.y
+                                }
+                            top.toFloat()
                         }
-                        top.toFloat()
-                    }
 
                     dragDropState.startDrag(
                         index = hitItem.index,
@@ -125,8 +129,9 @@ fun <T> ReorderableLazyVerticalGrid(
                     val viewportHeight = layoutInfo.viewportSize.height
 
                     val draggedIndex = dragDropState.draggedIndexRaw()
-                    val draggedInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.index == draggedIndex }
-                        ?: return@detectDragGesturesAfterLongPress
+                    val draggedInfo =
+                        layoutInfo.visibleItemsInfo.firstOrNull { it.index == draggedIndex }
+                            ?: return@detectDragGesturesAfterLongPress
 
                     val itemW = draggedInfo.size.width.toFloat()
                     val itemH = draggedInfo.size.height.toFloat()
@@ -146,29 +151,31 @@ fun <T> ReorderableLazyVerticalGrid(
                         val maxSpeed = 28f
                         val minSpeed = 6f
 
-                        val scrollAmount: Float? = when {
-                            centerY < topZone -> {
-                                val ratio = ((topZone - centerY) / (viewportLen * 0.15f)).coerceIn(0f, 1f)
-                                val speed = minSpeed + (maxSpeed - minSpeed) * ratio
-                                if (reverseLayout) speed else -speed
-                            }
+                        val scrollAmount: Float? =
+                            when {
+                                centerY < topZone -> {
+                                    val ratio = ((topZone - centerY) / (viewportLen * 0.15f)).coerceIn(0f, 1f)
+                                    val speed = minSpeed + (maxSpeed - minSpeed) * ratio
+                                    if (reverseLayout) speed else -speed
+                                }
 
-                            centerY > bottomZone -> {
-                                val ratio = ((centerY - bottomZone) / (viewportLen * 0.15f)).coerceIn(0f, 1f)
-                                val speed = minSpeed + (maxSpeed - minSpeed) * ratio
-                                if (reverseLayout) -speed else speed
-                            }
+                                centerY > bottomZone -> {
+                                    val ratio = ((centerY - bottomZone) / (viewportLen * 0.15f)).coerceIn(0f, 1f)
+                                    val speed = minSpeed + (maxSpeed - minSpeed) * ratio
+                                    if (reverseLayout) -speed else speed
+                                }
 
-                            else -> null
-                        }
+                                else -> null
+                            }
 
                         if (scrollAmount != null && scrollJob == null) {
-                            scrollJob = scope.launch {
-                                while (dragDropState.hasActiveDrag()) {
-                                    state.scrollBy(scrollAmount)
-                                    delay(16)
+                            scrollJob =
+                                scope.launch {
+                                    while (dragDropState.hasActiveDrag()) {
+                                        state.scrollBy(scrollAmount)
+                                        delay(16)
+                                    }
                                 }
-                            }
                         } else if (scrollAmount == null) {
                             scrollJob?.cancel()
                             scrollJob = null
@@ -176,26 +183,28 @@ fun <T> ReorderableLazyVerticalGrid(
                     }
 
                     // Swap-Target im Grid finden (X + Y)
-                    val targetItem = layoutInfo.visibleItemsInfo.firstOrNull { item ->
-                        if (item.index == draggedIndex) return@firstOrNull false
+                    val targetItem =
+                        layoutInfo.visibleItemsInfo.firstOrNull { item ->
+                            if (item.index == draggedIndex) return@firstOrNull false
 
-                        val left = item.offset.x
-                        val right = left + item.size.width
+                            val left = item.offset.x
+                            val right = left + item.size.width
 
-                        val top = if (reverseLayout) {
-                            viewportHeight -
-                                    item.offset.y -
-                                    item.size.height -
-                                    layoutInfo.beforeContentPadding
-                        } else {
-                            item.offset.y
+                            val top =
+                                if (reverseLayout) {
+                                    viewportHeight -
+                                        item.offset.y -
+                                        item.size.height -
+                                        layoutInfo.beforeContentPadding
+                                } else {
+                                    item.offset.y
+                                }
+                            val bottom = top + item.size.height
+
+                            val cx = centerX.toInt()
+                            val cy = centerY.toInt()
+                            (cx in left until right) && (cy in top until bottom)
                         }
-                        val bottom = top + item.size.height
-
-                        val cx = centerX.toInt()
-                        val cy = centerY.toInt()
-                        (cx in left until right) && (cy in top until bottom)
-                    }
 
                     if (targetItem != null) {
                         val newIndex = targetItem.index
@@ -234,7 +243,8 @@ fun <T> ReorderableLazyVerticalGrid(
             )
 
             Box(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .zIndex(if (isDragging) 1f else 0f)
                     .graphicsLayer {
                         if (isDragging) {
@@ -244,14 +254,17 @@ fun <T> ReorderableLazyVerticalGrid(
 
                             if (itemInfo != null) {
                                 val layoutX = itemInfo.offset.x.toFloat()
-                                val layoutY = if (reverseLayout) {
-                                    (viewportHeight -
-                                            itemInfo.offset.y -
-                                            itemInfo.size.height -
-                                            layoutInfo.beforeContentPadding).toFloat()
-                                } else {
-                                    itemInfo.offset.y.toFloat()
-                                }
+                                val layoutY =
+                                    if (reverseLayout) {
+                                        (
+                                            viewportHeight -
+                                                itemInfo.offset.y -
+                                                itemInfo.size.height -
+                                                layoutInfo.beforeContentPadding
+                                            ).toFloat()
+                                    } else {
+                                        itemInfo.offset.y.toFloat()
+                                    }
 
                                 translationX = dragDropState.draggedItemVisualX - layoutX
                                 translationY = dragDropState.draggedItemVisualY - layoutY
@@ -290,11 +303,18 @@ private class GridDragDropState {
     private var isDraggingRaw: Boolean = false
 
     fun hasActiveDrag(): Boolean = isDraggingRaw
+
     fun draggedIndexRaw(): Int = draggedItemIndexRaw
+
     fun draggedVisualXRaw(): Float = draggedItemVisualXRaw
+
     fun draggedVisualYRaw(): Float = draggedItemVisualYRaw
 
-    fun startDrag(index: Int, initialVisualX: Float, initialVisualY: Float) {
+    fun startDrag(
+        index: Int,
+        initialVisualX: Float,
+        initialVisualY: Float
+    ) {
         draggedItemIndexRaw = index
         draggedItemVisualXRaw = initialVisualX
         draggedItemVisualYRaw = initialVisualY
@@ -305,7 +325,10 @@ private class GridDragDropState {
         draggedItemVisualY = initialVisualY
     }
 
-    fun dragBy(deltaX: Float, deltaY: Float) {
+    fun dragBy(
+        deltaX: Float,
+        deltaY: Float
+    ) {
         draggedItemVisualXRaw += deltaX
         draggedItemVisualYRaw += deltaY
 

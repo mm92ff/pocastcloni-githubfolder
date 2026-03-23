@@ -49,7 +49,8 @@ fun PodcastHeader(
     onShowPodcastDescription: () -> Unit
 ) {
     Column(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
             .padding(Dimens.PaddingMedium)
     ) {
@@ -60,7 +61,8 @@ fun PodcastHeader(
             AsyncImage(
                 model = imageUrl,
                 contentDescription = stringResource(R.string.desc_podcast_cover),
-                modifier = Modifier
+                modifier =
+                Modifier
                     .size(Dimens.PodcastImageSize)
                     .clip(MaterialTheme.shapes.medium)
                     .clickable(onClick = onShowPodcastDescription),
@@ -118,7 +120,8 @@ fun EpisodeListItem(
     val metadataColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
             .clickable(onClick = onPlayClick)
             .padding(Dimens.PaddingMedium)
@@ -210,7 +213,10 @@ private fun EpisodeActions(
 }
 
 @Composable
-private fun FavoriteActionButton(isFavorite: Boolean, onToggleFavorite: () -> Unit) {
+private fun FavoriteActionButton(
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit
+) {
     IconButton(onClick = onToggleFavorite, modifier = Modifier.size(Dimens.ActionButtonSize)) {
         Icon(
             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -222,7 +228,10 @@ private fun FavoriteActionButton(isFavorite: Boolean, onToggleFavorite: () -> Un
 }
 
 @Composable
-private fun PlayedActionButton(isPlayed: Boolean, onTogglePlayed: () -> Unit) {
+private fun PlayedActionButton(
+    isPlayed: Boolean,
+    onTogglePlayed: () -> Unit
+) {
     IconButton(onClick = onTogglePlayed, modifier = Modifier.size(Dimens.ActionButtonSize)) {
         Icon(
             imageVector = Icons.Default.Check,
@@ -290,7 +299,10 @@ private fun DownloadAction(
 }
 
 @Composable
-private fun PlayPauseActionButton(isPlaying: Boolean, onPlayClick: () -> Unit) {
+private fun PlayPauseActionButton(
+    isPlaying: Boolean,
+    onPlayClick: () -> Unit
+) {
     IconButton(onClick = onPlayClick, modifier = Modifier.size(Dimens.ActionButtonSize)) {
         Icon(
             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,

@@ -15,8 +15,8 @@ import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -31,7 +31,9 @@ data class PlayerBits(
 )
 
 @HiltViewModel
-class DownloadsViewModel @Inject constructor(
+class DownloadsViewModel
+@Inject
+constructor(
     playerController: AudioPlayerController,
     private val downloader: DownloadEpisodeUseCase,
     userPreferencesRepository: UserPreferencesRepository,
@@ -40,50 +42,52 @@ class DownloadsViewModel @Inject constructor(
     private val toggleFavoriteEpisodeUseCase: ToggleFavoriteEpisodeUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
-
     private val _episodeToDelete = MutableStateFlow<EpisodeUiModel?>(null)
 
-    private val downloadedEpisodesFlow = getDownloadedEpisodesWithPodcastInfo()
-        .map { episodes ->
-            episodes.map { episodeInfo ->
-                episodeInfo.toEpisodeUiModel(downloadProgress = 1.0f)
-            }.toImmutableList()
-        }
-        .distinctUntilChanged()
+    private val downloadedEpisodesFlow =
+        getDownloadedEpisodesWithPodcastInfo()
+            .map { episodes ->
+                episodes.map { episodeInfo ->
+                    episodeInfo.toEpisodeUiModel(downloadProgress = 1.0f)
+                }.toImmutableList()
+            }
+            .distinctUntilChanged()
 
-    private val playerBitsFlow = playerController.playerState
-        .map { ps ->
-            PlayerBits(
-                currentGuid = ps.currentEpisodeGuid,
-                isPlaying = ps.isPlaying,
-                isVisible = !ps.currentEpisodeGuid.isNullOrBlank()
+    private val playerBitsFlow =
+        playerController.playerState
+            .map { ps ->
+                PlayerBits(
+                    currentGuid = ps.currentEpisodeGuid,
+                    isPlaying = ps.isPlaying,
+                    isVisible = !ps.currentEpisodeGuid.isNullOrBlank()
+                )
+            }
+            .distinctUntilChanged()
+
+    val uiState: StateFlow<DownloadsUiState> =
+        combine(
+            downloadedEpisodesFlow,
+            userPreferencesRepository.userSettingsFlow,
+            playerBitsFlow,
+            _episodeToDelete
+        ) { downloadedEpisodes, settings, playerBits, episodeToDelete ->
+            DownloadsUiState(
+                isLoading = false,
+                episodes = downloadedEpisodes,
+                oneHandedMode = settings.oneHandedMode,
+                confirmDelete = settings.confirmDelete,
+                isPlayerPlaying = playerBits.isPlaying,
+                currentPlayingGuid = playerBits.currentGuid,
+                progressBarHeight = settings.progressBarHeight,
+                navBarHeight = settings.navBarHeight,
+                isPlayerVisible = playerBits.isVisible,
+                episodeToDelete = episodeToDelete
             )
-        }
-        .distinctUntilChanged()
-
-    val uiState: StateFlow<DownloadsUiState> = combine(
-        downloadedEpisodesFlow,
-        userPreferencesRepository.userSettingsFlow,
-        playerBitsFlow,
-        _episodeToDelete
-    ) { downloadedEpisodes, settings, playerBits, episodeToDelete ->
-        DownloadsUiState(
-            isLoading = false,
-            episodes = downloadedEpisodes,
-            oneHandedMode = settings.oneHandedMode,
-            confirmDelete = settings.confirmDelete,
-            isPlayerPlaying = playerBits.isPlaying,
-            currentPlayingGuid = playerBits.currentGuid,
-            progressBarHeight = settings.progressBarHeight,
-            navBarHeight = settings.navBarHeight,
-            isPlayerVisible = playerBits.isVisible,
-            episodeToDelete = episodeToDelete
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
+            initialValue = DownloadsUiState()
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
-        initialValue = DownloadsUiState()
-    )
 
     fun playEpisode(episode: EpisodeUiModel) {
         viewModelScope.launch {

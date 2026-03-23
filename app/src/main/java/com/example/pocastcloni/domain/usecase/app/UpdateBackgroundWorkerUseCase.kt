@@ -12,23 +12,30 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-class UpdateBackgroundWorkerUseCase @Inject constructor(
+class UpdateBackgroundWorkerUseCase
+@Inject
+constructor(
     @ApplicationContext private val context: Context
 ) {
-    operator fun invoke(enabled: Boolean, intervalHours: Int) {
+    operator fun invoke(
+        enabled: Boolean,
+        intervalHours: Int
+    ) {
         val workManager = WorkManager.getInstance(context)
         if (enabled) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
-                .build()
-            val request = PeriodicWorkRequestBuilder<FeedUpdateWorker>(
-                intervalHours.toLong(),
-                TimeUnit.HOURS
-            )
-                .setConstraints(constraints)
-                .addTag(Constants.FEED_UPDATE_WORK_TAG)
-                .build()
+            val constraints =
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresBatteryNotLow(true)
+                    .build()
+            val request =
+                PeriodicWorkRequestBuilder<FeedUpdateWorker>(
+                    intervalHours.toLong(),
+                    TimeUnit.HOURS
+                )
+                    .setConstraints(constraints)
+                    .addTag(Constants.FEED_UPDATE_WORK_TAG)
+                    .build()
             workManager.enqueueUniquePeriodicWork(
                 Constants.FEED_UPDATE_WORK_NAME,
                 ExistingPeriodicWorkPolicy.UPDATE,

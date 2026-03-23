@@ -20,19 +20,20 @@ data class EpisodePresentation(
     val downloadStatus: DownloadStatus
 ) {
     companion object {
-        fun from(entity: EpisodeEntity): EpisodePresentation = EpisodePresentation(
-            guid = entity.guid,
-            title = if (entity.title.isNotBlank()) entity.title else entity.link,
-            link = entity.link,
-            description = entity.description,
-            podcastRssUrl = entity.podcastRssUrl,
-            isFavorite = entity.isFavorite,
-            isPlayed = entity.isPlayed,
-            playbackPositionMs = entity.playbackPositionMs,
-            durationMs = entity.duration,
-            pubDateMs = entity.pubDate?.time,
-            datePlayedMs = entity.datePlayed?.time,
-            downloadStatus = entity.downloadStatus
-        )
+        fun from(entity: EpisodeEntity): EpisodePresentation =
+            EpisodePresentation(
+                guid = entity.guid,
+                title = if (entity.title.isNotBlank()) entity.title else entity.link,
+                link = entity.link,
+                description = entity.description,
+                podcastRssUrl = entity.podcastRssUrl,
+                isFavorite = entity.isFavorite,
+                isPlayed = entity.isPlayed,
+                playbackPositionMs = entity.playbackPositionMs,
+                durationMs = entity.duration,
+                pubDateMs = entity.pubDate?.time,
+                datePlayedMs = entity.datePlayed?.time,
+                downloadStatus = entity.downloadStatus
+            )
     }
 }
