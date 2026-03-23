@@ -144,7 +144,7 @@ class RssSmartSyncParser {
 
                         Constants.Parsing.ENCLOSURE -> {
                             val url = parser.getAttributeValue(null, Constants.Parsing.URL)
-                            val length = parser.getAttributeValue(null, Constants.Parsing.LENGTH)?.toLongOrNull()
+                            val length = parser.getAttributeValue(null, Constants.Parsing.LENGTH)?.toLongOrNull() ?: Constants.Parsing.DEFAULT_ENCLOSURE_LENGTH
                             val type = parser.getAttributeValue(null, Constants.Parsing.TYPE)
                             enclosure = RssEnclosure(url, type, length)
                         }
