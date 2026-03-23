@@ -6,6 +6,9 @@ import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.remote.PodcastService
 import com.example.pocastcloni.data.remote.RssItem
 import com.example.pocastcloni.data.remote.RssSmartSyncParser
+// TODO: ARCHITECTURE BOUNDARY VIOLATION - Domain layer importing data mapper functions
+// FIXME: Domain use cases should not depend on data layer implementation details.
+// This mapper function should be moved to domain or accessed via repository interface.
 // WICHTIG: Import für den neuen Mapper
 import com.example.pocastcloni.data.repository.toEpisodeEntity
 import com.example.pocastcloni.di.DispatcherProvider
@@ -23,7 +26,9 @@ import javax.inject.Provider
 import javax.inject.Singleton
 
 @Singleton
-class SyncFeedUseCase @Inject constructor(
+class SyncFeedUseCase
+@Inject
+constructor(
     private val podcastService: PodcastService,
     private val podcastRepositoryProvider: Provider<PodcastRepository>,
     private val downloadEpisodeUseCase: DownloadEpisodeUseCase,
@@ -59,7 +64,11 @@ class SyncFeedUseCase @Inject constructor(
         }
     }
 
-    private suspend fun syncSmart(url: String, existing: PodcastEntity?, downloadLimit: Int) {
+    private suspend fun syncSmart(
+        url: String,
+        existing: PodcastEntity?,
+        downloadLimit: Int
+    ) {
         val response = podcastService.fetchRawFeed(url, existing?.lastModifiedHeader, existing?.eTagHeader)
         if (response.code() == HttpURLConnection.HTTP_NOT_MODIFIED) {
             existing?.let {
@@ -73,13 +82,14 @@ class SyncFeedUseCase @Inject constructor(
         val stream = response.body()!!.byteStream()
         try {
             val latestKnownGuid = repo.getLatestEpisodeGuid(url)
-            val result = streamParser.parse(
-                stream,
-                url,
-                downloadLimit,
-                isFullSync = false,
-                latestKnownGuid = latestKnownGuid
-            )
+            val result =
+                streamParser.parse(
+                    stream,
+                    url,
+                    downloadLimit,
+                    isFullSync = false,
+                    latestKnownGuid = latestKnownGuid
+                )
             processParsedData(
                 url = url,
                 existing = existing,
@@ -154,24 +164,25 @@ class SyncFeedUseCase @Inject constructor(
             return
         }
 
-        val podcastEntity = existing?.copy(
-            title = title,
-            description = description?.stripHtml() ?: "",
-            imageUrl = imageUrl,
-            lastRefreshed = Date(),
-            lastModifiedHeader = lastModified,
-            eTagHeader = etag,
-            hasNewEpisodes = existing.hasNewEpisodes || newItems.isNotEmpty()
-        ) ?: PodcastEntity(
-            rssUrl = url,
-            title = title,
-            description = description?.stripHtml() ?: "",
-            imageUrl = imageUrl,
-            sortOrder = sortOrder ?: (repo.getMaxSortOrder() ?: 0) + 1,
-            lastModifiedHeader = lastModified,
-            eTagHeader = etag,
-            hasNewEpisodes = newItems.isNotEmpty()
-        )
+        val podcastEntity =
+            existing?.copy(
+                title = title,
+                description = description?.stripHtml() ?: "",
+                imageUrl = imageUrl,
+                lastRefreshed = Date(),
+                lastModifiedHeader = lastModified,
+                eTagHeader = etag,
+                hasNewEpisodes = existing.hasNewEpisodes || newItems.isNotEmpty()
+            ) ?: PodcastEntity(
+                rssUrl = url,
+                title = title,
+                description = description?.stripHtml() ?: "",
+                imageUrl = imageUrl,
+                sortOrder = sortOrder ?: (repo.getMaxSortOrder() ?: 0) + 1,
+                lastModifiedHeader = lastModified,
+                eTagHeader = etag,
+                hasNewEpisodes = newItems.isNotEmpty()
+            )
 
         if (existing == null) {
             repo.insertPodcastEntity(podcastEntity)
@@ -182,28 +193,29 @@ class SyncFeedUseCase @Inject constructor(
         if (newItems.isNotEmpty()) {
             val existingEpisodes = repo.getEpisodesForSync(url).associateBy { it.guid }
 
-            val episodesToInsert = newItems.mapNotNull { item ->
-                // FIX: Hier nutzen wir jetzt den Mapper aus PodcastMappers.kt!
-                // Der Mapper kümmert sich um:
-                // 1. Datum "sanitizen" (Jahr 3000 Fix)
-                // 2. Duration parsen
-                // 3. Defaults setzen
+            val episodesToInsert =
+                newItems.mapNotNull { item ->
+                    // FIX: Hier nutzen wir jetzt den Mapper aus PodcastMappers.kt!
+                    // Der Mapper kümmert sich um:
+                    // 1. Datum "sanitizen" (Jahr 3000 Fix)
+                    // 2. Duration parsen
+                    // 3. Defaults setzen
 
-                val entity = item.toEpisodeEntity(url)
+                    val entity = item.toEpisodeEntity(url)
 
-                // Dubletten-Check
-                if (existingEpisodes.containsKey(entity.guid)) return@mapNotNull null
+                    // Dubletten-Check
+                    if (existingEpisodes.containsKey(entity.guid)) return@mapNotNull null
 
-                // Ohne Audio-URL bringt uns die Episode nichts
-                if (entity.enclosureUrl.isBlank()) return@mapNotNull null
+                    // Ohne Audio-URL bringt uns die Episode nichts
+                    if (entity.enclosureUrl.isBlank()) return@mapNotNull null
 
-                // Optional: HTML strippen, falls der Mapper das nicht getan hat
-                // (Der Mapper übernimmt description raw, daher hier bei Bedarf strippen)
-                entity.copy(
-                    title = entity.title.stripHtml(),
-                    description = entity.description.stripHtml()
-                )
-            }
+                    // Optional: HTML strippen, falls der Mapper das nicht getan hat
+                    // (Der Mapper übernimmt description raw, daher hier bei Bedarf strippen)
+                    entity.copy(
+                        title = entity.title.stripHtml(),
+                        description = entity.description.stripHtml()
+                    )
+                }
             repo.insertEpisodes(episodesToInsert)
         }
 
@@ -212,11 +224,15 @@ class SyncFeedUseCase @Inject constructor(
         }
     }
 
-    private suspend fun triggerAutoDownloads(url: String, downloadLimit: Int) {
-        val episodesToDownload = selectEpisodesForAutoDownload(
-            episodes = repo.getEpisodesForSync(url),
-            downloadLimit = downloadLimit
-        )
+    private suspend fun triggerAutoDownloads(
+        url: String,
+        downloadLimit: Int
+    ) {
+        val episodesToDownload =
+            selectEpisodesForAutoDownload(
+                episodes = repo.getEpisodesForSync(url),
+                downloadLimit = downloadLimit
+            )
 
         episodesToDownload.forEach { episode ->
             downloadEpisodeUseCase(episode.guid)

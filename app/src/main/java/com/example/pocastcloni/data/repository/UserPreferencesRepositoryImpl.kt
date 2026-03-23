@@ -16,6 +16,10 @@ import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
+// TODO: ARCHITECTURE BOUNDARY VIOLATION - Data layer importing from UI layer
+// These UI enums (AppTheme, AppColor, BufferMode) should be moved to domain.model
+// to maintain proper dependency inversion. UI should depend on domain, not vice versa.
+// FIXME: Move these enums to com.example.pocastcloni.domain.model and update all imports
 import com.example.pocastcloni.ui.settings.AppColor
 import com.example.pocastcloni.ui.settings.AppTheme
 import com.example.pocastcloni.ui.settings.BufferMode
@@ -32,10 +36,11 @@ import javax.inject.Singleton
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = Constants.Preferences.DATASTORE_NAME)
 
 @Singleton
-class UserPreferencesRepositoryImpl @Inject constructor(
+class UserPreferencesRepositoryImpl
+@Inject
+constructor(
     @ApplicationContext private val context: Context
 ) : UserPreferencesRepository {
-
     private object Keys {
         val THEME = stringPreferencesKey(Constants.Preferences.KEY_THEME)
         val APP_COLOR = stringPreferencesKey(Constants.Preferences.KEY_APP_COLOR)
@@ -68,60 +73,87 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         val INDICATOR_Y_OFFSET = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_Y_OFFSET)
     }
 
-    override val userSettingsFlow: Flow<UserSettings> = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                Timber.e(exception, "Error reading preferences.")
-                emit(emptyPreferences())
-            } else {
-                throw exception
+    override val userSettingsFlow: Flow<UserSettings> =
+        context.dataStore.data
+            .catch { exception ->
+                if (exception is IOException) {
+                    Timber.e(exception, "Error reading preferences.")
+                    emit(emptyPreferences())
+                } else {
+                    throw exception
+                }
             }
-        }
-        .map { prefs ->
-            val defaultSettings = UserSettings()
+            .map { prefs ->
+                val defaultSettings = UserSettings()
 
-            val theme = try { AppTheme.valueOf(prefs[Keys.THEME] ?: defaultSettings.theme.name) } catch (e: Exception) { defaultSettings.theme }
-            val appColor = try { AppColor.valueOf(prefs[Keys.APP_COLOR] ?: defaultSettings.appColor.name) } catch (e: Exception) { defaultSettings.appColor }
-            val bufferMode = try { BufferMode.valueOf(prefs[Keys.BUFFER_MODE] ?: defaultSettings.bufferMode.name) } catch (e: Exception) { defaultSettings.bufferMode }
-            val feedMode = try { FeedUpdateMode.valueOf(prefs[Keys.FEED_UPDATE_MODE] ?: defaultSettings.feedUpdateMode.name) } catch (e: Exception) { defaultSettings.feedUpdateMode }
+                val theme =
+                    try {
+                        AppTheme.valueOf(prefs[Keys.THEME] ?: defaultSettings.theme.name)
+                    } catch (e: Exception) {
+                        defaultSettings.theme
+                    }
+                val appColor =
+                    try {
+                        AppColor.valueOf(prefs[Keys.APP_COLOR] ?: defaultSettings.appColor.name)
+                    } catch (
+                        e: Exception
+                    ) {
+                        defaultSettings.appColor
+                    }
+                val bufferMode =
+                    try {
+                        BufferMode.valueOf(prefs[Keys.BUFFER_MODE] ?: defaultSettings.bufferMode.name)
+                    } catch (
+                        e: Exception
+                    ) {
+                        defaultSettings.bufferMode
+                    }
+                val feedMode =
+                    try {
+                        FeedUpdateMode.valueOf(prefs[Keys.FEED_UPDATE_MODE] ?: defaultSettings.feedUpdateMode.name)
+                    } catch (
+                        e: Exception
+                    ) {
+                        defaultSettings.feedUpdateMode
+                    }
 
-            // NEU: Layout Mode sicher laden
-            val layoutMode = try {
-                LayoutMode.valueOf(prefs[Keys.LAYOUT_MODE] ?: defaultSettings.layoutMode.name)
-            } catch (e: Exception) {
-                defaultSettings.layoutMode
-            }
+                // NEU: Layout Mode sicher laden
+                val layoutMode =
+                    try {
+                        LayoutMode.valueOf(prefs[Keys.LAYOUT_MODE] ?: defaultSettings.layoutMode.name)
+                    } catch (e: Exception) {
+                        defaultSettings.layoutMode
+                    }
 
-            UserSettings(
-                theme = theme,
-                appColor = appColor,
-                colorStrength = prefs[Keys.COLOR_STRENGTH] ?: defaultSettings.colorStrength,
-                bufferMode = bufferMode,
-
-                // NEU: Zugewiesener Wert
-                layoutMode = layoutMode,
-
-                gridSize = prefs[Keys.GRID_SIZE] ?: defaultSettings.gridSize,
-                showGridTitles = prefs[Keys.SHOW_GRID_TITLES] ?: defaultSettings.showGridTitles,
-                confirmDelete = prefs[Keys.CONFIRM_DELETE] ?: defaultSettings.confirmDelete,
-                progressBarHeight = prefs[Keys.PROGRESS_BAR_HEIGHT] ?: defaultSettings.progressBarHeight,
-                navBarHeight = prefs[Keys.NAV_BAR_HEIGHT] ?: defaultSettings.navBarHeight,
-                oneHandedMode = prefs[Keys.ONE_HANDED_MODE] ?: defaultSettings.oneHandedMode,
-                autoDownloadLimit = prefs[Keys.AUTO_DOWNLOAD_LIMIT] ?: defaultSettings.autoDownloadLimit,
-                autoRefreshOnStart = prefs[Keys.AUTO_REFRESH_ON_START] ?: defaultSettings.autoRefreshOnStart,
-                backgroundCheckEnabled = prefs[Keys.BACKGROUND_CHECK_ENABLED] ?: defaultSettings.backgroundCheckEnabled,
-                backgroundCheckInterval = prefs[Keys.BACKGROUND_CHECK_INTERVAL] ?: defaultSettings.backgroundCheckInterval,
-                markPlayedDurationSeconds = prefs[Keys.MARK_PLAYED_DURATION] ?: defaultSettings.markPlayedDurationSeconds,
-                feedUpdateMode = feedMode,
-                indicator = IndicatorSettings(
-                    colorArgb = prefs[Keys.INDICATOR_COLOR] ?: defaultSettings.indicator.colorArgb,
-                    size = prefs[Keys.INDICATOR_SIZE] ?: defaultSettings.indicator.size,
-                    borderWidth = prefs[Keys.INDICATOR_BORDER] ?: defaultSettings.indicator.borderWidth,
-                    xOffset = prefs[Keys.INDICATOR_X_OFFSET] ?: defaultSettings.indicator.xOffset,
-                    yOffset = prefs[Keys.INDICATOR_Y_OFFSET] ?: defaultSettings.indicator.yOffset
+                UserSettings(
+                    theme = theme,
+                    appColor = appColor,
+                    colorStrength = prefs[Keys.COLOR_STRENGTH] ?: defaultSettings.colorStrength,
+                    bufferMode = bufferMode,
+                    // NEU: Zugewiesener Wert
+                    layoutMode = layoutMode,
+                    gridSize = prefs[Keys.GRID_SIZE] ?: defaultSettings.gridSize,
+                    showGridTitles = prefs[Keys.SHOW_GRID_TITLES] ?: defaultSettings.showGridTitles,
+                    confirmDelete = prefs[Keys.CONFIRM_DELETE] ?: defaultSettings.confirmDelete,
+                    progressBarHeight = prefs[Keys.PROGRESS_BAR_HEIGHT] ?: defaultSettings.progressBarHeight,
+                    navBarHeight = prefs[Keys.NAV_BAR_HEIGHT] ?: defaultSettings.navBarHeight,
+                    oneHandedMode = prefs[Keys.ONE_HANDED_MODE] ?: defaultSettings.oneHandedMode,
+                    autoDownloadLimit = prefs[Keys.AUTO_DOWNLOAD_LIMIT] ?: defaultSettings.autoDownloadLimit,
+                    autoRefreshOnStart = prefs[Keys.AUTO_REFRESH_ON_START] ?: defaultSettings.autoRefreshOnStart,
+                    backgroundCheckEnabled = prefs[Keys.BACKGROUND_CHECK_ENABLED] ?: defaultSettings.backgroundCheckEnabled,
+                    backgroundCheckInterval = prefs[Keys.BACKGROUND_CHECK_INTERVAL] ?: defaultSettings.backgroundCheckInterval,
+                    markPlayedDurationSeconds = prefs[Keys.MARK_PLAYED_DURATION] ?: defaultSettings.markPlayedDurationSeconds,
+                    feedUpdateMode = feedMode,
+                    indicator =
+                    IndicatorSettings(
+                        colorArgb = prefs[Keys.INDICATOR_COLOR] ?: defaultSettings.indicator.colorArgb,
+                        size = prefs[Keys.INDICATOR_SIZE] ?: defaultSettings.indicator.size,
+                        borderWidth = prefs[Keys.INDICATOR_BORDER] ?: defaultSettings.indicator.borderWidth,
+                        xOffset = prefs[Keys.INDICATOR_X_OFFSET] ?: defaultSettings.indicator.xOffset,
+                        yOffset = prefs[Keys.INDICATOR_Y_OFFSET] ?: defaultSettings.indicator.yOffset
+                    )
                 )
-            )
-        }
+            }
 
     override suspend fun updateTheme(theme: AppTheme) {
         context.dataStore.edit { it[Keys.THEME] = theme.name }
