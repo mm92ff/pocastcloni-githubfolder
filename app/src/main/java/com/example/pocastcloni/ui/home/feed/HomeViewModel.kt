@@ -397,4 +397,8 @@ constructor(
             exitEditMode()
         }
     }
+
+    fun clearScreenError() {
+        _screenError.value = null
+    }
 }

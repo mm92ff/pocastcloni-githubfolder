@@ -212,11 +212,13 @@ fun HomeScreen(
                             .padding(horizontal = Dimens.PaddingLarge),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = screenError.asString(context),
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
-                        )
+                        TextButton(onClick = viewModel::clearScreenError) {
+                            Text(
+                                text = screenError.asString(context),
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 } else if (uiState.podcasts.isEmpty() && !uiState.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
