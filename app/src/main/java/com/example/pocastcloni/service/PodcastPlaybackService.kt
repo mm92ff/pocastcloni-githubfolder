@@ -128,14 +128,12 @@ class PodcastPlaybackService : MediaSessionService() {
 
         // Optional cache layer
         val cacheFactory: DataSource.Factory =
-            if (cache != null) {
+            cache?.let {
                 CacheDataSource.Factory()
-                    .setCache(cache!!)
+                    .setCache(it)
                     .setUpstreamDataSourceFactory(upstreamFactory)
                     .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-            } else {
-                upstreamFactory
-            }
+            } ?: upstreamFactory
 
         mediaSourceFactory =
             ProgressiveMediaSource.Factory(cacheFactory)

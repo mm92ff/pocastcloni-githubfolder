@@ -59,7 +59,9 @@ constructor(
         val guid = playerController.playerState.value.currentEpisodeGuid ?: return
         _isDescriptionVisible.value = true
         viewModelScope.launch(dispatcherProvider.io) {
-            val rawHtml = runCatching { getEpisodeDescriptionUseCase(guid) }.getOrNull()
+            val rawHtml = runCatching { getEpisodeDescriptionUseCase(guid) }
+                .onFailure { Timber.e(it, "Failed to load episode description for guid: $guid") }
+                .getOrNull()
             val spanned = rawHtml?.let { HtmlCompat.fromHtml(it, HtmlCompat.FROM_HTML_MODE_LEGACY) }
             _descriptionState.value = spanned
         }

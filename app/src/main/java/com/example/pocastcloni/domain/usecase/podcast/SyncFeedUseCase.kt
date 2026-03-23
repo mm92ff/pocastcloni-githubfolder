@@ -79,7 +79,8 @@ constructor(
         }
         if (!response.isSuccessful || response.body() == null) throw Exception("Smart Sync Fail: ${response.code()}")
 
-        val stream = response.body()!!.byteStream()
+        val body = response.body() ?: throw java.io.IOException("Empty response body from $url")
+        val stream = body.byteStream()
         try {
             val latestKnownGuid = repo.getLatestEpisodeGuid(url)
             val result =
@@ -127,7 +128,8 @@ constructor(
         }
         if (!response.isSuccessful || response.body() == null) throw Exception("Full Sync Fail: ${response.code()}")
 
-        val stream = response.body()!!.byteStream()
+        val body = response.body() ?: throw java.io.IOException("Empty response body from $url")
+        val stream = body.byteStream()
         try {
             val result = streamParser.parse(stream, url, Int.MAX_VALUE, isFullSync = true)
             processParsedData(
