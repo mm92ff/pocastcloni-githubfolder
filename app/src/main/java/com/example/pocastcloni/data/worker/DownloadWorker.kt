@@ -98,7 +98,13 @@ constructor(
             if (!dir.exists()) dir.mkdirs()
 
             // Sanitize filename to prevent path traversal attacks
-            val sanitizedFileName = fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+            // Only block actual path traversal characters, preserve everything else
+            val sanitizedFileName = fileName
+                .replace("..", "")           // Remove traversal sequences
+                .replace("/", "")            // Remove Unix path separators
+                .replace("\\", "")           // Remove Windows path separators
+                .trim()
+                .ifEmpty { "episode_download" }  // Fallback if filename becomes empty
             val file = File(dir, sanitizedFileName)
 
             var input: InputStream? = null
