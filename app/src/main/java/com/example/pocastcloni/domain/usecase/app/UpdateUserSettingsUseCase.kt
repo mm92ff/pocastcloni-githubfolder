@@ -46,6 +46,7 @@ constructor(
                 // Logik für Worker-relevante Settings
                 is ToggleBackgroundCheck -> repository.updateBackgroundCheckEnabled(action.enabled)
                 is SetBackgroundCheckInterval -> repository.updateBackgroundCheckInterval(action.hours)
+                is ToggleSaveToDownloadsFolder -> repository.updateSaveToDownloadsFolder(action.enabled)
             }
 
             // 2. Side-Effects: Worker synchronisieren, falls nötig

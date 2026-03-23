@@ -55,6 +55,8 @@ interface UserPreferencesRepository {
 
     suspend fun updateIndicatorYOffset(offsetDp: Int)
 
+    suspend fun updateSaveToDownloadsFolder(enabled: Boolean)
+
     suspend fun restoreSettings(settings: UserSettings)
 
     suspend fun clearSettings()

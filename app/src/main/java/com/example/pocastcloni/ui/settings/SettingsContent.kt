@@ -186,6 +186,15 @@ private fun GeneralSettingsContent(
         },
         onStartManualDownload = remember(onEvent) { { onEvent(SettingsUiEvent.StartManualDownload) } }
     )
+
+    SectionDownloadLocation(
+        saveToDownloadsFolder = settings.saveToDownloadsFolder,
+        onToggle = remember(onEvent) {
+            { enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleSaveToDownloadsFolder(enabled)))
+            }
+        }
+    )
     Divider()
 
     // --- INDICATOR ---

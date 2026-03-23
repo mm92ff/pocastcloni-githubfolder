@@ -89,7 +89,8 @@ sealed interface SettingsUiState {
         val backgroundCheckInterval: Int = 12,
         val markPlayedDurationSeconds: Int = 30,
         val feedUpdateMode: FeedUpdateMode = FeedUpdateMode.ALWAYS_FULL,
-        val indicator: IndicatorSettingsUiState = IndicatorSettingsUiState()
+        val indicator: IndicatorSettingsUiState = IndicatorSettingsUiState(),
+        val saveToDownloadsFolder: Boolean = Constants.Preferences.DEFAULT_SAVE_TO_DOWNLOADS_FOLDER,
     ) : SettingsUiState
 
     data class Error(val message: UiText) : SettingsUiState

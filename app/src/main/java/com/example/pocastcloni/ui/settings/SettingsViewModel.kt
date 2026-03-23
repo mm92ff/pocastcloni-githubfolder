@@ -252,6 +252,7 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
             borderWidth = this.indicator.borderWidth,
             xOffset = this.indicator.xOffset,
             yOffset = this.indicator.yOffset
-        )
+        ),
+        saveToDownloadsFolder = saveToDownloadsFolder,
     )
 }

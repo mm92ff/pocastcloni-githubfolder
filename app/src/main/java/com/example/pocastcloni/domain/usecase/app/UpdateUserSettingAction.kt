@@ -52,4 +52,6 @@ sealed interface UpdateUserSettingAction {
     data class SetIndicatorXOffset(val offsetDp: Int) : UpdateUserSettingAction
 
     data class SetIndicatorYOffset(val offsetDp: Int) : UpdateUserSettingAction
+
+    data class ToggleSaveToDownloadsFolder(val enabled: Boolean) : UpdateUserSettingAction
 }

@@ -152,6 +152,7 @@ object Constants {
         const val KEY_INDICATOR_BORDER = "indicator_border"
         const val KEY_INDICATOR_X_OFFSET = "indicator_x_offset"
         const val KEY_INDICATOR_Y_OFFSET = "indicator_y_offset"
+        const val KEY_SAVE_TO_DOWNLOADS_FOLDER = "save_to_downloads_folder"
 
         const val DEFAULT_GRID_SIZE = 100
         const val DEFAULT_SHOW_GRID_TITLES = true
@@ -169,6 +170,7 @@ object Constants {
         const val DEFAULT_INDICATOR_X_OFFSET = 2
         const val DEFAULT_INDICATOR_Y_OFFSET = 2
         const val NO_DOWNLOAD_LIMIT = 0
+        const val DEFAULT_SAVE_TO_DOWNLOADS_FOLDER = false
     }
 
     object Network {

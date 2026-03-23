@@ -1,8 +1,14 @@
 package com.example.pocastcloni.ui.settings
 
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Environment
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -696,6 +702,60 @@ fun LayoutChip(
             )
         }
     )
+}
+
+@Composable
+fun SectionDownloadLocation(
+    saveToDownloadsFolder: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    val context = LocalContext.current
+
+    // Permission launcher only used on API < 29
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) onToggle(true)
+        // If denied: toggle stays off, no state change
+    }
+
+    val locationDescription = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        "Android 10+: Dateien werden in Android/data/\u2026/files/Downloads gespeichert. Kein Berechtigungsdialog n\u00f6tig."
+    } else {
+        "Android 9 und \u00e4lter: Dateien werden im \u00f6ffentlichen Downloads-Ordner gespeichert. Speicherzugriff wird angefragt."
+    }
+
+    Text(
+        text = "Download-Speicherort",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
+    )
+
+    SettingsCard {
+        SettingsSwitchCard(
+            title = "Im Download-Ordner speichern",
+            subtitle = locationDescription,
+            checked = saveToDownloadsFolder,
+            onCheckedChange = { enabled ->
+                if (!enabled) {
+                    // Turning off: always allowed
+                    onToggle(false)
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // API 29+: no permission needed
+                    onToggle(true)
+                } else {
+                    // API < 29: check WRITE_EXTERNAL_STORAGE
+                    val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+                        onToggle(true)
+                    } else {
+                        launcher.launch(permission)
+                    }
+                }
+            }
+        )
+    }
 }
 
 // NEU: Helper für den Color Picker des Indicators (Long Farben)

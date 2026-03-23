@@ -1,7 +1,11 @@
 package com.example.pocastcloni.data.worker
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Environment
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -9,11 +13,13 @@ import androidx.work.workDataOf
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.StatisticsRepository
+import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
@@ -31,7 +37,8 @@ constructor(
     private val podcastRepository: PodcastRepository,
     private val statsRepo: StatisticsRepository,
     private val connectivityProvider: ConnectivityProvider,
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val userPreferencesRepository: UserPreferencesRepository,
 ) : CoroutineWorker(context, params) {
     companion object {
         // Wir können jetzt sogar öfter updaten, da wir nicht mehr in die DB schreiben!
@@ -76,6 +83,45 @@ constructor(
         }
     }
 
+    private suspend fun resolveDownloadDirectory(): File {
+        val saveToDownloads = try {
+            userPreferencesRepository.userSettingsFlow.first().saveToDownloadsFolder
+        } catch (e: Exception) {
+            Timber.w(e, "Could not read download location setting, using private storage")
+            false
+        }
+
+        if (!saveToDownloads) {
+            val dir = File(applicationContext.filesDir, Constants.DOWNLOADS_DIR)
+            dir.mkdirs()
+            return dir
+        }
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // API 29+: app-specific external Downloads, no permission needed
+            val externalDir = applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            if (externalDir != null && (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED)) {
+                externalDir.mkdirs()
+                externalDir
+            } else {
+                Timber.w("External storage not available, falling back to private storage")
+                File(applicationContext.filesDir, Constants.DOWNLOADS_DIR).also { it.mkdirs() }
+            }
+        } else {
+            // API < 29: public Downloads with WRITE_EXTERNAL_STORAGE permission
+            val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            if (ContextCompat.checkSelfPermission(applicationContext, permission) == PackageManager.PERMISSION_GRANTED) {
+                val publicDownloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val appDir = File(publicDownloads, "Pocastcloni")
+                appDir.mkdirs()
+                appDir
+            } else {
+                Timber.w("WRITE_EXTERNAL_STORAGE not granted, falling back to private storage")
+                File(applicationContext.filesDir, Constants.DOWNLOADS_DIR).also { it.mkdirs() }
+            }
+        }
+    }
+
     private suspend fun downloadToFile(
         guid: String,
         url: String,
@@ -94,8 +140,7 @@ constructor(
 
             Timber.d("Expected size: $totalBytes Bytes")
 
-            val dir = File(applicationContext.filesDir, Constants.DOWNLOADS_DIR)
-            if (!dir.exists()) dir.mkdirs()
+            val dir = resolveDownloadDirectory()
 
             // Sanitize filename to prevent path traversal attacks
             // Only block actual path traversal characters, preserve everything else

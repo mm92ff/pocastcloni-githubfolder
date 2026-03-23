@@ -71,6 +71,7 @@ constructor(
         val INDICATOR_BORDER = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_BORDER)
         val INDICATOR_X_OFFSET = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_X_OFFSET)
         val INDICATOR_Y_OFFSET = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_Y_OFFSET)
+        val SAVE_TO_DOWNLOADS_FOLDER = booleanPreferencesKey(Constants.Preferences.KEY_SAVE_TO_DOWNLOADS_FOLDER)
     }
 
     override val userSettingsFlow: Flow<UserSettings> =
@@ -151,7 +152,8 @@ constructor(
                         borderWidth = prefs[Keys.INDICATOR_BORDER] ?: defaultSettings.indicator.borderWidth,
                         xOffset = prefs[Keys.INDICATOR_X_OFFSET] ?: defaultSettings.indicator.xOffset,
                         yOffset = prefs[Keys.INDICATOR_Y_OFFSET] ?: defaultSettings.indicator.yOffset
-                    )
+                    ),
+                    saveToDownloadsFolder = prefs[Keys.SAVE_TO_DOWNLOADS_FOLDER] ?: Constants.Preferences.DEFAULT_SAVE_TO_DOWNLOADS_FOLDER,
                 )
             }
 
@@ -332,6 +334,14 @@ constructor(
         }
     }
 
+    override suspend fun updateSaveToDownloadsFolder(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.SAVE_TO_DOWNLOADS_FOLDER] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist save_to_downloads_folder preference")
+        }
+    }
+
     override suspend fun restoreSettings(settings: UserSettings) {
         try {
             context.dataStore.edit { prefs ->
@@ -363,6 +373,7 @@ constructor(
                 prefs[Keys.INDICATOR_BORDER] = settings.indicator.borderWidth
                 prefs[Keys.INDICATOR_X_OFFSET] = settings.indicator.xOffset
                 prefs[Keys.INDICATOR_Y_OFFSET] = settings.indicator.yOffset
+                prefs[Keys.SAVE_TO_DOWNLOADS_FOLDER] = settings.saveToDownloadsFolder
             }
         } catch (e: IOException) {
             Timber.e(e, "Failed to restore settings to DataStore")
