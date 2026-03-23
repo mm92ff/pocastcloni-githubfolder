@@ -97,7 +97,9 @@ constructor(
             val dir = File(applicationContext.filesDir, Constants.DOWNLOADS_DIR)
             if (!dir.exists()) dir.mkdirs()
 
-            val file = File(dir, fileName)
+            // Sanitize filename to prevent path traversal attacks
+            val sanitizedFileName = fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+            val file = File(dir, sanitizedFileName)
 
             var input: InputStream? = null
             var output: FileOutputStream? = null
