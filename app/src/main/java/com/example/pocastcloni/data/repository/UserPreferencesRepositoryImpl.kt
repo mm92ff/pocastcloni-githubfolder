@@ -156,24 +156,44 @@ constructor(
             }
 
     override suspend fun updateTheme(theme: AppTheme) {
-        context.dataStore.edit { it[Keys.THEME] = theme.name }
+        try {
+            context.dataStore.edit { it[Keys.THEME] = theme.name }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist theme preference")
+        }
     }
 
     override suspend fun updateAppColor(color: AppColor) {
-        context.dataStore.edit { it[Keys.APP_COLOR] = color.name }
+        try {
+            context.dataStore.edit { it[Keys.APP_COLOR] = color.name }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist app color preference")
+        }
     }
 
     override suspend fun updateColorStrength(strength: Float) {
-        context.dataStore.edit { it[Keys.COLOR_STRENGTH] = strength }
+        try {
+            context.dataStore.edit { it[Keys.COLOR_STRENGTH] = strength }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist color strength preference")
+        }
     }
 
     override suspend fun updateBufferSettings(mode: BufferMode) {
-        context.dataStore.edit { it[Keys.BUFFER_MODE] = mode.name }
+        try {
+            context.dataStore.edit { it[Keys.BUFFER_MODE] = mode.name }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist buffer settings preference")
+        }
     }
 
     // NEU: Implementierung des Updates
     override suspend fun updateLayoutMode(mode: LayoutMode) {
-        context.dataStore.edit { it[Keys.LAYOUT_MODE] = mode.name }
+        try {
+            context.dataStore.edit { it[Keys.LAYOUT_MODE] = mode.name }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist layout mode preference")
+        }
     }
 
     override suspend fun updateGridSize(size: Int) {
@@ -245,41 +265,49 @@ constructor(
     }
 
     override suspend fun restoreSettings(settings: UserSettings) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.THEME] = settings.theme.name
-            prefs[Keys.APP_COLOR] = settings.appColor.name
-            prefs[Keys.COLOR_STRENGTH] = settings.colorStrength
-            prefs[Keys.BUFFER_MODE] = settings.bufferMode.name
+        try {
+            context.dataStore.edit { prefs ->
+                prefs[Keys.THEME] = settings.theme.name
+                prefs[Keys.APP_COLOR] = settings.appColor.name
+                prefs[Keys.COLOR_STRENGTH] = settings.colorStrength
+                prefs[Keys.BUFFER_MODE] = settings.bufferMode.name
 
-            // NEU: Layout Mode wiederherstellen
-            prefs[Keys.LAYOUT_MODE] = settings.layoutMode.name
+                // NEU: Layout Mode wiederherstellen
+                prefs[Keys.LAYOUT_MODE] = settings.layoutMode.name
 
-            prefs[Keys.GRID_SIZE] = settings.gridSize
-            prefs[Keys.SHOW_GRID_TITLES] = settings.showGridTitles
-            prefs[Keys.CONFIRM_DELETE] = settings.confirmDelete
-            prefs[Keys.PROGRESS_BAR_HEIGHT] = settings.progressBarHeight
-            prefs[Keys.NAV_BAR_HEIGHT] = settings.navBarHeight
-            prefs[Keys.ONE_HANDED_MODE] = settings.oneHandedMode
+                prefs[Keys.GRID_SIZE] = settings.gridSize
+                prefs[Keys.SHOW_GRID_TITLES] = settings.showGridTitles
+                prefs[Keys.CONFIRM_DELETE] = settings.confirmDelete
+                prefs[Keys.PROGRESS_BAR_HEIGHT] = settings.progressBarHeight
+                prefs[Keys.NAV_BAR_HEIGHT] = settings.navBarHeight
+                prefs[Keys.ONE_HANDED_MODE] = settings.oneHandedMode
 
-            prefs[Keys.AUTO_DOWNLOAD_LIMIT] = settings.autoDownloadLimit
-            prefs[Keys.AUTO_REFRESH_ON_START] = settings.autoRefreshOnStart
-            prefs[Keys.BACKGROUND_CHECK_ENABLED] = settings.backgroundCheckEnabled
-            prefs[Keys.BACKGROUND_CHECK_INTERVAL] = settings.backgroundCheckInterval
+                prefs[Keys.AUTO_DOWNLOAD_LIMIT] = settings.autoDownloadLimit
+                prefs[Keys.AUTO_REFRESH_ON_START] = settings.autoRefreshOnStart
+                prefs[Keys.BACKGROUND_CHECK_ENABLED] = settings.backgroundCheckEnabled
+                prefs[Keys.BACKGROUND_CHECK_INTERVAL] = settings.backgroundCheckInterval
 
-            prefs[Keys.MARK_PLAYED_DURATION] = settings.markPlayedDurationSeconds
-            prefs[Keys.FEED_UPDATE_MODE] = settings.feedUpdateMode.name
+                prefs[Keys.MARK_PLAYED_DURATION] = settings.markPlayedDurationSeconds
+                prefs[Keys.FEED_UPDATE_MODE] = settings.feedUpdateMode.name
 
-            prefs[Keys.INDICATOR_COLOR] = settings.indicator.colorArgb
-            prefs[Keys.INDICATOR_SIZE] = settings.indicator.size
-            prefs[Keys.INDICATOR_BORDER] = settings.indicator.borderWidth
-            prefs[Keys.INDICATOR_X_OFFSET] = settings.indicator.xOffset
-            prefs[Keys.INDICATOR_Y_OFFSET] = settings.indicator.yOffset
+                prefs[Keys.INDICATOR_COLOR] = settings.indicator.colorArgb
+                prefs[Keys.INDICATOR_SIZE] = settings.indicator.size
+                prefs[Keys.INDICATOR_BORDER] = settings.indicator.borderWidth
+                prefs[Keys.INDICATOR_X_OFFSET] = settings.indicator.xOffset
+                prefs[Keys.INDICATOR_Y_OFFSET] = settings.indicator.yOffset
+            }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to restore settings to DataStore")
         }
     }
 
     override suspend fun clearSettings() {
-        context.dataStore.edit { preferences ->
-            preferences.clear()
+        try {
+            context.dataStore.edit { preferences ->
+                preferences.clear()
+            }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to clear settings from DataStore")
         }
     }
 }
