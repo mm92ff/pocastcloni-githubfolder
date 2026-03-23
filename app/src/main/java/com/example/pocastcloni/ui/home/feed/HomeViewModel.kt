@@ -21,6 +21,7 @@ import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -232,6 +233,8 @@ constructor(
                             )
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e  // structured concurrency requires this
                 } catch (e: Exception) {
                     val errorText = UiText.StringResource(R.string.refresh_error)
                     if (uiState.value.podcasts.isEmpty()) {
@@ -273,11 +276,15 @@ constructor(
                             summary.failureCount
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e  // structured concurrency requires this
                 } catch (e: Exception) {
                     Timber.w(e, "Auto refresh on start failed")
                 } finally {
                     _isAutoRefreshing.value = false
                 }
+            } catch (e: CancellationException) {
+                throw e  // structured concurrency requires this
             } catch (e: Exception) {
                 _isAutoRefreshing.value = false
                 Timber.w(e, "Auto refresh on start failed (unexpected)")
@@ -316,6 +323,8 @@ constructor(
             viewModelScope.launch(dispatcherProvider.io) {
                 try {
                     reorderPodcasts(currentList)
+                } catch (e: CancellationException) {
+                    throw e  // structured concurrency requires this
                 } catch (e: Exception) {
                     _events.send(HomeUiEvent.ShowUserMessage(UiText.StringResource(R.string.reorder_error)))
                     _optimisticPodcasts.value = null
@@ -378,6 +387,8 @@ constructor(
             podcastsToDelete.forEach { podcast ->
                 try {
                     deletePodcastUseCase(podcast)
+                } catch (e: CancellationException) {
+                    throw e  // structured concurrency requires this
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to delete podcast ${podcast.title}")
                 }
