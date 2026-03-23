@@ -1,6 +1,7 @@
 package com.example.pocastcloni.di
 
 import android.content.Context
+import com.example.pocastcloni.BuildConfig
 import com.example.pocastcloni.data.remote.ItunesSearchApi
 import com.example.pocastcloni.data.remote.PodcastService
 import com.example.pocastcloni.util.ConnectivityProvider
@@ -47,7 +48,7 @@ abstract class NetworkModule {
         @Singleton
         fun provideLoggingInterceptor(): HttpLoggingInterceptor {
             return HttpLoggingInterceptor { message -> Timber.tag("OkHttp").d(message) }.apply {
-                level = HttpLoggingInterceptor.Level.HEADERS
+                level = HttpLoggingInterceptor.Level.BASIC
             }
         }
 
@@ -62,7 +63,9 @@ abstract class NetworkModule {
 
             return OkHttpClient.Builder()
                 .cache(cache)
-                .addInterceptor(loggingInterceptor)
+                .apply {
+                    if (BuildConfig.DEBUG) addInterceptor(loggingInterceptor)
+                }
                 .connectTimeout(Constants.Network.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .readTimeout(Constants.Network.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .build()
