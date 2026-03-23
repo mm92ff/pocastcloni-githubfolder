@@ -230,10 +230,9 @@ object Constants {
         const val IMAGE_SIZE_GRID = 400
     }
 
-    // NEU HINZUFÜGEN:
     object Validation {
-        // Erlaubt Daten bis zu 7 Tage in der Zukunft (wegen Zeitzonen/Server-Differenzen)
-        // Alles was weiter in der Zukunft liegt, wird als Fehler betrachtet.
+        // Allows dates up to 7 days in the future (to account for timezone/server differences).
+        // Anything further in the future is treated as an error.
         const val MAX_FUTURE_DATE_THRESHOLD_MS = 1000L * 60 * 60 * 24 * 7
     }
 }

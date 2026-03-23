@@ -20,18 +20,17 @@ fun PlayerContainer(
 ) {
     val viewModel: PlayerViewModel = hiltViewModel()
 
-    // WICHTIG: Der Zugriff auf 'playerState' triggert die automatische Verbindung (Reaktive Architektur)
-    // Siehe AudioPlayerController.kt -> onStart { connectInternal() }
+    // Accessing 'playerState' triggers the automatic connection (reactive architecture).
+    // See AudioPlayerController.kt -> onStart { connectInternal() }
     val playerState by viewModel.playerController.playerState.collectAsStateWithLifecycle()
     val playbackStateFlow = viewModel.playerController.playbackState
 
-    // NEU: Wir holen die UI-Daten für die Beschreibung direkt aus dem ViewModel
     val episodeDescription by viewModel.descriptionState.collectAsStateWithLifecycle()
     val isDescriptionVisible by viewModel.isDescriptionVisible.collectAsStateWithLifecycle()
 
     var isExpanded by rememberSaveable { mutableStateOf(false) }
 
-    // Zeige Player nur, wenn eine Episode geladen ist UND dieser Screen den Player nicht unterdrückt
+    // Show the player only when an episode is loaded and this screen does not suppress it
     if (!suppress && !playerState.currentEpisodeGuid.isNullOrBlank()) {
         ExpandablePlayer(
             modifier = modifier,
@@ -39,7 +38,6 @@ fun PlayerContainer(
             onExpandToggle = { isExpanded = !isExpanded },
             playerState = playerState,
             playbackStateFlow = playbackStateFlow,
-            // NEU: Parameter weitergeben
             episodeDescription = episodeDescription,
             isDescriptionVisible = isDescriptionVisible,
             onEvent = viewModel::handlePlayerEvent,

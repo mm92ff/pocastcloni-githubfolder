@@ -74,9 +74,7 @@ sealed interface SettingsUiState {
         val colorStrength: Float = 0.1f,
         val bufferMode: BufferMode = BufferMode.NORMAL,
         val bufferWholePodcast: Boolean = false,
-        // --- NEU HINZUFÜGEN ---
         val layoutMode: LayoutMode = LayoutMode.GRID,
-        // ----------------------
         val gridSize: Int = 120,
         val showGridTitles: Boolean = true,
         val confirmDelete: Boolean = true,

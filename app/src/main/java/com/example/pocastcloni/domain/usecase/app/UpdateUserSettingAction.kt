@@ -15,9 +15,7 @@ sealed interface UpdateUserSettingAction {
 
     data class SetBufferSettings(val mode: BufferMode) : UpdateUserSettingAction
 
-    // --- NEU HINZUFÜGEN ---
     data class SetLayoutMode(val mode: LayoutMode) : UpdateUserSettingAction
-    // ----------------------
 
     data class SetGridSize(val size: Int) : UpdateUserSettingAction
 

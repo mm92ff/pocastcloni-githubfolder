@@ -3,10 +3,10 @@ package com.example.pocastcloni.ui.player
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Vorschlag 2: Trennung von Commands und State.
+ * Separation of commands and state.
  */
 
-// Interface für UI-Komponenten, die den Player STEUERN (Schreiben)
+// Interface for UI components that CONTROL the player (write)
 interface PlayerActions {
     suspend fun play(episodeGuid: String)
 
@@ -19,7 +19,7 @@ interface PlayerActions {
     fun releaseResources()
 }
 
-// Interface für UI-Komponenten, die den Player nur ANZEIGEN (Lesen)
+// Interface for UI components that only OBSERVE the player (read)
 interface PlayerStateObserver {
     val playerState: StateFlow<PlayerUiState>
     val playbackState: StateFlow<PlaybackState>

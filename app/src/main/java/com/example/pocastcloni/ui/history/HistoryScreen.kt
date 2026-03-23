@@ -92,10 +92,8 @@ fun HistoryScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator()
             } else if (uiState.historyItems.isEmpty()) {
-                // FIX: Hardcoded String entfernt (bitte sicherstellen, dass String-Resource existiert)
                 Text(text = stringResource(id = R.string.history_empty))
             } else {
-                // FIX: Keine 'remember' Logik mehr nötig für Listen-Konvertierung
 
                 val bottomPadding =
                     remember(
@@ -120,7 +118,7 @@ fun HistoryScreen(
                     reverseLayout = uiState.oneHandedMode
                 ) {
                     items(
-                        items = uiState.historyItems, // Direkter Zugriff auf optimierte Liste
+                        items = uiState.historyItems,
                         key = { item -> item.id }
                     ) { item ->
                         ListableEpisodeItem(

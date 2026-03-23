@@ -43,7 +43,7 @@ constructor(
     }
 
     init {
-        // Setzt den Startzeitpunkt einmalig beim ersten App-Start (Singleton)
+        // Sets the start timestamp once on the first app launch (singleton)
         appScope.launch {
             context.statsDataStore.edit { prefs ->
                 if (prefs[Keys.STATISTICS_STARTED_AT] == null) {
@@ -53,13 +53,13 @@ constructor(
         }
     }
 
-    // --- PUFFER FÜR OPTIMIERUNG (Write Amplification verhindern) ---
+    // --- BUFFER FOR OPTIMIZATION (prevent write amplification) ---
 
-    // 1. Listening Time Puffer (schreibt nur alle 10 Sekunden)
+    // 1. Listening time buffer (writes only every 10 seconds)
     private val pendingListeningTimeMs = AtomicLong(0)
     private val TIME_FLUSH_THRESHOLD_MS = 10_000L
 
-    // 2. Streaming Puffer (schreibt nur alle 1024 KB)
+    // 2. Streaming buffer (writes only every 1024 KB)
     private val pendingStreamWifiBytes = AtomicLong(0)
     private val pendingStreamMobileBytes = AtomicLong(0)
     private val STREAM_FLUSH_THRESHOLD_BYTES = 1024 * 1024L // 1024 KB
@@ -99,8 +99,8 @@ constructor(
         bytes: Long,
         isWifi: Boolean
     ) {
-        // Downloads kommen meist blockweise oder am Ende vom Worker,
-        // daher ist hier kein aggressives Puffern nötig.
+        // Downloads usually come in blocks or at the end of the worker,
+        // so aggressive buffering is not needed here.
         context.statsDataStore.edit { prefs ->
             val key = if (isWifi) Keys.DOWNLOAD_WIFI else Keys.DOWNLOAD_MOBILE
             val current = prefs[key] ?: 0L
@@ -112,18 +112,18 @@ constructor(
         bytes: Long,
         isWifi: Boolean
     ) {
-        // NEU: Puffer-Logik für Streaming
-        // 1. Bytes nur im RAM addieren
+        // NEW: Buffer logic for streaming
+        // 1. Add bytes in RAM only
         val buffer = if (isWifi) pendingStreamWifiBytes else pendingStreamMobileBytes
         val currentPending = buffer.addAndGet(bytes)
 
-        // 2. Prüfen, ob wir genug gesammelt haben (512 KB)
+        // 2. Check whether enough has been accumulated (512 KB)
         if (currentPending >= STREAM_FLUSH_THRESHOLD_BYTES) {
             val bytesToWrite = buffer.getAndSet(0)
 
-            // Nur schreiben, wenn wirklich was da ist (Thread-Safety Check)
+            // Write only if there is actually something (thread-safety check)
             if (bytesToWrite > 0) {
-                // 3. Auf Flash-Speicher schreiben
+                // 3. Write to flash storage
                 context.statsDataStore.edit { prefs ->
                     val key = if (isWifi) Keys.STREAM_WIFI else Keys.STREAM_MOBILE
                     val current = prefs[key] ?: 0L
@@ -141,7 +141,7 @@ constructor(
     }
 
     override suspend fun addListeningTime(ms: Long) {
-        // Bestehende Logik: Puffer für Zeit
+        // Existing logic: buffer for time
         val currentPending = pendingListeningTimeMs.addAndGet(ms)
 
         if (currentPending >= TIME_FLUSH_THRESHOLD_MS) {
@@ -156,18 +156,18 @@ constructor(
     }
 
     override suspend fun resetStatistics() {
-        // 1. Alle RAM-Puffer zurücksetzen!
+        // 1. Reset all RAM buffers!
         pendingListeningTimeMs.set(0)
         pendingStreamWifiBytes.set(0)
         pendingStreamMobileBytes.set(0)
 
-        // 2. DataStore leeren und Startzeitpunkt auf jetzt setzen
+        // 2. Clear DataStore and reset start timestamp to now
         context.statsDataStore.edit { prefs ->
             prefs.clear()
             prefs[Keys.STATISTICS_STARTED_AT] = System.currentTimeMillis()
         }
 
-        // 3. DB History bereinigen
+        // 3. Clean up DB history
         podcastDao.clearHistory()
     }
 }

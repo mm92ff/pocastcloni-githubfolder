@@ -61,21 +61,21 @@ constructor(
         return withContext(dispatcherProvider.io) {
             val backupData = backupHelper.importBackup(uri, context.contentResolver)
 
-            // 1. Settings wiederherstellen
+            // 1. Restore settings
             backupData.settings?.let { userPreferencesRepository.restoreSettings(it) }
 
-            // 2. Podcasts importieren (Offline-First Strategie)
+            // 2. Import podcasts (offline-first strategy)
             var success = 0
             val total = backupData.podcasts.size
 
-            // Ermittle die nächste Sortierreihenfolge, falls im Backup 0 steht
+            // Determine the next sort order in case the backup has 0
             var currentMaxSortOrder = podcastDao.getMaxSortOrder() ?: 0L
 
             backupData.podcasts.forEach { backupPodcast ->
                 val url = backupPodcast.url
                 if (url.isNotBlank()) {
-                    // Schritt A: "Stub" Entity erstellen und sofort einfügen (falls noch nicht existiert)
-                    // Das garantiert, dass der Podcast da ist, auch wenn der Sync fehlschlägt (Offline).
+                    // Step A: create a "stub" entity and insert it immediately (if not already present)
+                    // This guarantees the podcast exists even if the sync fails (offline).
                     val orderToUse = if (backupPodcast.sortOrder > 0) backupPodcast.sortOrder else ++currentMaxSortOrder
 
                     val stubEntity =
@@ -85,33 +85,33 @@ constructor(
                             description = backupPodcast.description ?: context.getString(R.string.import_fallback_description),
                             imageUrl = backupPodcast.imageUrl ?: "",
                             sortOrder = orderToUse,
-                            // Hier stellen wir die Caching-Header wieder her:
+                            // Restore the caching headers here:
                             lastModifiedHeader = backupPodcast.lastModifiedHeader,
                             eTagHeader = backupPodcast.eTagHeader,
                             lastRefreshed = Date(0) // Markiert als "braucht update"
                         )
 
-                    // Insert Ignore: Wenn er schon da ist, überschreiben wir ihn NICHT (um lokale Updates zu schützen)
-                    // Wenn er neu ist, ist er jetzt sichtbar.
+                    // Insert Ignore: if it already exists, we do NOT overwrite it (to protect local updates)
+                    // If it is new, it is now visible.
                     runCatching {
                         podcastDao.insertPodcast(stubEntity)
                     }.onFailure { Timber.w(it, "Failed to insert stub for $url") }
 
-                    // Schritt B: Sync versuchen (Netzwerk)
-                    // Wir nutzen 'forceFull = false', damit ETag/LastModified genutzt werden, falls vorhanden!
+                    // Step B: attempt sync (network)
+                    // We use 'forceFull = false' so that ETag/LastModified is used if available!
                     runCatching {
                         syncFeedUseCase.get().invoke(
                             url,
                             downloadLimit,
                             mode,
-                            sortOrder = null, // SortOrder nicht überschreiben, da oben schon gesetzt
-                            forceFull = false // Smart Update nutzen!
+                            sortOrder = null, // Do not overwrite sortOrder, it was already set above
+                            forceFull = false // Use smart update!
                         )
                         success++
                     }.onFailure {
                         Timber.w(it, "Sync failed during import for $url (Offline?)")
-                        // Trotz Sync-Fehler zählen wir es als "Halb-Erfolg", da der Podcast nun in der DB ist.
-                        // Wenn der Stub erfolgreich eingefügt wurde, ist es für den User okay.
+                        // Despite the sync failure we count it as a "partial success" since the podcast is now in the DB.
+                        // If the stub was inserted successfully, it is acceptable for the user.
                         if (podcastDao.getPodcastByUrl(url) != null) {
                             success++
                         }
@@ -119,7 +119,7 @@ constructor(
                 }
             }
 
-            // 3. Favorites wiederherstellen
+            // 3. Restore favorites
             val favoriteGuids = backupData.favorites.map { it.episodeGuid }.distinct()
             val existingFavoriteGuids =
                 if (favoriteGuids.isEmpty()) {

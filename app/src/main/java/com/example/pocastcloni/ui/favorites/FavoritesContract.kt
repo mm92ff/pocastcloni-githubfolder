@@ -20,7 +20,7 @@ data class FavoriteUiItem(
 @Immutable
 data class FavoritesUiState(
     val isLoading: Boolean = true,
-    // FIX: ImmutableList erzwingt Stabilität und ermöglicht Skipping in der UI
+    // FIX: ImmutableList enforces stability and enables skipping in the UI
     val favorites: ImmutableList<FavoriteUiItem> = persistentListOf(),
     val isEditMode: Boolean = false,
     val oneHandedMode: Boolean = false,

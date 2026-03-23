@@ -6,7 +6,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
- * Formatiert Millisekunden in einen MM:SS String.
+ * Formats milliseconds into a MM:SS string.
  */
 fun formatTime(ms: Long): String {
     val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(ms)
@@ -19,8 +19,8 @@ fun formatTime(ms: Long): String {
 }
 
 /**
- * Formatiert Sekunden in einen lesbaren String (z.B. "1h 45min").
- * Hier ist die Standard-Locale OK, da es "Prosa" ist.
+ * Formats seconds into a human-readable string (e.g. "1h 45min").
+ * The default locale is fine here since this is prose.
  */
 fun formatDuration(
     context: Context,

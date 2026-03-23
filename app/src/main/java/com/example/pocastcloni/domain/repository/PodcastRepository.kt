@@ -38,7 +38,7 @@ interface PodcastRepository {
 
     fun getPlaybackHistoryWithPodcastInfoFlow(): Flow<Map<EpisodeEntity, Podcast?>>
 
-    // NEU: Diese fehlten im Interface, waren aber in der Impl vorhanden
+    // These were missing from the interface but were present in the impl
     fun getEpisodesInProgress(): Flow<List<EpisodeWithPodcastLite>>
 
     fun getUnplayedCounts(): Flow<Map<String, Int>>
@@ -94,7 +94,7 @@ interface PodcastRepository {
     // --- SEARCH ---
     suspend fun searchPodcasts(term: String): List<ItunesPodcastDto>
 
-    // KORREKTUR: FTS Suche hinzugefügt
+    // FTS search added
     fun searchEpisodesFlow(query: String): Flow<List<EpisodeEntity>>
 
     // --- FAVORITES & HISTORY ---

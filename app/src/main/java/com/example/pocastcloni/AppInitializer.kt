@@ -6,7 +6,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.pocastcloni.data.worker.FeedUpdateWorker
-import com.example.pocastcloni.data.worker.LibraryCleanupWorker // Import hinzufügen
+import com.example.pocastcloni.data.worker.LibraryCleanupWorker // Add import
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
@@ -34,7 +34,7 @@ constructor(
 ) {
     fun initialize() {
         reconcileEpisodeStorage()
-        // Bereinigungs-Job einplanen (Täglich)
+        // Schedule cleanup job (daily)
         setupLibraryCleanup()
 
         scope.launch(dispatcherProvider.io) {
@@ -79,7 +79,7 @@ constructor(
     private fun setupLibraryCleanup() {
         val constraints =
             Constraints.Builder()
-                .setRequiresDeviceIdle(true) // Läuft nur, wenn Handy nicht genutzt wird
+                .setRequiresDeviceIdle(true) // Only runs when the device is idle
                 .setRequiresBatteryNotLow(true)
                 .build()
 

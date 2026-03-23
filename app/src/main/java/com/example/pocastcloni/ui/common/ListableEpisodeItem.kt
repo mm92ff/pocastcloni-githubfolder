@@ -32,7 +32,7 @@ fun ListableEpisodeItem(
     podcast: Podcast?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onImageClick: (() -> Unit)? = null // NEU: Optionaler Callback für Bild-Klick
+    onImageClick: (() -> Unit)? = null // Optional callback for image click
 ) {
     Row(
         modifier =
@@ -50,7 +50,7 @@ fun ListableEpisodeItem(
             Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(Dimens.RoundedCornerSmall))
-                // NEU: Klickbar machen, falls ein Callback übergeben wird
+                // Make clickable if a callback is provided
                 .clickable(enabled = onImageClick != null) { onImageClick?.invoke() },
             contentScale = ContentScale.Crop
         )

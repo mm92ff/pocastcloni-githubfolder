@@ -11,22 +11,22 @@ class DeletePodcastUseCase
 @Inject
 constructor(
     private val repository: PodcastRepository
-    // Optional: Hier könnte man den Downloader injecten, falls er public Methoden hat
+    // Optional: the downloader could be injected here if it exposes public methods
 ) {
     suspend operator fun invoke(podcast: Podcast) {
-        // 1. Sammle alle Downloads, bevor wir die DB löschen (da wir sonst die Pfade verlieren)
-        // Wir nutzen getEpisodesForSync, da es eine einfache Liste zurückgibt.
+        // 1. Collect all downloads before deleting from the DB (paths would be lost afterwards).
+        // getEpisodesForSync returns a plain list, which is convenient here.
         val episodes = repository.getEpisodesForSync(podcast.rssUrl)
         val filesToDelete =
             episodes
                 .filter { it.downloadStatus == DownloadStatus.DOWNLOADED || it.downloadStatus == DownloadStatus.DOWNLOADING }
                 .mapNotNull { it.downloadPath }
 
-        // 2. Lösche aus der Datenbank (Source of Truth)
-        // Wirft Exception bei Fehler -> Files bleiben erhalten -> Sicher!
+        // 2. Delete from the database (source of truth).
+        // Throws on error -> files are kept -> safe!
         repository.deletePodcast(podcast)
 
-        // 3. Wenn DB erfolgreich bereinigt, lösche physische Dateien
+        // 3. If DB was cleaned up successfully, delete the physical files
         filesToDelete.forEach { path ->
             runCatching {
                 val file = File(path)

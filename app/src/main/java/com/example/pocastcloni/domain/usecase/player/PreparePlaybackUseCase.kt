@@ -31,12 +31,12 @@ constructor(
                 repository.getEpisode(guid)
                     ?: throw IllegalStateException("Episode not available for GUID $guid")
 
-            // Podcast Infos laden
+            // Load podcast info
             val podcastEntity = repository.getPodcastEntityByUrl(savedEpisode.podcastRssUrl)
             val podcast = podcastEntity?.toPodcast()
 
-            // 2. Entscheidungslogik: Lokal vs. Stream
-            var finalUri = savedEpisode.enclosureUrl // Default: Stream
+            // 2. Decision logic: local file vs. stream
+            var finalUri = savedEpisode.enclosureUrl // Default: stream
 
             if (savedEpisode.downloadStatus == DownloadStatus.DOWNLOADED) {
                 val localPath = savedEpisode.downloadPath
@@ -44,12 +44,12 @@ constructor(
                 if (!localPath.isNullOrBlank()) {
                     val file = File(localPath)
 
-                    // Strenge Prüfung: Existiert die Datei unter dem Datenbank-Pfad wirklich?
+                    // Strict check: does the file actually exist at the path stored in the database?
                     if (file.exists() && file.canRead()) {
                         Timber.i("Playing OFFLINE: ${file.absolutePath}")
                         finalUri = file.toUri().toString()
                     } else {
-                        // DB sagt Downloaded, aber Datei fehlt -> Fallback auf Stream
+                        // DB says Downloaded, but file is missing -> fall back to stream
                         Timber.w("File missing despite DOWNLOADED status: $localPath. Fallback to stream.")
                         repository.updateDownloadStatus(savedEpisode.guid, DownloadStatus.NOT_DOWNLOADED, null)
                     }

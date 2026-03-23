@@ -146,7 +146,7 @@ constructor(
                     _internalState.update { state ->
                         state.copy(
                             isSearching = false,
-                            // FIX: Filtern von Duplikaten, um LazyColumn Crash zu verhindern
+                            // Filter duplicates to prevent a LazyColumn crash
                             searchResults =
                             results
                                 .map { it.toPodcastSearchResult() }

@@ -35,14 +35,13 @@ constructor(
     private val _isPlayerExpanded = MutableStateFlow(false)
     private val _error: MutableStateFlow<String?> = MutableStateFlow(null)
 
-    // FIX: Flow-Handling verbessert, um Abstürze zu verhindern
     val uiState: StateFlow<MainUiState> =
         combine(
-            // 1. Upstream Catch: Fehler direkt hier fangen, damit 'combine' nicht abbricht
+            // Catch upstream errors here so 'combine' does not cancel
             getUserSettings().catch { e ->
                 Timber.e(e, "Failed to load user settings")
-                _error.value = e.message // Fehler in den StateFlow pushen
-                emit(UserSettings()) // Fallback: Default-Werte senden, damit der Flow weiterlebt
+                _error.value = e.message
+                emit(UserSettings()) // Fallback: emit defaults so the flow stays alive
             },
             _isPlayerExpanded,
             _error
@@ -55,7 +54,6 @@ constructor(
             )
         }.stateIn(
             scope = viewModelScope,
-            // Nutze hier Constants.ViewModel.STATE_IN_TIMEOUT (z.B. 5000L)
             started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
             initialValue = MainUiState(isLoading = true)
         )

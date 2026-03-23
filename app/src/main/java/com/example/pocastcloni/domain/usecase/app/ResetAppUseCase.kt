@@ -22,17 +22,17 @@ constructor(
 ) {
     suspend operator fun invoke() {
         withContext(dispatcherProvider.io) {
-            // 1. User Settings auf Default zurücksetzen
+            // 1. Reset user settings to defaults
             userPreferencesRepository.clearSettings()
 
-            // 2. Datenbank leeren
+            // 2. Clear database
             podcastRepository.resetDatabase()
 
-            // 3. Coil Memory Cache leeren (wichtig für die aktuelle Sitzung)
+            // 3. Clear Coil memory cache (important for the current session)
             imageLoader.memoryCache?.clear()
 
-            // 4. Alle Disk-Caches physisch vom Gerät löschen
-            // Dies ist die robusteste Methode, um Race Conditions zu vermeiden.
+            // 4. Physically delete all disk caches from the device
+            // This is the most robust method to avoid race conditions.
             try {
                 val coilCache = File(context.cacheDir, "image_cache")
                 if (coilCache.exists()) {

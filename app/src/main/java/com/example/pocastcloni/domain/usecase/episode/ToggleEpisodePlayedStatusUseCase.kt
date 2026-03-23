@@ -15,19 +15,19 @@ constructor(
         withContext(dispatcherProvider.io) {
             val episode = repository.getEpisode(guid) ?: return@withContext
 
-            // 1. Status umschalten
+            // 1. Toggle the played status
             repository.toggleEpisodePlayed(episode)
 
-            // 2. Podcast-Status basierend auf der NEUSTEN Episode neu berechnen
+            // 2. Recalculate the podcast status based on the LATEST episode
             updatePodcastStatusBasedOnLatest(episode.podcastRssUrl)
         }
     }
 
     private suspend fun updatePodcastStatusBasedOnLatest(podcastUrl: String) {
-        // firstOrNull() ist die neuste Episode (dank Sortierung im DAO)
+        // firstOrNull() is the latest episode (due to DAO sort order)
         val latestEpisode = repository.getEpisodesForSync(podcastUrl).firstOrNull()
 
-        // Dot anzeigen = Neuste Episode ist ungespielt
+        // Show dot = latest episode is unplayed
         val showDot = latestEpisode != null && !latestEpisode.isPlayed
 
         val podcast = repository.getPodcastEntityByUrl(podcastUrl)

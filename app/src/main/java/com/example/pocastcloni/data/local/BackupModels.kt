@@ -4,7 +4,7 @@ import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.Constants
 import com.fasterxml.jackson.annotation.JsonProperty
 
-// Definiert die Top-Level-Struktur der JSON-Datei.
+// Defines the top-level structure of the JSON file.
 data class BackupData(
     @JsonProperty(Constants.Backup.KEY_VERSION) val version: Int = Constants.Backup.BACKUP_VERSION,
     @JsonProperty(Constants.Backup.KEY_PODCASTS) val podcasts: List<BackupPodcast> = emptyList(),
@@ -15,16 +15,16 @@ data class BackupData(
 data class BackupPodcast(
     @JsonProperty(Constants.Backup.KEY_URL) val url: String = "",
     @JsonProperty(Constants.Backup.KEY_SORT_ORDER) val sortOrder: Long = 0,
-    // Metadaten für Offline-Import-Resilienz
+    // Metadata for offline import resilience
     @JsonProperty("title") val title: String? = null,
     @JsonProperty("description") val description: String? = null,
     @JsonProperty("image_url") val imageUrl: String? = null,
-    // NEU: Caching Header für Smart Updates (Wichtig für Traffic-Sparmaßnahmen nach Restore)
+    // NEW: Caching headers for smart updates (important for traffic savings after restore)
     @JsonProperty("last_modified") val lastModifiedHeader: String? = null,
     @JsonProperty("etag") val eTagHeader: String? = null
 )
 
-// Struktur für einen favorisierten Eintrag im Backup
+// Structure for a favorited entry in the backup
 data class BackupFavorite(
     @JsonProperty("podcast_url") val podcastUrl: String = "",
     @JsonProperty("episode_guid") val episodeGuid: String = "",

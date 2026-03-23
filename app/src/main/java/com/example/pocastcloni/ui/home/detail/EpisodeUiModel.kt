@@ -64,13 +64,12 @@ fun EpisodePresentation.toEpisodeUiModelCached(
     previous: EpisodeUiModel?,
     podcastName: String,
     podcastImageUrl: String?,
-    downloadProgress: Float // <--- NEUER PARAMETER
+    downloadProgress: Float
 ): EpisodeUiModel {
     val epochMs = this.pubDateMs ?: 0L
     val durationMs = this.durationMs
     val downloadStatusUiModel = this.toDownloadStatusUiModel()
 
-    // Hier nutzen wir den übergebenen Wert (vom ViewModel/Worker), statt 0f hardcodiert.
     val currentProgress = downloadProgress
 
     if (previous != null &&
@@ -82,11 +81,11 @@ fun EpisodePresentation.toEpisodeUiModelCached(
         previous.podcastImageUrl == podcastImageUrl &&
         previous.imageUrl == podcastImageUrl &&
         previous.pubDateEpochMs == epochMs &&
-        previous.durationSeconds == durationMs // Vergleiche Millisekunden
+        previous.durationSeconds == durationMs
     ) {
         val dynamicUnchanged =
             previous.downloadStatus == downloadStatusUiModel &&
-                previous.downloadProgress == currentProgress && // Vergleich mit aktuellem Wert
+                previous.downloadProgress == currentProgress &&
                 previous.isPlayed == this.isPlayed &&
                 previous.isFavorite == this.isFavorite &&
                 previous.positionMs == this.playbackPositionMs
@@ -118,21 +117,20 @@ fun EpisodePresentation.toEpisodeUiModelCached(
         description = this.description,
         podcastImageUrl = podcastImageUrl,
         pubDateEpochMs = epochMs,
-        durationSeconds = durationMs // Wir speichern hier Millisekunden, der Name 'durationSeconds' im UI Model ist etwas irreführend, aber wir lassen ihn zur Konsistenz vorerst so.
+        durationSeconds = durationMs // Note: this field stores milliseconds; the name is kept for consistency.
     )
 }
 
-// Auch die einfache Helper-Funktion muss den Parameter jetzt annehmen und weiterreichen
 fun EpisodePresentation.toEpisodeUiModel(
     podcastName: String,
     podcastImageUrl: String?,
-    downloadProgress: Float // <--- NEUER PARAMETER
+    downloadProgress: Float
 ): EpisodeUiModel =
     toEpisodeUiModelCached(
         previous = null,
         podcastName = podcastName,
         podcastImageUrl = podcastImageUrl,
-        downloadProgress = downloadProgress // <--- Weitergabe
+        downloadProgress = downloadProgress
     )
 
 fun EpisodeWithPodcastInfo.toEpisodeUiModel(

@@ -40,7 +40,7 @@ import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 import kotlin.math.roundToInt
 
-// --- BASIS KARTEN-LAYOUTS ---
+// --- BASE CARD LAYOUTS ---
 
 @Composable
 fun SettingsCard(
@@ -135,7 +135,7 @@ fun SettingsSliderCard(
     }
 }
 
-// --- HILFS-KOMPONENTEN (WICHTIG: Werden von SettingsSections.kt benötigt) ---
+// --- HELPER COMPONENTS (required by SettingsSections.kt) ---
 
 @Composable
 fun ColorCircle(

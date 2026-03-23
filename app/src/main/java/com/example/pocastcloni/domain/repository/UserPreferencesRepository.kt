@@ -18,7 +18,7 @@ interface UserPreferencesRepository {
 
     suspend fun updateBufferSettings(mode: BufferMode)
 
-    // NEU: Update Funktion für Layout Mode
+    // Update function for Layout Mode
     suspend fun updateLayoutMode(mode: LayoutMode)
 
     suspend fun updateGridSize(size: Int)

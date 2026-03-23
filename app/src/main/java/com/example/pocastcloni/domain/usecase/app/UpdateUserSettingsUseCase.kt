@@ -16,14 +16,13 @@ constructor(
 ) {
     suspend operator fun invoke(action: UpdateUserSettingAction) {
         withContext(dispatcherProvider.io) {
-            // 1. Einstellung in der Datenbank speichern
+            // 1. Save setting to the repository
             when (action) {
                 is SetAppTheme -> repository.updateTheme(action.theme)
                 is SetAppColor -> repository.updateAppColor(action.color)
                 is SetColorStrength -> repository.updateColorStrength(action.strength)
                 is SetBufferSettings -> repository.updateBufferSettings(action.mode)
 
-                // NEU: Layout Mode speichern
                 is SetLayoutMode -> repository.updateLayoutMode(action.mode)
 
                 is SetGridSize -> repository.updateGridSize(action.size)
@@ -43,14 +42,13 @@ constructor(
                 is SetIndicatorXOffset -> repository.updateIndicatorXOffset(action.offsetDp)
                 is SetIndicatorYOffset -> repository.updateIndicatorYOffset(action.offsetDp)
 
-                // Logik für Worker-relevante Settings
+                // Worker-relevant settings
                 is ToggleBackgroundCheck -> repository.updateBackgroundCheckEnabled(action.enabled)
                 is SetBackgroundCheckInterval -> repository.updateBackgroundCheckInterval(action.hours)
                 is ToggleSaveToDownloadsFolder -> repository.updateSaveToDownloadsFolder(action.enabled)
             }
 
-            // 2. Side-Effects: Worker synchronisieren, falls nötig
-            // Wir prüfen, ob die Action den Worker betrifft
+            // 2. Side-effects: sync the worker if needed
             if (action is ToggleBackgroundCheck || action is SetBackgroundCheckInterval) {
                 syncBackgroundWorker()
             }
@@ -58,8 +56,8 @@ constructor(
     }
 
     private suspend fun syncBackgroundWorker() {
-        // "Source of Truth" lesen: Wir holen den aktuellen Stand aus den Preferences
-        // Das stellt sicher, dass wir immer mit konsistenten Daten (Intervall + Enabled) arbeiten
+        // Read the source of truth: fetch the current state from Preferences
+        // to ensure we always work with consistent data (interval + enabled flag)
         val settings = repository.userSettingsFlow.first()
         updateBackgroundWorker(settings.backgroundCheckEnabled, settings.backgroundCheckInterval)
     }

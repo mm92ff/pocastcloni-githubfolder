@@ -29,7 +29,7 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindStatisticsRepository(statisticsRepositoryImpl: StatisticsRepositoryImpl): StatisticsRepository
 
-    // NEU: Binding für das BackupRepository
+    // Binding for the BackupRepository
     @Binds
     @Singleton
     abstract fun bindBackupRepository(backupRepositoryImpl: BackupRepositoryImpl): BackupRepository

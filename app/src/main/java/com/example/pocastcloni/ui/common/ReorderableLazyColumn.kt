@@ -39,7 +39,7 @@ import kotlin.math.min
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun <T> ReorderableLazyColumn(
-    items: ImmutableList<T>, // ImmutableList erzwingen (stabile Collection)
+    items: ImmutableList<T>, // Enforce ImmutableList (stable collection)
     key: (T) -> Any,
     onReorder: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -52,17 +52,17 @@ fun <T> ReorderableLazyColumn(
     val state = rememberLazyListState()
     val view = LocalView.current
 
-    // Stable state-holder (Instanz bleibt gleich, nur interne Snapshot-Werte ändern sich)
+    // Stable state-holder (instance stays the same; only internal snapshot values change)
     val dragDropState = remember { DragDropState() }
 
-    // pointerInput darf nicht mit "stale" Lambdas arbeiten, ohne neu zu starten
+    // pointerInput must not work with stale lambdas without restarting
     val onReorderUpdated by rememberUpdatedState(onReorder)
 
     LazyColumn(
         state = state,
         modifier =
         modifier.pointerInput(reverseLayout) {
-            // NICHT als Compose-State halten (UI interessiert sich nicht, vermeidet Snapshot-Reads im pointerInput)
+            // Not held as Compose State (UI doesn't care; avoids snapshot reads inside pointerInput)
             var scrollJob: Job? = null
 
             detectDragGesturesAfterLongPress(
@@ -103,7 +103,7 @@ fun <T> ReorderableLazyColumn(
                     change.consume()
                     if (!dragDropState.hasActiveDrag()) return@detectDragGesturesAfterLongPress
 
-                    // High-frequency update: NICHT im Composable-Body lesen, sondern nur Modifier/Draw.
+                    // High-frequency update: read only in Modifier/Draw phase, not in the Composable body.
                     val dragAmountY = change.position.y - change.previousPosition.y
                     dragDropState.dragBy(dragAmountY)
 
@@ -117,7 +117,7 @@ fun <T> ReorderableLazyColumn(
                     val currentItemSize = draggedItemInfo.size
                     val currentItemCenter = dragDropState.draggedVisualTopRaw() + (currentItemSize / 2f)
 
-                    // --- AUTO SCROLL LOGIK ---
+                    // --- AUTO SCROLL LOGIC ---
                     val viewportStart = layoutInfo.viewportStartOffset
                     val viewportEnd = layoutInfo.viewportEndOffset
                     val viewportLen = viewportEnd - viewportStart
@@ -157,7 +157,7 @@ fun <T> ReorderableLazyColumn(
                         scrollJob = null
                     }
 
-                    // --- SWAP LOGIK ---
+                    // --- SWAP LOGIC ---
                     val targetItem =
                         visibleItems.find { itemInfo ->
                             if (itemInfo.index == draggedIndex) return@find false
@@ -200,7 +200,7 @@ fun <T> ReorderableLazyColumn(
         reverseLayout = reverseLayout
     ) {
         itemsIndexed(items = items, key = { _, item -> key(item) }) { index, item ->
-            // LOW frequency read (Start/Swap/End) -> okay in Composition
+            // Low-frequency read (Start/Swap/End) -> safe to read in composition
             val draggedIndex = dragDropState.draggedItemIndex
             val isDragging = index == draggedIndex
 
@@ -215,7 +215,7 @@ fun <T> ReorderableLazyColumn(
                     .fillParentMaxWidth()
                     .zIndex(if (isDragging) 1f else 0f)
                     .graphicsLayer {
-                        // High-frequency read NUR für das gezogene Item, und NUR in der Modifier-Phase.
+                        // High-frequency read only for the dragged item, and only in the Modifier phase.
                         translationY =
                             if (isDragging) {
                                 val layoutInfo = state.layoutInfo
@@ -252,7 +252,7 @@ fun <T> ReorderableLazyColumn(
 
 @Stable
 private class DragDropState {
-    // UI-observed (Snapshot) - wird von der UI gelesen
+    // UI-observed (Snapshot) - read by the UI
     var draggedItemIndex by mutableIntStateOf(-1)
         private set
     var draggedItemVisualTop by mutableFloatStateOf(0f)
@@ -260,7 +260,7 @@ private class DragDropState {
     var isDragging by mutableStateOf(false)
         private set
 
-    // Raw values für Gesture-Logik (verhindert Snapshot-Reads im pointerInput)
+    // Raw values for gesture logic (prevents snapshot reads inside pointerInput)
     private var draggedItemIndexRaw: Int = -1
     private var draggedItemVisualTopRaw: Float = 0f
     private var isDraggingRaw: Boolean = false
@@ -287,7 +287,7 @@ private class DragDropState {
 
     fun dragBy(deltaY: Float) {
         draggedItemVisualTopRaw += deltaY
-        // Snapshot write (nur das gezogene Item invalidiert seinen graphicsLayer)
+        // Snapshot write (only the dragged item invalidates its graphicsLayer)
         draggedItemVisualTop = draggedItemVisualTopRaw
     }
 

@@ -52,9 +52,9 @@ data class PodcastUnplayedCount(
 )
 
 /**
- * Partial Entity für Updates.
- * Enthält NUR Felder, die vom RSS-Feed kommen.
- * Verhindert, dass User-Status (isPlayed, isFavorite, downloadPath) beim Sync überschrieben wird.
+ * Partial entity for updates.
+ * Contains ONLY fields that come from the RSS feed.
+ * Prevents user status (isPlayed, isFavorite, downloadPath) from being overwritten during sync.
  */
 @Entity
 data class EpisodeRssUpdate(
@@ -69,9 +69,9 @@ data class EpisodeRssUpdate(
 )
 
 /**
- * NEU: Partial Entity für Sortier-Updates.
- * Enthält NUR die ID und die neue Position.
- * Verhindert, dass Hintergrund-Updates (z.B. hasNewEpisodes) beim Reordering überschrieben werden.
+ * NEW: Partial entity for sort order updates.
+ * Contains ONLY the ID and the new position.
+ * Prevents background updates (e.g. hasNewEpisodes) from being overwritten during reordering.
  */
 @Entity
 data class PodcastSortUpdate(
@@ -94,7 +94,7 @@ interface PodcastDao {
     @Update
     suspend fun updatePodcasts(podcasts: List<PodcastEntity>)
 
-    // NEU: Update Methode für effizientes, partielles Reordering ohne Datenverlust
+    // NEW: Update method for efficient, partial reordering without data loss
     @Update(entity = PodcastEntity::class)
     suspend fun updatePodcastSortOrders(updates: List<PodcastSortUpdate>)
 
@@ -182,7 +182,7 @@ interface PodcastDao {
         url2: String
     )
 
-    // --- EPISODEN ---
+    // --- EPISODES ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEpisode(episode: EpisodeEntity)
@@ -196,22 +196,22 @@ interface PodcastDao {
     @Update
     suspend fun updateEpisodes(episodes: List<EpisodeEntity>)
 
-    // Helper für Sync (Partial Update)
+    // Helper for sync (partial update)
     @Update(entity = EpisodeEntity::class)
     suspend fun updateEpisodesMetadata(updates: List<EpisodeRssUpdate>)
 
     /**
-     * Efficient Upsert: Neue einfügen, Existierende NUR Metadaten updaten.
+     * Efficient upsert: insert new ones, update ONLY metadata for existing ones.
      */
     @Transaction
     suspend fun upsertEpisodesEfficient(episodes: List<EpisodeEntity>) {
         if (episodes.isEmpty()) return
 
-        // 1. Neue Episoden einfügen (existierende werden ignoriert)
+        // 1. Insert new episodes (existing ones are ignored)
         insertEpisodesIgnore(episodes)
 
-        // 2. Metadaten-Update für ALLE Episoden (auch die existierenden)
-        // Hier wird auf die Felder in EpisodeEntity zugegriffen
+        // 2. Metadata update for ALL episodes (including existing ones)
+        // Accesses the fields in EpisodeEntity
         val updates =
             episodes.map {
                 EpisodeRssUpdate(
@@ -234,7 +234,7 @@ interface PodcastDao {
     @Query("SELECT * FROM episodes WHERE podcastRssUrl = :rssUrl ORDER BY COALESCE(pubDate, 0) DESC")
     fun getEpisodesFlow(rssUrl: String): Flow<List<EpisodeEntity>>
 
-    // NEU: Paging Source für unendliche Listen
+    // NEW: Paging source for infinite lists
     @Query("SELECT * FROM episodes WHERE podcastRssUrl = :rssUrl ORDER BY COALESCE(pubDate, 0) DESC")
     fun getEpisodesPagingSource(rssUrl: String): PagingSource<Int, EpisodeEntity>
 
@@ -305,8 +305,8 @@ interface PodcastDao {
     @Query("SELECT isPlayed FROM episodes WHERE podcastRssUrl = :url ORDER BY COALESCE(pubDate, 0) DESC LIMIT 1")
     suspend fun isLatestEpisodePlayed(url: String): Boolean?
 
-    // --- SUCHE (Optimiert mit FTS) ---
-    // Nutzt JOIN auf episodes_fts für schnelle Volltextsuche
+    // --- SEARCH (Optimized with FTS) ---
+    // Uses JOIN on episodes_fts for fast full-text search
     @Query(
         """
         SELECT e.* FROM episodes e
@@ -466,7 +466,7 @@ interface PodcastDao {
     )
     fun getEpisodesInProgressWithPodcastLiteFlow(): Flow<List<EpisodeWithPodcastLite>>
 
-    // Badges für UI
+    // Badges for UI
     @Query("SELECT podcastRssUrl, COUNT(guid) as count FROM episodes WHERE isPlayed = 0 GROUP BY podcastRssUrl")
     fun getUnplayedCountsFlow(): Flow<List<PodcastUnplayedCount>>
 

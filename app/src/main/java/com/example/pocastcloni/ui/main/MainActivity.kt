@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val navController = rememberNavController()
 
-            // ✅ Stable callback: kein Compose-State capture; backstack wird "on demand" gelesen
+            // Stable callback: no Compose-state capture; back-stack is read on demand
             val onNavigateToPodcastDetail: (String) -> Unit =
                 remember(navController) {
                     { url ->

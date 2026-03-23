@@ -30,9 +30,8 @@ private const val TITLE_MAX_LINES = 2
 private const val SUBTITLE_MAX_LINES = 1
 private const val IMAGE_ASPECT_RATIO = 1f
 
-// Skalierung basiert jetzt auf der verfügbaren Gesamthöhe des Bereichs.
-// 480dp ist ein geschätzter Wert: Wenn weniger Platz als ca. 480dp da ist,
-// fangen Text und Abstände an zu schrumpfen.
+// Scaling is based on the total available height of the area.
+// 480dp is an estimated threshold: below ~480dp, text and spacing start to shrink.
 private const val TOTAL_HEIGHT_REFERENCE_DP = 480f
 private const val TITLE_SCALE_MIN = 0.75f
 
@@ -43,15 +42,14 @@ fun FullPlayerMetadataFlexibleCover(
     onEvent: (PlayerScreenEvent) -> Unit,
     onCollapse: () -> Unit
 ) {
-    // BoxWithConstraints liefert uns 'maxHeight'.
-    // Dieser Wert kommt vom Parent (durch weight) und ist stabil,
-    // egal wie groß der Text im Inneren tatsächlich wird.
+    // BoxWithConstraints provides 'maxHeight', which comes from the parent via weight.
+    // This value is stable regardless of the actual text height inside.
     BoxWithConstraints(modifier = modifier) {
-        // Berechnung des Skalierungsfaktors basierend auf dem verfügbaren Platz
+        // Compute the scale factor based on available space
         val scale =
             remember(maxHeight) {
                 val availableHeightDp = maxHeight.value
-                // Wenn Höhe = 0 (Start), dann 1f, sonst Verhältnis zur Referenz
+                // If height is 0 (initial frame), fall back to 1f
                 if (availableHeightDp <= 0f) {
                     1f
                 } else {
@@ -69,7 +67,7 @@ fun FullPlayerMetadataFlexibleCover(
             }
 
         Column(
-            modifier = Modifier.fillMaxSize(), // Füllt die BoxWithConstraints aus
+            modifier = Modifier.fillMaxSize(), // Fills the BoxWithConstraints area
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -77,7 +75,6 @@ fun FullPlayerMetadataFlexibleCover(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                // Nimmt den restlichen Platz ein
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
@@ -85,7 +82,7 @@ fun FullPlayerMetadataFlexibleCover(
                     contentDescription = stringResource(R.string.desc_cover),
                     modifier =
                     Modifier
-                        // onSizeChanged wurde entfernt, um den Layout-Loop zu verhindern
+                        // onSizeChanged removed to prevent layout loops
                         .aspectRatio(IMAGE_ASPECT_RATIO, matchHeightConstraintsFirst = true)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(Dimens.RoundedCornerLarge))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -116,7 +113,7 @@ fun FullPlayerMetadataFlexibleCover(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Abstand Author -> Progress (fester minimaler Abstand)
+            // Fixed minimum spacing between author and progress
             Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
         }
     }

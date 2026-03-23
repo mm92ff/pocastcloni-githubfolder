@@ -37,7 +37,7 @@ fun NotificationDotPreview(
 ) {
     val displayTileSize = Dimens.IndicatorPreviewTileSize
 
-    // ---- effektive Zellgröße wie GridCells.Adaptive(minSize = gridSize.dp) ----
+    // ---- effective cell size matching GridCells.Adaptive(minSize = gridSize.dp) ----
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp.dp
 
@@ -56,13 +56,13 @@ fun NotificationDotPreview(
         ((availableWidth - horizontalSpacing.value * (columns - 1)) / columns).coerceAtLeast(1f)
     val baseTileSize = cellSizeValue.dp
 
-    // Scale-Faktor der Miniatur (alles proportional: Tile + Padding + Spacing)
+    // Scale factor for the miniature (all elements proportional: tile + padding + spacing)
     val scaleFactor = (displayTileSize / baseTileSize)
 
     val scaledContentPadding = Dimens.PaddingLarge * scaleFactor
     val scaledSpacing = Dimens.PaddingMedium * scaleFactor
 
-    // ---- WICHTIG: Stage-Background über die GANZE Previewfläche (damit Card-Grau verschwindet) ----
+    // ---- Stage background covers the entire preview area (hides the card grey) ----
     Box(
         modifier =
         modifier
@@ -75,17 +75,17 @@ fun NotificationDotPreview(
             .padding(scaledContentPadding),
         contentAlignment = Alignment.Center
     ) {
-        // kleiner "Grid-Ausschnitt" (2 Tiles) -> macht Spacing/Background wie im Home sichtbar
+        // Small "grid excerpt" (2 tiles) -> shows spacing/background as it appears in the Home screen
         Row(
             horizontalArrangement = Arrangement.spacedBy(scaledSpacing),
             verticalAlignment = Alignment.Top
         ) {
-            // Tile 1: mit Dot (deine Settings)
+            // Tile 1: with indicator dot (current settings)
             ScaledFixedSizeBox(baseSize = baseTileSize, displaySize = displayTileSize) {
                 PreviewTile(withDot = true, indicatorState = indicatorState)
             }
 
-            // Tile 2: Dummy mit Dot (nur Kontext für Spacing/Background)
+            // Tile 2: dummy with dot (context for spacing/background only)
             ScaledFixedSizeBox(baseSize = baseTileSize, displaySize = displayTileSize) {
                 PreviewTile(withDot = true, indicatorState = indicatorState)
             }
@@ -112,7 +112,7 @@ private fun PreviewTile(
         }
 
         if (withDot) {
-            // Dot exakt wie im Feed (Cutout-Ring bleibt background; unverändert)
+            // Dot rendered exactly as in the Feed (cutout ring uses background colour; unchanged)
             IndicatorDot(
                 xOffset = indicatorState.xOffset,
                 yOffset = indicatorState.yOffset,

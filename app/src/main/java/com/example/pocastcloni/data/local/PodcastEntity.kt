@@ -14,12 +14,12 @@ data class PodcastEntity(
     val lastRefreshed: Date = Date(),
     val autoDownloadEnabled: Boolean = false,
     val sortOrder: Long = Constants.Database.DEFAULT_SORT_ORDER,
-    // Denormalisierte Felder für schnellere UI-Queries
+    // Denormalized fields for faster UI queries
     val hasNewEpisodes: Boolean = false,
     val latestEpisodeGuid: String? = null,
     val latestEpisodePubDate: Date? = null,
     val isLatestEpisodePlayed: Boolean? = null,
-    // Caching Header für Smart Updates
+    // Caching headers for smart updates
     val lastModifiedHeader: String? = null,
     val eTagHeader: String? = null
 )

@@ -16,17 +16,16 @@ constructor(
 ) {
     suspend operator fun invoke(url: String) {
         withContext(dispatcherProvider.io) {
-            // 1. Aktuelle Einstellungen laden
+            // 1. Load current settings
             val settings = userPreferencesRepository.userSettingsFlow.first()
 
-            // 2. Podcast hinzufügen
+            // 2. Add the podcast
             repository.addPodcast(
                 url = url,
                 downloadLimit = settings.autoDownloadLimit,
                 mode = settings.feedUpdateMode,
-                // FIX: forceFull auf false setzen.
-                // Damit wird die User-Einstellung (settings.feedUpdateMode) nicht mehr überschrieben.
-                // Ist "Smart Stream" aktiv, wird jetzt nur noch bis zum Limit (z.B. 3 Folgen) geladen und dann abgebrochen.
+                // FIX: set forceFull to false so the user's feedUpdateMode setting is respected.
+                // When "Smart Stream" is active, only up to the limit (e.g. 3 episodes) will be fetched.
                 forceFull = false
             )
         }

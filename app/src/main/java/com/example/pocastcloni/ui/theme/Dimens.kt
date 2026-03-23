@@ -50,16 +50,16 @@ object Dimens {
     val BorderWidthSelected = 3.dp
     val ProgressIndicatorStrokeWidth = 4.dp
 
-    // --- AddPodcast Search UI (individuell steuerbar) ---
+    // --- AddPodcast Search UI ---
 
-    // Fix gegen abgeschnittenen Text im OutlinedTextField:
+    // Prevents text clipping in the OutlinedTextField:
     val SearchFieldMinHeight = 56.dp
 
-    // Suchergebnis-Liste dichter machen:
+    // Tighter search result list:
     val SearchResultsListVerticalPadding = PaddingTiny
     val SearchResultsItemSpacing = PaddingSix
 
-    // Card dichter machen (innen/außen getrennt steuerbar):
+    // Tighter card (inner/outer independently adjustable):
     val SearchCardOuterPaddingVertical = Zero
     val SearchCardContentPadding = PaddingSmall
     val SearchCardGapBetweenImageAndText = PaddingSmall

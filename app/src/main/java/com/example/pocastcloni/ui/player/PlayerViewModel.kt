@@ -32,8 +32,7 @@ constructor(
     val isDescriptionVisible: StateFlow<Boolean> = _isDescriptionVisible.asStateFlow()
 
     init {
-        // Clean: Keine manuellen 'connectIfNeeded()' Aufrufe mehr nötig!
-        // Der Controller verbindet sich automatisch, sobald die UI auf 'playerController.playerState' zugreift (via Compose).
+        // The controller connects automatically once the UI accesses 'playerController.playerState' via Compose.
     }
 
     fun handlePlayerEvent(event: PlayerScreenEvent) {

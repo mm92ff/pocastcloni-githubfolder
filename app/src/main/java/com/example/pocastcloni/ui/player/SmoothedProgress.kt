@@ -18,11 +18,11 @@ data class SmoothedProgressState(
 )
 
 /**
- * Glättet die Position auf Frame-Basis (60/120fps), auch wenn der Backend-Tick selten ist (z.B. 500ms).
+ * Smoothes the position on a per-frame basis (60/120 fps) even when the backend tick is infrequent (e.g. 500 ms).
  *
  * Fixes:
- * - Kein "Vorspulen" nach Pause/Resume: Timebase wird bei Start des Loops neu gesetzt.
- * - jumpTo() setzt die Timebase im nächsten Frame (kompatibel mit withFrameNanos-Zeitbasis).
+ * - No "fast-forward" after Pause/Resume: the time base is reset at the start of each loop.
+ * - jumpTo() sets the time base in the next frame (compatible with withFrameNanos time base).
  */
 @Composable
 fun rememberSmoothedProgressState(
@@ -33,13 +33,13 @@ fun rememberSmoothedProgressState(
     val baseTimeNanos = remember { mutableLongStateOf(0L) }
     val latestDurationMs = remember { mutableLongStateOf(0L) }
 
-    // UI-State (wird in der Draw-Phase gelesen)
+    // UI state (read during the Draw phase)
     val smoothedMs = remember { mutableLongStateOf(0L) }
 
-    // Signal: Timebase soll im nächsten Frame neu gesetzt werden (z.B. nach jumpTo)
+    // Signal: time base should be reset in the next frame (e.g. after jumpTo)
     val needsTimebaseReset = remember { mutableStateOf(false) }
 
-    // 1) Sync mit echten Player-Events (Tick, Seek-Complete, Track-Change)
+    // 1) Sync with real player events (tick, seek-complete, track-change)
     LaunchedEffect(playbackStateFlow) {
         playbackStateFlow
             .map { it.currentPositionMs to it.durationMs }
@@ -51,18 +51,18 @@ fun rememberSmoothedProgressState(
                 latestDurationMs.longValue = clampedDur
                 basePositionMs.longValue = clampedPos
 
-                // Timebase neu setzen, damit Prediction ab "jetzt" läuft (verhindert Drift / Sprünge)
+                // Reset time base so prediction starts from "now" (prevents drift / jumps)
                 baseTimeNanos.longValue = withFrameNanos { it }
                 needsTimebaseReset.value = false
 
-                // Reset auf echten Wert
+                // Reset to the real position
                 smoothedMs.longValue = clampedPos
             }
     }
 
-    // 2) Interpolation Loop (läuft nur wenn Playing)
+    // 2) Interpolation loop (runs only when playing)
     LaunchedEffect(isPlaying) {
-        // Egal ob Pause oder Play: beim Umschalten einmal sauber resyncen
+        // On any pause/resume, re-sync cleanly once
         val now = withFrameNanos { it }
         val dur = playbackStateFlow.value.durationMs.coerceAtLeast(0L)
         val pos = playbackStateFlow.value.currentPositionMs.coerceAtLeast(0L).coerceIn(0L, dur)
@@ -84,7 +84,7 @@ fun rememberSmoothedProgressState(
                 continue
             }
 
-            // Falls jumpTo() gerufen wurde: Timebase im Frame-Kontext neu setzen
+            // If jumpTo() was called: reset the time base in the frame context
             if (needsTimebaseReset.value) {
                 baseTimeNanos.longValue = frameTime
                 needsTimebaseReset.value = false
@@ -96,18 +96,18 @@ fun rememberSmoothedProgressState(
         }
     }
 
-    // 3) Jump-Funktion für sofortiges UI-Feedback beim User-Seek
+    // 3) Jump function for immediate UI feedback on user seek
     val jumpTo: (Long) -> Unit =
         remember {
             { newPos ->
                 val dur = latestDurationMs.longValue
                 val clamped = if (dur > 0L) newPos.coerceIn(0L, dur) else newPos.coerceAtLeast(0L)
 
-                // Basis sofort setzen
+                // Update base position immediately
                 basePositionMs.longValue = clamped
                 smoothedMs.longValue = clamped
 
-                // Timebase im nächsten Frame setzen (passend zur withFrameNanos Zeitbasis)
+                // Reset time base in the next frame (aligned with withFrameNanos time base)
                 needsTimebaseReset.value = true
             }
         }

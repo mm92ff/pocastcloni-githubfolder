@@ -219,7 +219,7 @@ constructor(
             is UpdateUserSettingAction.SetIndicatorXOffset,
             is UpdateUserSettingAction.SetIndicatorYOffset
             -> true
-            // NEU: Layout Mode nicht debouncen für direktes Feedback
+            // Layout Mode is not debounced so the change is reflected immediately
             is UpdateUserSettingAction.SetLayoutMode -> false
             else -> false
         }
@@ -231,7 +231,6 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
         appColor = appColor,
         colorStrength = colorStrength,
         bufferMode = bufferMode,
-        // NEU: Layout Mode übergeben
         layoutMode = layoutMode,
         gridSize = gridSize,
         showGridTitles = showGridTitles,

@@ -117,7 +117,6 @@ constructor(
                         defaultSettings.feedUpdateMode
                     }
 
-                // NEU: Layout Mode sicher laden
                 val layoutMode =
                     try {
                         LayoutMode.valueOf(prefs[Keys.LAYOUT_MODE] ?: defaultSettings.layoutMode.name)
@@ -130,7 +129,6 @@ constructor(
                     appColor = appColor,
                     colorStrength = prefs[Keys.COLOR_STRENGTH] ?: defaultSettings.colorStrength,
                     bufferMode = bufferMode,
-                    // NEU: Zugewiesener Wert
                     layoutMode = layoutMode,
                     gridSize = prefs[Keys.GRID_SIZE] ?: defaultSettings.gridSize,
                     showGridTitles = prefs[Keys.SHOW_GRID_TITLES] ?: defaultSettings.showGridTitles,
@@ -188,7 +186,6 @@ constructor(
         }
     }
 
-    // NEU: Implementierung des Updates
     override suspend fun updateLayoutMode(mode: LayoutMode) {
         try {
             context.dataStore.edit { it[Keys.LAYOUT_MODE] = mode.name }
@@ -349,7 +346,6 @@ constructor(
                 prefs[Keys.COLOR_STRENGTH] = settings.colorStrength
                 prefs[Keys.BUFFER_MODE] = settings.bufferMode.name
 
-                // NEU: Layout Mode wiederherstellen
                 prefs[Keys.LAYOUT_MODE] = settings.layoutMode.name
 
                 prefs[Keys.GRID_SIZE] = settings.gridSize

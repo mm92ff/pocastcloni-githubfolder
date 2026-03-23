@@ -91,7 +91,7 @@ fun FavoritesScreen(
             } else if (uiState.favorites.isEmpty()) {
                 Text(text = stringResource(id = R.string.favorites_empty))
             } else {
-                // PERFORMANCE: Padding-Berechnung cachen
+                // PERFORMANCE: cache the padding calculation
                 val bottomPadding =
                     remember(
                         uiState.isPlayerVisible,
@@ -106,7 +106,7 @@ fun FavoritesScreen(
                     }
 
                 ReorderableLazyColumn(
-                    items = uiState.favorites, // Nimmt jetzt ImmutableList
+                    items = uiState.favorites, // Now accepts ImmutableList
                     key = { item -> item.id },
                     onReorder = { from, to -> viewModel.onAction(FavoritesAction.OnReorder(from, to)) },
                     modifier = Modifier.fillMaxSize(),
@@ -118,8 +118,8 @@ fun FavoritesScreen(
                     reverseLayout = uiState.oneHandedMode,
                     verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
                 ) { _, item, _ ->
-                    // FIX: "isDragging" wird ignoriert, da die Animation jetzt intern im ReorderableLC passiert.
-                    // SwipeToDelete wird nur aktiviert, wenn NICHT editiert wird (das bleibt gleich)
+                    // FIX: "isDragging" is ignored — animation is now handled internally in ReorderableLazyColumn.
+                    // SwipeToDelete is only enabled when NOT in edit mode (unchanged behaviour)
 
                     SwipeToDeleteFavorite(
                         onDelete = { viewModel.onAction(FavoritesAction.OnEpisodeSwiped(item.episode.guid)) },
@@ -128,9 +128,9 @@ fun FavoritesScreen(
                         ListableEpisodeItem(
                             episode = item.episode,
                             podcast = item.podcast,
-                            // FIX: Lambda fängt uiState nicht mehr ein. Die Logik "if (!isEditMode)"
-                            // sollte idealerweise im ViewModel in onAction geprüft werden.
-                            // Hier feuern wir einfach immer, das ViewModel entscheidet.
+                            // FIX: Lambda no longer captures uiState. The "if (!isEditMode)" logic
+                            // should ideally be checked inside the ViewModel's onAction.
+                            // Here we always fire; the ViewModel decides what to do.
                             onClick = {
                                 viewModel.onAction(FavoritesAction.OnEpisodeClick(item.episode.guid))
                             },

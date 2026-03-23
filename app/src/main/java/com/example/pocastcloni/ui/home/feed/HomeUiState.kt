@@ -14,13 +14,12 @@ import kotlinx.collections.immutable.persistentSetOf
 data class HomeUiState(
     val podcasts: ImmutableList<Podcast> = persistentListOf(),
     val isLoading: Boolean = true,
-    // NEU: Layout Modus (Grid oder List)
     val layoutMode: LayoutMode = LayoutMode.GRID,
     val gridSize: Int = Constants.Preferences.DEFAULT_GRID_SIZE,
     val showGridTitles: Boolean = Constants.Preferences.DEFAULT_SHOW_GRID_TITLES,
     val oneHandedMode: Boolean = Constants.Preferences.DEFAULT_ONE_HANDED_MODE,
     val isEditMode: Boolean = false,
-    // GEÄNDERT: Set statt einzelner String für Multi-Select
+    // Set instead of a single String to support multi-select
     val selectedPodcastGuids: ImmutableSet<String> = persistentSetOf(),
     val confirmDelete: Boolean = Constants.Preferences.DEFAULT_CONFIRM_DELETE,
     val indicatorColorArgb: Long = Constants.Preferences.DEFAULT_INDICATOR_COLOR,
@@ -33,8 +32,7 @@ data class HomeUiState(
     val navBarHeight: Int = Constants.ViewModel.DEFAULT_NAV_BAR_HEIGHT,
     val isPlayerVisible: Boolean = false,
     val userMessage: UiText? = null,
-    // GEÄNDERT: Batch Delete Logik
-    // Statt einem einzelnen Podcast speichern wir den Status des Dialogs und eine Liste
+    // Batch-delete: store dialog state and the list of podcasts to delete
     val showDeleteConfirmation: Boolean = false,
     val selectedPodcastsForDelete: List<Podcast> = emptyList(),
     val screenError: UiText? = null

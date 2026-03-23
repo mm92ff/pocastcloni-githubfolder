@@ -119,7 +119,7 @@ fun PodcastDetailScreen(
                         Dimens.Zero
                     }
 
-                // Patch 3: Werte einmal ziehen (statt in jedem Item mehrfach)
+                // Read once to avoid redundant lookups inside each item
                 val playingGuid = playerState.currentPlayingGuid
                 val isPlayerPlaying = playerState.isPlayerPlaying
 
@@ -146,7 +146,7 @@ fun PodcastDetailScreen(
                     items(state.episodes, key = { it.guid }) { episode ->
                         val guid = episode.guid
 
-                        // Patch 3: stabile Callbacks (verhindert Recompose nur wegen neuer Lambda-Instanzen)
+                        // Stable callbacks: prevent recomposition triggered solely by new lambda instances
                         val onPlayClick =
                             remember(guid) {
                                 { viewModel.onAction(PodcastDetailAction.PlayEpisode(guid)) }
@@ -164,7 +164,7 @@ fun PodcastDetailScreen(
                                 { viewModel.onAction(PodcastDetailAction.ToggleFavorite(guid)) }
                             }
 
-                        // Patch 3: isPlaying wird pro Item nur neu berechnet, wenn sich Player-Status ändert
+                        // isPlaying is only recomputed when the player state changes
                         val isPlaying =
                             remember(guid, playingGuid, isPlayerPlaying) {
                                 guid == playingGuid && isPlayerPlaying

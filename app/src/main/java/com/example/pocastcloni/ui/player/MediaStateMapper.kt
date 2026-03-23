@@ -65,29 +65,29 @@ constructor() {
     }
 
     /**
-     * NEU: Mappt technische ExoPlayer-Fehler auf verständliche UI-Texte.
+     * Maps technical ExoPlayer errors to user-readable UI text.
      */
     fun mapError(error: PlaybackException?): UiText? {
         if (error == null) return null
 
         return when (error.errorCode) {
-            // Netzwerk-Probleme
+            // Network errors
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
             ->
                 UiText.StringResource(R.string.error_no_internet)
 
-            // Datei-Probleme (z.B. Download gelöscht)
+            // File errors (e.g. download deleted)
             PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
                 UiText.StringResource(R.string.error_file_deleted)
 
-            // Decoder/Format-Probleme
+            // Decoder / format errors
             PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
             PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED
             ->
                 UiText.StringResource(R.string.error_decoder)
 
-            // Fallback für alles andere
+            // Fallback for everything else
             else -> UiText.StringResource(R.string.error_generic)
         }
     }

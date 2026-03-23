@@ -192,7 +192,7 @@ fun SectionIndicator(
     )
 
     SettingsCard {
-        // --- 1. FARBAUSWAHL ---
+        // --- 1. COLOR SELECTION ---
         Text(stringResource(R.string.settings_color), style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(Dimens.PaddingSmall))
 
@@ -201,7 +201,6 @@ fun SectionIndicator(
             horizontalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium),
             verticalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium)
         ) {
-            // VERWENDUNG DER KONSTANTEN: Constants.UI.INDICATOR_COLORS
             Constants.UI.INDICATOR_COLORS.forEach { colorArg ->
                 IndicatorColorCircle(
                     colorArgb = colorArg,
@@ -213,7 +212,7 @@ fun SectionIndicator(
 
         Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
 
-        // --- 2. VORSCHAU ---
+        // --- 2. PREVIEW ---
         NotificationDotPreview(
             indicatorState = indicatorState,
             gridSizeDp = gridSizeDp
@@ -221,9 +220,9 @@ fun SectionIndicator(
 
         Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
 
-        // --- 3. SLIDER MIT KONSTANTEN ---
+        // --- 3. SLIDERS ---
 
-        // Größe
+        // Size
         SettingsSliderCard(
             title = stringResource(R.string.settings_size),
             value = indicatorState.size,
@@ -234,7 +233,7 @@ fun SectionIndicator(
 
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 
-        // Rahmenbreite
+        // Border width
         SettingsSliderCard(
             title = stringResource(R.string.settings_border_width),
             value = indicatorState.borderWidth,
@@ -245,7 +244,7 @@ fun SectionIndicator(
 
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 
-        // Horizontaler Versatz
+        // Horizontal offset
         SettingsSliderCard(
             title = stringResource(R.string.settings_horizontal_offset),
             value = indicatorState.xOffset,
@@ -256,7 +255,7 @@ fun SectionIndicator(
 
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 
-        // Vertikaler Versatz
+        // Vertical offset
         SettingsSliderCard(
             title = stringResource(R.string.settings_vertical_offset),
             value = indicatorState.yOffset,
@@ -458,7 +457,6 @@ fun SectionInterface(
     )
 
     SettingsCard {
-        // NEU: Auswahl Kacheln vs. Liste
         Text(stringResource(R.string.settings_layout_mode), style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 
@@ -479,7 +477,7 @@ fun SectionInterface(
 
         Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
 
-        // Slider nur anzeigen, wenn GRID aktiv ist
+        // Show slider only when GRID is active
         if (layoutMode == LayoutMode.GRID) {
             SettingsSliderCard(
                 title = stringResource(R.string.settings_tile_size),
@@ -620,7 +618,6 @@ fun SectionStatistics(
     SettingsCard {
         when (statsState) {
             is StatisticsScreenUiState.Success -> {
-                // Laufzeit der Statistik
                 if (statsState.statisticsStartedAt > 0L) {
                     val dateFormat = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
                     val startDate = remember(statsState.statisticsStartedAt) {
@@ -706,7 +703,6 @@ fun SectionStatistics(
     Spacer(modifier = Modifier.height(Dimens.PaddingVeryLarge))
 }
 
-// NEU: Helper für die Auswahl-Chips
 @Composable
 fun LayoutChip(
     label: String,
@@ -744,13 +740,13 @@ fun SectionDownloadLocation(
     }
 
     val locationDescription = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        "Android 10+: Dateien werden in Android/data/\u2026/files/Downloads gespeichert. Kein Berechtigungsdialog n\u00f6tig."
+        "Android 10+: Files are saved to Android/data/\u2026/files/Downloads. No permission dialog required."
     } else {
-        "Android 9 und \u00e4lter: Dateien werden im \u00f6ffentlichen Downloads-Ordner gespeichert. Speicherzugriff wird angefragt."
+        "Android 9 and below: Files are saved to the public Downloads folder. Storage access will be requested."
     }
 
     Text(
-        text = "Download-Speicherort",
+        text = "Download Location",
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
@@ -758,7 +754,7 @@ fun SectionDownloadLocation(
 
     SettingsCard {
         SettingsSwitchCard(
-            title = "Im Download-Ordner speichern",
+            title = "Save to Downloads folder",
             subtitle = locationDescription,
             checked = saveToDownloadsFolder,
             onCheckedChange = { enabled ->
@@ -782,7 +778,6 @@ fun SectionDownloadLocation(
     }
 }
 
-// NEU: Helper für den Color Picker des Indicators (Long Farben)
 @Composable
 fun IndicatorColorCircle(
     colorArgb: Long,
@@ -791,7 +786,7 @@ fun IndicatorColorCircle(
 ) {
     val borderColor = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent
     val color = Color(colorArgb)
-    // FIX: Manuelle Luminanz-Berechnung statt luminance() Extension
+    // Manual luminance calculation instead of the luminance() extension
     val luminance = (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue)
 
     Box(

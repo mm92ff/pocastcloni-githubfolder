@@ -33,8 +33,8 @@ fun String?.stripHtml(): String {
 }
 
 /**
- * Behält HTML-Formatierung (Fett, Links, Absätze) bei.
- * Verwendet den "schweren" Parser. Nur für Detail-Screens nutzen (nicht in Listen)!
+ * Preserves HTML formatting (bold, links, paragraphs).
+ * Uses the "heavy" parser. Use only for detail screens (not in lists)!
  */
 fun String?.parseHtml(): Spanned {
     if (this.isNullOrEmpty()) return SpannableString("")
@@ -46,8 +46,8 @@ fun String?.parseHtml(): Spanned {
 }
 
 /**
- * Private Hilfsfunktion: Repariert "doppelt codiertes" HTML.
- * Wandelt z.B. "&lt;p&gt;" in "<p>" um, falls der Server kaputtes HTML sendet.
+ * Private helper: fixes "double-encoded" HTML.
+ * Converts e.g. "&lt;p&gt;" → "<p>" when the server sends broken HTML.
  */
 private fun decodeDoubleEscapedHtml(html: String): String {
     val needsDecoding = html.contains("&lt;") || html.contains("&gt;")

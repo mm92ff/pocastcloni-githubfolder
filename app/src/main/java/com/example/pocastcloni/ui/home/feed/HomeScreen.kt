@@ -101,7 +101,7 @@ fun HomeScreen(
 
     val currentOnPodcastClicked by rememberUpdatedState(onPodcastClicked)
 
-    // Klick-Logik: Im EditMode wird selektiert, sonst geöffnet
+    // Click logic: select in edit mode, navigate otherwise
     val handlePodcastClick: (Podcast) -> Unit =
         remember(viewModel, uiState.isEditMode) {
             { podcast ->
@@ -138,7 +138,7 @@ fun HomeScreen(
                     if (!uiState.isEditMode) {
                         Text(stringResource(R.string.home_title))
                     } else {
-                        // Optional: Zeige Anzahl der markierten Elemente
+                        // Show count of selected items
                         val selectedCount = uiState.selectedPodcastGuids.size
                         if (selectedCount > 0) {
                             Text("$selectedCount")
@@ -160,7 +160,7 @@ fun HomeScreen(
                     }
 
                     if (uiState.isEditMode) {
-                        // Papierkorb nur anzeigen, wenn Elemente ausgewählt sind
+                        // Show delete icon only when items are selected
                         if (uiState.selectedPodcastGuids.isNotEmpty()) {
                             IconButton(onClick = viewModel::onDeleteSelectedRequest) {
                                 Icon(
@@ -318,9 +318,8 @@ fun PodcastListContent(
             }
         }
 
-    // NEU: Dynamischer vertikaler Abstand basierend auf LayoutMode
-    // Grid: PaddingMedium (16dp) - Luftig
-    // Liste: PaddingVerySmall (8dp) - Kompakter
+    // Dynamic vertical spacing based on layout mode:
+    // Grid: PaddingMedium (16dp) — airy; List: PaddingVerySmall (8dp) — compact
     val verticalSpacing = if (layoutMode == LayoutMode.LIST) Dimens.PaddingVerySmall else Dimens.PaddingMedium
 
     ReorderableLazyVerticalGrid(
@@ -333,7 +332,7 @@ fun PodcastListContent(
         reverseLayout = oneHandedMode,
         verticalArrangement =
         Arrangement.spacedBy(
-            verticalSpacing, // Hier geändert
+            verticalSpacing,
             if (oneHandedMode) Alignment.Bottom else Alignment.Top
         ),
         horizontalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium),

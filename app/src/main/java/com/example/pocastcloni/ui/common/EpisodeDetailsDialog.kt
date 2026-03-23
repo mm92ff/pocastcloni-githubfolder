@@ -31,8 +31,8 @@ fun EpisodeDetailsDialog(
     episodeDescription: String,
     onDismissRequest: () -> Unit
 ) {
-    // PERFORMANCE FIX: HTML Parsing cachen
-    // Wird nur neu berechnet, wenn sich episodeDescription ändert.
+    // PERFORMANCE FIX: cache the HTML parsing result
+    // Only recomputed when episodeDescription changes.
     val formattedDescription =
         remember(episodeDescription) {
             episodeDescription.parseHtml().toString()
@@ -62,7 +62,7 @@ fun EpisodeDetailsDialog(
                 Column(modifier = Modifier.weight(1f)) {
                     val scrollState = rememberScrollState()
                     Text(
-                        text = formattedDescription, // FIX: Nutzung des gecachten Wertes
+                        text = formattedDescription, // FIX: use the cached value
                         style = MaterialTheme.typography.bodyMedium,
                         modifier =
                         Modifier

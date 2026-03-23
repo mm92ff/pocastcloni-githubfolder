@@ -248,24 +248,20 @@ private fun DownloadAction(
     downloadProgress: Float,
     onDownloadClick: () -> Unit
 ) {
-    // IconButton ist der Container. Wenn wir DOWNLOADING sind, wollen wir oft NICHT klickbar sein,
-    // oder 'Cancel' anbieten. Hier behalten wir die Struktur bei, machen aber die Logik sauber.
-
-    // Fallunterscheidung außerhalb, damit wir die volle Kontrolle über das Icon vs Progress haben
     if (downloadStatus == DownloadStatusUiModel.DOWNLOADING) {
         Box(
             modifier = Modifier.size(Dimens.ActionButtonSize),
             contentAlignment = Alignment.Center
         ) {
             if (downloadProgress > 0f) {
-                // FALL A: Wir haben Fortschritt -> Determinate + Performance Lambda
+                // Progress known -> determinate indicator
                 CircularProgressIndicator(
                     progress = { downloadProgress },
                     modifier = Modifier.size(Dimens.ActionButtonIconSize),
                     strokeWidth = Dimens.ProgressIndicatorStrokeWidth
                 )
             } else {
-                // FALL B: Startet noch (0%) -> Indeterminate (dreht sich)
+                // Progress unknown (0%) -> indeterminate spinner
                 CircularProgressIndicator(
                     modifier = Modifier.size(Dimens.ActionButtonIconSize),
                     strokeWidth = Dimens.ProgressIndicatorStrokeWidth
@@ -273,7 +269,6 @@ private fun DownloadAction(
             }
         }
     } else {
-        // Standard Button für Download / Fertig
         IconButton(onClick = onDownloadClick, modifier = Modifier.size(Dimens.ActionButtonSize)) {
             when (downloadStatus) {
                 DownloadStatusUiModel.DOWNLOADED -> {

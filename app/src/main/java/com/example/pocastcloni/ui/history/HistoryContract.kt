@@ -16,7 +16,7 @@ data class HistoryUiItem(
 @Immutable
 data class HistoryUiState(
     val isLoading: Boolean = true,
-    // FIX: ImmutableList statt Map -> Stabil & Performant
+    // ImmutableList enforces stability and enables skipping in the UI
     val historyItems: ImmutableList<HistoryUiItem> = persistentListOf(),
     val showConfirmClearDialog: Boolean = false,
     val oneHandedMode: Boolean = false,

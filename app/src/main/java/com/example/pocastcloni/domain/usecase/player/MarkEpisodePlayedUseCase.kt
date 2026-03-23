@@ -14,25 +14,25 @@ constructor(
 ) {
     suspend operator fun invoke(guid: String) {
         withContext(dispatcherProvider.io) {
-            // 1. Episode als gespielt markieren
+            // 1. Mark the episode as played
             repository.markEpisodePlayed(guid, true, Date())
 
-            // 2. Status der NEUSTEN Episode prüfen
+            // 2. Check the status of the latest episode
             val episode = repository.getEpisode(guid) ?: return@withContext
             updatePodcastStatusBasedOnLatest(episode.podcastRssUrl)
         }
     }
 
     private suspend fun updatePodcastStatusBasedOnLatest(podcastUrl: String) {
-        // Hole die Liste (sortiert nach Datum absteigend, wie im SyncUseCase)
-        // firstOrNull() ist somit die allerneueste Episode.
+        // Fetch the list (sorted by date descending, as in SyncUseCase)
+        // firstOrNull() is therefore the most recent episode.
         val latestEpisode = repository.getEpisodesForSync(podcastUrl).firstOrNull()
 
-        // Der Dot soll nur angezeigt werden, wenn die neuste Episode existiert UND noch NICHT gespielt ist.
+        // The dot should only be shown when the latest episode exists AND has not been played yet.
         val showDot = latestEpisode != null && !latestEpisode.isPlayed
 
         val podcast = repository.getPodcastEntityByUrl(podcastUrl)
-        // Nur updaten, wenn sich der Status wirklich ändert
+        // Only update if the status actually changes
         if (podcast != null && podcast.hasNewEpisodes != showDot) {
             repository.updatePodcastEntity(podcast.copy(hasNewEpisodes = showDot))
         }

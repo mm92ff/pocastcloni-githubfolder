@@ -13,7 +13,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// --- BESTEHENDE MAPPER (Unverändert lassen) ---
+// --- EXISTING MAPPERS (leave unchanged) ---
 
 fun PodcastEntity.toDomain(): Podcast {
     return Podcast(
@@ -85,23 +85,23 @@ fun EpisodeEntity.toBackupFavorite(): BackupFavorite {
     )
 }
 
-// --- NEUE LOGIK FÜR EPISODEN & DATUMS-SCHUTZ ---
+// --- NEW LOGIC FOR EPISODES & DATE PROTECTION ---
 
 /**
- * Wandelt ein RssItem (Netzwerk) in eine EpisodeEntity (Datenbank) um.
- * Enthält Schutz gegen defekte Daten (z.B. Jahr 3000).
+ * Converts an RssItem (network) into an EpisodeEntity (database).
+ * Includes protection against corrupt data (e.g. year 3000).
  */
 fun RssItem.toEpisodeEntity(podcastUrl: String): EpisodeEntity {
-    // 1. Datum parsen
+    // 1. Parse date
     val rawDate = parseRssDate(this.pubDate)
 
-    // 2. Datum "sanitizen" (Schutz vor Zukunfts-Daten)
+    // 2. Sanitize date (protection against future dates)
     val cleanDate = sanitizeDate(rawDate)
 
     return EpisodeEntity(
-        guid = this.guid ?: this.link ?: this.title ?: System.currentTimeMillis().toString(), // Fallback für GUID
+        guid = this.guid ?: this.link ?: this.title ?: System.currentTimeMillis().toString(), // Fallback for GUID
         podcastRssUrl = podcastUrl,
-        title = this.title ?: "Kein Titel",
+        title = this.title ?: "No Title",
         description = this.description ?: "",
         pubDate = cleanDate,
         link = this.link ?: "",
@@ -109,7 +109,7 @@ fun RssItem.toEpisodeEntity(podcastUrl: String): EpisodeEntity {
         type = this.enclosure?.type ?: "audio/mpeg",
         fileSize = this.enclosure?.length ?: 0L,
         duration = parseDuration(this.itunesDuration),
-        // Defaults für neue Episoden
+        // Defaults for new episodes
         isPlayed = false,
         playbackPositionMs = 0,
         downloadStatus = DownloadStatus.NOT_DOWNLOADED,
@@ -118,45 +118,45 @@ fun RssItem.toEpisodeEntity(podcastUrl: String): EpisodeEntity {
 }
 
 /**
- * Prüft, ob ein Datum gültig ist.
- * Wenn das Datum > (Jetzt + 7 Tage) ist, wird es auf "Jetzt" gesetzt.
+ * Checks whether a date is valid.
+ * If the date is > (now + 7 days), it is set to "now".
  */
 private fun sanitizeDate(date: Date?): Date {
-    if (date == null) return Date() // Fallback auf Jetzt, wenn gar kein Datum da ist
+    if (date == null) return Date() // Fallback to now if no date is present at all
 
     val now = System.currentTimeMillis()
     val threshold = now + Constants.Validation.MAX_FUTURE_DATE_THRESHOLD_MS
 
     return if (date.time > threshold) {
-        // FEHLERFALL: Datum liegt zu weit in der Zukunft (z.B. Jahr 3000)
-        // Wir korrigieren es auf "Jetzt", damit die Sortierung stimmt.
+        // ERROR CASE: date is too far in the future (e.g. year 3000)
+        // We correct it to "now" so that sorting is consistent.
         Date(now)
     } else {
-        // Normalfall
+        // Normal case
         date
     }
 }
 
 /**
- * Versucht das Datum mit verschiedenen Formaten zu parsen.
+ * Tries to parse the date using various formats.
  */
 private fun parseRssDate(dateString: String?): Date? {
     if (dateString.isNullOrEmpty()) return null
 
     for (format in Constants.Parsing.DATE_FORMATS) {
         try {
-            // Locale.US ist wichtig für RSS (z.B. "Mon, 21 Jan...")
+            // Locale.US is important for RSS (e.g. "Mon, 21 Jan...")
             val parser = SimpleDateFormat(format, Locale.US)
             return parser.parse(dateString)
         } catch (e: Exception) {
-            // Format passte nicht, nächstes probieren
+            // Format did not match, try the next one
         }
     }
     return null
 }
 
 /**
- * Hilfsfunktion um iTunes Duration (z.B. "01:20:30" oder "4830") in Millisekunden zu wandeln
+ * Helper function to convert iTunes duration (e.g. "01:20:30" or "4830") into milliseconds.
  */
 private fun parseDuration(durationStr: String?): Long {
     if (durationStr.isNullOrEmpty()) return 0L
@@ -170,7 +170,7 @@ private fun parseDuration(durationStr: String?): Long {
             }
             seconds * 1000
         } else {
-            // Könnte Sekunden als Rohwert sein
+            // Could be seconds as a raw value
             durationStr.toLong() * 1000
         }
     } catch (e: Exception) {

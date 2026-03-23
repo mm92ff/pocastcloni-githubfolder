@@ -92,8 +92,7 @@ private fun BoxScope.PodcastOverlays(
         )
     }
 
-    // Anmerkung: DeleteIconOverlay wurde in deinem vorherigen Code entfernt,
-    // da du den Papierkorb in der TopBar nutzt. Ich lasse es hier auch weg.
+    // Note: DeleteIconOverlay was removed in favour of the trash icon in the TopBar.
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -147,7 +146,6 @@ fun PodcastItem(
             )
         ) {
             Row(
-                // ÄNDERUNG: PaddingLarge (24dp) -> PaddingSmall (12dp) für kompaktes Design
                 modifier = Modifier.padding(Dimens.PaddingSmall),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -164,7 +162,6 @@ fun PodcastItem(
                     contentScale = ContentScale.Crop
                 )
 
-                // ÄNDERUNG: PaddingLarge (24dp) -> PaddingSmall (12dp) für weniger Abstand Text<->Bild
                 Spacer(modifier = Modifier.width(Dimens.PaddingSmall))
 
                 Column {

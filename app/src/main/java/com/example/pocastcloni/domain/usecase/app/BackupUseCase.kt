@@ -2,7 +2,7 @@ package com.example.pocastcloni.domain.usecase.app
 
 import android.net.Uri
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.BackupRepository // WICHTIG: Neues Repository importieren
+import com.example.pocastcloni.domain.repository.BackupRepository
 import com.example.pocastcloni.domain.repository.ImportResult
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
@@ -25,7 +25,7 @@ sealed interface BackupResult {
 class ManageBackupUseCase
 @Inject
 constructor(
-    private val backupRepository: BackupRepository, // FIX: BackupRepository statt PodcastRepository nutzen
+    private val backupRepository: BackupRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {

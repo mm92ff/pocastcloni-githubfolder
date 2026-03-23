@@ -20,7 +20,7 @@ sealed class UiText {
         @get:StringRes val resId: Int,
         val args: ImmutableList<Any>
     ) : UiText() {
-        // Sekundärer Konstruktor für vararg (einfachere Nutzung)
+        // Secondary constructor for vararg (easier to use)
         constructor(
             @StringRes resId: Int,
             vararg args: Any
@@ -41,8 +41,8 @@ sealed class UiText {
     }
 
     /**
-     * Löst den Text innerhalb einer Composable auf.
-     * Nutzt die Compose-Resources, reagiert automatisch auf Sprachwechsel.
+     * Resolves the text inside a Composable.
+     * Uses Compose resources and reacts automatically to language changes.
      */
     @Composable
     fun asString(): String {
@@ -54,8 +54,8 @@ sealed class UiText {
     }
 
     /**
-     * Löst den Text in normalen Klassen (z.B. WorkManager, ViewModel, NotificationHelper) auf.
-     * Benötigt einen Context.
+     * Resolves the text in non-composable classes (e.g. WorkManager, ViewModel, NotificationHelper).
+     * Requires a Context.
      */
     fun asString(context: Context): String {
         return when (this) {
@@ -67,7 +67,7 @@ sealed class UiText {
 
     companion object {
         /**
-         * Helper für einfache Plurale (z.B. "5 Songs"), wo die Zahl auch der Parameter ist.
+         * Helper for simple plurals (e.g. "5 Songs") where the count is also the argument.
          */
         fun fromCount(
             @PluralsRes resId: Int,
@@ -80,12 +80,12 @@ sealed class UiText {
 
 /**
  * PRODUCTION-GRADE EXTENSION:
- * Hilft dabei, nullable Strings oder Errors aus der Domain-Layer direkt in UiText zu wandeln.
- * Verhindert "null" Anzeigen in der UI.
+ * Converts nullable Strings or errors from the domain layer directly into UiText.
+ * Prevents "null" from being displayed in the UI.
  */
 fun String?.asUiText(): UiText {
     return if (this.isNullOrBlank()) {
-        // Fallback, falls null oder leer (Erstelle diesen String in strings.xml falls gewünscht)
+        // Fallback for null or empty values
         UiText.DynamicString("")
     } else {
         UiText.DynamicString(this)

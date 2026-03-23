@@ -41,8 +41,8 @@ constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
 ) : CoroutineWorker(context, params) {
     companion object {
-        // Wir können jetzt sogar öfter updaten, da wir nicht mehr in die DB schreiben!
-        private const val PROGRESS_MIN_INTERVAL_MS = 250L // War 750L
+        // We can now update even more frequently since we no longer write to the DB!
+        private const val PROGRESS_MIN_INTERVAL_MS = 250L // Was 750L
     }
 
     override suspend fun doWork(): Result {
@@ -54,7 +54,7 @@ constructor(
 
         return try {
             podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADING, null)
-            // FIX: DB Update entfernt
+            // FIX: DB update removed
             setProgressAsync(workDataOf("progress" to 0f))
 
             val file = downloadToFile(guid, url, fileName)
@@ -65,8 +65,8 @@ constructor(
                 statsRepo.addDownloadBytes(fileSize, isWifi)
             }
 
-            // Finaler Flush
-            // FIX: DB Update entfernt
+            // Final flush
+            // FIX: DB update removed
             setProgressAsync(workDataOf("progress" to 1f))
 
             podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADED, file.absolutePath)
@@ -185,7 +185,7 @@ constructor(
                         val timeOk = (now - lastWriteAtMs) >= PROGRESS_MIN_INTERVAL_MS
 
                         if ((percent > lastWrittenPercent && timeOk) || force) {
-                            // FIX: Statt DB Update nutzen wir die native WorkManager API
+                            // Use the native WorkManager API instead of a DB update
                             setProgressAsync(workDataOf("progress" to (percent / 100f)))
 
                             lastWrittenPercent = percent

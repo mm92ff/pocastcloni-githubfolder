@@ -9,7 +9,6 @@ import com.example.pocastcloni.data.remote.RssSmartSyncParser
 // TODO: ARCHITECTURE BOUNDARY VIOLATION - Domain layer importing data mapper functions
 // FIXME: Domain use cases should not depend on data layer implementation details.
 // This mapper function should be moved to domain or accessed via repository interface.
-// WICHTIG: Import für den neuen Mapper
 import com.example.pocastcloni.data.repository.toEpisodeEntity
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
@@ -36,7 +35,7 @@ constructor(
 ) {
     private val streamParser = RssSmartSyncParser()
 
-    // HINWEIS: dateFormats entfernt, da dies nun in PodcastMappers.kt erledigt wird.
+    // Note: dateFormats removed; date parsing is now handled in PodcastMappers.kt.
 
     private val repo: PodcastRepository
         get() = podcastRepositoryProvider.get()
@@ -197,22 +196,20 @@ constructor(
 
             val episodesToInsert =
                 newItems.mapNotNull { item ->
-                    // FIX: Hier nutzen wir jetzt den Mapper aus PodcastMappers.kt!
-                    // Der Mapper kümmert sich um:
-                    // 1. Datum "sanitizen" (Jahr 3000 Fix)
-                    // 2. Duration parsen
-                    // 3. Defaults setzen
+                    // Use the mapper from PodcastMappers.kt which handles:
+                    // 1. Sanitizing dates (year 3000 fix)
+                    // 2. Parsing duration
+                    // 3. Setting defaults
 
                     val entity = item.toEpisodeEntity(url)
 
-                    // Dubletten-Check
+                    // Duplicate check
                     if (existingEpisodes.containsKey(entity.guid)) return@mapNotNull null
 
-                    // Ohne Audio-URL bringt uns die Episode nichts
+                    // An episode without an audio URL is useless
                     if (entity.enclosureUrl.isBlank()) return@mapNotNull null
 
-                    // Optional: HTML strippen, falls der Mapper das nicht getan hat
-                    // (Der Mapper übernimmt description raw, daher hier bei Bedarf strippen)
+                    // Strip HTML if the mapper left it raw (description is passed through as-is)
                     entity.copy(
                         title = entity.title.stripHtml(),
                         description = entity.description.stripHtml()

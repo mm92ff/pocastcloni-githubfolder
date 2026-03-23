@@ -24,7 +24,7 @@ constructor(
         private const val MIN_MANUAL_SAVE_INTERVAL_MS = 3_000L
         private const val MIN_MANUAL_SAVE_DELTA_MS = 1_000L
 
-        // Debugging: Nur alle X ms loggen, um Logcat nicht zu fluten
+        // Throttle debug logging to avoid flooding Logcat
         private const val DEBUG_LOG_INTERVAL_MS = 5_000L
     }
 
@@ -36,7 +36,7 @@ constructor(
     private var lastPersistedAtMs: Long = 0L
     private var hasBeenMarkedAsPlayed: Boolean = false
 
-    private var lastDebugLogMs = 0L // Für Log-Drosselung
+    private var lastDebugLogMs = 0L
 
     fun onMediaItemTransition() {
         hasBeenMarkedAsPlayed = false
@@ -55,7 +55,7 @@ constructor(
         if (guid.isNullOrBlank() || !isPlaying) return
         val nowMs = SystemClock.elapsedRealtime()
 
-        // --- DEBUG LOGGING (Alle 5 Sekunden) ---
+        // --- DEBUG LOGGING (every 5 seconds) ---
         if (nowMs - lastDebugLogMs > DEBUG_LOG_INTERVAL_MS) {
             Timber.v(
                 "Analytics Debug: Pos=$currentPositionMs ms, Dur=$durationMs ms, " +
@@ -72,31 +72,24 @@ constructor(
         }
 
         if ((nowMs - lastDbSaveMs) >= AUTO_SAVE_INTERVAL_MS) {
-            // Hinweis: Das hier ruft das Repository auf, welches den "Smart Completion" Bug hat!
             saveProgressInternal(scope, guid, currentPositionMs, nowMs)
         }
 
         if (hasBeenMarkedAsPlayed) return
 
-        // --- LOGIK PRÜFUNG ---
-
         var shouldMark = false
         var reason = ""
 
         if (markPlayedThresholdSeconds > 0) {
-            // Logik A: Feste Zeit (z.B. 30s)
-            // Hier prüfen wir auf Sekunden-Ebene, aber rechnen alles in MS um
+            // Strategy A: fixed time threshold (e.g. 30 s)
             val thresholdMs = markPlayedThresholdSeconds * 1000L
 
-            // Logik: Markieren, wenn wir thresholdMs erreicht haben
-            // (Achtung: Deine ursprüngliche Logik war "nach X Sekunden ab Start".
-            // Falls du "X Sekunden vor Ende" meinst, muss hier: durationMs - thresholdMs hin)
             if (currentPositionMs >= thresholdMs) {
                 shouldMark = true
                 reason = "Fixed Time Threshold reached ($currentPositionMs >= $thresholdMs)"
             }
         } else {
-            // Logik B: 95% Regel (Standard)
+            // Strategy B: 95 % completion rule (default)
             if (durationMs > 0) {
                 val percentageThresholdMs = (durationMs * Constants.COMPLETION_PERCENTAGE).toLong()
 

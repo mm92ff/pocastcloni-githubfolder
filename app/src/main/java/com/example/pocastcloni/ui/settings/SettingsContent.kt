@@ -29,18 +29,18 @@ import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.theme.Dimens
 
 /**
- * Baut die gesamte Einstellungs-Liste auf.
- * PERFORMANCE-OPTIMIERT:
- * 1. Stabile Lazy-Keys
- * 2. Granulare State-Übergabe (kein Monolith)
- * 3. Stabilisierte Lambdas
+ * Builds the full settings list.
+ * PERFORMANCE-OPTIMISED:
+ * 1. Stable lazy keys
+ * 2. Granular state passing (no monolith)
+ * 3. Stabilised lambdas
  */
 @Composable
 fun SettingsListContent(
     settings: SettingsUiState.Success,
     downloadMessage: UiText?,
     isPlayerVisible: Boolean,
-    onEvent: (SettingsUiEvent) -> Unit, // Muss stabil sein (Method Reference)
+    onEvent: (SettingsUiEvent) -> Unit, // Must be stable (method reference)
     onExportClick: () -> Unit,
     onImportClick: () -> Unit
 ) {
@@ -62,18 +62,18 @@ fun SettingsListContent(
         ),
         verticalArrangement = Arrangement.spacedBy(Dimens.PaddingLarge)
     ) {
-        // 1. URL Import (Smart Section -> Eigenes VM)
+        // 1. URL Import (smart section -> own VM)
         item(key = "add_podcast") {
             SettingsUrlImportSectionSmart()
             Divider()
         }
 
-        // 2. Allgemeine Einstellungen
+        // 2. General settings
         item(key = "general_settings") {
             GeneralSettingsContent(settings, downloadMessage, onEvent)
         }
 
-        // 3. Statistik
+        // 3. Statistics
         item(key = "statistics") {
             SettingsStatisticsSectionSmart()
             Divider()
@@ -85,7 +85,7 @@ fun SettingsListContent(
             Divider()
         }
 
-        // 5. Reset Zone
+        // 5. Reset zone
         item(key = "reset_zone") {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_reset_zone_title), color = MaterialTheme.colorScheme.error) },
@@ -98,8 +98,8 @@ fun SettingsListContent(
 }
 
 /**
- * Container für Settings-Sektionen.
- * ZERLEGT den State in primitive Werte für maximales Recomposition Skipping.
+ * Container for settings sections.
+ * Decomposes state into primitive values for maximum recomposition skipping.
  */
 @Composable
 private fun GeneralSettingsContent(
@@ -201,7 +201,6 @@ private fun GeneralSettingsContent(
     SectionIndicator(
         gridSizeDp = settings.gridSize,
         indicatorState = settings.indicator,
-        // FIX: Explizite Typangabe (Long, Int, etc.) behebt den "Cannot infer type"-Fehler
         onColorClick =
         remember(onEvent) {
             {
@@ -249,7 +248,6 @@ private fun GeneralSettingsContent(
         progressBarHeight = settings.progressBarHeight,
         navBarHeight = settings.navBarHeight,
         confirmDelete = settings.confirmDelete,
-        // FIX: Auch hier explizite Typen
         onSetLayoutMode =
         remember(onEvent) {
             {
@@ -321,7 +319,7 @@ private fun GeneralSettingsContent(
     Divider()
 }
 
-// --- Smart Sections bleiben unverändert ---
+// --- Smart Sections ---
 
 @Composable
 fun SettingsUrlImportSectionSmart(viewModel: SettingsUrlImportViewModel = hiltViewModel()) {

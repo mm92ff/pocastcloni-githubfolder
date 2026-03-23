@@ -36,7 +36,7 @@ import com.example.pocastcloni.ui.home.detail.EpisodeListItem
 import com.example.pocastcloni.ui.home.detail.EpisodeUiModel
 import com.example.pocastcloni.ui.theme.Dimens
 
-// Lokaler Dialog, da er spezifisch für Downloads ist (oder in common verschieben, wenn wiederverwendet)
+// Local dialog specific to Downloads (move to common if reused elsewhere)
 @Composable
 fun DownloadsDeleteDialog(
     episodeTitle: String,
@@ -118,7 +118,7 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
                 ) { episode ->
                     val isPlaying = (episode.guid == uiState.currentPlayingGuid) && uiState.isPlayerPlaying
 
-                    // PERFORMANCE FIX: Lambdas stabilisieren
+                    // PERFORMANCE FIX: stabilise lambdas
                     val onPlayClick = remember(episode) { { viewModel.playEpisode(episode) } }
                     val onFavoriteClick = remember(episode) { { viewModel.onFavoriteToggle(episode) } }
 
@@ -127,8 +127,8 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
                             episode = episode,
                             isPlaying = isPlaying,
                             onPlayClick = onPlayClick,
-                            onDownloadClick = { }, // Keine Aktion in Downloads-Screen nötig
-                            onTogglePlayed = { }, // Optional, falls gewünscht
+                            onDownloadClick = { }, // No action needed in the Downloads screen
+                            onTogglePlayed = { },
                             onToggleFavorite = onFavoriteClick
                         )
                     }

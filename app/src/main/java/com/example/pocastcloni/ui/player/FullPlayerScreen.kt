@@ -64,7 +64,7 @@ fun FullPlayerScreen(
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     val rootHeightDp = with(density) { rootSize.height.toDp() }
 
-    // AUTO: Abstand Progress/Time -> Controls passt sich an verfügbare Höhe an
+    // Spacing between Progress/Time and Controls adapts to available height
     val progressToControlsSpacing: Dp =
         when {
             rootHeightDp <= 620.dp -> Dimens.PaddingMicro // 2dp
@@ -102,7 +102,7 @@ fun FullPlayerScreen(
                 .onSizeChanged { rootSize = it },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // TOP (flexibel)
+            // TOP (flexible)
             LayoutColumn(
                 modifier =
                 Modifier
@@ -126,7 +126,7 @@ fun FullPlayerScreen(
                 }
             }
 
-            // Progress + Time (ausgelagert)
+            // Progress + Time
             FullPlayerProgressSection(
                 playbackStateFlow = playbackStateFlow,
                 isPlaying = playerState.isPlaying,
@@ -139,7 +139,7 @@ fun FullPlayerScreen(
             // AUTO spacing
             Spacer(modifier = Modifier.height(progressToControlsSpacing))
 
-            // Controls (ausgelagert)
+            // Controls
             FullPlayerControls(
                 playerState = playerState,
                 onEvent = onEvent

@@ -47,7 +47,7 @@ constructor(
 ) : PodcastRepository {
     private val updateSemaphore = Semaphore(4)
 
-    // --- FLOWS --- (Unverändert)
+    // --- FLOWS --- (unchanged)
     override fun getAllPodcastsFlow(): Flow<List<Podcast>> {
         return podcastDao.getAllPodcastsFlow()
             .map { list ->
@@ -115,7 +115,7 @@ constructor(
         podcastDao.getUnplayedCountsFlow().map { list -> list.associate { it.rssUrl to it.count } }
             .catch { emit(emptyMap()) }.flowOn(dispatcherProvider.io)
 
-    // --- PODCAST MANAGEMENT --- (Unverändert)
+    // --- PODCAST MANAGEMENT --- (unchanged)
     override suspend fun updateAllPodcasts(
         downloadLimit: Int,
         mode: FeedUpdateMode,
@@ -168,8 +168,8 @@ constructor(
 
     override suspend fun reorderPodcasts(list: List<Podcast>) {
         withContext(dispatcherProvider.io) {
-            // FIX: Verwende partielles Update, um nur sortOrder zu ändern.
-            // Verhindert das Überschreiben anderer Felder (hasNewEpisodes, autoDownload) bei parallelen Syncs.
+            // FIX: Use partial update to change only sortOrder.
+            // Prevents overwriting other fields (hasNewEpisodes, autoDownload) during parallel syncs.
             val updates =
                 list.mapIndexed { index, item ->
                     PodcastSortUpdate(
@@ -191,7 +191,7 @@ constructor(
 
     // --- EPISODE ACTIONS ---
 
-    // FIX: Jetzt wird auch der Dot aktualisiert!
+    // FIX: The notification dot is now updated as well!
     override suspend fun markEpisodePlayed(
         guid: String,
         played: Boolean,
@@ -213,21 +213,21 @@ constructor(
         }
     }
 
-    // FIX: Helper Funktion, um Code-Duplizierung zu vermeiden und sicherzustellen, dass der Dot immer geupdated wird
+    // FIX: Helper function to avoid code duplication and ensure the dot is always updated
     private suspend fun updatePodcastNewFlagIfLatest(
         guid: String,
         isPlayed: Boolean
     ) {
-        // Wir brauchen die RSS URL der Episode
+        // We need the RSS URL of the episode
         val episode = podcastDao.getEpisodeByGuid(guid) ?: return
         val rssUrl = episode.podcastRssUrl
 
         if (rssUrl.isNotBlank()) {
             val latestGuid = podcastDao.getLatestEpisodeGuid(rssUrl)
-            // Wenn die geänderte Episode die NEUESTE ist:
+            // If the changed episode is the LATEST one:
             if (latestGuid != null && latestGuid == guid) {
-                // Wenn gespielt -> Kein Dot (hasNew = false)
-                // Wenn ungespielt -> Dot an (hasNew = true)
+                // If played -> no dot (hasNew = false)
+                // If unplayed -> dot on (hasNew = true)
                 podcastDao.updatePodcastNewFlag(rssUrl, hasNew = !isPlayed)
             }
         }
@@ -241,20 +241,20 @@ constructor(
             podcastDao.updateEpisodeProgressOnly(guid, positionMs)
 
             if (positionMs > 0) {
-                // 1. Hole Dauer (in Sekunden)
+                // 1. Fetch duration (in seconds)
                 val durationSeconds = podcastDao.getEpisodeDuration(guid) ?: 0L
 
                 if (durationSeconds > 0) {
-                    // 2. Umrechnung in Millisekunden für Vergleich
+                    // 2. Convert to milliseconds for comparison
                     val durationMs = durationSeconds * 1000L
 
-                    // 3. 95% Logik
+                    // 3. 95% logic
                     val thresholdMs = (durationMs * 0.95).toLong()
 
                     if (positionMs >= thresholdMs) {
                         Timber.d("Smart Completion: Marking $guid as played (pos=$positionMs, durMs=$durationMs)")
 
-                        // FIX: Markieren + Dot Update
+                        // FIX: Mark as played + dot update
                         podcastDao.markEpisodePlayed(guid, true, Date())
                         updatePodcastNewFlagIfLatest(guid, true)
                     }
@@ -287,7 +287,7 @@ constructor(
         }
     }
 
-    // --- SEARCH --- (Unverändert)
+    // --- SEARCH --- (unchanged)
     override suspend fun searchPodcasts(term: String): List<ItunesPodcastDto> {
         return withContext(dispatcherProvider.io) { itunesSearchApi.searchPodcasts(term).results }
     }
@@ -301,7 +301,7 @@ constructor(
         }.flowOn(dispatcherProvider.io)
     }
 
-    // --- FAVORITES & HISTORY & SYNC (Unverändert) ---
+    // --- FAVORITES & HISTORY & SYNC (unchanged) ---
     override suspend fun setFavoriteStatus(
         guid: String,
         isFavorite: Boolean,

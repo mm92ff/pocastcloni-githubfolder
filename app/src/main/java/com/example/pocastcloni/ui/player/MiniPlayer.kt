@@ -71,7 +71,7 @@ fun MiniPlayer(
             // OPTIMIZED PROGRESS BAR
             MiniPlayerProgressBar(
                 playbackStateFlow = playbackStateFlow,
-                isPlaying = playerState.isPlaying, // WICHTIG für Interpolation
+                isPlaying = playerState.isPlaying, // Required for interpolation
                 progressBarHeight = progressBarHeight,
                 onSeek = { onEvent(PlayerScreenEvent.SeekTo(it)) },
                 onSeekStart = { onEvent(PlayerScreenEvent.SeekStarted) },
@@ -92,22 +92,22 @@ private fun MiniPlayerProgressBar(
     onSeekEnd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 1. State Object holen (vermeidet Recomposition bei jedem Tick im Body)
+    // 1. Collect state object (avoids recomposition on every tick in the body)
     val playbackStateState = playbackStateFlow.collectAsStateWithLifecycle()
 
-    // 2. Interpolation Hook nutzen (60 FPS Smoothness)
+    // 2. Interpolation hook for 60 FPS smoothness
     val smoothState =
         rememberSmoothedProgressState(
             playbackStateFlow = playbackStateFlow,
             isPlaying = isPlaying
         )
 
-    // 3. Provider Lambdas für Phase-Awareness erstellen
+    // 3. Provider lambdas for phase-aware reads
     val currentPositionProvider = remember(smoothState) { { smoothState.currentPosition.value } }
     val bufferedPositionProvider = remember(playbackStateState) { { playbackStateState.value.bufferedPositionMs } }
     val durationProvider = remember(playbackStateState) { { playbackStateState.value.durationMs } }
 
-    // 4. Seek Wrapper für sofortiges Feedback
+    // 4. Seek wrapper for immediate visual feedback
     val onSeekWrapped: (Long) -> Unit =
         remember(onSeek, smoothState) {
             { newPos ->
@@ -116,8 +116,7 @@ private fun MiniPlayerProgressBar(
             }
         }
 
-    // Nur zeichnen, wenn Duration bekannt ist, sonst flackert es beim Laden
-    // Wir prüfen hier den State Value direkt im if, das ist okay.
+    // Only render when duration is known to avoid flickering during load
     if (playbackStateState.value.durationMs > 0) {
         CustomProgressBar(
             currentPositionMs = currentPositionProvider,

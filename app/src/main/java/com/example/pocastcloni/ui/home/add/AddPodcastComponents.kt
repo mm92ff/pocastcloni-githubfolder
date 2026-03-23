@@ -61,22 +61,18 @@ fun SearchArea(
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            // Wichtig: Button und Textfeld vertikal zentrieren
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium)
         ) {
-            // TextField statt OutlinedTextField für den "Filled"-Look
             TextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                // Placeholder sieht in runden Feldern oft besser aus als Label
                 placeholder = { Text(stringResource(R.string.label_input)) },
                 modifier =
                 Modifier
                     .weight(Constants.Weights.FULL)
                     .heightIn(min = Dimens.SearchFieldMinHeight),
                 singleLine = true,
-                // MACHT ES RUND:
                 shape = CircleShape,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions =
@@ -88,11 +84,9 @@ fun SearchArea(
                 ),
                 colors =
                 TextFieldDefaults.colors(
-                    // Entfernt den Unterstrich/Rahmen komplett
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
-                    // Passt den Hintergrund an (leicht heller als Schwarz)
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
@@ -105,12 +99,11 @@ fun SearchArea(
                 },
                 modifier =
                 Modifier
-                    // Macht den Button quadratisch (wichtig für Kreisform)
                     .size(Dimens.SearchFieldMinHeight)
                     .align(Alignment.CenterVertically),
-                shape = CircleShape, // Runder Button
+                shape = CircleShape,
                 enabled = !isSearching,
-                contentPadding = PaddingValues(Dimens.Zero) // Icon zentrieren
+                contentPadding = PaddingValues(Dimens.Zero)
             ) {
                 if (isSearching) {
                     CircularProgressIndicator(

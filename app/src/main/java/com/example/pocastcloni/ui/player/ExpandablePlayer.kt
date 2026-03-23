@@ -21,7 +21,6 @@ private const val EXPAND_ANIMATION_DURATION_MS = 300
 fun ExpandablePlayer(
     playerState: PlayerUiState,
     playbackStateFlow: StateFlow<PlaybackState>,
-    // NEU: Parameter empfangen
     episodeDescription: Spanned?,
     isDescriptionVisible: Boolean,
     isExpanded: Boolean,
@@ -51,7 +50,6 @@ fun ExpandablePlayer(
             FullPlayerScreen(
                 playerState = playerState,
                 playbackStateFlow = playbackStateFlow,
-                // NEU: Parameter an FullPlayerScreen weitergeben
                 episodeDescription = episodeDescription,
                 isDescriptionVisible = isDescriptionVisible,
                 onCollapse = onExpandToggle,
@@ -60,7 +58,6 @@ fun ExpandablePlayer(
                 navBarHeight = navBarHeight
             )
         } else {
-            // MiniPlayer braucht keine Description/Error Infos
             MiniPlayer(
                 playerState = playerState,
                 playbackStateFlow = playbackStateFlow,

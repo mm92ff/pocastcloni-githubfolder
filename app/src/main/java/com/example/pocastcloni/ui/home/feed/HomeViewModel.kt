@@ -42,25 +42,23 @@ import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
-// Interne State-Repräsentation (Clean & Type-Safe)
+// Internal state representation (clean & type-safe)
 private data class IntermediateHomeState(
     val podcasts: ImmutableList<Podcast>,
     val settings: UserSettings,
     val editState: EditState,
     val isRefreshing: Boolean,
     val isPlayerVisible: Boolean,
-    // FIX: showDeleteConfirmation statt podcastToDelete
     val showDeleteConfirmation: Boolean,
     val screenError: UiText?
 )
 
 private data class EditState(
     val isEditMode: Boolean = false,
-    // FIX: Set statt String
     val selectedPodcastGuids: ImmutableSet<String> = persistentSetOf()
 )
 
-// One-Time Events für die UI (z.B. Snackbars)
+// One-time events for the UI (e.g. Snackbars)
 sealed interface HomeUiEvent {
     data class ShowUserMessage(val message: UiText) : HomeUiEvent
 }
@@ -90,19 +88,18 @@ constructor(
     private val _editState = MutableStateFlow(EditState())
     private val _isRefreshing = MutableStateFlow(false)
 
-    // FIX: Boolescher Flag für Dialog Sichtbarkeit
     private val _showDeleteConfirmation = MutableStateFlow(false)
 
     private val _screenError = MutableStateFlow<UiText?>(null)
 
-    // PERFORMANCE: Optimistischer Cache für Drag & Drop
+    // PERFORMANCE: optimistic cache for drag & drop
     private val _optimisticPodcasts = MutableStateFlow<List<Podcast>?>(null)
 
-    // Event Channel für einmalige UI-Aktionen (Snackbars)
+    // Event channel for one-shot UI actions (Snackbars)
     private val _events = Channel<HomeUiEvent>()
     val events = _events.receiveAsFlow()
 
-    // Player State Flow (GUID-basiert, stabil)
+    // Player state flow (GUID-based, stable)
     private val isPlayerVisibleFlow =
         playerController.playerState
             .map { !it.currentEpisodeGuid.isNullOrBlank() }
@@ -113,7 +110,7 @@ constructor(
             .map { it.toImmutableList() }
             .distinctUntilChanged()
 
-    // 1. Stage: Daten kombinieren (Intermediate State)
+    // Stage 1: combine data into an intermediate state
     private val intermediateStateFlow: Flow<IntermediateHomeState> =
         combine(
             podcastsFlow,
@@ -137,7 +134,7 @@ constructor(
             val showDeleteConfirmation = args[6] as Boolean
             val screenError = args[7] as UiText?
 
-            // Wenn optimistische Daten existieren (während Drag & Drop), nutzen wir diese.
+            // If optimistic data exists (during drag & drop), use it.
             val finalPodcasts =
                 if (optimisticPodcasts != null && optimisticPodcasts.size == dbPodcasts.size) {
                     optimisticPodcasts.toImmutableList()
@@ -156,11 +153,11 @@ constructor(
             )
         }
 
-    // 2. Stage: Finaler UI State
+    // Stage 2: produce the final UI state
     val uiState: StateFlow<HomeUiState> =
         intermediateStateFlow
             .map { state ->
-                // Helper: Berechne die Liste der aktuell selektierten Podcasts für die UI
+                // Compute the list of currently selected podcasts for the UI
                 val selectedPodcasts =
                     if (state.editState.selectedPodcastGuids.isNotEmpty()) {
                         state.podcasts.filter { it.rssUrl in state.editState.selectedPodcastGuids }
@@ -171,15 +168,11 @@ constructor(
                 HomeUiState(
                     podcasts = state.podcasts,
                     isLoading = false,
-                    // -------------------------------------------------------------
-                    // KORREKTUR: Layout Mode wird jetzt korrekt übertragen!
-                    // -------------------------------------------------------------
                     layoutMode = state.settings.layoutMode,
                     gridSize = state.settings.gridSize,
                     showGridTitles = state.settings.showGridTitles,
                     oneHandedMode = state.settings.oneHandedMode,
                     isEditMode = state.editState.isEditMode,
-                    // FIX: Set übertragen
                     selectedPodcastGuids = state.editState.selectedPodcastGuids,
                     confirmDelete = state.settings.confirmDelete,
                     indicatorColorArgb = state.settings.indicator.colorArgb,
@@ -192,7 +185,6 @@ constructor(
                     navBarHeight = state.settings.navBarHeight,
                     isPlayerVisible = state.isPlayerVisible,
                     userMessage = null,
-                    // FIX: Dialog State und Liste
                     showDeleteConfirmation = state.showDeleteConfirmation,
                     selectedPodcastsForDelete = selectedPodcasts,
                     screenError = state.screenError
@@ -298,7 +290,6 @@ constructor(
         _editState.update {
             it.copy(
                 isEditMode = true,
-                // FIX: Set initialisieren
                 selectedPodcastGuids = persistentSetOf(initialPodcastUrl)
             )
         }
@@ -333,29 +324,25 @@ constructor(
         }
     }
 
-    // FIX: Multi-Select Toggle Logik mit korrekten ImmutableSet Operatoren
     fun toggleSelection(podcastUrl: String) {
         _editState.update { state ->
             val current = state.selectedPodcastGuids
-            // Nutzung von '+' und '-' erstellt neue ImmutableSets
+            // '+' and '-' create new ImmutableSets
             val newSet =
                 if (current.contains(podcastUrl)) {
                     current - podcastUrl
                 } else {
                     current + podcastUrl
                 }
-            // Wichtig: Explizit in ImmutableSet wandeln, um Typfehler zu vermeiden
             state.copy(selectedPodcastGuids = newSet.toImmutableSet())
         }
     }
 
-    // FIX: Aufruf durch ToggleSelection ersetzt
     fun onPodcastInteract(targetUrl: String) {
         if (!uiState.value.isEditMode) return
         toggleSelection(targetUrl)
     }
 
-    // FIX: Batch Delete Logik
     fun onDeleteSelectedRequest() {
         val selectedCount = _editState.value.selectedPodcastGuids.size
         if (selectedCount == 0) return
@@ -376,7 +363,6 @@ constructor(
         _showDeleteConfirmation.value = false
     }
 
-    // FIX: Batch Delete Ausführung
     private fun executeDeleteSelected() {
         val guidsToDelete = _editState.value.selectedPodcastGuids
         if (guidsToDelete.isEmpty()) return
@@ -393,7 +379,7 @@ constructor(
                     Timber.e(e, "Failed to delete podcast ${podcast.title}")
                 }
             }
-            // Edit Mode verlassen nach erfolgreichem Löschen
+            // Exit edit mode after successful deletion
             exitEditMode()
         }
     }

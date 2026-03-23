@@ -19,7 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer // NEU: Wichtig für Performance
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -95,7 +95,7 @@ fun BoxScope.IndicatorDot(
     colorArgb: Long,
     modifier: Modifier = Modifier
 ) {
-    // PERFORMANCE: Wir konvertieren hier vorab in Dp, nutzen es aber im graphicsLayer
+    // PERFORMANCE: pre-convert to Dp for use inside graphicsLayer
     val xOffsetDp = xOffset.dp
     val yOffsetDp = (-yOffset).dp
     val borderWidthDp = borderWidth.dp
@@ -106,15 +106,15 @@ fun BoxScope.IndicatorDot(
         modifier
             .align(Alignment.TopEnd)
             .zIndex(Constants.UI.INDICATOR_Z_INDEX)
-            // PERFORMANCE FIX: Statt .offset() nutzen wir graphicsLayer.
-            // Das verhindert Layout-Neuberechnungen (Measure/Layout Phase) und nutzt direkt die GPU (Draw Phase).
+            // PERFORMANCE FIX: use graphicsLayer instead of .offset()
+            // to skip Measure/Layout and apply the translation directly in the Draw phase (GPU).
             .graphicsLayer {
                 translationX = xOffsetDp.toPx()
                 translationY = yOffsetDp.toPx()
             }
             .size(totalSize)
             .clip(CircleShape)
-            // .background ist die Farbe des App-Hintergrunds für den "Cutout"-Effekt
+            // background matches the app background to create a cutout effect
             .background(MaterialTheme.colorScheme.background)
             .padding(borderWidthDp)
             .background(Color(colorArgb), CircleShape)

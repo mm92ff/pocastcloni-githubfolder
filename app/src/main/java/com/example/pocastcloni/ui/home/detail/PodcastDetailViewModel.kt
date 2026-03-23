@@ -76,7 +76,6 @@ constructor(
     private val updatePodcastAutoDownloadUseCase: UpdatePodcastAutoDownloadUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
-    // FIX: StandardCharsets Korrektur (kein doppeltes StandardCharsets mehr)
     private val podcastUrl: String =
         URLDecoder.decode(
             checkNotNull(savedStateHandle.get<String>(Screen.PODCAST_URL)),

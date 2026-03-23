@@ -39,7 +39,7 @@ object AppModule {
                     .maxSizePercent(0.02)
                     .build()
             }
-            // Zeigt einen Platzhalter, falls das Laden fehlschlägt
+            // Shows a placeholder if loading fails
             .error(R.drawable.ic_launcher_foreground)
             .fallback(R.drawable.ic_launcher_foreground)
             .build()

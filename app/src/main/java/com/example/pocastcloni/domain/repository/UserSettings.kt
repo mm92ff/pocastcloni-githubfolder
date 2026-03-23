@@ -20,7 +20,6 @@ data class UserSettings(
     val appColor: AppColor = AppColor.GREEN,
     val colorStrength: Float = 0.1f,
     val bufferMode: BufferMode = BufferMode.NORMAL,
-    // NEU: Layout Modus (Grid oder List)
     val layoutMode: LayoutMode = LayoutMode.GRID,
     val gridSize: Int = Constants.Preferences.DEFAULT_GRID_SIZE,
     val showGridTitles: Boolean = Constants.Preferences.DEFAULT_SHOW_GRID_TITLES,
