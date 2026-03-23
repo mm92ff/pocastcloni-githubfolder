@@ -197,71 +197,139 @@ constructor(
     }
 
     override suspend fun updateGridSize(size: Int) {
-        context.dataStore.edit { it[Keys.GRID_SIZE] = size }
+        try {
+            context.dataStore.edit { it[Keys.GRID_SIZE] = size }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist grid size preference")
+        }
     }
 
     override suspend fun updateShowGridTitles(show: Boolean) {
-        context.dataStore.edit { it[Keys.SHOW_GRID_TITLES] = show }
+        try {
+            context.dataStore.edit { it[Keys.SHOW_GRID_TITLES] = show }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist show grid titles preference")
+        }
     }
 
     override suspend fun updateConfirmDelete(confirm: Boolean) {
-        context.dataStore.edit { it[Keys.CONFIRM_DELETE] = confirm }
+        try {
+            context.dataStore.edit { it[Keys.CONFIRM_DELETE] = confirm }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist confirm delete preference")
+        }
     }
 
     override suspend fun updateProgressBarHeight(height: Int) {
-        context.dataStore.edit { it[Keys.PROGRESS_BAR_HEIGHT] = height }
+        try {
+            context.dataStore.edit { it[Keys.PROGRESS_BAR_HEIGHT] = height }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist progress bar height preference")
+        }
     }
 
     override suspend fun updateNavBarHeight(height: Int) {
-        context.dataStore.edit { it[Keys.NAV_BAR_HEIGHT] = height }
+        try {
+            context.dataStore.edit { it[Keys.NAV_BAR_HEIGHT] = height }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist nav bar height preference")
+        }
     }
 
     override suspend fun updateOneHandedMode(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.ONE_HANDED_MODE] = enabled }
+        try {
+            context.dataStore.edit { it[Keys.ONE_HANDED_MODE] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist one handed mode preference")
+        }
     }
 
     override suspend fun updateAutoDownloadLimit(limit: Int) {
-        context.dataStore.edit { it[Keys.AUTO_DOWNLOAD_LIMIT] = limit }
+        try {
+            context.dataStore.edit { it[Keys.AUTO_DOWNLOAD_LIMIT] = limit }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist auto download limit preference")
+        }
     }
 
     override suspend fun updateAutoRefreshOnStart(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.AUTO_REFRESH_ON_START] = enabled }
+        try {
+            context.dataStore.edit { it[Keys.AUTO_REFRESH_ON_START] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist auto refresh on start preference")
+        }
     }
 
     override suspend fun updateBackgroundCheckEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.BACKGROUND_CHECK_ENABLED] = enabled }
+        try {
+            context.dataStore.edit { it[Keys.BACKGROUND_CHECK_ENABLED] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist background check enabled preference")
+        }
     }
 
     override suspend fun updateBackgroundCheckInterval(hours: Int) {
-        context.dataStore.edit { it[Keys.BACKGROUND_CHECK_INTERVAL] = hours }
+        try {
+            context.dataStore.edit { it[Keys.BACKGROUND_CHECK_INTERVAL] = hours }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist background check interval preference")
+        }
     }
 
     override suspend fun updateMarkPlayedDuration(seconds: Int) {
-        context.dataStore.edit { it[Keys.MARK_PLAYED_DURATION] = seconds }
+        try {
+            context.dataStore.edit { it[Keys.MARK_PLAYED_DURATION] = seconds }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist mark played duration preference")
+        }
     }
 
     override suspend fun updateFeedUpdateMode(mode: FeedUpdateMode) {
-        context.dataStore.edit { it[Keys.FEED_UPDATE_MODE] = mode.name }
+        try {
+            context.dataStore.edit { it[Keys.FEED_UPDATE_MODE] = mode.name }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist feed update mode preference")
+        }
     }
 
     override suspend fun updateIndicatorColor(colorArgb: Long) {
-        context.dataStore.edit { it[Keys.INDICATOR_COLOR] = colorArgb }
+        try {
+            context.dataStore.edit { it[Keys.INDICATOR_COLOR] = colorArgb }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist indicator color preference")
+        }
     }
 
     override suspend fun updateIndicatorSize(sizeDp: Int) {
-        context.dataStore.edit { it[Keys.INDICATOR_SIZE] = sizeDp }
+        try {
+            context.dataStore.edit { it[Keys.INDICATOR_SIZE] = sizeDp }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist indicator size preference")
+        }
     }
 
     override suspend fun updateIndicatorBorderWidth(widthDp: Int) {
-        context.dataStore.edit { it[Keys.INDICATOR_BORDER] = widthDp }
+        try {
+            context.dataStore.edit { it[Keys.INDICATOR_BORDER] = widthDp }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist indicator border width preference")
+        }
     }
 
     override suspend fun updateIndicatorXOffset(offsetDp: Int) {
-        context.dataStore.edit { it[Keys.INDICATOR_X_OFFSET] = offsetDp }
+        try {
+            context.dataStore.edit { it[Keys.INDICATOR_X_OFFSET] = offsetDp }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist indicator X offset preference")
+        }
     }
 
     override suspend fun updateIndicatorYOffset(offsetDp: Int) {
-        context.dataStore.edit { it[Keys.INDICATOR_Y_OFFSET] = offsetDp }
+        try {
+            context.dataStore.edit { it[Keys.INDICATOR_Y_OFFSET] = offsetDp }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist indicator Y offset preference")
+        }
     }
 
     override suspend fun restoreSettings(settings: UserSettings) {
