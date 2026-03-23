@@ -137,6 +137,7 @@ object Constants {
         const val KEY_APP_COLOR = "app_color"
         const val KEY_COLOR_STRENGTH = "color_strength"
         const val KEY_BUFFER_MODE = "buffer_mode"
+        const val KEY_LAYOUT_MODE = "layout_mode"
         const val KEY_GRID_SIZE = "grid_size"
         const val KEY_SHOW_GRID_TITLES = "show_grid_titles"
         const val KEY_CONFIRM_DELETE = "confirm_delete"

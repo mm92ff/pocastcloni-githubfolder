@@ -47,8 +47,7 @@ constructor(
         val COLOR_STRENGTH = floatPreferencesKey(Constants.Preferences.KEY_COLOR_STRENGTH)
         val BUFFER_MODE = stringPreferencesKey(Constants.Preferences.KEY_BUFFER_MODE)
 
-        // NEU: Key für Layout Mode (Hardcoded String, da er evtl. noch nicht in Constants ist)
-        val LAYOUT_MODE = stringPreferencesKey("layout_mode")
+        val LAYOUT_MODE = stringPreferencesKey(Constants.Preferences.KEY_LAYOUT_MODE)
 
         val GRID_SIZE = intPreferencesKey(Constants.Preferences.KEY_GRID_SIZE)
         val SHOW_GRID_TITLES = booleanPreferencesKey(Constants.Preferences.KEY_SHOW_GRID_TITLES)
