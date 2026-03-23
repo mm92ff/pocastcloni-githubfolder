@@ -32,6 +32,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
@@ -616,6 +620,26 @@ fun SectionStatistics(
     SettingsCard {
         when (statsState) {
             is StatisticsScreenUiState.Success -> {
+                // Laufzeit der Statistik
+                if (statsState.statisticsStartedAt > 0L) {
+                    val dateFormat = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
+                    val startDate = remember(statsState.statisticsStartedAt) {
+                        dateFormat.format(Date(statsState.statisticsStartedAt))
+                    }
+                    val daysActive = remember(statsState.statisticsStartedAt) {
+                        TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - statsState.statisticsStartedAt)
+                    }
+                    val daysLabel = if (daysActive == 1L)
+                        stringResource(R.string.settings_statistics_days_singular)
+                    else
+                        stringResource(R.string.settings_statistics_days_plural)
+                    InfoRow(
+                        label = stringResource(R.string.settings_statistics_running_since),
+                        value = "$startDate ($daysActive $daysLabel)"
+                    )
+                    Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
+                }
+
                 val formattedDuration = formatDuration(context, statsState.totalPlayTimeMs / 1000)
                 InfoRow(stringResource(R.string.settings_statistics_total_listening_time), formattedDuration)
                 InfoRow(stringResource(R.string.settings_statistics_total_episodes), statsState.totalEpisodes.toString())

@@ -11,7 +11,8 @@ data class AppStatistics(
     val totalListeningTimeMs: Long = 0,
     val totalEpisodes: Int = 0,
     val episodesInProgress: Int = 0,
-    val episodesPlayed: Int = 0
+    val episodesPlayed: Int = 0,
+    val statisticsStartedAt: Long = 0L
 )
 
 interface StatisticsRepository {

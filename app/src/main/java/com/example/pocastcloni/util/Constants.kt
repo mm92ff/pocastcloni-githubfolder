@@ -127,6 +127,7 @@ object Constants {
         const val KEY_STREAM_MOBILE = "stream_mobile"
         const val KEY_UPLOAD = "upload"
         const val KEY_LISTENING_TIME = "listening_time"
+        const val KEY_STATISTICS_STARTED_AT = "statistics_started_at"
     }
 
     object Preferences {

@@ -7,13 +7,16 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.pocastcloni.data.local.PodcastDao
+import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.domain.repository.AppStatistics
 import com.example.pocastcloni.domain.repository.StatisticsRepository
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,7 +29,8 @@ class StatisticsRepositoryImpl
 @Inject
 constructor(
     @ApplicationContext private val context: Context,
-    private val podcastDao: PodcastDao
+    private val podcastDao: PodcastDao,
+    @ApplicationScope private val appScope: CoroutineScope
 ) : StatisticsRepository {
     private object Keys {
         val DOWNLOAD_WIFI = longPreferencesKey(Constants.Statistics.KEY_DOWNLOAD_WIFI)
@@ -35,6 +39,18 @@ constructor(
         val STREAM_MOBILE = longPreferencesKey(Constants.Statistics.KEY_STREAM_MOBILE)
         val UPLOAD = longPreferencesKey(Constants.Statistics.KEY_UPLOAD)
         val LISTENING_TIME = longPreferencesKey(Constants.Statistics.KEY_LISTENING_TIME)
+        val STATISTICS_STARTED_AT = longPreferencesKey(Constants.Statistics.KEY_STATISTICS_STARTED_AT)
+    }
+
+    init {
+        // Setzt den Startzeitpunkt einmalig beim ersten App-Start (Singleton)
+        appScope.launch {
+            context.statsDataStore.edit { prefs ->
+                if (prefs[Keys.STATISTICS_STARTED_AT] == null) {
+                    prefs[Keys.STATISTICS_STARTED_AT] = System.currentTimeMillis()
+                }
+            }
+        }
     }
 
     // --- PUFFER FÜR OPTIMIERUNG (Write Amplification verhindern) ---
@@ -58,7 +74,8 @@ constructor(
                 streamWifiBytes = prefs[Keys.STREAM_WIFI] ?: 0L,
                 streamMobileBytes = prefs[Keys.STREAM_MOBILE] ?: 0L,
                 uploadBytes = prefs[Keys.UPLOAD] ?: 0L,
-                totalListeningTimeMs = prefs[Keys.LISTENING_TIME] ?: 0L
+                totalListeningTimeMs = prefs[Keys.LISTENING_TIME] ?: 0L,
+                statisticsStartedAt = prefs[Keys.STATISTICS_STARTED_AT] ?: 0L
             )
         }
 
@@ -144,9 +161,10 @@ constructor(
         pendingStreamWifiBytes.set(0)
         pendingStreamMobileBytes.set(0)
 
-        // 2. DataStore leeren
+        // 2. DataStore leeren und Startzeitpunkt auf jetzt setzen
         context.statsDataStore.edit { prefs ->
             prefs.clear()
+            prefs[Keys.STATISTICS_STARTED_AT] = System.currentTimeMillis()
         }
 
         // 3. DB History bereinigen

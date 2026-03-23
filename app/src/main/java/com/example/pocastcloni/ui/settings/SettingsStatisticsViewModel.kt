@@ -114,7 +114,8 @@ constructor(
             downloadWifiBytes = downloadWifiBytes,
             downloadMobileBytes = downloadMobileBytes,
             streamWifiBytes = streamWifiBytes,
-            streamMobileBytes = streamMobileBytes
+            streamMobileBytes = streamMobileBytes,
+            statisticsStartedAt = statisticsStartedAt
         )
     }
 }

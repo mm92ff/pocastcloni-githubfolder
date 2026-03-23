@@ -163,6 +163,9 @@
     <string name="settings_statistics_streaming_wifi">Streaming (WLAN):</string>
     <string name="settings_statistics_streaming_mobile">Streaming (Mobil):</string>
     <string name="settings_statistics_upload">Upload:</string>
+    <string name="settings_statistics_running_since">Läuft seit:</string>
+    <string name="settings_statistics_days_singular">Tag</string>
+    <string name="settings_statistics_days_plural">Tagen</string>
     <string name="settings_statistics_total_listening_time">Gesamte Hördauer:</string>
     <string name="settings_statistics_total_episodes">Total episodes</string>
     <string name="settings_statistics_episodes_in_progress">Episodes in progress</string>

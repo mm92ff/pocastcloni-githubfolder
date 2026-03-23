@@ -117,7 +117,8 @@ sealed interface StatisticsScreenUiState {
         val downloadWifiBytes: Long,
         val downloadMobileBytes: Long,
         val streamWifiBytes: Long,
-        val streamMobileBytes: Long
+        val streamMobileBytes: Long,
+        val statisticsStartedAt: Long
     ) : StatisticsScreenUiState
 
     data class Error(val message: UiText) : StatisticsScreenUiState
