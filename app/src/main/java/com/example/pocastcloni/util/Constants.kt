@@ -174,6 +174,8 @@ object Constants {
     object Network {
         const val CONNECT_TIMEOUT_SECONDS = 30L
         const val READ_TIMEOUT_SECONDS = 30L
+        // TODO: This placeholder base URL is problematic. RSS URLs should be user-provided per podcast.
+        // Consider refactoring RSS client to not require a fixed base URL.
         const val RSS_BASE_URL = "https://example.com/"
         const val ITUNES_BASE_URL = "https://itunes.apple.com/"
         const val HEADER_LAST_MODIFIED = "Last-Modified"
