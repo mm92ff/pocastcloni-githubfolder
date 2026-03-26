@@ -13,11 +13,11 @@ PocastCloni ist eine Android-Podcast-App mit Fokus auf lokale Bibliothek, Wieder
 
 ## Screenshots
 
-![Home](picture/Screenshot_20260326_184050_com.example.pocastcloni_removed.png)
-![Podcast Detail](picture/Screenshot_20260326_184141_com.example.pocastcloni_removed.png)
-![Player](picture/Screenshot_20260326_184203_com.example.pocastcloni_removed.png)
-![Downloads](picture/Screenshot_20260326_184729_com.example.pocastcloni_removed.png)
-![Settings](picture/Screenshot_20260326_184740_com.example.pocastcloni_removed.png)
+![Home](picture/Screenshot_20260326_184050_com.example.pocastcloni_removed_360x780.png)
+![Podcast Detail](picture/Screenshot_20260326_184141_com.example.pocastcloni_removed_360x780.png)
+![Player](picture/Screenshot_20260326_184203_com.example.pocastcloni_removed_360x780.png)
+![Downloads](picture/Screenshot_20260326_184729_com.example.pocastcloni_removed_360x780.png)
+![Settings](picture/Screenshot_20260326_184740_com.example.pocastcloni_removed_360x780.png)
 
 ## Tech-Stack
 
