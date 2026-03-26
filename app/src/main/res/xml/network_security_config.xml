@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Security Configuration for PocastCloni.
+
+    Cleartext HTTP traffic is permitted globally because podcast RSS feed URLs
+    are user-provided and many feeds still use plain HTTP (not HTTPS).
+    Android 9+ blocks HTTP by default; without this config, those feeds would
+    silently fail on real devices (Huawei P30 Pro, etc.).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
