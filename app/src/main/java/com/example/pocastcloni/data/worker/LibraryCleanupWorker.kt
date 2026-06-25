@@ -5,8 +5,10 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 @HiltWorker
@@ -15,18 +17,19 @@ class LibraryCleanupWorker
 constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val podcastRepository: PodcastRepository
+    private val podcastRepository: PodcastRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : CoroutineWorker(appContext, workerParams) {
     companion object {
         const val WORK_NAME = "LibraryCleanupWork"
-        private const val DEFAULT_EPISODE_LIMIT = 50
     }
 
     override suspend fun doWork(): Result {
         return try {
             Timber.d("Starting library cleanup job...")
 
-            val limit = DEFAULT_EPISODE_LIMIT
+            val settings = userPreferencesRepository.userSettingsFlow.first()
+            val limit = settings.cleanupKeepLimit
 
             podcastRepository.pruneLibrary(limit)
 

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import androidx.core.net.toUri
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -68,7 +69,10 @@ constructor(
     private suspend fun startDownload(episode: EpisodeEntity) {
         podcastRepository.updateDownloadStatus(episode.guid, DownloadStatus.QUEUED, null)
 
-        val fileName = "${episode.guid.hashCode()}${Constants.DOWNLOAD_FILE_EXTENSION}"
+        val podcastTitle = podcastRepository.getPodcast(episode.podcastRssUrl)
+            ?.title?.ifBlank { null } ?: "Unknown_Podcast"
+        val episodeTitle = episode.title.ifBlank { null } ?: "Unknown_Episode"
+        val fileName = "${podcastTitle}_${episodeTitle}${Constants.DOWNLOAD_FILE_EXTENSION}"
         val uniqueWorkName = "${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${episode.guid}"
 
         val request =
@@ -93,7 +97,15 @@ constructor(
 
     private suspend fun deleteDownload(episode: EpisodeEntity) {
         workManager.cancelUniqueWork("${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${episode.guid}")
-        episode.downloadPath?.let { File(it).delete() }
+        episode.downloadPath?.let { path ->
+            runCatching {
+                if (path.startsWith("content://")) {
+                    context.contentResolver.delete(path.toUri(), null, null)
+                } else {
+                    File(path).delete()
+                }
+            }
+        }
         podcastRepository.updateDownloadStatus(episode.guid, DownloadStatus.NOT_DOWNLOADED, null)
     }
 }

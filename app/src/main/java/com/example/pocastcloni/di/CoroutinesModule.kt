@@ -42,7 +42,7 @@ abstract class CoroutinesModule {
     }
 }
 
-// --- Qualifiers (ehemals CoroutineQualifiers.kt) ---
+// --- Qualifiers (formerly CoroutineQualifiers.kt) ---
 
 @Retention(AnnotationRetention.BINARY)
 @Qualifier
@@ -60,7 +60,7 @@ annotation class IoDispatcher
 @Qualifier
 annotation class MainDispatcher
 
-// --- Interfaces & Impl (ehemals DispatcherProvider.kt) ---
+// --- Interfaces & Impl (formerly DispatcherProvider.kt) ---
 
 interface DispatcherProvider {
     val main: CoroutineDispatcher

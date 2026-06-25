@@ -18,7 +18,6 @@ internal fun selectEpisodesToPrune(
 internal fun isSafeToPrune(episode: EpisodeEntity): Boolean {
     return episode.isPlayed &&
         !episode.isFavorite &&
-        episode.playbackPositionMs <= 0L &&
         episode.downloadStatus == DownloadStatus.NOT_DOWNLOADED
 }
 

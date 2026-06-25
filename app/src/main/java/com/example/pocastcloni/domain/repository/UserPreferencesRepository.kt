@@ -57,6 +57,12 @@ interface UserPreferencesRepository {
 
     suspend fun updateSaveToDownloadsFolder(enabled: Boolean)
 
+    suspend fun updateAutoCleanupEnabled(enabled: Boolean)
+
+    suspend fun updateCleanupKeepLimit(limit: Int)
+
+    suspend fun updateCleanupIntervalHours(hours: Int)
+
     suspend fun restoreSettings(settings: UserSettings)
 
     suspend fun clearSettings()

@@ -1,5 +1,7 @@
 package com.example.pocastcloni.data.repository
 
+import android.content.Context
+import androidx.core.net.toUri
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -18,6 +20,7 @@ import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.model.PodcastUpdateSummary
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
@@ -43,7 +46,8 @@ constructor(
     private val itunesSearchApi: ItunesSearchApi,
     private val dispatcherProvider: DispatcherProvider,
     private val downloader: PodcastDownloader,
-    private val syncFeedUseCase: Provider<SyncFeedUseCase>
+    private val syncFeedUseCase: Provider<SyncFeedUseCase>,
+    @ApplicationContext private val context: Context
 ) : PodcastRepository {
     private val updateSemaphore = Semaphore(4)
 
@@ -229,6 +233,7 @@ constructor(
                 // If played -> no dot (hasNew = false)
                 // If unplayed -> dot on (hasNew = true)
                 podcastDao.updatePodcastNewFlag(rssUrl, hasNew = !isPlayed)
+                podcastDao.updateLatestEpisodePlayedFlag(rssUrl, isPlayed)
             }
         }
     }
@@ -282,7 +287,13 @@ constructor(
             podcastDao.bulkResetPlayedDownloadedEpisodes()
             rows.forEach { row ->
                 val path = row.downloadPath ?: return@forEach
-                runCatching { java.io.File(path).delete() }
+                runCatching {
+                    if (path.startsWith("content://")) {
+                        context.contentResolver.delete(path.toUri(), null, null)
+                    } else {
+                        java.io.File(path).delete()
+                    }
+                }
             }
         }
     }
@@ -387,7 +398,11 @@ constructor(
                             status = row.downloadStatus,
                             downloadPath = row.downloadPath
                         ) { path ->
-                            File(path).let { it.exists() && it.isFile && it.canRead() }
+                            if (path.startsWith("content://")) {
+                                isContentUriReadable(path)
+                            } else {
+                                File(path).let { it.exists() && it.isFile && it.canRead() }
+                            }
                         }
                     }
 
@@ -400,6 +415,13 @@ constructor(
         }
     }
 
+    private fun isContentUriReadable(uriString: String): Boolean =
+        try {
+            context.contentResolver.openFileDescriptor(uriString.toUri(), "r")?.use { true } ?: false
+        } catch (e: Exception) {
+            false
+        }
+
     override suspend fun pruneLibrary(limitPerPodcast: Int) {
         withContext(dispatcherProvider.io) {
             val urls = podcastDao.getAllPodcastUrls()
@@ -410,7 +432,23 @@ constructor(
                         keepCount = limitPerPodcast
                     )
                 if (episodesToPrune.isNotEmpty()) {
+                    // Collect paths before deleting DB rows (defensive: isSafeToPrune already
+                    // requires NOT_DOWNLOADED, so this list is normally empty).
+                    val pathsToDelete = episodesToPrune
+                        .filter { it.downloadStatus == DownloadStatus.DOWNLOADED }
+                        .mapNotNull { it.downloadPath }
+
                     podcastDao.deleteEpisodes(episodesToPrune)
+
+                    pathsToDelete.forEach { path ->
+                        runCatching {
+                            if (path.startsWith("content://")) {
+                                context.contentResolver.delete(path.toUri(), null, null)
+                            } else {
+                                java.io.File(path).delete()
+                            }
+                        }
+                    }
                 }
             }
         }

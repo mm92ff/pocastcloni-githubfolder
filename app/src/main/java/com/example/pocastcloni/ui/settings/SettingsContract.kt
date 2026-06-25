@@ -89,6 +89,9 @@ sealed interface SettingsUiState {
         val feedUpdateMode: FeedUpdateMode = FeedUpdateMode.ALWAYS_FULL,
         val indicator: IndicatorSettingsUiState = IndicatorSettingsUiState(),
         val saveToDownloadsFolder: Boolean = Constants.Preferences.DEFAULT_SAVE_TO_DOWNLOADS_FOLDER,
+        val autoCleanupEnabled: Boolean = Constants.Preferences.DEFAULT_AUTO_CLEANUP_ENABLED,
+        val cleanupKeepLimit: Int = Constants.Preferences.DEFAULT_CLEANUP_KEEP_LIMIT,
+        val cleanupIntervalHours: Int = Constants.Preferences.DEFAULT_CLEANUP_INTERVAL_HOURS,
     ) : SettingsUiState
 
     data class Error(val message: UiText) : SettingsUiState

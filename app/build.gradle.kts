@@ -105,7 +105,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // NEU: Paging 3 Dependencies (WICHTIG für Repository & Dao)
+    // Paging 3 (required for Repository & DAO)
     implementation(libsCatalog.findLibrary("androidx-paging-paging-runtime-ktx").get())
     implementation(libsCatalog.findLibrary("androidx-paging-paging-compose").get())
     implementation(libsCatalog.findLibrary("androidx-room-room-paging").get())
@@ -148,6 +148,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation("net.sf.kxml:kxml2:2.3.0")
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))

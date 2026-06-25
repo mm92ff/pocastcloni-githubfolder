@@ -195,6 +195,31 @@ private fun GeneralSettingsContent(
             }
         }
     )
+
+    // --- CLEANUP ---
+    SectionCleanup(
+        autoCleanupEnabled = settings.autoCleanupEnabled,
+        cleanupKeepLimit = settings.cleanupKeepLimit,
+        cleanupIntervalHours = settings.cleanupIntervalHours,
+        onToggleAutoCleanup =
+        remember(onEvent) {
+            { enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleAutoCleanup(enabled)))
+            }
+        },
+        onSetCleanupKeepLimit =
+        remember(onEvent) {
+            { limit: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetCleanupKeepLimit(limit)))
+            }
+        },
+        onSetCleanupIntervalHours =
+        remember(onEvent) {
+            { hours: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetCleanupIntervalHours(hours)))
+            }
+        }
+    )
     Divider()
 
     // --- INDICATOR ---

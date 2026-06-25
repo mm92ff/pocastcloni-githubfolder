@@ -52,4 +52,10 @@ sealed interface UpdateUserSettingAction {
     data class SetIndicatorYOffset(val offsetDp: Int) : UpdateUserSettingAction
 
     data class ToggleSaveToDownloadsFolder(val enabled: Boolean) : UpdateUserSettingAction
+
+    data class ToggleAutoCleanup(val enabled: Boolean) : UpdateUserSettingAction
+
+    data class SetCleanupKeepLimit(val limit: Int) : UpdateUserSettingAction
+
+    data class SetCleanupIntervalHours(val hours: Int) : UpdateUserSettingAction
 }

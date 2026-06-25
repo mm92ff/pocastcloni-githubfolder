@@ -209,7 +209,7 @@ constructor(
                 _screenError.value = null
                 try {
                     val errorText = UiText.StringResource(R.string.refresh_error)
-                    val summary = refreshPodcasts(forceFull = false)
+                    val summary = refreshPodcasts(forceFull = true)
                     if (summary.allFailed && uiState.value.podcasts.isEmpty()) {
                         _screenError.value = errorText
                     } else if (summary.allFailed) {

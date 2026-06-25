@@ -88,7 +88,7 @@ constructor(
                             // Restore the caching headers here:
                             lastModifiedHeader = backupPodcast.lastModifiedHeader,
                             eTagHeader = backupPodcast.eTagHeader,
-                            lastRefreshed = Date(0) // Markiert als "braucht update"
+                            lastRefreshed = Date(0) // Marks the podcast as "needs update"
                         )
 
                     // Insert Ignore: if it already exists, we do NOT overwrite it (to protect local updates)

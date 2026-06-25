@@ -779,6 +779,50 @@ fun SectionDownloadLocation(
 }
 
 @Composable
+fun SectionCleanup(
+    autoCleanupEnabled: Boolean,
+    cleanupKeepLimit: Int,
+    cleanupIntervalHours: Int,
+    onToggleAutoCleanup: (Boolean) -> Unit,
+    onSetCleanupKeepLimit: (Int) -> Unit,
+    onSetCleanupIntervalHours: (Int) -> Unit
+) {
+    Text(
+        text = stringResource(R.string.settings_section_cleanup),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
+    )
+
+    SettingsSwitchCard(
+        title = stringResource(R.string.settings_cleanup_enabled),
+        subtitle = stringResource(R.string.settings_cleanup_enabled_subtitle),
+        checked = autoCleanupEnabled,
+        onCheckedChange = onToggleAutoCleanup
+    )
+
+    if (autoCleanupEnabled) {
+        Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+        SettingsSliderCard(
+            title = stringResource(R.string.settings_cleanup_keep_limit),
+            value = cleanupKeepLimit,
+            valueRange = SettingsDefaults.MIN_CLEANUP_KEEP_LIMIT..SettingsDefaults.MAX_CLEANUP_KEEP_LIMIT,
+            onValueChangeFinished = onSetCleanupKeepLimit,
+            valueDisplay = { Text(stringResource(R.string.settings_unit_episodes, it)) }
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+        SettingsSliderCard(
+            title = stringResource(R.string.settings_cleanup_interval),
+            value = cleanupIntervalHours,
+            valueRange = SettingsDefaults.MIN_CLEANUP_INTERVAL_HOURS..SettingsDefaults.MAX_CLEANUP_INTERVAL_HOURS,
+            onValueChangeFinished = onSetCleanupIntervalHours,
+            valueDisplay = { Text(stringResource(R.string.settings_unit_hours, it)) }
+        )
+    }
+}
+
+@Composable
 fun IndicatorColorCircle(
     colorArgb: Long,
     isSelected: Boolean,

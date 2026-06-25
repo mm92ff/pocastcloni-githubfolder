@@ -27,7 +27,7 @@ fun PodcastEntity.toDomain(): Podcast {
         hasNewEpisodes = this.hasNewEpisodes,
         lastModifiedHeader = this.lastModifiedHeader,
         eTagHeader = this.eTagHeader,
-        isLatestEpisodePlayed = null,
+        isLatestEpisodePlayed = this.isLatestEpisodePlayed,
         latestEpisodeDate = null
     )
 }

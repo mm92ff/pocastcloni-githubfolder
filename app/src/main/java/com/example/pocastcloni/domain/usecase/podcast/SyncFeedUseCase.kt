@@ -68,7 +68,12 @@ constructor(
         existing: PodcastEntity?,
         downloadLimit: Int
     ) {
-        val response = podcastService.fetchRawFeed(url, existing?.lastModifiedHeader, existing?.eTagHeader)
+        val latestKnownGuid = repo.getLatestEpisodeGuid(url)
+        val hasNoEpisodes = existing != null && latestKnownGuid == null
+        val effectiveLastModified = if (hasNoEpisodes) null else existing?.lastModifiedHeader
+        val effectiveEtag = if (hasNoEpisodes) null else existing?.eTagHeader
+
+        val response = podcastService.fetchRawFeed(url, effectiveLastModified, effectiveEtag)
         if (response.code() == HttpURLConnection.HTTP_NOT_MODIFIED) {
             existing?.let {
                 repo.updatePodcastEntity(it.copy(lastRefreshed = Date()))
@@ -81,7 +86,6 @@ constructor(
         val body = response.body() ?: throw java.io.IOException("Empty response body from $url")
         val stream = body.byteStream()
         try {
-            val latestKnownGuid = repo.getLatestEpisodeGuid(url)
             val result =
                 streamParser.parse(
                     stream,
@@ -114,8 +118,10 @@ constructor(
         forceFull: Boolean,
         sortOrder: Long?
     ) {
-        val lastModified = if (forceFull) null else existing?.lastModifiedHeader
-        val etag = if (forceFull) null else existing?.eTagHeader
+        val hasNoEpisodes = existing != null && repo.getLatestEpisodeGuid(url) == null
+        val effectiveForceFull = forceFull || hasNoEpisodes
+        val lastModified = if (effectiveForceFull) null else existing?.lastModifiedHeader
+        val etag = if (effectiveForceFull) null else existing?.eTagHeader
         val response = podcastService.fetchRawFeed(url, lastModified, etag)
 
         if (response.code() == HttpURLConnection.HTTP_NOT_MODIFIED) {
@@ -161,9 +167,41 @@ constructor(
         downloadLimit: Int
     ) {
         if (title.isNullOrBlank() || imageUrl.isNullOrBlank()) {
-            Timber.w("Podcast title or image is null, aborting sync for $url")
-            return
+            throw IllegalStateException("Feed missing title or image for $url")
         }
+
+        // Deduplicate against DB *before* computing hasNewEpisodes.
+        // A full sync passes ALL feed items as newItems (no latestKnownGuid
+        // cutoff), so newItems.isNotEmpty() is always true even when every
+        // episode is already played. Using episodesToInsert instead means the
+        // dot only lights up when episodes that are genuinely new arrive.
+        val existingEpisodes = if (newItems.isNotEmpty()) {
+            repo.getEpisodesForSync(url).associateBy { it.guid }
+        } else {
+            emptyMap()
+        }
+
+        val episodesToInsert =
+            newItems.mapNotNull { item ->
+                // Use the mapper from PodcastMappers.kt which handles:
+                // 1. Sanitizing dates (year 3000 fix)
+                // 2. Parsing duration
+                // 3. Setting defaults
+
+                val entity = item.toEpisodeEntity(url)
+
+                // Duplicate check
+                if (existingEpisodes.containsKey(entity.guid)) return@mapNotNull null
+
+                // An episode without an audio URL is useless
+                if (entity.enclosureUrl.isBlank()) return@mapNotNull null
+
+                // Strip HTML if the mapper left it raw (description is passed through as-is)
+                entity.copy(
+                    title = entity.title.stripHtml(),
+                    description = entity.description.stripHtml()
+                )
+            }
 
         val podcastEntity =
             existing?.copy(
@@ -173,7 +211,7 @@ constructor(
                 lastRefreshed = Date(),
                 lastModifiedHeader = lastModified,
                 eTagHeader = etag,
-                hasNewEpisodes = existing.hasNewEpisodes || newItems.isNotEmpty()
+                hasNewEpisodes = existing.hasNewEpisodes || episodesToInsert.isNotEmpty()
             ) ?: PodcastEntity(
                 rssUrl = url,
                 title = title,
@@ -182,7 +220,7 @@ constructor(
                 sortOrder = sortOrder ?: (repo.getMaxSortOrder() ?: 0) + 1,
                 lastModifiedHeader = lastModified,
                 eTagHeader = etag,
-                hasNewEpisodes = newItems.isNotEmpty()
+                hasNewEpisodes = episodesToInsert.isNotEmpty()
             )
 
         if (existing == null) {
@@ -191,30 +229,7 @@ constructor(
             repo.updatePodcastEntity(podcastEntity)
         }
 
-        if (newItems.isNotEmpty()) {
-            val existingEpisodes = repo.getEpisodesForSync(url).associateBy { it.guid }
-
-            val episodesToInsert =
-                newItems.mapNotNull { item ->
-                    // Use the mapper from PodcastMappers.kt which handles:
-                    // 1. Sanitizing dates (year 3000 fix)
-                    // 2. Parsing duration
-                    // 3. Setting defaults
-
-                    val entity = item.toEpisodeEntity(url)
-
-                    // Duplicate check
-                    if (existingEpisodes.containsKey(entity.guid)) return@mapNotNull null
-
-                    // An episode without an audio URL is useless
-                    if (entity.enclosureUrl.isBlank()) return@mapNotNull null
-
-                    // Strip HTML if the mapper left it raw (description is passed through as-is)
-                    entity.copy(
-                        title = entity.title.stripHtml(),
-                        description = entity.description.stripHtml()
-                    )
-                }
+        if (episodesToInsert.isNotEmpty()) {
             repo.insertEpisodes(episodesToInsert)
         }
 

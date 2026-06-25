@@ -138,6 +138,11 @@
     <string name="settings_auto_download_limit">Auto-Download Limit</string>
     <string name="settings_manual_full_refresh">Manual Full Refresh</string>
     <string name="settings_manual_full_refresh_subtitle">Reload all feeds completely</string>
+    <string name="settings_section_cleanup">Auto Cleanup</string>
+    <string name="settings_cleanup_enabled">Enable Auto Cleanup</string>
+    <string name="settings_cleanup_enabled_subtitle">Automatically delete played episodes that exceed the keep limit</string>
+    <string name="settings_cleanup_keep_limit">Keep Limit (episodes per podcast)</string>
+    <string name="settings_cleanup_interval">Cleanup Interval</string>
     <string name="settings_section_backup_restore">Backup &amp; Restore</string>
     <string name="settings_export_backup">Export Backup</string>
     <string name="settings_import_backup">Import Backup</string>

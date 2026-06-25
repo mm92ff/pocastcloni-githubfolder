@@ -34,8 +34,7 @@ constructor(
 ) {
     fun initialize() {
         reconcileEpisodeStorage()
-        // Schedule cleanup job (daily)
-        setupLibraryCleanup()
+        observeCleanupSettings()
 
         scope.launch(dispatcherProvider.io) {
             try {
@@ -76,24 +75,53 @@ constructor(
         }
     }
 
-    private fun setupLibraryCleanup() {
+    private fun observeCleanupSettings() {
+        scope.launch(dispatcherProvider.io) {
+            try {
+                userPreferencesRepository.userSettingsFlow
+                    .map { it.autoCleanupEnabled to it.cleanupIntervalHours }
+                    .distinctUntilChanged()
+                    .catch { e ->
+                        Timber.e(e, "Error collecting cleanup settings.")
+                    }
+                    .collect { (isEnabled, hours) ->
+                        try {
+                            if (isEnabled) {
+                                setupLibraryCleanup(hours)
+                            } else {
+                                Timber.d("Library cleanup disabled by user. Cancelling work.")
+                                workManager.cancelUniqueWork(LibraryCleanupWorker.WORK_NAME)
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to apply cleanup settings change.")
+                        }
+                    }
+            } catch (e: Exception) {
+                Timber.e(e, "Fatal error in cleanup settings observer.")
+            }
+        }
+    }
+
+    private fun setupLibraryCleanup(intervalHours: Int) {
+        val safeHours = intervalHours.coerceAtLeast(1).toLong()
+
         val constraints =
             Constraints.Builder()
-                .setRequiresDeviceIdle(true) // Only runs when the device is idle
+                .setRequiresDeviceIdle(true)
                 .setRequiresBatteryNotLow(true)
                 .build()
 
         val cleanupRequest =
-            PeriodicWorkRequestBuilder<LibraryCleanupWorker>(24, TimeUnit.HOURS)
+            PeriodicWorkRequestBuilder<LibraryCleanupWorker>(safeHours, TimeUnit.HOURS)
                 .setConstraints(constraints)
                 .build()
 
         workManager.enqueueUniquePeriodicWork(
             LibraryCleanupWorker.WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             cleanupRequest
         )
-        Timber.i("Library cleanup scheduled (Daily, Idle, Battery OK).")
+        Timber.i("Library cleanup scheduled every $safeHours hours (Idle, Battery OK).")
     }
 
     private fun setupBackgroundSync(intervalHours: Int) {

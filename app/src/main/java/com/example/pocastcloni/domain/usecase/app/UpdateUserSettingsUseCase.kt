@@ -46,11 +46,18 @@ constructor(
                 is ToggleBackgroundCheck -> repository.updateBackgroundCheckEnabled(action.enabled)
                 is SetBackgroundCheckInterval -> repository.updateBackgroundCheckInterval(action.hours)
                 is ToggleSaveToDownloadsFolder -> repository.updateSaveToDownloadsFolder(action.enabled)
+
+                is ToggleAutoCleanup -> repository.updateAutoCleanupEnabled(action.enabled)
+                is SetCleanupKeepLimit -> repository.updateCleanupKeepLimit(action.limit)
+                is SetCleanupIntervalHours -> repository.updateCleanupIntervalHours(action.hours)
             }
 
             // 2. Side-effects: sync the worker if needed
             if (action is ToggleBackgroundCheck || action is SetBackgroundCheckInterval) {
                 syncBackgroundWorker()
+            }
+            if (action is ToggleAutoCleanup || action is SetCleanupIntervalHours) {
+                syncCleanupWorker()
             }
         }
     }
@@ -60,5 +67,10 @@ constructor(
         // to ensure we always work with consistent data (interval + enabled flag)
         val settings = repository.userSettingsFlow.first()
         updateBackgroundWorker(settings.backgroundCheckEnabled, settings.backgroundCheckInterval)
+    }
+
+    private suspend fun syncCleanupWorker() {
+        // AppInitializer's reactive collector will pick up the change automatically
+        // because it observes userSettingsFlow; no explicit re-schedule needed here.
     }
 }

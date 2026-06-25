@@ -1,6 +1,5 @@
 package com.example.pocastcloni.domain.usecase.player
 
-import androidx.core.net.toUri
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.di.DispatcherProvider
@@ -42,16 +41,22 @@ constructor(
                 val localPath = savedEpisode.downloadPath
 
                 if (!localPath.isNullOrBlank()) {
-                    val file = File(localPath)
-
-                    // Strict check: does the file actually exist at the path stored in the database?
-                    if (file.exists() && file.canRead()) {
-                        Timber.i("Playing OFFLINE: ${file.absolutePath}")
-                        finalUri = file.toUri().toString()
+                    if (localPath.startsWith("content://")) {
+                        // MediaStore URI (API 29+ public Downloads) — use directly
+                        Timber.i("Playing OFFLINE (MediaStore): $localPath")
+                        finalUri = localPath
                     } else {
-                        // DB says Downloaded, but file is missing -> fall back to stream
-                        Timber.w("File missing despite DOWNLOADED status: $localPath. Fallback to stream.")
-                        repository.updateDownloadStatus(savedEpisode.guid, DownloadStatus.NOT_DOWNLOADED, null)
+                        val file = File(localPath)
+
+                        // Strict check: does the file actually exist at the path stored in the database?
+                        if (file.exists() && file.canRead()) {
+                            Timber.i("Playing OFFLINE: ${file.absolutePath}")
+                            finalUri = file.toURI().toString()
+                        } else {
+                            // DB says Downloaded, but file is missing -> fall back to stream
+                            Timber.w("File missing despite DOWNLOADED status: $localPath. Fallback to stream.")
+                            repository.updateDownloadStatus(savedEpisode.guid, DownloadStatus.NOT_DOWNLOADED, null)
+                        }
                     }
                 } else {
                     Timber.w("Download path missing in DB despite DOWNLOADED status. Fallback to stream.")

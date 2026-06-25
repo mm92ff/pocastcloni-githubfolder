@@ -159,6 +159,9 @@ interface PodcastDao {
         hasNew: Boolean
     )
 
+    @Query("UPDATE podcasts SET isLatestEpisodePlayed = :isPlayed WHERE rssUrl = :url")
+    suspend fun updateLatestEpisodePlayedFlag(url: String, isPlayed: Boolean)
+
     @Transaction
     suspend fun markAllAsSeenAtomic() {
         markLatestEpisodesAsPlayedBatch()
@@ -262,8 +265,8 @@ interface PodcastDao {
     )
     fun getDownloadedEpisodesWithPodcastLiteFlow(statuses: List<DownloadStatus>): Flow<List<EpisodeWithPodcastLite>>
 
-    @Query("SELECT * FROM episodes WHERE downloadStatus = 'DOWNLOADED' AND isPlayed = 1")
-    suspend fun getPlayedDownloadedEpisodes(): List<EpisodeEntity>
+    @Query("SELECT * FROM episodes WHERE downloadStatus = :status AND isPlayed = 1")
+    suspend fun getPlayedDownloadedEpisodes(status: DownloadStatus = DownloadStatus.DOWNLOADED): List<EpisodeEntity>
 
     @Query(
         """
@@ -459,9 +462,9 @@ interface PodcastDao {
             p.imageUrl AS podcast_imageUrl
         FROM episodes e
         LEFT JOIN podcasts p ON p.rssUrl = e.podcastRssUrl
-        WHERE e.playbackPositionMs > 0 
+        WHERE e.playbackPositionMs > 0
           AND e.isPlayed = 0
-        ORDER BY e.datePlayed DESC, COALESCE(e.pubDate, 0) DESC
+        ORDER BY COALESCE(e.datePlayed, 0) DESC, COALESCE(e.pubDate, 0) DESC
         """
     )
     fun getEpisodesInProgressWithPodcastLiteFlow(): Flow<List<EpisodeWithPodcastLite>>
@@ -483,10 +486,11 @@ interface PodcastDao {
             SELECT e.guid
             FROM episodes e
             INNER JOIN (
-                SELECT podcastRssUrl, MAX(pubDate) as maxDate
+                SELECT podcastRssUrl, MAX(COALESCE(pubDate, 0)) as maxDate
                 FROM episodes
                 GROUP BY podcastRssUrl
-            ) latest ON e.podcastRssUrl = latest.podcastRssUrl AND e.pubDate = latest.maxDate
+            ) latest ON e.podcastRssUrl = latest.podcastRssUrl
+                     AND COALESCE(e.pubDate, 0) = latest.maxDate
         )
         """
     )

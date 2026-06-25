@@ -1,10 +1,13 @@
 package com.example.pocastcloni.data.worker
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import android.os.SystemClock
+import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -27,6 +30,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 
 @HiltWorker
 class DownloadWorker
@@ -41,8 +45,7 @@ constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
 ) : CoroutineWorker(context, params) {
     companion object {
-        // We can now update even more frequently since we no longer write to the DB!
-        private const val PROGRESS_MIN_INTERVAL_MS = 250L // Was 750L
+        private const val PROGRESS_MIN_INTERVAL_MS = 250L
     }
 
     override suspend fun doWork(): Result {
@@ -54,24 +57,31 @@ constructor(
 
         return try {
             podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADING, null)
-            // FIX: DB update removed
             setProgressAsync(workDataOf("progress" to 0f))
 
-            val file = downloadToFile(guid, url, fileName)
+            val saveToDownloads = try {
+                userPreferencesRepository.userSettingsFlow.first().saveToDownloadsFolder
+            } catch (e: Exception) {
+                Timber.w(e, "Could not read download location setting, using private storage")
+                false
+            }
 
-            val fileSize = file.length()
+            val (storagePath, fileSize) =
+                if (saveToDownloads && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    downloadViaMediaStore(url, fileName)
+                } else {
+                    val file = downloadToFile(url, fileName, saveToDownloads)
+                    Pair(file.absolutePath, file.length())
+                }
+
             if (fileSize > 0) {
                 val isWifi = connectivityProvider.wifiStatus.value
                 statsRepo.addDownloadBytes(fileSize, isWifi)
             }
 
-            // Final flush
-            // FIX: DB update removed
             setProgressAsync(workDataOf("progress" to 1f))
-
-            podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADED, file.absolutePath)
-
-            Result.success(workDataOf(Constants.DOWNLOAD_WORKER_OUTPUT_PATH to file.absolutePath))
+            podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADED, storagePath)
+            Result.success(workDataOf(Constants.DOWNLOAD_WORKER_OUTPUT_PATH to storagePath))
         } catch (e: CancellationException) {
             Timber.i("Download cancelled for %s", guid)
             podcastRepository.updateDownloadStatus(guid, DownloadStatus.NOT_DOWNLOADED, null)
@@ -83,143 +93,155 @@ constructor(
         }
     }
 
-    private suspend fun resolveDownloadDirectory(): File {
-        val saveToDownloads = try {
-            userPreferencesRepository.userSettingsFlow.first().saveToDownloadsFolder
-        } catch (e: Exception) {
-            Timber.w(e, "Could not read download location setting, using private storage")
-            false
+    // API 29+: writes to the public Downloads folder via MediaStore.
+    // Stores a content:// URI string in the DB instead of a file path.
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private suspend fun downloadViaMediaStore(url: String, fileName: String): Pair<String, Long> {
+        val sanitizedFileName = sanitizeFileName(fileName)
+
+        if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) {
+            throw IOException("External storage not mounted, cannot save to Downloads folder")
         }
 
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, sanitizedFileName)
+            put(MediaStore.Downloads.MIME_TYPE, "audio/mpeg")
+            put(MediaStore.Downloads.IS_PENDING, 1) // hidden until download completes
+        }
+        val itemUri = applicationContext.contentResolver
+            .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: throw IOException("MediaStore.insert failed for $sanitizedFileName")
+
+        try {
+            val output = applicationContext.contentResolver.openOutputStream(itemUri)
+                ?: throw IOException("Cannot open OutputStream for MediaStore URI")
+            val bytesCopied = try {
+                performDownload(url, output)
+            } catch (e: Exception) {
+                // Close stream if performDownload threw before its internal .use {} could close it
+                runCatching { output.close() }
+                throw e
+            }
+
+            // Mark file as visible in the Downloads folder
+            applicationContext.contentResolver.update(
+                itemUri,
+                ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
+                null, null
+            )
+            return Pair(itemUri.toString(), bytesCopied)
+        } catch (e: Exception) {
+            // Clean up incomplete MediaStore entry on failure
+            runCatching { applicationContext.contentResolver.delete(itemUri, null, null) }
+            throw e
+        }
+    }
+
+    // Private storage or API < 29 public Downloads via file path.
+    private suspend fun downloadToFile(
+        url: String,
+        fileName: String,
+        saveToDownloads: Boolean
+    ): File {
+        val dir = resolveDownloadDirectory(saveToDownloads)
+        val file = File(dir, sanitizeFileName(fileName))
+        try {
+            performDownload(url, FileOutputStream(file))
+        } catch (e: Exception) {
+            if (file.exists()) file.delete()
+            throw e
+        }
+        return file
+    }
+
+    // Core download loop shared by both storage paths.
+    private suspend fun performDownload(url: String, outputStream: OutputStream): Long {
+        val request = Request.Builder().url(url).build()
+        val response = okHttpClient.newCall(request).execute()
+        try {
+            if (!response.isSuccessful) {
+                throw IOException("Server responded with error: ${response.code}")
+            }
+            val body = response.body ?: throw IOException("Response body is null")
+            val totalBytes = body.contentLength()
+
+            Timber.d("Expected size: $totalBytes Bytes")
+
+            var bytesCopied = 0L
+            var lastWrittenPercent = 0
+            var lastWriteAtMs = 0L
+
+            outputStream.use { output ->
+                val input: InputStream = body.byteStream()
+                val buffer = ByteArray(8 * 1024)
+
+                while (true) {
+                    if (isStopped) throw CancellationException("Worker stopped")
+                    val bytesRead = input.read(buffer)
+                    if (bytesRead == -1) break
+                    output.write(buffer, 0, bytesRead)
+                    bytesCopied += bytesRead
+
+                    if (totalBytes > 0L) {
+                        val percent =
+                            ((bytesCopied * 100L) / totalBytes).toInt().coerceIn(0, 100)
+                        val now = SystemClock.elapsedRealtime()
+                        val force = percent >= 100
+                        val timeOk = (now - lastWriteAtMs) >= PROGRESS_MIN_INTERVAL_MS
+                        if ((percent > lastWrittenPercent && timeOk) || force) {
+                            setProgressAsync(workDataOf("progress" to (percent / 100f)))
+                            lastWrittenPercent = percent
+                            lastWriteAtMs = now
+                        }
+                    }
+                }
+                output.flush()
+            }
+
+            if (totalBytes > 0L && bytesCopied != totalBytes) {
+                val msg = "Download incomplete! Expected: $totalBytes, Got: $bytesCopied"
+                Timber.e(msg)
+                throw IOException(msg)
+            }
+
+            return bytesCopied
+        } finally {
+            response.close()
+        }
+    }
+
+    // Resolves the target directory for private storage or API < 29 public Downloads.
+    // API 29+ public Downloads is handled separately via MediaStore.
+    private fun resolveDownloadDirectory(saveToDownloads: Boolean): File {
         if (!saveToDownloads) {
             val dir = File(applicationContext.filesDir, Constants.DOWNLOADS_DIR)
             dir.mkdirs()
             return dir
         }
 
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // API 29+: app-specific external Downloads, no permission needed
-            val externalDir = applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            if (externalDir != null && (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED)) {
-                externalDir.mkdirs()
-                externalDir
-            } else {
-                Timber.w("External storage not available, falling back to private storage")
-                File(applicationContext.filesDir, Constants.DOWNLOADS_DIR).also { it.mkdirs() }
-            }
+        // API < 29: public Downloads with WRITE_EXTERNAL_STORAGE permission
+        val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+        return if (ContextCompat.checkSelfPermission(
+                applicationContext, permission
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            val publicDownloads =
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val appDir = File(publicDownloads, "Pocastcloni")
+            appDir.mkdirs()
+            appDir
         } else {
-            // API < 29: public Downloads with WRITE_EXTERNAL_STORAGE permission
-            val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-            if (ContextCompat.checkSelfPermission(applicationContext, permission) == PackageManager.PERMISSION_GRANTED) {
-                val publicDownloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val appDir = File(publicDownloads, "Pocastcloni")
-                appDir.mkdirs()
-                appDir
-            } else {
-                Timber.w("WRITE_EXTERNAL_STORAGE not granted, falling back to private storage")
-                File(applicationContext.filesDir, Constants.DOWNLOADS_DIR).also { it.mkdirs() }
-            }
+            Timber.w("WRITE_EXTERNAL_STORAGE not granted, falling back to private storage")
+            File(applicationContext.filesDir, Constants.DOWNLOADS_DIR).also { it.mkdirs() }
         }
     }
 
-    private suspend fun downloadToFile(
-        guid: String,
-        url: String,
-        fileName: String
-    ): File {
-        val request = Request.Builder().url(url).build()
-        val response = okHttpClient.newCall(request).execute()
-
-        try {
-            if (!response.isSuccessful) {
-                throw IOException("Server responded with error: ${response.code}")
-            }
-
-            val body = response.body ?: throw IOException("Response body is null")
-            val totalBytes = body.contentLength()
-
-            Timber.d("Expected size: $totalBytes Bytes")
-
-            val dir = resolveDownloadDirectory()
-
-            // Sanitize filename to prevent path traversal attacks
-            // Only block actual path traversal characters, preserve everything else
-            val sanitizedFileName = fileName
-                .replace("..", "")           // Remove traversal sequences
-                .replace("/", "")            // Remove Unix path separators
-                .replace("\\", "")           // Remove Windows path separators
-                .trim()
-                .ifEmpty { "episode_download" }  // Fallback if filename becomes empty
-            val file = File(dir, sanitizedFileName)
-
-            var input: InputStream? = null
-            var output: FileOutputStream? = null
-
-            try {
-                input = body.byteStream()
-                output = FileOutputStream(file)
-
-                val buffer = ByteArray(8 * 1024)
-                var bytesCopied = 0L
-
-                var lastWrittenPercent = 0
-                var lastWriteAtMs = 0L
-
-                while (true) {
-                    if (isStopped) throw CancellationException("Worker stopped")
-
-                    val bytesRead = input.read(buffer)
-                    if (bytesRead == -1) break
-
-                    output.write(buffer, 0, bytesRead)
-                    bytesCopied += bytesRead
-
-                    if (totalBytes > 0L) {
-                        val percent =
-                            ((bytesCopied * 100L) / totalBytes)
-                                .toInt()
-                                .coerceIn(0, 100)
-
-                        val now = SystemClock.elapsedRealtime()
-                        val force = percent >= 100
-                        val timeOk = (now - lastWriteAtMs) >= PROGRESS_MIN_INTERVAL_MS
-
-                        if ((percent > lastWrittenPercent && timeOk) || force) {
-                            // Use the native WorkManager API instead of a DB update
-                            setProgressAsync(workDataOf("progress" to (percent / 100f)))
-
-                            lastWrittenPercent = percent
-                            lastWriteAtMs = now
-                        }
-                    }
-                }
-
-                output.flush()
-            } catch (e: Exception) {
-                if (file.exists()) file.delete()
-                throw e
-            } finally {
-                try {
-                    output?.close()
-                } catch (_: Exception) {
-                }
-                try {
-                    input?.close()
-                } catch (_: Exception) {
-                }
-            }
-
-            val actualSize = file.length()
-            if (totalBytes > 0L && actualSize != totalBytes) {
-                val msg = "Download incomplete! Expected: $totalBytes, Got: $actualSize"
-                Timber.e(msg)
-                if (file.exists()) file.delete()
-                throw IOException(msg)
-            }
-
-            return file
-        } finally {
-            response.close()
-        }
-    }
+    private fun sanitizeFileName(fileName: String): String =
+        fileName
+            .replace("..", "")
+            .replace("/", "")
+            .replace("\\", "")
+            .replace(" ", "_")
+            .trim()
+            .ifEmpty { "episode_download" }
 }

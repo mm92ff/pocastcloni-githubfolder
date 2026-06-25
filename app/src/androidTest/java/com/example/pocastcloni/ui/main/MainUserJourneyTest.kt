@@ -304,7 +304,7 @@ class MainUserJourneyTest {
         val SILENT_WAV: ByteArray = createSilentWav(seconds = 2)
         val TINY_PNG: ByteArray =
             Base64.getDecoder().decode(
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0Z0AAAAASUVORK5CYII="
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNoaGgAAAMEAYFL09IQAAAAAElFTkSuQmCC"
             )
 
         private fun createSilentWav(seconds: Int): ByteArray {

@@ -39,8 +39,11 @@ constructor(
         }
     }
 
-    private fun startDownload(episode: EpisodeEntity) {
-        val fileName = "${episode.guid.hashCode()}${Constants.DOWNLOAD_FILE_EXTENSION}"
+    private suspend fun startDownload(episode: EpisodeEntity) {
+        val podcastTitle = podcastRepositoryProvider.get().getPodcast(episode.podcastRssUrl)
+            ?.title?.ifBlank { null } ?: "Unknown_Podcast"
+        val episodeTitle = episode.title.ifBlank { null } ?: "Unknown_Episode"
+        val fileName = "${podcastTitle}_${episodeTitle}${Constants.DOWNLOAD_FILE_EXTENSION}"
 
         val request =
             OneTimeWorkRequestBuilder<DownloadWorker>()

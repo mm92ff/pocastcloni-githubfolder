@@ -217,7 +217,9 @@ constructor(
             is UpdateUserSettingAction.SetIndicatorSize,
             is UpdateUserSettingAction.SetIndicatorBorderWidth,
             is UpdateUserSettingAction.SetIndicatorXOffset,
-            is UpdateUserSettingAction.SetIndicatorYOffset
+            is UpdateUserSettingAction.SetIndicatorYOffset,
+            is UpdateUserSettingAction.SetCleanupKeepLimit,
+            is UpdateUserSettingAction.SetCleanupIntervalHours
             -> true
             // Layout Mode is not debounced so the change is reflected immediately
             is UpdateUserSettingAction.SetLayoutMode -> false
@@ -253,5 +255,8 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
             yOffset = this.indicator.yOffset
         ),
         saveToDownloadsFolder = saveToDownloadsFolder,
+        autoCleanupEnabled = autoCleanupEnabled,
+        cleanupKeepLimit = cleanupKeepLimit,
+        cleanupIntervalHours = cleanupIntervalHours,
     )
 }

@@ -58,6 +58,10 @@ object Constants {
         const val MAX_NAV_BAR_HEIGHT_DP = 120f
         const val MIN_MARK_PLAYED_DURATION_SECONDS = 0f
         const val MAX_MARK_PLAYED_DURATION_SECONDS = 30f
+        const val MIN_CLEANUP_KEEP_LIMIT = 10f
+        const val MAX_CLEANUP_KEEP_LIMIT = 500f
+        const val MIN_CLEANUP_INTERVAL_HOURS = 1f
+        const val MAX_CLEANUP_INTERVAL_HOURS = 168f
         const val MIN_INDICATOR_SIZE_DP = 4f
         const val MAX_INDICATOR_SIZE_DP = 50f
         const val MIN_INDICATOR_BORDER_DP = 0f
@@ -173,6 +177,14 @@ object Constants {
         const val DEFAULT_INDICATOR_Y_OFFSET = 2
         const val NO_DOWNLOAD_LIMIT = 0
         const val DEFAULT_SAVE_TO_DOWNLOADS_FOLDER = false
+
+        const val KEY_AUTO_CLEANUP_ENABLED = "auto_cleanup_enabled"
+        const val KEY_CLEANUP_KEEP_LIMIT = "cleanup_keep_limit"
+        const val KEY_CLEANUP_INTERVAL_HOURS = "cleanup_interval_hours"
+
+        const val DEFAULT_AUTO_CLEANUP_ENABLED = true
+        const val DEFAULT_CLEANUP_KEEP_LIMIT = 50
+        const val DEFAULT_CLEANUP_INTERVAL_HOURS = 24
     }
 
     object Network {

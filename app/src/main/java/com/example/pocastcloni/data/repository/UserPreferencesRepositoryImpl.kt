@@ -71,6 +71,9 @@ constructor(
         val INDICATOR_X_OFFSET = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_X_OFFSET)
         val INDICATOR_Y_OFFSET = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_Y_OFFSET)
         val SAVE_TO_DOWNLOADS_FOLDER = booleanPreferencesKey(Constants.Preferences.KEY_SAVE_TO_DOWNLOADS_FOLDER)
+        val AUTO_CLEANUP_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_AUTO_CLEANUP_ENABLED)
+        val CLEANUP_KEEP_LIMIT = intPreferencesKey(Constants.Preferences.KEY_CLEANUP_KEEP_LIMIT)
+        val CLEANUP_INTERVAL_HOURS = intPreferencesKey(Constants.Preferences.KEY_CLEANUP_INTERVAL_HOURS)
     }
 
     override val userSettingsFlow: Flow<UserSettings> =
@@ -151,6 +154,9 @@ constructor(
                         yOffset = prefs[Keys.INDICATOR_Y_OFFSET] ?: defaultSettings.indicator.yOffset
                     ),
                     saveToDownloadsFolder = prefs[Keys.SAVE_TO_DOWNLOADS_FOLDER] ?: Constants.Preferences.DEFAULT_SAVE_TO_DOWNLOADS_FOLDER,
+                    autoCleanupEnabled = prefs[Keys.AUTO_CLEANUP_ENABLED] ?: Constants.Preferences.DEFAULT_AUTO_CLEANUP_ENABLED,
+                    cleanupKeepLimit = prefs[Keys.CLEANUP_KEEP_LIMIT] ?: Constants.Preferences.DEFAULT_CLEANUP_KEEP_LIMIT,
+                    cleanupIntervalHours = prefs[Keys.CLEANUP_INTERVAL_HOURS] ?: Constants.Preferences.DEFAULT_CLEANUP_INTERVAL_HOURS,
                 )
             }
 
@@ -338,6 +344,30 @@ constructor(
         }
     }
 
+    override suspend fun updateAutoCleanupEnabled(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.AUTO_CLEANUP_ENABLED] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist auto_cleanup_enabled preference")
+        }
+    }
+
+    override suspend fun updateCleanupKeepLimit(limit: Int) {
+        try {
+            context.dataStore.edit { it[Keys.CLEANUP_KEEP_LIMIT] = limit }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist cleanup_keep_limit preference")
+        }
+    }
+
+    override suspend fun updateCleanupIntervalHours(hours: Int) {
+        try {
+            context.dataStore.edit { it[Keys.CLEANUP_INTERVAL_HOURS] = hours }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist cleanup_interval_hours preference")
+        }
+    }
+
     override suspend fun restoreSettings(settings: UserSettings) {
         try {
             context.dataStore.edit { prefs ->
@@ -369,6 +399,9 @@ constructor(
                 prefs[Keys.INDICATOR_X_OFFSET] = settings.indicator.xOffset
                 prefs[Keys.INDICATOR_Y_OFFSET] = settings.indicator.yOffset
                 prefs[Keys.SAVE_TO_DOWNLOADS_FOLDER] = settings.saveToDownloadsFolder
+                prefs[Keys.AUTO_CLEANUP_ENABLED] = settings.autoCleanupEnabled
+                prefs[Keys.CLEANUP_KEEP_LIMIT] = settings.cleanupKeepLimit
+                prefs[Keys.CLEANUP_INTERVAL_HOURS] = settings.cleanupIntervalHours
             }
         } catch (e: IOException) {
             Timber.e(e, "Failed to restore settings to DataStore")

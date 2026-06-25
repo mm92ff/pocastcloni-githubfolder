@@ -23,7 +23,7 @@ class EpisodeMaintenanceTest {
 
         val result = selectEpisodesToPrune(episodes, keepCount = 2)
 
-        assertEquals(listOf("played-safe", "played-safe-2"), result.map { it.guid })
+        assertEquals(listOf("played-safe", "in-progress", "played-safe-2"), result.map { it.guid })
     }
 
     @Test
