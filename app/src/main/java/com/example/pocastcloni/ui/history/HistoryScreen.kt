@@ -1,6 +1,7 @@
 package com.example.pocastcloni.ui.history
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -119,7 +120,8 @@ fun HistoryScreen(
                     PaddingValues(
                         top = Dimens.PaddingSmall,
                         bottom = bottomPadding
-                    )
+                    ),
+                    verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
                 ) {
                     items(
                         items = uiState.historyRows,
