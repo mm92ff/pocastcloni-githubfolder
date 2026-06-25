@@ -81,7 +81,7 @@ fun EpisodeEntity.toBackupFavorite(): BackupFavorite {
     return BackupFavorite(
         podcastUrl = this.podcastRssUrl,
         episodeGuid = this.guid,
-        timestamp = this.favoriteTimestamp ?: System.currentTimeMillis()
+        timestamp = this.favoriteAddedAt ?: this.favoriteTimestamp ?: System.currentTimeMillis()
     )
 }
 

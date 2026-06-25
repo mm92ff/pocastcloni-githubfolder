@@ -3,19 +3,9 @@ package com.example.pocastcloni.ui.history
 import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
+import com.example.pocastcloni.ui.common.DateBucket
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-
-enum class HistoryTimeBucket {
-    TODAY,
-    YESTERDAY,
-    LAST_WEEK,
-    LAST_MONTH,
-    LAST_TWO_MONTHS,
-    LAST_FIVE_MONTHS,
-    LAST_YEAR,
-    OLDER
-}
 
 @Immutable
 data class HistoryUiItem(
@@ -30,7 +20,7 @@ sealed interface HistoryListRow {
 
     @Immutable
     data class SectionHeader(
-        val bucket: HistoryTimeBucket
+        val bucket: DateBucket
     ) : HistoryListRow {
         override val key: String = "section-${bucket.name}"
     }

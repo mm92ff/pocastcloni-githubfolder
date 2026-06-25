@@ -17,7 +17,8 @@ data class EpisodeDisplayModel(
     val playbackPositionMs: Long,
     val durationMs: Long,
     val pubDateMs: Long?,
-    val datePlayedMs: Long?
+    val datePlayedMs: Long?,
+    val favoriteAddedAtMs: Long?
 ) {
     companion object {
         fun from(
@@ -37,7 +38,8 @@ data class EpisodeDisplayModel(
                 playbackPositionMs = presentation.playbackPositionMs,
                 durationMs = presentation.durationMs,
                 pubDateMs = presentation.pubDateMs,
-                datePlayedMs = presentation.datePlayedMs
+                datePlayedMs = presentation.datePlayedMs,
+                favoriteAddedAtMs = presentation.favoriteAddedAtMs
             )
     }
 }

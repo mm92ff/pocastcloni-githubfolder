@@ -157,6 +157,7 @@ class AppDatabaseMigrationTest {
             assertNotNull(episode)
             assertEquals(0L, episode?.duration)
             assertEquals(3210L, episode?.playbackPositionMs)
+            assertEquals(1700000200000L, episode?.favoriteAddedAt)
         }
 
         db.openHelper.writableDatabase.query(

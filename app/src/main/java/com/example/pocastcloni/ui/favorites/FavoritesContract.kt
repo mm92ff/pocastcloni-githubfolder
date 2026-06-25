@@ -2,6 +2,7 @@ package com.example.pocastcloni.ui.favorites
 
 import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.ui.common.DateBucket
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -17,11 +18,37 @@ data class FavoriteUiItem(
     val podcast: Podcast? // Associated podcast (if available)
 )
 
+enum class FavoritesSortMode {
+    MANUAL,
+    ADDED_DATE
+}
+
+@Immutable
+sealed interface FavoriteListRow {
+    val key: String
+
+    @Immutable
+    data class SectionHeader(
+        val bucket: DateBucket
+    ) : FavoriteListRow {
+        override val key: String = "favorite-section-${bucket.name}"
+    }
+
+    @Immutable
+    data class EpisodeRow(
+        val item: FavoriteUiItem
+    ) : FavoriteListRow {
+        override val key: String = "favorite-episode-${item.id}"
+    }
+}
+
 @Immutable
 data class FavoritesUiState(
     val isLoading: Boolean = true,
     // FIX: ImmutableList enforces stability and enables skipping in the UI
     val favorites: ImmutableList<FavoriteUiItem> = persistentListOf(),
+    val dateGroupedRows: ImmutableList<FavoriteListRow> = persistentListOf(),
+    val sortMode: FavoritesSortMode = FavoritesSortMode.MANUAL,
     val isEditMode: Boolean = false,
     val oneHandedMode: Boolean = false,
     val isPlayerVisible: Boolean = false,
@@ -40,6 +67,8 @@ sealed interface FavoritesAction {
     data class OnEpisodeSwiped(val guid: String) : FavoritesAction
 
     data class OnReorder(val fromIndex: Int, val toIndex: Int) : FavoritesAction
+
+    data class ChangeSortMode(val mode: FavoritesSortMode) : FavoritesAction
 
     data object ToggleEditMode : FavoritesAction
 }

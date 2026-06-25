@@ -1,6 +1,8 @@
 package com.example.pocastcloni.ui.history
 
+import com.example.pocastcloni.ui.common.DateBucket
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
+import com.example.pocastcloni.ui.common.toDateBucket
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -19,68 +21,68 @@ class HistoryGroupingTest {
     @Test
     fun `bucket maps today`() {
         assertEquals(
-            HistoryTimeBucket.TODAY,
-            millisDaysAgo(0).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.TODAY,
+            millisDaysAgo(0).toDateBucket(nowMillis, zoneId)
         )
     }
 
     @Test
     fun `bucket maps yesterday`() {
         assertEquals(
-            HistoryTimeBucket.YESTERDAY,
-            millisDaysAgo(1).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.YESTERDAY,
+            millisDaysAgo(1).toDateBucket(nowMillis, zoneId)
         )
     }
 
     @Test
     fun `bucket maps last week`() {
         assertEquals(
-            HistoryTimeBucket.LAST_WEEK,
-            millisDaysAgo(7).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.LAST_WEEK,
+            millisDaysAgo(7).toDateBucket(nowMillis, zoneId)
         )
     }
 
     @Test
     fun `bucket maps last month`() {
         assertEquals(
-            HistoryTimeBucket.LAST_MONTH,
-            millisDaysAgo(30).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.LAST_MONTH,
+            millisDaysAgo(30).toDateBucket(nowMillis, zoneId)
         )
     }
 
     @Test
     fun `bucket maps last two months`() {
         assertEquals(
-            HistoryTimeBucket.LAST_TWO_MONTHS,
-            millisDaysAgo(60).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.LAST_TWO_MONTHS,
+            millisDaysAgo(60).toDateBucket(nowMillis, zoneId)
         )
     }
 
     @Test
     fun `bucket maps last five months`() {
         assertEquals(
-            HistoryTimeBucket.LAST_FIVE_MONTHS,
-            millisDaysAgo(150).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.LAST_FIVE_MONTHS,
+            millisDaysAgo(150).toDateBucket(nowMillis, zoneId)
         )
     }
 
     @Test
     fun `bucket maps last year`() {
         assertEquals(
-            HistoryTimeBucket.LAST_YEAR,
-            millisDaysAgo(365).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.LAST_YEAR,
+            millisDaysAgo(365).toDateBucket(nowMillis, zoneId)
         )
     }
 
     @Test
     fun `bucket maps older and missing dates`() {
         assertEquals(
-            HistoryTimeBucket.OLDER,
-            millisDaysAgo(366).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.OLDER,
+            millisDaysAgo(366).toDateBucket(nowMillis, zoneId)
         )
         assertEquals(
-            HistoryTimeBucket.OLDER,
-            (null as Long?).toHistoryTimeBucket(nowMillis, zoneId)
+            DateBucket.OLDER,
+            (null as Long?).toDateBucket(nowMillis, zoneId)
         )
     }
 
@@ -88,18 +90,18 @@ class HistoryGroupingTest {
     fun `bucket maps lower boundaries`() {
         val cases =
             listOf(
-                2L to HistoryTimeBucket.LAST_WEEK,
-                8L to HistoryTimeBucket.LAST_MONTH,
-                31L to HistoryTimeBucket.LAST_TWO_MONTHS,
-                61L to HistoryTimeBucket.LAST_FIVE_MONTHS,
-                151L to HistoryTimeBucket.LAST_YEAR
+                2L to DateBucket.LAST_WEEK,
+                8L to DateBucket.LAST_MONTH,
+                31L to DateBucket.LAST_TWO_MONTHS,
+                61L to DateBucket.LAST_FIVE_MONTHS,
+                151L to DateBucket.LAST_YEAR
             )
 
         cases.forEach { (daysAgo, expectedBucket) ->
             assertEquals(
                 "daysAgo=$daysAgo",
                 expectedBucket,
-                millisDaysAgo(daysAgo).toHistoryTimeBucket(nowMillis, zoneId)
+                millisDaysAgo(daysAgo).toDateBucket(nowMillis, zoneId)
             )
         }
     }
@@ -123,12 +125,12 @@ class HistoryGroupingTest {
                 .toEpochMilli()
 
         assertEquals(
-            HistoryTimeBucket.TODAY,
-            earlierSameDay.toHistoryTimeBucket(midnightNow, zoneId)
+            DateBucket.TODAY,
+            earlierSameDay.toDateBucket(midnightNow, zoneId)
         )
         assertEquals(
-            HistoryTimeBucket.YESTERDAY,
-            previousCalendarDay.toHistoryTimeBucket(midnightNow, zoneId)
+            DateBucket.YESTERDAY,
+            previousCalendarDay.toDateBucket(midnightNow, zoneId)
         )
     }
 
@@ -147,12 +149,12 @@ class HistoryGroupingTest {
 
         assertEquals(
             listOf(
-                HistoryListRow.SectionHeader(HistoryTimeBucket.TODAY),
+                HistoryListRow.SectionHeader(DateBucket.TODAY),
                 HistoryListRow.EpisodeRow(today),
                 HistoryListRow.EpisodeRow(todaySecond),
-                HistoryListRow.SectionHeader(HistoryTimeBucket.YESTERDAY),
+                HistoryListRow.SectionHeader(DateBucket.YESTERDAY),
                 HistoryListRow.EpisodeRow(yesterday),
-                HistoryListRow.SectionHeader(HistoryTimeBucket.OLDER),
+                HistoryListRow.SectionHeader(DateBucket.OLDER),
                 HistoryListRow.EpisodeRow(older)
             ),
             rows
@@ -162,7 +164,7 @@ class HistoryGroupingTest {
     @Test
     fun `history row keys are stable and do not collide`() {
         val item = historyItem("TODAY", millisDaysAgo(0))
-        val header = HistoryListRow.SectionHeader(HistoryTimeBucket.TODAY)
+        val header = HistoryListRow.SectionHeader(DateBucket.TODAY)
         val episode = HistoryListRow.EpisodeRow(item)
 
         assertEquals("section-TODAY", header.key)
@@ -201,7 +203,8 @@ class HistoryGroupingTest {
                 playbackPositionMs = 0L,
                 durationMs = 0L,
                 pubDateMs = null,
-                datePlayedMs = datePlayedMs
+                datePlayedMs = datePlayedMs,
+                favoriteAddedAtMs = null
             ),
             podcast = null
         )

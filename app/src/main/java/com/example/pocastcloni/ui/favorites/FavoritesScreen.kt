@@ -4,9 +4,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -18,6 +22,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -34,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.common.DateBucket
 import com.example.pocastcloni.ui.common.EpisodeDetailsDialog
 import com.example.pocastcloni.ui.common.ListableEpisodeItem
 import com.example.pocastcloni.ui.common.ReorderableLazyColumn
@@ -69,11 +78,13 @@ fun FavoritesScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.onAction(FavoritesAction.ToggleEditMode) }) {
-                        Icon(
-                            imageVector = if (uiState.isEditMode) Icons.Default.Check else Icons.Default.Edit,
-                            contentDescription = stringResource(id = R.string.edit)
-                        )
+                    if (uiState.sortMode == FavoritesSortMode.MANUAL) {
+                        IconButton(onClick = { viewModel.onAction(FavoritesAction.ToggleEditMode) }) {
+                            Icon(
+                                imageVector = if (uiState.isEditMode) Icons.Default.Check else Icons.Default.Edit,
+                                contentDescription = stringResource(id = R.string.edit)
+                            )
+                        }
                     }
                 }
             )
@@ -105,42 +116,140 @@ fun FavoritesScreen(
                         }
                     }
 
-                ReorderableLazyColumn(
-                    items = uiState.favorites, // Now accepts ImmutableList
-                    key = { item -> item.id },
-                    onReorder = { from, to -> viewModel.onAction(FavoritesAction.OnReorder(from, to)) },
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding =
-                    PaddingValues(
-                        top = Dimens.PaddingSmall,
-                        bottom = bottomPadding
-                    ),
-                    reverseLayout = uiState.oneHandedMode,
-                    verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
-                ) { _, item, _ ->
-                    // FIX: "isDragging" is ignored — animation is now handled internally in ReorderableLazyColumn.
-                    // SwipeToDelete is only enabled when NOT in edit mode (unchanged behaviour)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    FavoritesSortModeSelector(
+                        selectedMode = uiState.sortMode,
+                        onModeSelected = { mode -> viewModel.onAction(FavoritesAction.ChangeSortMode(mode)) }
+                    )
 
-                    SwipeToDeleteFavorite(
-                        onDelete = { viewModel.onAction(FavoritesAction.OnEpisodeSwiped(item.episode.guid)) },
-                        enabled = !uiState.isEditMode
-                    ) {
-                        ListableEpisodeItem(
-                            episode = item.episode,
-                            podcast = item.podcast,
-                            showPublishDate = true,
-                            // FIX: Lambda no longer captures uiState. The "if (!isEditMode)" logic
-                            // should ideally be checked inside the ViewModel's onAction.
-                            // Here we always fire; the ViewModel decides what to do.
-                            onClick = {
-                                viewModel.onAction(FavoritesAction.OnEpisodeClick(item.episode.guid))
-                            },
-                            onImageClick = { viewModel.onAction(FavoritesAction.OnEpisodeImageClick(item)) }
-                        )
+                    if (uiState.sortMode == FavoritesSortMode.MANUAL) {
+                        ReorderableLazyColumn(
+                            items = uiState.favorites, // Now accepts ImmutableList
+                            key = { item -> item.id },
+                            onReorder = { from, to -> viewModel.onAction(FavoritesAction.OnReorder(from, to)) },
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding =
+                            PaddingValues(
+                                top = Dimens.PaddingSmall,
+                                bottom = bottomPadding
+                            ),
+                            reverseLayout = uiState.oneHandedMode,
+                            verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
+                        ) { _, item, _ ->
+                            FavoriteEpisodeRow(
+                                item = item,
+                                swipeEnabled = !uiState.isEditMode,
+                                onAction = viewModel::onAction
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding =
+                            PaddingValues(
+                                top = Dimens.PaddingSmall,
+                                bottom = bottomPadding
+                            ),
+                            verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
+                        ) {
+                            items(
+                                items = uiState.dateGroupedRows,
+                                key = { row -> row.key }
+                            ) { row ->
+                                when (row) {
+                                    is FavoriteListRow.SectionHeader -> {
+                                        FavoriteSectionHeader(bucket = row.bucket)
+                                    }
+
+                                    is FavoriteListRow.EpisodeRow -> {
+                                        FavoriteEpisodeRow(
+                                            item = row.item,
+                                            swipeEnabled = true,
+                                            onAction = viewModel::onAction
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FavoritesSortModeSelector(
+    selectedMode: FavoritesSortMode,
+    onModeSelected: (FavoritesSortMode) -> Unit
+) {
+    val modes = listOf(FavoritesSortMode.MANUAL, FavoritesSortMode.ADDED_DATE)
+
+    SingleChoiceSegmentedButtonRow(
+        modifier =
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.PaddingLarge, vertical = Dimens.PaddingSmall)
+    ) {
+        modes.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = selectedMode == mode,
+                onClick = { onModeSelected(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size)
+            ) {
+                Text(text = stringResource(id = mode.labelResId))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteSectionHeader(bucket: DateBucket) {
+    androidx.compose.foundation.layout.Row(
+        modifier =
+        Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = Dimens.PaddingMedium,
+                vertical = Dimens.PaddingSmall
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(id = bucket.labelResId),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(
+            modifier =
+            Modifier
+                .padding(start = Dimens.PaddingSmall)
+                .weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+    }
+}
+
+@Composable
+private fun FavoriteEpisodeRow(
+    item: FavoriteUiItem,
+    swipeEnabled: Boolean,
+    onAction: (FavoritesAction) -> Unit
+) {
+    SwipeToDeleteFavorite(
+        onDelete = { onAction(FavoritesAction.OnEpisodeSwiped(item.episode.guid)) },
+        enabled = swipeEnabled
+    ) {
+        ListableEpisodeItem(
+            episode = item.episode,
+            podcast = item.podcast,
+            showPublishDate = true,
+            onClick = {
+                onAction(FavoritesAction.OnEpisodeClick(item.episode.guid))
+            },
+            onImageClick = { onAction(FavoritesAction.OnEpisodeImageClick(item)) }
+        )
     }
 }
 
@@ -195,3 +304,23 @@ private fun SwipeToDeleteFavorite(
         content()
     }
 }
+
+private val FavoritesSortMode.labelResId: Int
+    get() =
+        when (this) {
+            FavoritesSortMode.MANUAL -> R.string.favorites_sort_manual
+            FavoritesSortMode.ADDED_DATE -> R.string.favorites_sort_added
+        }
+
+private val DateBucket.labelResId: Int
+    get() =
+        when (this) {
+            DateBucket.TODAY -> R.string.history_section_today
+            DateBucket.YESTERDAY -> R.string.history_section_yesterday
+            DateBucket.LAST_WEEK -> R.string.history_section_last_week
+            DateBucket.LAST_MONTH -> R.string.history_section_last_month
+            DateBucket.LAST_TWO_MONTHS -> R.string.history_section_last_two_months
+            DateBucket.LAST_FIVE_MONTHS -> R.string.history_section_last_five_months
+            DateBucket.LAST_YEAR -> R.string.history_section_last_year
+            DateBucket.OLDER -> R.string.history_section_older
+        }

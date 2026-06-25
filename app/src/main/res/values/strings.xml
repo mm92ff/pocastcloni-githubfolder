@@ -225,6 +225,8 @@
     <string name="favorites">Favorites</string>
     <string name="history">History</string>
     <string name="favorites_empty">No favorites yet.</string>
+    <string name="favorites_sort_manual">Manual</string>
+    <string name="favorites_sort_added">Added</string>
     <string name="history_empty">No playback history yet.</string>
     <string name="history_section_today">Today</string>
     <string name="history_section_yesterday">Yesterday</string>

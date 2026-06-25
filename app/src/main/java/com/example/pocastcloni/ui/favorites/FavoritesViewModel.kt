@@ -11,6 +11,7 @@ import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 import java.util.Collections
 import javax.inject.Inject
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class FavoritesViewModel
 @Inject
@@ -35,6 +37,7 @@ constructor(
     private val _isEditMode = MutableStateFlow(false)
     private val _optimisticFavorites = MutableStateFlow<List<FavoriteUiItem>?>(null)
     private val _episodeForDetails = MutableStateFlow<FavoriteUiItem?>(null)
+    private val _sortMode = MutableStateFlow(FavoritesSortMode.MANUAL)
 
     private val dbFavoritesFlow =
         getFavoriteEpisodesWithPodcastInfoUseCase()
@@ -70,8 +73,9 @@ constructor(
             dataFlow,
             _optimisticFavorites,
             _isEditMode,
-            _episodeForDetails
-        ) { (dbFavorites, settings, isPlayerVisible), optimisticFavorites, isEditMode, episodeForDetails ->
+            _episodeForDetails,
+            _sortMode
+        ) { (dbFavorites, settings, isPlayerVisible), optimisticFavorites, isEditMode, episodeForDetails, sortMode ->
 
             val currentFavorites =
                 if (optimisticFavorites != null && optimisticFavorites.size == dbFavorites.size) {
@@ -83,6 +87,11 @@ constructor(
             FavoritesUiState(
                 isLoading = false,
                 favorites = currentFavorites.toImmutableList(),
+                dateGroupedRows = buildFavoriteDateRows(
+                    items = dbFavorites,
+                    reverseDisplayOrder = settings.oneHandedMode
+                ).toImmutableList(),
+                sortMode = sortMode,
                 isEditMode = isEditMode,
                 oneHandedMode = settings.oneHandedMode,
                 isPlayerVisible = isPlayerVisible,
@@ -121,13 +130,25 @@ constructor(
             }
 
             is FavoritesAction.OnReorder -> {
-                handleReorder(action.fromIndex, action.toIndex)
+                if (_sortMode.value == FavoritesSortMode.MANUAL) {
+                    handleReorder(action.fromIndex, action.toIndex)
+                }
+            }
+
+            is FavoritesAction.ChangeSortMode -> {
+                _sortMode.value = action.mode
+                if (action.mode == FavoritesSortMode.ADDED_DATE) {
+                    _isEditMode.value = false
+                    _optimisticFavorites.value = null
+                }
             }
 
             FavoritesAction.ToggleEditMode -> {
-                _isEditMode.update { wasEditMode ->
-                    if (wasEditMode) _optimisticFavorites.value = null
-                    !wasEditMode
+                if (_sortMode.value == FavoritesSortMode.MANUAL) {
+                    _isEditMode.update { wasEditMode ->
+                        if (wasEditMode) _optimisticFavorites.value = null
+                        !wasEditMode
+                    }
                 }
             }
         }

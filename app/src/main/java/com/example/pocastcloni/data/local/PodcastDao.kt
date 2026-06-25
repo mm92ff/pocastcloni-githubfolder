@@ -322,14 +322,23 @@ interface PodcastDao {
 
     // --- FAVORITES ---
 
-    @Query("UPDATE episodes SET isFavorite = :isFavorite, favoriteTimestamp = :timestamp WHERE guid = :guid")
+    @Query(
+        """
+        UPDATE episodes
+        SET isFavorite = :isFavorite,
+            favoriteTimestamp = :timestamp,
+            favoriteAddedAt = :favoriteAddedAt
+        WHERE guid = :guid
+        """
+    )
     suspend fun setFavoriteStatus(
         guid: String,
         isFavorite: Boolean,
-        timestamp: Long?
+        timestamp: Long?,
+        favoriteAddedAt: Long?
     )
 
-    @Query("UPDATE episodes SET isFavorite = 1, favoriteTimestamp = :timestamp WHERE guid IN (:guids)")
+    @Query("UPDATE episodes SET isFavorite = 1, favoriteTimestamp = :timestamp, favoriteAddedAt = :timestamp WHERE guid IN (:guids)")
     suspend fun setFavoritesBatch(
         guids: List<String>,
         timestamp: Long

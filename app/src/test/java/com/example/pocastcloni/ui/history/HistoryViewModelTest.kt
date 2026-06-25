@@ -10,6 +10,7 @@ import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.episode.GetPlaybackHistoryWithPodcastInfoUseCase
 import com.example.pocastcloni.domain.usecase.history.ClearHistoryUseCase
+import com.example.pocastcloni.ui.common.DateBucket
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.ui.player.PlayerUiState
 import com.example.pocastcloni.util.MainDispatcherRule
@@ -123,9 +124,9 @@ class HistoryViewModelTest {
             assertEquals(listOf("today", "yesterday"), loadedState.historyItems.map { it.id })
             assertEquals(
                 listOf(
-                    HistoryListRow.SectionHeader(HistoryTimeBucket.TODAY),
+                    HistoryListRow.SectionHeader(DateBucket.TODAY),
                     HistoryListRow.EpisodeRow(loadedState.historyItems[0]),
-                    HistoryListRow.SectionHeader(HistoryTimeBucket.YESTERDAY),
+                    HistoryListRow.SectionHeader(DateBucket.YESTERDAY),
                     HistoryListRow.EpisodeRow(loadedState.historyItems[1])
                 ),
                 loadedState.historyRows
@@ -155,9 +156,9 @@ class HistoryViewModelTest {
             assertEquals(listOf("today", "yesterday"), loadedState.historyItems.map { it.id })
             assertEquals(
                 listOf(
-                    HistoryListRow.SectionHeader(HistoryTimeBucket.YESTERDAY),
+                    HistoryListRow.SectionHeader(DateBucket.YESTERDAY),
                     HistoryListRow.EpisodeRow(loadedState.historyItems[1]),
-                    HistoryListRow.SectionHeader(HistoryTimeBucket.TODAY),
+                    HistoryListRow.SectionHeader(DateBucket.TODAY),
                     HistoryListRow.EpisodeRow(loadedState.historyItems[0])
                 ),
                 loadedState.historyRows
@@ -245,6 +246,7 @@ class HistoryViewModelTest {
                 durationMs = 0L,
                 pubDateMs = null,
                 datePlayedMs = datePlayedMs,
+                favoriteAddedAtMs = null,
                 downloadStatus = DownloadStatus.NOT_DOWNLOADED
             ),
             podcast =

@@ -50,7 +50,8 @@ class EpisodeStorageReconciliationTest {
             syncFeedUseCase =
             Provider<SyncFeedUseCase> {
                 throw IllegalStateException("SyncFeedUseCase is not used in this test.")
-            }
+            },
+            context = context
         )
     }
 

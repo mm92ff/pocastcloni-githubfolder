@@ -25,12 +25,25 @@ object AppDatabaseMigrations {
     // Keep entries in ascending order.
     // -------------------------------------------------------------------------
     private val incrementalMigrations: Array<Migration> = arrayOf(
-        // Example for the next release:
-        // object : Migration(10, 11) {
-        //     override fun migrate(db: SupportSQLiteDatabase) {
-        //         db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `author` TEXT NOT NULL DEFAULT ''")
-        //     }
-        // }
+        object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `episodes` ADD COLUMN `favoriteAddedAt` INTEGER")
+                db.execSQL(
+                    """
+                    UPDATE `episodes`
+                    SET `favoriteAddedAt` = `favoriteTimestamp`
+                    WHERE `isFavorite` = 1
+                      AND `favoriteAddedAt` IS NULL
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteAddedAt`
+                    ON `episodes` (`isFavorite`, `favoriteAddedAt`)
+                    """.trimIndent()
+                )
+            }
+        }
     )
 
     val ALL_MIGRATIONS: Array<Migration> = legacyMigrations + incrementalMigrations

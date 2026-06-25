@@ -319,7 +319,13 @@ constructor(
         timestamp: Long?
     ) {
         withContext(dispatcherProvider.io) {
-            podcastDao.setFavoriteStatus(guid, isFavorite, timestamp ?: System.currentTimeMillis())
+            val favoriteTimestamp = if (isFavorite) timestamp ?: System.currentTimeMillis() else null
+            podcastDao.setFavoriteStatus(
+                guid = guid,
+                isFavorite = isFavorite,
+                timestamp = favoriteTimestamp,
+                favoriteAddedAt = favoriteTimestamp
+            )
         }
     }
 

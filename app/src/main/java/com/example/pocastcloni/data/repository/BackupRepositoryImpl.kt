@@ -132,7 +132,12 @@ constructor(
                 backupData.favorites
                     .filter { it.episodeGuid in existingFavoriteGuids }
             restorableFavorites.forEach { fav ->
-                podcastDao.setFavoriteStatus(fav.episodeGuid, true, fav.timestamp)
+                podcastDao.setFavoriteStatus(
+                    guid = fav.episodeGuid,
+                    isFavorite = true,
+                    timestamp = fav.timestamp,
+                    favoriteAddedAt = fav.timestamp
+                )
             }
 
             val skippedFavorites = backupData.favorites.size - restorableFavorites.size

@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.common.DateBucket
 import com.example.pocastcloni.ui.common.ListableEpisodeItem
 import com.example.pocastcloni.ui.theme.Dimens
 
@@ -147,7 +148,7 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun HistorySectionHeader(bucket: HistoryTimeBucket) {
+private fun HistorySectionHeader(bucket: DateBucket) {
     Row(
         modifier =
         Modifier
@@ -173,15 +174,15 @@ private fun HistorySectionHeader(bucket: HistoryTimeBucket) {
     }
 }
 
-private val HistoryTimeBucket.labelResId: Int
+private val DateBucket.labelResId: Int
     get() =
         when (this) {
-            HistoryTimeBucket.TODAY -> R.string.history_section_today
-            HistoryTimeBucket.YESTERDAY -> R.string.history_section_yesterday
-            HistoryTimeBucket.LAST_WEEK -> R.string.history_section_last_week
-            HistoryTimeBucket.LAST_MONTH -> R.string.history_section_last_month
-            HistoryTimeBucket.LAST_TWO_MONTHS -> R.string.history_section_last_two_months
-            HistoryTimeBucket.LAST_FIVE_MONTHS -> R.string.history_section_last_five_months
-            HistoryTimeBucket.LAST_YEAR -> R.string.history_section_last_year
-            HistoryTimeBucket.OLDER -> R.string.history_section_older
+            DateBucket.TODAY -> R.string.history_section_today
+            DateBucket.YESTERDAY -> R.string.history_section_yesterday
+            DateBucket.LAST_WEEK -> R.string.history_section_last_week
+            DateBucket.LAST_MONTH -> R.string.history_section_last_month
+            DateBucket.LAST_TWO_MONTHS -> R.string.history_section_last_two_months
+            DateBucket.LAST_FIVE_MONTHS -> R.string.history_section_last_five_months
+            DateBucket.LAST_YEAR -> R.string.history_section_last_year
+            DateBucket.OLDER -> R.string.history_section_older
         }

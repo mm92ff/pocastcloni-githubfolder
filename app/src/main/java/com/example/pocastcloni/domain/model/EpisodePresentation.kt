@@ -17,6 +17,7 @@ data class EpisodePresentation(
     val durationMs: Long,
     val pubDateMs: Long?,
     val datePlayedMs: Long?,
+    val favoriteAddedAtMs: Long?,
     val downloadStatus: DownloadStatus
 ) {
     companion object {
@@ -33,6 +34,7 @@ data class EpisodePresentation(
                 durationMs = entity.duration,
                 pubDateMs = entity.pubDate?.time,
                 datePlayedMs = entity.datePlayed?.time,
+                favoriteAddedAtMs = entity.favoriteAddedAt,
                 downloadStatus = entity.downloadStatus
             )
     }
