@@ -2,18 +2,22 @@ package com.example.pocastcloni.ui.history
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,7 +68,7 @@ fun HistoryScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.desc_back)
                         )
                     }
@@ -114,21 +118,69 @@ fun HistoryScreen(
                     PaddingValues(
                         top = Dimens.PaddingSmall,
                         bottom = bottomPadding
-                    ),
-                    reverseLayout = uiState.oneHandedMode
+                    )
                 ) {
                     items(
-                        items = uiState.historyItems,
-                        key = { item -> item.id }
-                    ) { item ->
-                        ListableEpisodeItem(
-                            episode = item.episode,
-                            podcast = item.podcast,
-                            onClick = { viewModel.onAction(HistoryAction.OnEpisodeClick(item.episode.guid)) }
-                        )
+                        items = uiState.historyRows,
+                        key = { row -> row.key }
+                    ) { row ->
+                        when (row) {
+                            is HistoryListRow.SectionHeader -> {
+                                HistorySectionHeader(bucket = row.bucket)
+                            }
+
+                            is HistoryListRow.EpisodeRow -> {
+                                val item = row.item
+                                ListableEpisodeItem(
+                                    episode = item.episode,
+                                    podcast = item.podcast,
+                                    onClick = { viewModel.onAction(HistoryAction.OnEpisodeClick(item.episode.guid)) }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun HistorySectionHeader(bucket: HistoryTimeBucket) {
+    Row(
+        modifier =
+        Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = Dimens.PaddingMedium,
+                vertical = Dimens.PaddingSmall
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(id = bucket.labelResId),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(
+            modifier =
+            Modifier
+                .padding(start = Dimens.PaddingSmall)
+                .weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+    }
+}
+
+private val HistoryTimeBucket.labelResId: Int
+    get() =
+        when (this) {
+            HistoryTimeBucket.TODAY -> R.string.history_section_today
+            HistoryTimeBucket.YESTERDAY -> R.string.history_section_yesterday
+            HistoryTimeBucket.LAST_WEEK -> R.string.history_section_last_week
+            HistoryTimeBucket.LAST_MONTH -> R.string.history_section_last_month
+            HistoryTimeBucket.LAST_TWO_MONTHS -> R.string.history_section_last_two_months
+            HistoryTimeBucket.LAST_FIVE_MONTHS -> R.string.history_section_last_five_months
+            HistoryTimeBucket.LAST_YEAR -> R.string.history_section_last_year
+            HistoryTimeBucket.OLDER -> R.string.history_section_older
+        }

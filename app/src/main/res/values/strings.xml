@@ -226,6 +226,14 @@
     <string name="history">History</string>
     <string name="favorites_empty">No favorites yet.</string>
     <string name="history_empty">No playback history yet.</string>
+    <string name="history_section_today">Today</string>
+    <string name="history_section_yesterday">Yesterday</string>
+    <string name="history_section_last_week">Last week</string>
+    <string name="history_section_last_month">Last month</string>
+    <string name="history_section_last_two_months">2 months ago</string>
+    <string name="history_section_last_five_months">5 months ago</string>
+    <string name="history_section_last_year">1 year ago</string>
+    <string name="history_section_older">Older</string>
     <string name="clear_history">Clear history</string>
     <string name="confirm_clear_history_title">Clear playback history?</string>
     <string name="confirm_clear_history_message">This will mark all played episodes as unplayed. This action cannot be undone.</string>

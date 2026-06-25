@@ -18,18 +18,22 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Date
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class HistoryViewModelTest {
 
     @get:Rule
@@ -79,7 +83,6 @@ class HistoryViewModelTest {
         viewModel.uiState.test {
             val state = awaitItem()
             // The initial state might be loading=true, so just check that it's properly initialized
-            assertTrue("ViewModel should be properly initialized", state != null)
             assertFalse("Dialog should not be shown initially", state.showConfirmClearDialog)
         }
     }
@@ -97,6 +100,36 @@ class HistoryViewModelTest {
             // Then: confirmation dialog should be shown in the next emission
             val updatedState = awaitItem()
             assertTrue("Confirm dialog should be shown", updatedState.showConfirmClearDialog)
+        }
+    }
+
+    @Test
+    fun `uiState exposes grouped history rows`() = runTest {
+        val today = episodeWithPodcastInfo("today", datePlayedMs = daysAgo(0))
+        val yesterday = episodeWithPodcastInfo("yesterday", datePlayedMs = daysAgo(1))
+        every { getPlaybackHistoryWithPodcastInfoUseCase() } returns flowOf(listOf(yesterday, today))
+
+        viewModel = HistoryViewModel(
+            getPlaybackHistoryWithPodcastInfoUseCase = getPlaybackHistoryWithPodcastInfoUseCase,
+            audioPlayerController = audioPlayerController,
+            clearHistoryUseCase = clearHistoryUseCase,
+            userPreferencesRepository = userPreferencesRepository
+        )
+
+        viewModel.uiState.test {
+            val firstState = awaitItem()
+            val loadedState = if (firstState.isLoading) awaitItem() else firstState
+
+            assertEquals(listOf("today", "yesterday"), loadedState.historyItems.map { it.id })
+            assertEquals(
+                listOf(
+                    HistoryListRow.SectionHeader(HistoryTimeBucket.TODAY),
+                    HistoryListRow.EpisodeRow(loadedState.historyItems[0]),
+                    HistoryListRow.SectionHeader(HistoryTimeBucket.YESTERDAY),
+                    HistoryListRow.EpisodeRow(loadedState.historyItems[1])
+                ),
+                loadedState.historyRows
+            )
         }
     }
 
@@ -143,4 +176,49 @@ class HistoryViewModelTest {
             assertFalse("Dialog should be hidden", dismissedState.showConfirmClearDialog)
         }
     }
+
+    private fun daysAgo(daysAgo: Long): Long =
+        LocalDate.now(ZoneId.systemDefault())
+            .minusDays(daysAgo)
+            .atTime(10, 0)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+    private fun episodeWithPodcastInfo(
+        guid: String,
+        datePlayedMs: Long?
+    ): EpisodeWithPodcastInfo =
+        EpisodeWithPodcastInfo(
+            episode =
+            EpisodePresentation(
+                guid = guid,
+                title = "Episode $guid",
+                link = null,
+                description = "",
+                podcastRssUrl = "https://example.com/feed.xml",
+                isFavorite = false,
+                isPlayed = true,
+                playbackPositionMs = 0L,
+                durationMs = 0L,
+                pubDateMs = null,
+                datePlayedMs = datePlayedMs,
+                downloadStatus = DownloadStatus.NOT_DOWNLOADED
+            ),
+            podcast =
+            Podcast(
+                rssUrl = "https://example.com/feed.xml",
+                title = "Podcast",
+                description = "",
+                imageUrl = "",
+                lastRefreshed = Date(0L),
+                autoDownloadEnabled = false,
+                sortOrder = 0L,
+                hasNewEpisodes = false,
+                lastModifiedHeader = null,
+                eTagHeader = null,
+                latestEpisodeDate = null,
+                isLatestEpisodePlayed = null
+            )
+        )
 }

@@ -10,6 +10,7 @@ import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class HistoryViewModel
 @Inject
@@ -58,6 +60,13 @@ constructor(
             HistoryUiState(
                 isLoading = false,
                 historyItems = historyItems.toImmutableList(),
+                historyRows = buildHistoryRows(
+                    items = if (settings.oneHandedMode) {
+                        historyItems.asReversed()
+                    } else {
+                        historyItems
+                    }
+                ).toImmutableList(),
                 oneHandedMode = settings.oneHandedMode,
                 isPlayerVisible = isPlayerVisible,
                 navBarHeight = settings.navBarHeight,
