@@ -11,6 +11,9 @@ run-release-apk-on-emulator.bat
 setup-java17-env.bat
 
 uninstall-app-from-emulator.bat
+build-apk-signed.bat
+_*.bat
+__*.bat
 
 # Gradle / Android build artifacts
 .gradle/
@@ -38,6 +41,21 @@ local.properties
 *.sqlite-*
 *.db
 *.db-*
+
+# Local agent/tool settings
+.claude/settings.json
+
+# Local scratch prompts and notes
+Install
+Prompt_Android_studio_v*.md
+
+# Local emulator/UI inspection dumps
+ui*.xml
+
+# Local exported copies and screenshots
+githubfolder/
+picture/
+xxx/
 
 # OS noise
 .DS_Store
