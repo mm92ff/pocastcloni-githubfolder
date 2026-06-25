@@ -134,6 +134,7 @@ fun HistoryScreen(
                                 ListableEpisodeItem(
                                     episode = item.episode,
                                     podcast = item.podcast,
+                                    showPublishDate = true,
                                     onClick = { viewModel.onAction(HistoryAction.OnEpisodeClick(item.episode.guid)) }
                                 )
                             }

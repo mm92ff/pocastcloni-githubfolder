@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -63,7 +63,7 @@ fun FavoritesScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.desc_back)
                         )
                     }
@@ -128,6 +128,7 @@ fun FavoritesScreen(
                         ListableEpisodeItem(
                             episode = item.episode,
                             podcast = item.podcast,
+                            showPublishDate = true,
                             // FIX: Lambda no longer captures uiState. The "if (!isEditMode)" logic
                             // should ideally be checked inside the ViewModel's onAction.
                             // Here we always fire; the ViewModel decides what to do.

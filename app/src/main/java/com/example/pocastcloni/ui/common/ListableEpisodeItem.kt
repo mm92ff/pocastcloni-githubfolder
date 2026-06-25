@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,8 +33,18 @@ fun ListableEpisodeItem(
     podcast: Podcast?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showPublishDate: Boolean = false,
     onImageClick: (() -> Unit)? = null // Optional callback for image click
 ) {
+    val publishDate =
+        remember(showPublishDate, episode.pubDateMs) {
+            if (showPublishDate) {
+                formatEpisodePublishDateOrNull(episode.pubDateMs)
+            } else {
+                null
+            }
+        }
+
     Row(
         modifier =
         modifier
@@ -63,13 +74,28 @@ fun ListableEpisodeItem(
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(Dimens.PaddingExtraSmall))
-            Text(
-                text = episode.podcastTitle ?: podcast?.title ?: stringResource(id = R.string.unknown_podcast_title),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = episode.podcastTitle ?: podcast?.title ?: stringResource(id = R.string.unknown_podcast_title),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (publishDate != null) {
+                    Spacer(modifier = Modifier.width(Dimens.PaddingSmall))
+                    Text(
+                        text = publishDate,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+            }
         }
     }
 }
