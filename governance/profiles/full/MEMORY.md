@@ -1,42 +1,37 @@
 # Project Memory (Full)
 
-> Living document. Update when workflow expectations or project constraints change.
+> Fuller workflow memory for Codex. Keep this aligned with `AGENTS.md` and root `MEMORY.md`.
 
-## Current state
+## Current State
 
-- Three project-scoped Codex subagents are defined:
-  - evaluator
-  - implementer
-  - reviewer
-- A repository skill named `iterative-autocoder-style-workflow` provides the orchestration pattern.
-- The task profile source of truth is `.codex/profiles/task_profile_python_best_practices_iterative.json`.
-- Current enabled bundled areas:
-- Python Best Practices: Validation and Business Logic
+- `AGENTS.md` is the single operative instruction file.
+- Root `MEMORY.md` holds compact durable facts.
+- There is no separate `SOUL.md`; the useful governance principles are folded into `AGENTS.md` and this memory file.
+- Codex subagents live under `.codex/agents/`.
+- The workflow skill lives under `.agents/skills/iterative-autocoder-style-workflow/`.
+- Task profiles live under `.claude/profiles/` for compatibility with the protected profile selector and iteration manager.
+- The active task profile source of truth is `workflow/runtime/app_state.json`.
+- The current active profile is the Kotlin simple-app profile with 12 enabled areas.
 
-## Bootstrap behavior
+## Workflow Contract
 
-- `.codex/config.toml` includes `project_root_markers` so Codex can detect the repository root even when `.git/` does not exist.
-- Git initialization is intentionally not automatic.
-- Workflow reports can be written to `workflow/reports/` without git.
-
-## Review contract
-
-- Review is read-only.
+- Phase order is Evaluation -> Implementation -> Review.
+- Evaluation and Review are read-only.
 - Review returns strict JSON only.
-- If review denies the patch, implementation should address `required_fixes` and retry.
+- If review denies the patch, implementation addresses `required_fixes` and review runs again.
+- Work stays limited to the active iteration.
+- Adjacent issues are recorded as follow-up items, not absorbed into the active scope.
 
-## Recommended future project-specific additions
+## Bootstrap Behavior
 
-Add real values for:
-- build/test commands,
-- forbidden directories,
-- generated file policies,
-- database migration rules,
-- deployment constraints,
-- supported Python versions,
-- dependency installation policy.
+- Git initialization and local commits are governed by `AGENTS.md` and the active workflow skill.
+- Workflow reports can be written to `workflow/reports/`.
+- Never push, alter remotes, or run destructive git operations unless explicitly requested.
 
+## Recommended Future Additions
 
-## Execution memory
-
-Assume local git bootstrap, `.gitignore`, baseline commit, and per-iteration local commits are normal parts of the workflow unless the user overrides that behavior.
+- Primary build/test commands.
+- Generated file policy.
+- Database migration policy.
+- Protected directories.
+- Release/signing expectations.
