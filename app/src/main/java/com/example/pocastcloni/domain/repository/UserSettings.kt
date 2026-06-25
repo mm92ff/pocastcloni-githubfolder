@@ -6,12 +6,20 @@ import com.example.pocastcloni.ui.settings.AppColor
 import com.example.pocastcloni.ui.settings.AppTheme
 import com.example.pocastcloni.ui.settings.BufferMode
 import com.example.pocastcloni.util.Constants
+import com.fasterxml.jackson.annotation.JsonAlias
+import com.fasterxml.jackson.annotation.JsonProperty
 
 data class IndicatorSettings(
     val colorArgb: Long = Constants.Preferences.DEFAULT_INDICATOR_COLOR,
     val size: Int = Constants.Preferences.DEFAULT_INDICATOR_SIZE,
     val borderWidth: Int = Constants.Preferences.DEFAULT_INDICATOR_BORDER,
+    @get:JsonProperty("xOffset")
+    @param:JsonProperty("xOffset")
+    @param:JsonAlias("xoffset")
     val xOffset: Int = Constants.Preferences.DEFAULT_INDICATOR_X_OFFSET,
+    @get:JsonProperty("yOffset")
+    @param:JsonProperty("yOffset")
+    @param:JsonAlias("yoffset")
     val yOffset: Int = Constants.Preferences.DEFAULT_INDICATOR_Y_OFFSET
 )
 
