@@ -3,6 +3,7 @@ package com.example.pocastcloni.ui.theme
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -104,8 +105,17 @@ fun PocastCloniTheme(
         SideEffect {
             val activity = view.context.findActivity()
             activity?.window?.let { window ->
-                window.statusBarColor = colorScheme.background.toArgb()
-                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+                val systemBarColor = colorScheme.background.toArgb()
+                window.statusBarColor = systemBarColor
+                window.navigationBarColor = systemBarColor
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = false
+                }
+
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = !darkTheme
+                    isAppearanceLightNavigationBars = !darkTheme
+                }
             }
         }
     }
