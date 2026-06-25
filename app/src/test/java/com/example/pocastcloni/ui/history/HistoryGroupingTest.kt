@@ -2,6 +2,7 @@ package com.example.pocastcloni.ui.history
 
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -84,6 +85,54 @@ class HistoryGroupingTest {
     }
 
     @Test
+    fun `bucket maps lower boundaries`() {
+        val cases =
+            listOf(
+                2L to HistoryTimeBucket.LAST_WEEK,
+                8L to HistoryTimeBucket.LAST_MONTH,
+                31L to HistoryTimeBucket.LAST_TWO_MONTHS,
+                61L to HistoryTimeBucket.LAST_FIVE_MONTHS,
+                151L to HistoryTimeBucket.LAST_YEAR
+            )
+
+        cases.forEach { (daysAgo, expectedBucket) ->
+            assertEquals(
+                "daysAgo=$daysAgo",
+                expectedBucket,
+                millisDaysAgo(daysAgo).toHistoryTimeBucket(nowMillis, zoneId)
+            )
+        }
+    }
+
+    @Test
+    fun `bucket uses local calendar days around midnight`() {
+        val midnightNow =
+            LocalDateTime.of(2026, 6, 25, 0, 30)
+                .atZone(zoneId)
+                .toInstant()
+                .toEpochMilli()
+        val earlierSameDay =
+            LocalDateTime.of(2026, 6, 25, 0, 5)
+                .atZone(zoneId)
+                .toInstant()
+                .toEpochMilli()
+        val previousCalendarDay =
+            LocalDateTime.of(2026, 6, 24, 23, 30)
+                .atZone(zoneId)
+                .toInstant()
+                .toEpochMilli()
+
+        assertEquals(
+            HistoryTimeBucket.TODAY,
+            earlierSameDay.toHistoryTimeBucket(midnightNow, zoneId)
+        )
+        assertEquals(
+            HistoryTimeBucket.YESTERDAY,
+            previousCalendarDay.toHistoryTimeBucket(midnightNow, zoneId)
+        )
+    }
+
+    @Test
     fun `buildHistoryRows inserts one header per bucket and preserves item order`() {
         val today = historyItem("today", millisDaysAgo(0))
         val todaySecond = historyItem("today-second", millisDaysAgo(0))
@@ -108,6 +157,17 @@ class HistoryGroupingTest {
             ),
             rows
         )
+    }
+
+    @Test
+    fun `history row keys are stable and do not collide`() {
+        val item = historyItem("TODAY", millisDaysAgo(0))
+        val header = HistoryListRow.SectionHeader(HistoryTimeBucket.TODAY)
+        val episode = HistoryListRow.EpisodeRow(item)
+
+        assertEquals("section-TODAY", header.key)
+        assertEquals("episode-TODAY", episode.key)
+        assertNotEquals(header.key, episode.key)
     }
 
     @Test

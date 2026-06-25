@@ -134,6 +134,38 @@ class HistoryViewModelTest {
     }
 
     @Test
+    fun `uiState keeps section headers before episodes in one handed mode`() = runTest {
+        val today = episodeWithPodcastInfo("today", datePlayedMs = daysAgo(0))
+        val yesterday = episodeWithPodcastInfo("yesterday", datePlayedMs = daysAgo(1))
+        every { getPlaybackHistoryWithPodcastInfoUseCase() } returns flowOf(listOf(yesterday, today))
+        every { userPreferencesRepository.userSettingsFlow } returns flowOf(userSettings(oneHandedMode = true))
+
+        viewModel = HistoryViewModel(
+            getPlaybackHistoryWithPodcastInfoUseCase = getPlaybackHistoryWithPodcastInfoUseCase,
+            audioPlayerController = audioPlayerController,
+            clearHistoryUseCase = clearHistoryUseCase,
+            userPreferencesRepository = userPreferencesRepository
+        )
+
+        viewModel.uiState.test {
+            val firstState = awaitItem()
+            val loadedState = if (firstState.isLoading) awaitItem() else firstState
+
+            assertTrue(loadedState.oneHandedMode)
+            assertEquals(listOf("today", "yesterday"), loadedState.historyItems.map { it.id })
+            assertEquals(
+                listOf(
+                    HistoryListRow.SectionHeader(HistoryTimeBucket.YESTERDAY),
+                    HistoryListRow.EpisodeRow(loadedState.historyItems[1]),
+                    HistoryListRow.SectionHeader(HistoryTimeBucket.TODAY),
+                    HistoryListRow.EpisodeRow(loadedState.historyItems[0])
+                ),
+                loadedState.historyRows
+            )
+        }
+    }
+
+    @Test
     fun `onAction ConfirmClearHistory calls use case`() = runTest {
         // When: clear is confirmed
         viewModel.onAction(HistoryAction.ConfirmClearHistory)
@@ -184,6 +216,16 @@ class HistoryViewModelTest {
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
+
+    private fun userSettings(oneHandedMode: Boolean): UserSettings =
+        UserSettings(
+            layoutMode = LayoutMode.LIST,
+            gridSize = 2,
+            showGridTitles = true,
+            oneHandedMode = oneHandedMode,
+            navBarHeight = 80,
+            progressBarHeight = 4
+        )
 
     private fun episodeWithPodcastInfo(
         guid: String,
