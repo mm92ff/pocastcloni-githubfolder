@@ -2,8 +2,6 @@ package com.example.pocastcloni.ui.settings
 
 import app.cash.turbine.test
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.model.FeedUpdateMode
-import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.player.PlayerVisibilityProvider
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -11,9 +9,7 @@ import com.example.pocastcloni.domain.usecase.app.AppMaintenanceUseCases
 import com.example.pocastcloni.domain.usecase.app.GetUserSettingsUseCase
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingsUseCase
-import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.MainDispatcherRule
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -50,6 +46,7 @@ class SettingsViewModelTest {
         cleanupKeepLimit = 50,
         cleanupIntervalHours = 24,
         showMiniPlayerTimeOverlay = true,
+        bottomBarCleanModeEnabled = true,
         backgroundCheckEnabled = false,
         backgroundCheckInterval = 12,
         indicator = IndicatorSettings()
@@ -118,6 +115,16 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun `uiState maps bottomBarCleanModeEnabled from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertTrue(success.bottomBarCleanModeEnabled)
+        }
+    }
+
     // ---- shouldDebounce ----
 
     @Test
@@ -151,6 +158,15 @@ class SettingsViewModelTest {
     fun `ToggleMiniPlayerTimeOverlay action is NOT debounced (instant)`() = runTest(testDispatcher) {
         advanceUntilIdle() // let the SharedFlow collector start
         val action = UpdateUserSettingAction.ToggleMiniPlayerTimeOverlay(true)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `ToggleBottomBarCleanMode action is NOT debounced (instant)`() = runTest(testDispatcher) {
+        advanceUntilIdle() // let the SharedFlow collector start
+        val action = UpdateUserSettingAction.ToggleBottomBarCleanMode(true)
         viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
         advanceUntilIdle()
         coVerify { updateUserSettings(action) }

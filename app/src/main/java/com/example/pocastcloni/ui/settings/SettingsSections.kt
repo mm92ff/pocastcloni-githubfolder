@@ -2,7 +2,6 @@ package com.example.pocastcloni.ui.settings
 
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -440,6 +439,7 @@ fun SectionInterface(
     gridSize: Int,
     showGridTitles: Boolean,
     oneHandedMode: Boolean,
+    bottomBarCleanModeEnabled: Boolean,
     progressBarHeight: Int,
     navBarHeight: Int,
     confirmDelete: Boolean,
@@ -447,6 +447,7 @@ fun SectionInterface(
     onSetGridSize: (Int) -> Unit,
     onToggleShowGridTitles: (Boolean) -> Unit,
     onToggleOneHandedMode: (Boolean) -> Unit,
+    onToggleBottomBarCleanMode: (Boolean) -> Unit,
     onSetProgressBarHeight: (Int) -> Unit,
     onSetNavBarHeight: (Int) -> Unit,
     onToggleConfirmDelete: (Boolean) -> Unit
@@ -505,6 +506,15 @@ fun SectionInterface(
         subtitle = stringResource(R.string.settings_one_handed_mode_subtitle),
         checked = oneHandedMode,
         onCheckedChange = onToggleOneHandedMode
+    )
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
+    SettingsSwitchCard(
+        title = stringResource(R.string.settings_bottom_bar_clean_mode),
+        subtitle = stringResource(R.string.settings_bottom_bar_clean_mode_subtitle),
+        checked = bottomBarCleanModeEnabled,
+        onCheckedChange = onToggleBottomBarCleanMode
     )
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
@@ -639,10 +649,11 @@ fun SectionStatistics(
                     val daysActive = remember(statsState.statisticsStartedAt) {
                         TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - statsState.statisticsStartedAt)
                     }
-                    val daysLabel = if (daysActive == 1L)
+                    val daysLabel = if (daysActive == 1L) {
                         stringResource(R.string.settings_statistics_days_singular)
-                    else
+                    } else {
                         stringResource(R.string.settings_statistics_days_plural)
+                    }
                     InfoRow(
                         label = stringResource(R.string.settings_statistics_running_since),
                         value = "$startDate ($daysActive $daysLabel)"

@@ -149,6 +149,7 @@ object Constants {
         const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
         const val KEY_SHOW_MINI_PLAYER_TIME_OVERLAY = "show_mini_player_time_overlay"
         const val KEY_ONE_HANDED_MODE = "one_handed_mode"
+        const val KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED = "bottom_bar_clean_mode_enabled"
         const val KEY_AUTO_DOWNLOAD_LIMIT = "auto_download_limit"
         const val KEY_AUTO_REFRESH_ON_START = "auto_refresh_on_start"
         const val KEY_BACKGROUND_CHECK_ENABLED = "background_check_enabled"
@@ -168,6 +169,7 @@ object Constants {
         const val DEFAULT_NAV_BAR_HEIGHT = 80
         const val DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY = false
         const val DEFAULT_ONE_HANDED_MODE = false
+        const val DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED = false
         const val DEFAULT_AUTO_DOWNLOAD_LIMIT = 3
         const val DEFAULT_AUTO_REFRESH_ON_START = true
         const val DEFAULT_BACKGROUND_CHECK_ENABLED = true
@@ -193,6 +195,7 @@ object Constants {
         const val CONNECT_TIMEOUT_SECONDS = 30L
         const val READ_TIMEOUT_SECONDS = 30L
         const val WRITE_TIMEOUT_SECONDS = 30L
+
         // TODO: This placeholder base URL is problematic. RSS URLs should be user-provided per podcast.
         // Consider refactoring RSS client to not require a fixed base URL.
         const val RSS_BASE_URL = "https://example.com/"

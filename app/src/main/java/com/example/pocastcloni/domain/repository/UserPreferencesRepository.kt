@@ -35,6 +35,8 @@ interface UserPreferencesRepository {
 
     suspend fun updateOneHandedMode(enabled: Boolean)
 
+    suspend fun updateBottomBarCleanModeEnabled(enabled: Boolean)
+
     suspend fun updateAutoDownloadLimit(limit: Int)
 
     suspend fun updateAutoRefreshOnStart(enabled: Boolean)

@@ -241,6 +241,7 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
         navBarHeight = navBarHeight,
         showMiniPlayerTimeOverlay = showMiniPlayerTimeOverlay,
         oneHandedMode = oneHandedMode,
+        bottomBarCleanModeEnabled = bottomBarCleanModeEnabled,
         autoDownloadLimit = autoDownloadLimit,
         autoRefreshOnStart = autoRefreshOnStart,
         backgroundCheckEnabled = backgroundCheckEnabled,

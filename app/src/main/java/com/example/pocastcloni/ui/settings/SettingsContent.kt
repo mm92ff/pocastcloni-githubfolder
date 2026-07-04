@@ -197,6 +197,7 @@ private fun DesignSettingsContent(
         gridSize = settings.gridSize,
         showGridTitles = settings.showGridTitles,
         oneHandedMode = settings.oneHandedMode,
+        bottomBarCleanModeEnabled = settings.bottomBarCleanModeEnabled,
         progressBarHeight = settings.progressBarHeight,
         navBarHeight = settings.navBarHeight,
         confirmDelete = settings.confirmDelete,
@@ -226,6 +227,13 @@ private fun DesignSettingsContent(
             {
                     enabled: Boolean ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleOneHandedMode(enabled)))
+            }
+        },
+        onToggleBottomBarCleanMode =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleBottomBarCleanMode(enabled)))
             }
         },
         onSetProgressBarHeight =

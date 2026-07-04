@@ -31,6 +31,8 @@ sealed interface UpdateUserSettingAction {
 
     data class ToggleOneHandedMode(val enabled: Boolean) : UpdateUserSettingAction
 
+    data class ToggleBottomBarCleanMode(val enabled: Boolean) : UpdateUserSettingAction
+
     data class SetAutoDownloadLimit(val limit: Int) : UpdateUserSettingAction
 
     data class ToggleAutoRefreshOnStart(val enabled: Boolean) : UpdateUserSettingAction

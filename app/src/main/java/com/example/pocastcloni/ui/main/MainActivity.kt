@@ -3,10 +3,15 @@ package com.example.pocastcloni.ui.main
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
@@ -14,6 +19,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -21,10 +27,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -51,6 +63,7 @@ import com.example.pocastcloni.ui.theme.PocastCloniTheme
 import dagger.hilt.android.AndroidEntryPoint
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import kotlin.math.abs
 
 private data class BottomNavItem(
     val screen: Screen,
@@ -65,6 +78,11 @@ private val bottomNavItems =
         BottomNavItem(Screen.Downloads, Icons.Default.Download, R.string.nav_downloads),
         BottomNavItem(Screen.Search, Icons.Default.Search, R.string.nav_search)
     )
+
+private val BottomBarHandleHeight = 18.dp
+private val BottomBarHandleWidth = 44.dp
+private val BottomBarHandleThickness = 4.dp
+private val BottomBarSwipeThreshold = 48.dp
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -125,7 +143,7 @@ class MainActivity : ComponentActivity() {
                     else -> {
                         Scaffold(
                             bottomBar = {
-                                AppBottomNavigation(
+                                CleanModeBottomBarHost(
                                     navController = navController,
                                     userSettings = uiState.userSettings,
                                     onPlayerExpanded = { viewModel.onPlayerExpanded(it) }
@@ -199,13 +217,116 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun AppBottomNavigation(
+private fun CleanModeBottomBarHost(
     navController: NavHostController,
     userSettings: UserSettings,
     onPlayerExpanded: (Boolean) -> Unit
 ) {
+    val cleanModeEnabled = userSettings.bottomBarCleanModeEnabled
+    var bottomBarRevealed by rememberSaveable { mutableStateOf(false) }
+    val swipeThresholdPx = with(LocalDensity.current) { BottomBarSwipeThreshold.toPx() }
+
+    LaunchedEffect(cleanModeEnabled) {
+        bottomBarRevealed = !cleanModeEnabled
+    }
+
+    val bottomBarVisible = !cleanModeEnabled || bottomBarRevealed
+
+    if (bottomBarVisible) {
+        AppBottomNavigation(
+            navController = navController,
+            userSettings = userSettings,
+            onPlayerExpanded = onPlayerExpanded,
+            onNavigationItemClicked = { screen ->
+                if (cleanModeEnabled && screen != Screen.Settings) {
+                    bottomBarRevealed = false
+                }
+            },
+            modifier =
+            Modifier.bottomBarSwipeGesture(
+                enabled = cleanModeEnabled,
+                thresholdPx = swipeThresholdPx,
+                onSwipeDown = { bottomBarRevealed = false }
+            )
+        )
+    } else {
+        BottomBarRevealHandle(
+            modifier =
+            Modifier
+                .height(BottomBarHandleHeight)
+                .bottomBarSwipeGesture(
+                    enabled = cleanModeEnabled,
+                    thresholdPx = swipeThresholdPx,
+                    onSwipeUp = { bottomBarRevealed = true }
+                )
+        )
+    }
+}
+
+@Composable
+private fun BottomBarRevealHandle(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier =
+            Modifier
+                .width(BottomBarHandleWidth)
+                .height(BottomBarHandleThickness)
+                .clip(RoundedCornerShape(percent = 50))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+        )
+    }
+}
+
+private fun Modifier.bottomBarSwipeGesture(
+    enabled: Boolean,
+    thresholdPx: Float,
+    onSwipeUp: (() -> Unit)? = null,
+    onSwipeDown: (() -> Unit)? = null
+): Modifier {
+    if (!enabled) return this
+
+    return pointerInput(enabled, thresholdPx, onSwipeUp, onSwipeDown) {
+        var totalX = 0f
+        var totalY = 0f
+
+        detectDragGestures(
+            onDragStart = {
+                totalX = 0f
+                totalY = 0f
+            },
+            onDragEnd = {
+                val isVerticalIntent = abs(totalY) > abs(totalX)
+                when {
+                    isVerticalIntent && totalY <= -thresholdPx -> onSwipeUp?.invoke()
+                    isVerticalIntent && totalY >= thresholdPx -> onSwipeDown?.invoke()
+                }
+            },
+            onDragCancel = {
+                totalX = 0f
+                totalY = 0f
+            },
+            onDrag = { change, dragAmount ->
+                totalX += dragAmount.x
+                totalY += dragAmount.y
+                change.consume()
+            }
+        )
+    }
+}
+
+@Composable
+private fun AppBottomNavigation(
+    navController: NavHostController,
+    userSettings: UserSettings,
+    onPlayerExpanded: (Boolean) -> Unit,
+    onNavigationItemClicked: (Screen) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     NavigationBar(
-        modifier = Modifier.height(userSettings.navBarHeight.dp)
+        modifier = modifier.height(userSettings.navBarHeight.dp)
     ) {
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = currentBackStackEntry?.destination
@@ -242,6 +363,7 @@ private fun AppBottomNavigation(
                                 }
                             }
                         }
+                        onNavigationItemClicked(item.screen)
                     } else {
                         if (!isSelected) {
                             navController.navigate(item.screen.route) {
@@ -252,6 +374,7 @@ private fun AppBottomNavigation(
                                 restoreState = true
                             }
                         }
+                        onNavigationItemClicked(item.screen)
                     }
                 }
             )

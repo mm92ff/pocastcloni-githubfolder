@@ -32,6 +32,7 @@ constructor(
                 is SetNavBarHeight -> repository.updateNavBarHeight(action.height)
                 is ToggleMiniPlayerTimeOverlay -> repository.updateShowMiniPlayerTimeOverlay(action.enabled)
                 is ToggleOneHandedMode -> repository.updateOneHandedMode(action.enabled)
+                is ToggleBottomBarCleanMode -> repository.updateBottomBarCleanModeEnabled(action.enabled)
                 is SetAutoDownloadLimit -> repository.updateAutoDownloadLimit(action.limit)
                 is ToggleAutoRefreshOnStart -> repository.updateAutoRefreshOnStart(action.enabled)
                 is SetMarkPlayedDuration -> repository.updateMarkPlayedDuration(action.seconds)

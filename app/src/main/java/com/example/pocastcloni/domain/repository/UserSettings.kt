@@ -36,6 +36,7 @@ data class UserSettings(
     val navBarHeight: Int = Constants.Preferences.DEFAULT_NAV_BAR_HEIGHT,
     val showMiniPlayerTimeOverlay: Boolean = Constants.Preferences.DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY,
     val oneHandedMode: Boolean = Constants.Preferences.DEFAULT_ONE_HANDED_MODE,
+    val bottomBarCleanModeEnabled: Boolean = Constants.Preferences.DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED,
     val autoDownloadLimit: Int = Constants.Preferences.DEFAULT_AUTO_DOWNLOAD_LIMIT,
     val autoRefreshOnStart: Boolean = Constants.Preferences.DEFAULT_AUTO_REFRESH_ON_START,
     val backgroundCheckEnabled: Boolean = Constants.Preferences.DEFAULT_BACKGROUND_CHECK_ENABLED,

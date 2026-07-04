@@ -2,15 +2,14 @@ package com.example.pocastcloni.domain.usecase.app
 
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction.*
 import com.example.pocastcloni.ui.settings.AppColor
 import com.example.pocastcloni.ui.settings.AppTheme
 import com.example.pocastcloni.ui.settings.BufferMode
-import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.util.MainDispatcherRule
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -96,6 +95,12 @@ class UpdateUserSettingsUseCaseTest {
     fun `ToggleMiniPlayerTimeOverlay calls updateShowMiniPlayerTimeOverlay`() = runTest(testDispatcher) {
         useCase(ToggleMiniPlayerTimeOverlay(true))
         coVerify { repository.updateShowMiniPlayerTimeOverlay(true) }
+    }
+
+    @Test
+    fun `ToggleBottomBarCleanMode calls updateBottomBarCleanModeEnabled`() = runTest(testDispatcher) {
+        useCase(ToggleBottomBarCleanMode(true))
+        coVerify { repository.updateBottomBarCleanModeEnabled(true) }
     }
 
     // --- Automation ---

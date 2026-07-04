@@ -119,6 +119,18 @@ class PodcastBackupHelperParsingTest {
     }
 
     @Test
+    fun exportBackupJson_writesBottomBarCleanModeSetting() {
+        val backupData =
+            BackupData(
+                settings = UserSettings(bottomBarCleanModeEnabled = true)
+            )
+
+        val json = objectMapper.writeValueAsString(backupData)
+
+        assertTrue(json.contains("\"bottomBarCleanModeEnabled\":true"))
+    }
+
+    @Test
     fun parseBackupJson_defaultsMissingMiniPlayerTimeOverlaySetting() {
         val result =
             parseBackupJson(
@@ -133,6 +145,23 @@ class PodcastBackupHelperParsingTest {
             )
 
         assertFalse(result.settings?.showMiniPlayerTimeOverlay ?: true)
+    }
+
+    @Test
+    fun parseBackupJson_defaultsMissingBottomBarCleanModeSetting() {
+        val result =
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "progressBarHeight": 30
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        assertFalse(result.settings?.bottomBarCleanModeEnabled ?: true)
     }
 
     @Test

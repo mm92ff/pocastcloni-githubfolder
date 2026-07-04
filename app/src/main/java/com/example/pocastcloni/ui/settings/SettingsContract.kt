@@ -82,6 +82,7 @@ sealed interface SettingsUiState {
         val navBarHeight: Int = 56,
         val showMiniPlayerTimeOverlay: Boolean = Constants.Preferences.DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY,
         val oneHandedMode: Boolean = false,
+        val bottomBarCleanModeEnabled: Boolean = Constants.Preferences.DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED,
         val autoDownloadLimit: Int = 5,
         val autoRefreshOnStart: Boolean = true,
         val backgroundCheckEnabled: Boolean = true,
