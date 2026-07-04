@@ -158,6 +158,8 @@
     <string name="settings_confirm_delete_subtitle">Ask for confirmation before deleting</string>
     <string name="settings_section_playback">Playback</string>
     <string name="settings_mark_as_played_after">Mark as played after</string>
+    <string name="settings_mini_player_time_overlay">Mini player time overlay</string>
+    <string name="settings_mini_player_time_overlay_subtitle">Show elapsed and total time on the mini player timeline</string>
     <string name="settings_buffer_mode">Buffer Mode</string>
     <string name="settings_buffer_mode_normal">Normal (Android Default)</string>
     <string name="settings_buffer_mode_maximal">Maximal (Large Buffer)</string>

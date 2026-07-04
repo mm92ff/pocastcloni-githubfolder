@@ -49,6 +49,7 @@ class SettingsViewModelTest {
         autoCleanupEnabled = true,
         cleanupKeepLimit = 50,
         cleanupIntervalHours = 24,
+        showMiniPlayerTimeOverlay = true,
         backgroundCheckEnabled = false,
         backgroundCheckInterval = 12,
         indicator = IndicatorSettings()
@@ -107,6 +108,16 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun `uiState maps showMiniPlayerTimeOverlay from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertTrue(success.showMiniPlayerTimeOverlay)
+        }
+    }
+
     // ---- shouldDebounce ----
 
     @Test
@@ -131,6 +142,15 @@ class SettingsViewModelTest {
     fun `ToggleAutoCleanup action is NOT debounced (instant)`() = runTest(testDispatcher) {
         advanceUntilIdle() // let the SharedFlow collector start
         val action = UpdateUserSettingAction.ToggleAutoCleanup(false)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `ToggleMiniPlayerTimeOverlay action is NOT debounced (instant)`() = runTest(testDispatcher) {
+        advanceUntilIdle() // let the SharedFlow collector start
+        val action = UpdateUserSettingAction.ToggleMiniPlayerTimeOverlay(true)
         viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
         advanceUntilIdle()
         coVerify { updateUserSettings(action) }

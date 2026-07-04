@@ -539,8 +539,10 @@ fun SectionInterface(
 @Composable
 fun SectionPlayback(
     markPlayedDurationSeconds: Int,
+    showMiniPlayerTimeOverlay: Boolean,
     bufferMode: BufferMode,
     onSetMarkPlayedDuration: (Int) -> Unit,
+    onToggleMiniPlayerTimeOverlay: (Boolean) -> Unit,
     onSetBufferMode: (BufferMode) -> Unit
 ) {
     Text(
@@ -564,6 +566,15 @@ fun SectionPlayback(
                 Text(stringResource(R.string.settings_unit_seconds, seconds))
             }
         }
+    )
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
+    SettingsSwitchCard(
+        title = stringResource(R.string.settings_mini_player_time_overlay),
+        subtitle = stringResource(R.string.settings_mini_player_time_overlay_subtitle),
+        checked = showMiniPlayerTimeOverlay,
+        onCheckedChange = onToggleMiniPlayerTimeOverlay
     )
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))

@@ -107,6 +107,35 @@ class PodcastBackupHelperParsingTest {
     }
 
     @Test
+    fun exportBackupJson_writesMiniPlayerTimeOverlaySetting() {
+        val backupData =
+            BackupData(
+                settings = UserSettings(showMiniPlayerTimeOverlay = true)
+            )
+
+        val json = objectMapper.writeValueAsString(backupData)
+
+        assertTrue(json.contains("\"showMiniPlayerTimeOverlay\":true"))
+    }
+
+    @Test
+    fun parseBackupJson_defaultsMissingMiniPlayerTimeOverlaySetting() {
+        val result =
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "progressBarHeight": 30
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        assertFalse(result.settings?.showMiniPlayerTimeOverlay ?: true)
+    }
+
+    @Test
     fun parseBackupJson_rejectsBlankOrContentFreeBackups() {
         assertThrows(IllegalArgumentException::class.java) {
             parseBackupJson("", objectMapper)

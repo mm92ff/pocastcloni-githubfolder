@@ -28,6 +28,7 @@ fun ExpandablePlayer(
     onEvent: (PlayerScreenEvent) -> Unit,
     onNavigateToPodcastDetail: (podcastUrl: String) -> Unit,
     progressBarHeight: Dp,
+    showMiniPlayerTimeOverlay: Boolean,
     navBarHeight: Dp,
     modifier: Modifier = Modifier
 ) {
@@ -68,7 +69,8 @@ fun ExpandablePlayer(
                     }
                 },
                 onEvent = onEvent,
-                progressBarHeight = progressBarHeight
+                progressBarHeight = progressBarHeight,
+                showTimeOverlay = showMiniPlayerTimeOverlay
             )
         }
     }

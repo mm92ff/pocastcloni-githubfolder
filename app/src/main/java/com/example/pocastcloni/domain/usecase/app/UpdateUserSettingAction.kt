@@ -27,6 +27,8 @@ sealed interface UpdateUserSettingAction {
 
     data class SetNavBarHeight(val height: Int) : UpdateUserSettingAction
 
+    data class ToggleMiniPlayerTimeOverlay(val enabled: Boolean) : UpdateUserSettingAction
+
     data class ToggleOneHandedMode(val enabled: Boolean) : UpdateUserSettingAction
 
     data class SetAutoDownloadLimit(val limit: Int) : UpdateUserSettingAction

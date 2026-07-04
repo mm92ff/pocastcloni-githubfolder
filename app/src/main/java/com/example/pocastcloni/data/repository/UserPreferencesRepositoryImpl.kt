@@ -54,6 +54,7 @@ constructor(
         val CONFIRM_DELETE = booleanPreferencesKey(Constants.Preferences.KEY_CONFIRM_DELETE)
         val PROGRESS_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_PROGRESS_BAR_HEIGHT)
         val NAV_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_NAV_BAR_HEIGHT)
+        val SHOW_MINI_PLAYER_TIME_OVERLAY = booleanPreferencesKey(Constants.Preferences.KEY_SHOW_MINI_PLAYER_TIME_OVERLAY)
         val ONE_HANDED_MODE = booleanPreferencesKey(Constants.Preferences.KEY_ONE_HANDED_MODE)
 
         val AUTO_DOWNLOAD_LIMIT = intPreferencesKey(Constants.Preferences.KEY_AUTO_DOWNLOAD_LIMIT)
@@ -138,6 +139,8 @@ constructor(
                     confirmDelete = prefs[Keys.CONFIRM_DELETE] ?: defaultSettings.confirmDelete,
                     progressBarHeight = prefs[Keys.PROGRESS_BAR_HEIGHT] ?: defaultSettings.progressBarHeight,
                     navBarHeight = prefs[Keys.NAV_BAR_HEIGHT] ?: defaultSettings.navBarHeight,
+                    showMiniPlayerTimeOverlay =
+                    prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] ?: defaultSettings.showMiniPlayerTimeOverlay,
                     oneHandedMode = prefs[Keys.ONE_HANDED_MODE] ?: defaultSettings.oneHandedMode,
                     autoDownloadLimit = prefs[Keys.AUTO_DOWNLOAD_LIMIT] ?: defaultSettings.autoDownloadLimit,
                     autoRefreshOnStart = prefs[Keys.AUTO_REFRESH_ON_START] ?: defaultSettings.autoRefreshOnStart,
@@ -237,6 +240,14 @@ constructor(
             context.dataStore.edit { it[Keys.NAV_BAR_HEIGHT] = height }
         } catch (e: IOException) {
             Timber.e(e, "Failed to persist nav bar height preference")
+        }
+    }
+
+    override suspend fun updateShowMiniPlayerTimeOverlay(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist mini player time overlay preference")
         }
     }
 
@@ -383,6 +394,7 @@ constructor(
                 prefs[Keys.CONFIRM_DELETE] = settings.confirmDelete
                 prefs[Keys.PROGRESS_BAR_HEIGHT] = settings.progressBarHeight
                 prefs[Keys.NAV_BAR_HEIGHT] = settings.navBarHeight
+                prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = settings.showMiniPlayerTimeOverlay
                 prefs[Keys.ONE_HANDED_MODE] = settings.oneHandedMode
 
                 prefs[Keys.AUTO_DOWNLOAD_LIMIT] = settings.autoDownloadLimit

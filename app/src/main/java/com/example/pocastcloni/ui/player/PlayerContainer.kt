@@ -15,6 +15,7 @@ fun PlayerContainer(
     modifier: Modifier = Modifier,
     progressBarHeight: Dp,
     navBarHeight: Dp,
+    showMiniPlayerTimeOverlay: Boolean,
     onNavigateToPodcastDetail: (podcastUrl: String) -> Unit,
     suppress: Boolean = false
 ) {
@@ -43,6 +44,7 @@ fun PlayerContainer(
             onEvent = viewModel::handlePlayerEvent,
             onNavigateToPodcastDetail = onNavigateToPodcastDetail,
             progressBarHeight = progressBarHeight,
+            showMiniPlayerTimeOverlay = showMiniPlayerTimeOverlay,
             navBarHeight = navBarHeight
         )
     }

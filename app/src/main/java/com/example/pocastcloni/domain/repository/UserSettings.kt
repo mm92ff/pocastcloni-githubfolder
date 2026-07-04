@@ -34,6 +34,7 @@ data class UserSettings(
     val confirmDelete: Boolean = Constants.Preferences.DEFAULT_CONFIRM_DELETE,
     val progressBarHeight: Int = Constants.Preferences.DEFAULT_PROGRESS_BAR_HEIGHT,
     val navBarHeight: Int = Constants.Preferences.DEFAULT_NAV_BAR_HEIGHT,
+    val showMiniPlayerTimeOverlay: Boolean = Constants.Preferences.DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY,
     val oneHandedMode: Boolean = Constants.Preferences.DEFAULT_ONE_HANDED_MODE,
     val autoDownloadLimit: Int = Constants.Preferences.DEFAULT_AUTO_DOWNLOAD_LIMIT,
     val autoRefreshOnStart: Boolean = Constants.Preferences.DEFAULT_AUTO_REFRESH_ON_START,

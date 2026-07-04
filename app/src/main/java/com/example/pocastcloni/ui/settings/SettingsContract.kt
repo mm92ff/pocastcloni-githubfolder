@@ -80,6 +80,7 @@ sealed interface SettingsUiState {
         val confirmDelete: Boolean = true,
         val progressBarHeight: Int = 4,
         val navBarHeight: Int = 56,
+        val showMiniPlayerTimeOverlay: Boolean = Constants.Preferences.DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY,
         val oneHandedMode: Boolean = false,
         val autoDownloadLimit: Int = 5,
         val autoRefreshOnStart: Boolean = true,

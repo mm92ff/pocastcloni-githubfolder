@@ -147,6 +147,7 @@ object Constants {
         const val KEY_CONFIRM_DELETE = "confirm_delete"
         const val KEY_PROGRESS_BAR_HEIGHT = "progress_bar_height"
         const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
+        const val KEY_SHOW_MINI_PLAYER_TIME_OVERLAY = "show_mini_player_time_overlay"
         const val KEY_ONE_HANDED_MODE = "one_handed_mode"
         const val KEY_AUTO_DOWNLOAD_LIMIT = "auto_download_limit"
         const val KEY_AUTO_REFRESH_ON_START = "auto_refresh_on_start"
@@ -165,6 +166,7 @@ object Constants {
         const val DEFAULT_CONFIRM_DELETE = true
         const val DEFAULT_PROGRESS_BAR_HEIGHT = 30
         const val DEFAULT_NAV_BAR_HEIGHT = 80
+        const val DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY = false
         const val DEFAULT_ONE_HANDED_MODE = false
         const val DEFAULT_AUTO_DOWNLOAD_LIMIT = 3
         const val DEFAULT_AUTO_REFRESH_ON_START = true

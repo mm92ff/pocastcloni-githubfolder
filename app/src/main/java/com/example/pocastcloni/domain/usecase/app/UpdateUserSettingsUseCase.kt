@@ -30,6 +30,7 @@ constructor(
                 is ToggleConfirmDelete -> repository.updateConfirmDelete(action.confirm)
                 is SetProgressBarHeight -> repository.updateProgressBarHeight(action.height)
                 is SetNavBarHeight -> repository.updateNavBarHeight(action.height)
+                is ToggleMiniPlayerTimeOverlay -> repository.updateShowMiniPlayerTimeOverlay(action.enabled)
                 is ToggleOneHandedMode -> repository.updateOneHandedMode(action.enabled)
                 is SetAutoDownloadLimit -> repository.updateAutoDownloadLimit(action.limit)
                 is ToggleAutoRefreshOnStart -> repository.updateAutoRefreshOnStart(action.enabled)

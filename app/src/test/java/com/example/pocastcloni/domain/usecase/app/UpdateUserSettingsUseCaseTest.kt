@@ -92,6 +92,12 @@ class UpdateUserSettingsUseCaseTest {
         coVerify { repository.updateShowGridTitles(false) }
     }
 
+    @Test
+    fun `ToggleMiniPlayerTimeOverlay calls updateShowMiniPlayerTimeOverlay`() = runTest(testDispatcher) {
+        useCase(ToggleMiniPlayerTimeOverlay(true))
+        coVerify { repository.updateShowMiniPlayerTimeOverlay(true) }
+    }
+
     // --- Automation ---
 
     @Test

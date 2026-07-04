@@ -2,10 +2,12 @@ package com.example.pocastcloni.ui.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,11 +32,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.util.formatTime
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 private const val TEXT_COLUMN_WEIGHT = 1f
 private const val TEXT_MAX_LINES = 1
@@ -45,6 +51,7 @@ fun MiniPlayer(
     playbackStateFlow: StateFlow<PlaybackState>,
     onEvent: (PlayerScreenEvent) -> Unit,
     progressBarHeight: Dp,
+    showTimeOverlay: Boolean,
     modifier: Modifier = Modifier,
     onCoverClick: () -> Unit,
     onExpand: () -> Unit
@@ -73,6 +80,7 @@ fun MiniPlayer(
                 playbackStateFlow = playbackStateFlow,
                 isPlaying = playerState.isPlaying, // Required for interpolation
                 progressBarHeight = progressBarHeight,
+                showTimeOverlay = showTimeOverlay,
                 onSeek = { onEvent(PlayerScreenEvent.SeekTo(it)) },
                 onSeekStart = { onEvent(PlayerScreenEvent.SeekStarted) },
                 onSeekEnd = { onEvent(PlayerScreenEvent.SeekFinished) },
@@ -87,6 +95,7 @@ private fun MiniPlayerProgressBar(
     playbackStateFlow: StateFlow<PlaybackState>,
     isPlaying: Boolean,
     progressBarHeight: Dp,
+    showTimeOverlay: Boolean,
     onSeek: (Long) -> Unit,
     onSeekStart: () -> Unit,
     onSeekEnd: () -> Unit,
@@ -118,18 +127,83 @@ private fun MiniPlayerProgressBar(
 
     // Only render when duration is known to avoid flickering during load
     if (playbackStateState.value.durationMs > 0) {
-        CustomProgressBar(
-            currentPositionMs = currentPositionProvider,
-            bufferedPositionMs = bufferedPositionProvider,
-            durationMs = durationProvider,
-            height = progressBarHeight,
-            color = MaterialTheme.colorScheme.primary,
-            onSeek = onSeekWrapped,
-            onSeekStart = onSeekStart,
-            onSeekEnd = onSeekEnd,
-            modifier = modifier
-        )
+        Box(modifier = modifier) {
+            CustomProgressBar(
+                currentPositionMs = currentPositionProvider,
+                bufferedPositionMs = bufferedPositionProvider,
+                durationMs = durationProvider,
+                height = progressBarHeight,
+                color = MaterialTheme.colorScheme.primary,
+                onSeek = onSeekWrapped,
+                onSeekStart = onSeekStart,
+                onSeekEnd = onSeekEnd
+            )
+            if (showTimeOverlay) {
+                MiniPlayerTimeOverlay(
+                    playbackStateFlow = playbackStateFlow,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+        }
     }
+}
+
+private data class MiniPlayerTimeSeconds(
+    val positionSec: Long,
+    val durationSec: Long
+)
+
+@Composable
+private fun MiniPlayerTimeOverlay(
+    playbackStateFlow: StateFlow<PlaybackState>,
+    modifier: Modifier = Modifier
+) {
+    val secondsFlow =
+        remember(playbackStateFlow) {
+            playbackStateFlow
+                .map { state ->
+                    MiniPlayerTimeSeconds(
+                        positionSec = state.currentPositionMs / 1000L,
+                        durationSec = state.durationMs / 1000L
+                    )
+                }
+                .distinctUntilChanged()
+        }
+
+    val secondsState =
+        secondsFlow.collectAsStateWithLifecycle(
+            initialValue = MiniPlayerTimeSeconds(positionSec = 0L, durationSec = 0L)
+        )
+    val seconds = secondsState.value
+
+    Row(
+        modifier =
+        modifier
+            .fillMaxSize()
+            .padding(horizontal = Dimens.PaddingSmall),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MiniPlayerTimeLabel(text = formatTime(seconds.positionSec * 1000L))
+        MiniPlayerTimeLabel(text = formatTime(seconds.durationSec * 1000L))
+    }
+}
+
+@Composable
+private fun MiniPlayerTimeLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = TEXT_MAX_LINES,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
+        modifier =
+        Modifier
+            .clip(RoundedCornerShape(Dimens.PaddingTiny))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.68f))
+            .padding(horizontal = 4.dp, vertical = 1.dp)
+    )
 }
 
 @Composable

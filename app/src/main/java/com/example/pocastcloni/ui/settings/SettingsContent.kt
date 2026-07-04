@@ -328,12 +328,20 @@ private fun GeneralSettingsContent(
     // --- PLAYBACK ---
     SectionPlayback(
         markPlayedDurationSeconds = settings.markPlayedDurationSeconds,
+        showMiniPlayerTimeOverlay = settings.showMiniPlayerTimeOverlay,
         bufferMode = settings.bufferMode,
         onSetMarkPlayedDuration =
         remember(onEvent) {
             {
                     seconds: Int ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetMarkPlayedDuration(seconds)))
+            }
+        },
+        onToggleMiniPlayerTimeOverlay =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleMiniPlayerTimeOverlay(enabled)))
             }
         },
         onSetBufferMode =

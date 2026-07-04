@@ -31,6 +31,8 @@ interface UserPreferencesRepository {
 
     suspend fun updateNavBarHeight(height: Int)
 
+    suspend fun updateShowMiniPlayerTimeOverlay(enabled: Boolean)
+
     suspend fun updateOneHandedMode(enabled: Boolean)
 
     suspend fun updateAutoDownloadLimit(limit: Int)

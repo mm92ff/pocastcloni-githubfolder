@@ -239,6 +239,7 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
         confirmDelete = confirmDelete,
         progressBarHeight = progressBarHeight,
         navBarHeight = navBarHeight,
+        showMiniPlayerTimeOverlay = showMiniPlayerTimeOverlay,
         oneHandedMode = oneHandedMode,
         autoDownloadLimit = autoDownloadLimit,
         autoRefreshOnStart = autoRefreshOnStart,

@@ -184,6 +184,7 @@ class MainActivity : ComponentActivity() {
                                 PlayerContainer(
                                     progressBarHeight = uiState.userSettings.progressBarHeight.dp,
                                     navBarHeight = uiState.userSettings.navBarHeight.dp,
+                                    showMiniPlayerTimeOverlay = uiState.userSettings.showMiniPlayerTimeOverlay,
                                     modifier = Modifier.align(Alignment.BottomCenter),
                                     onNavigateToPodcastDetail = onNavigateToPodcastDetail,
                                     suppress = suppressMiniPlayer
