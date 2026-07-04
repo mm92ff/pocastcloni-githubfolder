@@ -369,7 +369,9 @@ fun SectionDownloads(
         valueRange = SettingsDefaults.MIN_AUTO_DOWNLOAD_LIMIT..SettingsDefaults.MAX_AUTO_DOWNLOAD_LIMIT,
         steps = (SettingsDefaults.MAX_AUTO_DOWNLOAD_LIMIT - SettingsDefaults.MIN_AUTO_DOWNLOAD_LIMIT - 1).toInt(),
         onValueChangeFinished = onSetAutoDownloadLimit,
-        valueDisplay = { Text(stringResource(R.string.settings_unit_episodes, it)) }
+        valueDisplay = {
+            SliderValueText(text = stringResource(R.string.settings_unit_episodes, it))
+        }
     )
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
@@ -819,7 +821,9 @@ fun SectionCleanup(
             value = cleanupKeepLimit,
             valueRange = SettingsDefaults.MIN_CLEANUP_KEEP_LIMIT..SettingsDefaults.MAX_CLEANUP_KEEP_LIMIT,
             onValueChangeFinished = onSetCleanupKeepLimit,
-            valueDisplay = { Text(stringResource(R.string.settings_unit_episodes, it)) }
+            valueDisplay = {
+                SliderValueText(text = stringResource(R.string.settings_unit_episodes, it))
+            }
         )
 
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
@@ -831,6 +835,17 @@ fun SectionCleanup(
             valueDisplay = { Text(stringResource(R.string.settings_unit_hours, it)) }
         )
     }
+}
+
+@Composable
+private fun SliderValueText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.End,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable

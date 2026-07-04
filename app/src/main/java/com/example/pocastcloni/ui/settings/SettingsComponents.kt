@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 import kotlin.math.roundToInt
@@ -113,11 +115,22 @@ fun SettingsSliderCard(
     SettingsCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-            valueDisplay(sliderPosition.roundToInt())
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(Constants.Weights.FULL)
+            )
+            Spacer(modifier = Modifier.width(Dimens.PaddingMedium))
+            Box(
+                modifier = Modifier.weight(Constants.Weights.FULL / 2f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                valueDisplay(sliderPosition.roundToInt())
+            }
         }
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
         Slider(
