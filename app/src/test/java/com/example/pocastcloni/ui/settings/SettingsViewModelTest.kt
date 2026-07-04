@@ -47,6 +47,8 @@ class SettingsViewModelTest {
         cleanupIntervalHours = 24,
         showMiniPlayerTimeOverlay = true,
         bottomBarCleanModeEnabled = true,
+        bottomBarAutoHideEnabled = true,
+        bottomBarAutoHideDelaySeconds = 7,
         backgroundCheckEnabled = false,
         backgroundCheckInterval = 12,
         indicator = IndicatorSettings()
@@ -125,6 +127,17 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun `uiState maps bottomBarAutoHide settings from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertTrue(success.bottomBarAutoHideEnabled)
+            assertEquals(7, success.bottomBarAutoHideDelaySeconds)
+        }
+    }
+
     // ---- shouldDebounce ----
 
     @Test
@@ -167,6 +180,24 @@ class SettingsViewModelTest {
     fun `ToggleBottomBarCleanMode action is NOT debounced (instant)`() = runTest(testDispatcher) {
         advanceUntilIdle() // let the SharedFlow collector start
         val action = UpdateUserSettingAction.ToggleBottomBarCleanMode(true)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `ToggleBottomBarAutoHide action is NOT debounced (instant)`() = runTest(testDispatcher) {
+        advanceUntilIdle() // let the SharedFlow collector start
+        val action = UpdateUserSettingAction.ToggleBottomBarAutoHide(true)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `SetBottomBarAutoHideDelay action is debounced`() = runTest(testDispatcher) {
+        advanceUntilIdle() // let the SharedFlow collector start
+        val action = UpdateUserSettingAction.SetBottomBarAutoHideDelay(10)
         viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
         advanceUntilIdle()
         coVerify { updateUserSettings(action) }

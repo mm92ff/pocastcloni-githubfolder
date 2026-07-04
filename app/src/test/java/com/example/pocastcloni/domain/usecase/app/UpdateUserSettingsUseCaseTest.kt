@@ -103,6 +103,18 @@ class UpdateUserSettingsUseCaseTest {
         coVerify { repository.updateBottomBarCleanModeEnabled(true) }
     }
 
+    @Test
+    fun `ToggleBottomBarAutoHide calls updateBottomBarAutoHideEnabled`() = runTest(testDispatcher) {
+        useCase(ToggleBottomBarAutoHide(true))
+        coVerify { repository.updateBottomBarAutoHideEnabled(true) }
+    }
+
+    @Test
+    fun `SetBottomBarAutoHideDelay calls updateBottomBarAutoHideDelaySeconds`() = runTest(testDispatcher) {
+        useCase(SetBottomBarAutoHideDelay(10))
+        coVerify { repository.updateBottomBarAutoHideDelaySeconds(10) }
+    }
+
     // --- Automation ---
 
     @Test

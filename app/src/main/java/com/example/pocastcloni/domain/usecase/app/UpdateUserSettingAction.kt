@@ -33,6 +33,10 @@ sealed interface UpdateUserSettingAction {
 
     data class ToggleBottomBarCleanMode(val enabled: Boolean) : UpdateUserSettingAction
 
+    data class ToggleBottomBarAutoHide(val enabled: Boolean) : UpdateUserSettingAction
+
+    data class SetBottomBarAutoHideDelay(val seconds: Int) : UpdateUserSettingAction
+
     data class SetAutoDownloadLimit(val limit: Int) : UpdateUserSettingAction
 
     data class ToggleAutoRefreshOnStart(val enabled: Boolean) : UpdateUserSettingAction

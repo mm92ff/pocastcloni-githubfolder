@@ -56,6 +56,8 @@ object Constants {
         const val MAX_PROGRESS_BAR_HEIGHT_DP = 60f
         const val MIN_NAV_BAR_HEIGHT_DP = 60f
         const val MAX_NAV_BAR_HEIGHT_DP = 120f
+        const val MIN_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 2f
+        const val MAX_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 30f
         const val MIN_MARK_PLAYED_DURATION_SECONDS = 0f
         const val MAX_MARK_PLAYED_DURATION_SECONDS = 30f
         const val MIN_CLEANUP_KEEP_LIMIT = 10f
@@ -150,6 +152,8 @@ object Constants {
         const val KEY_SHOW_MINI_PLAYER_TIME_OVERLAY = "show_mini_player_time_overlay"
         const val KEY_ONE_HANDED_MODE = "one_handed_mode"
         const val KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED = "bottom_bar_clean_mode_enabled"
+        const val KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED = "bottom_bar_auto_hide_enabled"
+        const val KEY_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = "bottom_bar_auto_hide_delay_seconds"
         const val KEY_AUTO_DOWNLOAD_LIMIT = "auto_download_limit"
         const val KEY_AUTO_REFRESH_ON_START = "auto_refresh_on_start"
         const val KEY_BACKGROUND_CHECK_ENABLED = "background_check_enabled"
@@ -170,6 +174,8 @@ object Constants {
         const val DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY = false
         const val DEFAULT_ONE_HANDED_MODE = false
         const val DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED = false
+        const val DEFAULT_BOTTOM_BAR_AUTO_HIDE_ENABLED = false
+        const val DEFAULT_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 5
         const val DEFAULT_AUTO_DOWNLOAD_LIMIT = 3
         const val DEFAULT_AUTO_REFRESH_ON_START = true
         const val DEFAULT_BACKGROUND_CHECK_ENABLED = true

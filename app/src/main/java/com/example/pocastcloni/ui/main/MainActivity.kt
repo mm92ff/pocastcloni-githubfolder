@@ -61,6 +61,7 @@ import com.example.pocastcloni.ui.player.PlayerContainer
 import com.example.pocastcloni.ui.settings.SettingsScreen
 import com.example.pocastcloni.ui.theme.PocastCloniTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import kotlin.math.abs
@@ -224,13 +225,29 @@ private fun CleanModeBottomBarHost(
 ) {
     val cleanModeEnabled = userSettings.bottomBarCleanModeEnabled
     var bottomBarRevealed by rememberSaveable { mutableStateOf(false) }
+    var autoHideTimerKey by rememberSaveable { mutableStateOf(0) }
     val swipeThresholdPx = with(LocalDensity.current) { BottomBarSwipeThreshold.toPx() }
+    val autoHideDelayMillis = userSettings.bottomBarAutoHideDelaySeconds.coerceAtLeast(1) * 1_000L
 
     LaunchedEffect(cleanModeEnabled) {
         bottomBarRevealed = !cleanModeEnabled
+        autoHideTimerKey++
     }
 
     val bottomBarVisible = !cleanModeEnabled || bottomBarRevealed
+
+    LaunchedEffect(
+        cleanModeEnabled,
+        bottomBarRevealed,
+        userSettings.bottomBarAutoHideEnabled,
+        autoHideTimerKey,
+        autoHideDelayMillis
+    ) {
+        if (cleanModeEnabled && bottomBarRevealed && userSettings.bottomBarAutoHideEnabled) {
+            delay(autoHideDelayMillis)
+            bottomBarRevealed = false
+        }
+    }
 
     if (bottomBarVisible) {
         AppBottomNavigation(
@@ -238,7 +255,9 @@ private fun CleanModeBottomBarHost(
             userSettings = userSettings,
             onPlayerExpanded = onPlayerExpanded,
             onNavigationItemClicked = { screen ->
-                if (cleanModeEnabled && screen != Screen.Settings) {
+                if (cleanModeEnabled && userSettings.bottomBarAutoHideEnabled) {
+                    autoHideTimerKey++
+                } else if (cleanModeEnabled && screen != Screen.Settings) {
                     bottomBarRevealed = false
                 }
             },
@@ -257,7 +276,10 @@ private fun CleanModeBottomBarHost(
                 .bottomBarSwipeGesture(
                     enabled = cleanModeEnabled,
                     thresholdPx = swipeThresholdPx,
-                    onSwipeUp = { bottomBarRevealed = true }
+                    onSwipeUp = {
+                        bottomBarRevealed = true
+                        autoHideTimerKey++
+                    }
                 )
         )
     }

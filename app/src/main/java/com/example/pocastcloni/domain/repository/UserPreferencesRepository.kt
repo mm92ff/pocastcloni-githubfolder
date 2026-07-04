@@ -37,6 +37,10 @@ interface UserPreferencesRepository {
 
     suspend fun updateBottomBarCleanModeEnabled(enabled: Boolean)
 
+    suspend fun updateBottomBarAutoHideEnabled(enabled: Boolean)
+
+    suspend fun updateBottomBarAutoHideDelaySeconds(seconds: Int)
+
     suspend fun updateAutoDownloadLimit(limit: Int)
 
     suspend fun updateAutoRefreshOnStart(enabled: Boolean)

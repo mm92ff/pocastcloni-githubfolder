@@ -131,6 +131,23 @@ class PodcastBackupHelperParsingTest {
     }
 
     @Test
+    fun exportBackupJson_writesBottomBarAutoHideSettings() {
+        val backupData =
+            BackupData(
+                settings =
+                UserSettings(
+                    bottomBarAutoHideEnabled = true,
+                    bottomBarAutoHideDelaySeconds = 9
+                )
+            )
+
+        val json = objectMapper.writeValueAsString(backupData)
+
+        assertTrue(json.contains("\"bottomBarAutoHideEnabled\":true"))
+        assertTrue(json.contains("\"bottomBarAutoHideDelaySeconds\":9"))
+    }
+
+    @Test
     fun parseBackupJson_defaultsMissingMiniPlayerTimeOverlaySetting() {
         val result =
             parseBackupJson(
@@ -162,6 +179,24 @@ class PodcastBackupHelperParsingTest {
             )
 
         assertFalse(result.settings?.bottomBarCleanModeEnabled ?: true)
+    }
+
+    @Test
+    fun parseBackupJson_defaultsMissingBottomBarAutoHideSettings() {
+        val result =
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "progressBarHeight": 30
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        assertFalse(result.settings?.bottomBarAutoHideEnabled ?: true)
+        assertEquals(5, result.settings?.bottomBarAutoHideDelaySeconds)
     }
 
     @Test

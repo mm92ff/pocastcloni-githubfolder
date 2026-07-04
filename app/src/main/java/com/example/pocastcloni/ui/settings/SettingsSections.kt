@@ -440,6 +440,8 @@ fun SectionInterface(
     showGridTitles: Boolean,
     oneHandedMode: Boolean,
     bottomBarCleanModeEnabled: Boolean,
+    bottomBarAutoHideEnabled: Boolean,
+    bottomBarAutoHideDelaySeconds: Int,
     progressBarHeight: Int,
     navBarHeight: Int,
     confirmDelete: Boolean,
@@ -448,6 +450,8 @@ fun SectionInterface(
     onToggleShowGridTitles: (Boolean) -> Unit,
     onToggleOneHandedMode: (Boolean) -> Unit,
     onToggleBottomBarCleanMode: (Boolean) -> Unit,
+    onToggleBottomBarAutoHide: (Boolean) -> Unit,
+    onSetBottomBarAutoHideDelay: (Int) -> Unit,
     onSetProgressBarHeight: (Int) -> Unit,
     onSetNavBarHeight: (Int) -> Unit,
     onToggleConfirmDelete: (Boolean) -> Unit
@@ -516,6 +520,33 @@ fun SectionInterface(
         checked = bottomBarCleanModeEnabled,
         onCheckedChange = onToggleBottomBarCleanMode
     )
+
+    if (bottomBarCleanModeEnabled) {
+        Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+        SettingsSwitchCard(
+            title = stringResource(R.string.settings_bottom_bar_auto_hide),
+            subtitle = stringResource(R.string.settings_bottom_bar_auto_hide_subtitle),
+            checked = bottomBarAutoHideEnabled,
+            onCheckedChange = onToggleBottomBarAutoHide
+        )
+
+        if (bottomBarAutoHideEnabled) {
+            Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+            SettingsSliderCard(
+                title = stringResource(R.string.settings_bottom_bar_auto_hide_delay),
+                value = bottomBarAutoHideDelaySeconds,
+                valueRange =
+                SettingsDefaults.MIN_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS..SettingsDefaults.MAX_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS,
+                steps =
+                (
+                    SettingsDefaults.MAX_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS -
+                        SettingsDefaults.MIN_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS - 1
+                    ).toInt(),
+                onValueChangeFinished = onSetBottomBarAutoHideDelay,
+                valueDisplay = { Text(stringResource(R.string.settings_unit_seconds, it)) }
+            )
+        }
+    }
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 

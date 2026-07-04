@@ -57,6 +57,9 @@ constructor(
         val SHOW_MINI_PLAYER_TIME_OVERLAY = booleanPreferencesKey(Constants.Preferences.KEY_SHOW_MINI_PLAYER_TIME_OVERLAY)
         val ONE_HANDED_MODE = booleanPreferencesKey(Constants.Preferences.KEY_ONE_HANDED_MODE)
         val BOTTOM_BAR_CLEAN_MODE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED)
+        val BOTTOM_BAR_AUTO_HIDE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED)
+        val BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS =
+            intPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS)
 
         val AUTO_DOWNLOAD_LIMIT = intPreferencesKey(Constants.Preferences.KEY_AUTO_DOWNLOAD_LIMIT)
         val AUTO_REFRESH_ON_START = booleanPreferencesKey(Constants.Preferences.KEY_AUTO_REFRESH_ON_START)
@@ -145,6 +148,10 @@ constructor(
                     oneHandedMode = prefs[Keys.ONE_HANDED_MODE] ?: defaultSettings.oneHandedMode,
                     bottomBarCleanModeEnabled =
                     prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] ?: defaultSettings.bottomBarCleanModeEnabled,
+                    bottomBarAutoHideEnabled =
+                    prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] ?: defaultSettings.bottomBarAutoHideEnabled,
+                    bottomBarAutoHideDelaySeconds =
+                    prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] ?: defaultSettings.bottomBarAutoHideDelaySeconds,
                     autoDownloadLimit = prefs[Keys.AUTO_DOWNLOAD_LIMIT] ?: defaultSettings.autoDownloadLimit,
                     autoRefreshOnStart = prefs[Keys.AUTO_REFRESH_ON_START] ?: defaultSettings.autoRefreshOnStart,
                     backgroundCheckEnabled = prefs[Keys.BACKGROUND_CHECK_ENABLED] ?: defaultSettings.backgroundCheckEnabled,
@@ -267,6 +274,22 @@ constructor(
             context.dataStore.edit { it[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = enabled }
         } catch (e: IOException) {
             Timber.e(e, "Failed to persist bottom bar clean mode preference")
+        }
+    }
+
+    override suspend fun updateBottomBarAutoHideEnabled(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist bottom bar auto-hide preference")
+        }
+    }
+
+    override suspend fun updateBottomBarAutoHideDelaySeconds(seconds: Int) {
+        try {
+            context.dataStore.edit { it[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = seconds }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist bottom bar auto-hide delay preference")
         }
     }
 
@@ -408,6 +431,8 @@ constructor(
                 prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = settings.showMiniPlayerTimeOverlay
                 prefs[Keys.ONE_HANDED_MODE] = settings.oneHandedMode
                 prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = settings.bottomBarCleanModeEnabled
+                prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = settings.bottomBarAutoHideEnabled
+                prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = settings.bottomBarAutoHideDelaySeconds
 
                 prefs[Keys.AUTO_DOWNLOAD_LIMIT] = settings.autoDownloadLimit
                 prefs[Keys.AUTO_REFRESH_ON_START] = settings.autoRefreshOnStart

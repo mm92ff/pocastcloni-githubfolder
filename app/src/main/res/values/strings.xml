@@ -159,6 +159,9 @@
     <string name="settings_one_handed_mode_subtitle">Navigation bar at the bottom</string>
     <string name="settings_bottom_bar_clean_mode">Clean Mode</string>
     <string name="settings_bottom_bar_clean_mode_subtitle">Hide the bottom bar and reveal it with an upward swipe</string>
+    <string name="settings_bottom_bar_auto_hide">Auto-hide Bottom Bar</string>
+    <string name="settings_bottom_bar_auto_hide_subtitle">Hide the bottom bar again after a short delay</string>
+    <string name="settings_bottom_bar_auto_hide_delay">Auto-hide Delay</string>
     <string name="settings_progress_bar_height">Progress Bar Height</string>
     <string name="settings_navigation_bar_height">Navigation Bar Height</string>
     <string name="settings_confirm_delete">Confirm Delete</string>
