@@ -32,7 +32,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
@@ -197,12 +196,7 @@ private fun MiniPlayerTimeLabel(text: String) {
         color = MaterialTheme.colorScheme.onSurface,
         maxLines = TEXT_MAX_LINES,
         softWrap = false,
-        overflow = TextOverflow.Clip,
-        modifier =
-        Modifier
-            .clip(RoundedCornerShape(Dimens.PaddingTiny))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.68f))
-            .padding(horizontal = 4.dp, vertical = 1.dp)
+        overflow = TextOverflow.Clip
     )
 }
 
