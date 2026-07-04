@@ -122,6 +122,11 @@
     <string name="exporting_backup">Exporting backup&#8230;</string>
     <string name="export_complete">Export complete</string>
     <string name="error">Error</string>
+    <string name="settings_tab_design">Design</string>
+    <string name="settings_tab_playback">Playback</string>
+    <string name="settings_tab_sync">Sync</string>
+    <string name="settings_tab_sync_storage">Sync &amp; Storage</string>
+    <string name="settings_tab_data">Data</string>
     <string name="settings_section_design">Design</string>
     <string name="settings_app_color">App Color</string>
     <string name="settings_section_automation">Automation</string>

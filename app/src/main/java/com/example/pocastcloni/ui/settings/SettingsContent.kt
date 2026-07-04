@@ -1,9 +1,12 @@
 package com.example.pocastcloni.ui.settings
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -12,10 +15,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -27,6 +35,13 @@ import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.theme.Dimens
+
+private enum class SettingsTab(@StringRes val labelRes: Int) {
+    DESIGN(R.string.settings_tab_design),
+    PLAYBACK(R.string.settings_tab_playback),
+    SYNC_STORAGE(R.string.settings_tab_sync),
+    DATA(R.string.settings_tab_data)
+}
 
 /**
  * Builds the full settings list.
@@ -44,6 +59,8 @@ fun SettingsListContent(
     onExportClick: () -> Unit,
     onImportClick: () -> Unit
 ) {
+    var selectedTab by rememberSaveable { mutableStateOf(SettingsTab.DESIGN) }
+    val tabs = SettingsTab.entries
     val bottomPadding =
         if (isPlayerVisible) {
             (settings.navBarHeight + settings.progressBarHeight).dp + Dimens.PaddingMedium
@@ -51,63 +68,61 @@ fun SettingsListContent(
             Dimens.PaddingMedium
         }
 
-    LazyColumn(
+    Column(
         modifier = Modifier.fillMaxSize(),
-        contentPadding =
-        PaddingValues(
-            start = Dimens.PaddingMedium,
-            top = Dimens.PaddingMedium,
-            end = Dimens.PaddingMedium,
-            bottom = bottomPadding
-        ),
-        verticalArrangement = Arrangement.spacedBy(Dimens.PaddingLarge)
     ) {
-        // 1. URL Import (smart section -> own VM)
-        item(key = "add_podcast") {
-            SettingsUrlImportSectionSmart()
-            Divider()
+        ScrollableTabRow(
+            selectedTabIndex = tabs.indexOf(selectedTab),
+            modifier = Modifier.fillMaxWidth(),
+            edgePadding = Dimens.PaddingSmall
+        ) {
+            tabs.forEach { tab ->
+                Tab(
+                    selected = selectedTab == tab,
+                    onClick = { selectedTab = tab },
+                    text = { Text(stringResource(tab.labelRes)) }
+                )
+            }
         }
 
-        // 2. General settings
-        item(key = "general_settings") {
-            GeneralSettingsContent(settings, downloadMessage, onEvent)
-        }
-
-        // 3. Statistics
-        item(key = "statistics") {
-            SettingsStatisticsSectionSmart()
-            Divider()
-        }
-
-        // 4. Backup
-        item(key = "backup") {
-            SectionBackup(onExport = onExportClick, onImport = onImportClick)
-            Divider()
-        }
-
-        // 5. Reset zone
-        item(key = "reset_zone") {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_reset_zone_title), color = MaterialTheme.colorScheme.error) },
-                supportingContent = { Text(stringResource(R.string.settings_reset_zone_subtitle)) },
-                leadingContent = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
-                modifier = Modifier.clickable { onEvent(SettingsUiEvent.OnResetClicked) }
-            )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+            PaddingValues(
+                start = Dimens.PaddingMedium,
+                top = Dimens.PaddingMedium,
+                end = Dimens.PaddingMedium,
+                bottom = bottomPadding
+            ),
+            verticalArrangement = Arrangement.spacedBy(Dimens.PaddingLarge)
+        ) {
+            item(key = selectedTab.name) {
+                when (selectedTab) {
+                    SettingsTab.DESIGN -> DesignSettingsContent(settings = settings, onEvent = onEvent)
+                    SettingsTab.PLAYBACK -> PlaybackSettingsContent(settings = settings, onEvent = onEvent)
+                    SettingsTab.SYNC_STORAGE ->
+                        SyncStorageSettingsContent(
+                            settings = settings,
+                            downloadMessage = downloadMessage,
+                            onEvent = onEvent
+                        )
+                    SettingsTab.DATA ->
+                        DataSettingsContent(
+                            onEvent = onEvent,
+                            onExportClick = onExportClick,
+                            onImportClick = onImportClick
+                        )
+                }
+            }
         }
     }
 }
 
-/**
- * Container for settings sections.
- * Decomposes state into primitive values for maximum recomposition skipping.
- */
 @Composable
-private fun GeneralSettingsContent(
+private fun DesignSettingsContent(
     settings: SettingsUiState.Success,
-    downloadMessage: UiText?,
     onEvent: (SettingsUiEvent) -> Unit
 ) {
-    // --- APPEARANCE ---
     SectionAppearance(
         theme = settings.theme,
         appColor = settings.appColor,
@@ -136,93 +151,6 @@ private fun GeneralSettingsContent(
     )
     Divider()
 
-    // --- AUTOMATION ---
-    SectionAutomation(
-        autoRefreshOnStart = settings.autoRefreshOnStart,
-        backgroundCheckEnabled = settings.backgroundCheckEnabled,
-        backgroundCheckInterval = settings.backgroundCheckInterval,
-        feedUpdateMode = settings.feedUpdateMode,
-        onToggleAutoRefreshOnStart =
-        remember(onEvent) {
-            {
-                    enabled: Boolean ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleAutoRefreshOnStart(enabled)))
-            }
-        },
-        onToggleBackgroundCheck =
-        remember(onEvent) {
-            {
-                    enabled: Boolean ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleBackgroundCheck(enabled)))
-            }
-        },
-        onSetBackgroundCheckInterval =
-        remember(onEvent) {
-            {
-                    hours: Int ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetBackgroundCheckInterval(hours)))
-            }
-        },
-        onSetFeedUpdateMode =
-        remember(onEvent) {
-            {
-                    mode: FeedUpdateMode ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetFeedUpdateMode(mode)))
-            }
-        }
-    )
-    Divider()
-
-    // --- DOWNLOADS ---
-    SectionDownloads(
-        autoDownloadLimit = settings.autoDownloadLimit,
-        message = downloadMessage,
-        onSetAutoDownloadLimit =
-        remember(onEvent) {
-            {
-                    limit: Int ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAutoDownloadLimit(limit)))
-            }
-        },
-        onStartManualDownload = remember(onEvent) { { onEvent(SettingsUiEvent.StartManualDownload) } }
-    )
-
-    SectionDownloadLocation(
-        saveToDownloadsFolder = settings.saveToDownloadsFolder,
-        onToggle = remember(onEvent) {
-            { enabled: Boolean ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleSaveToDownloadsFolder(enabled)))
-            }
-        }
-    )
-
-    // --- CLEANUP ---
-    SectionCleanup(
-        autoCleanupEnabled = settings.autoCleanupEnabled,
-        cleanupKeepLimit = settings.cleanupKeepLimit,
-        cleanupIntervalHours = settings.cleanupIntervalHours,
-        onToggleAutoCleanup =
-        remember(onEvent) {
-            { enabled: Boolean ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleAutoCleanup(enabled)))
-            }
-        },
-        onSetCleanupKeepLimit =
-        remember(onEvent) {
-            { limit: Int ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetCleanupKeepLimit(limit)))
-            }
-        },
-        onSetCleanupIntervalHours =
-        remember(onEvent) {
-            { hours: Int ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetCleanupIntervalHours(hours)))
-            }
-        }
-    )
-    Divider()
-
-    // --- INDICATOR ---
     SectionIndicator(
         gridSizeDp = settings.gridSize,
         indicatorState = settings.indicator,
@@ -264,7 +192,6 @@ private fun GeneralSettingsContent(
     )
     Divider()
 
-    // --- INTERFACE ---
     SectionInterface(
         layoutMode = settings.layoutMode,
         gridSize = settings.gridSize,
@@ -323,9 +250,13 @@ private fun GeneralSettingsContent(
             }
         }
     )
-    Divider()
+}
 
-    // --- PLAYBACK ---
+@Composable
+private fun PlaybackSettingsContent(
+    settings: SettingsUiState.Success,
+    onEvent: (SettingsUiEvent) -> Unit
+) {
     SectionPlayback(
         markPlayedDurationSeconds = settings.markPlayedDurationSeconds,
         showMiniPlayerTimeOverlay = settings.showMiniPlayerTimeOverlay,
@@ -349,7 +280,120 @@ private fun GeneralSettingsContent(
             { mode: BufferMode -> onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetBufferSettings(mode))) }
         }
     )
+}
+
+@Composable
+private fun SyncStorageSettingsContent(
+    settings: SettingsUiState.Success,
+    downloadMessage: UiText?,
+    onEvent: (SettingsUiEvent) -> Unit
+) {
+    SettingsUrlImportSectionSmart()
     Divider()
+
+    SectionAutomation(
+        autoRefreshOnStart = settings.autoRefreshOnStart,
+        backgroundCheckEnabled = settings.backgroundCheckEnabled,
+        backgroundCheckInterval = settings.backgroundCheckInterval,
+        feedUpdateMode = settings.feedUpdateMode,
+        onToggleAutoRefreshOnStart =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleAutoRefreshOnStart(enabled)))
+            }
+        },
+        onToggleBackgroundCheck =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleBackgroundCheck(enabled)))
+            }
+        },
+        onSetBackgroundCheckInterval =
+        remember(onEvent) {
+            {
+                    hours: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetBackgroundCheckInterval(hours)))
+            }
+        },
+        onSetFeedUpdateMode =
+        remember(onEvent) {
+            {
+                    mode: FeedUpdateMode ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetFeedUpdateMode(mode)))
+            }
+        }
+    )
+    Divider()
+
+    SectionDownloads(
+        autoDownloadLimit = settings.autoDownloadLimit,
+        message = downloadMessage,
+        onSetAutoDownloadLimit =
+        remember(onEvent) {
+            {
+                    limit: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAutoDownloadLimit(limit)))
+            }
+        },
+        onStartManualDownload = remember(onEvent) { { onEvent(SettingsUiEvent.StartManualDownload) } }
+    )
+
+    SectionDownloadLocation(
+        saveToDownloadsFolder = settings.saveToDownloadsFolder,
+        onToggle = remember(onEvent) {
+            { enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleSaveToDownloadsFolder(enabled)))
+            }
+        }
+    )
+
+    Divider()
+
+    SectionCleanup(
+        autoCleanupEnabled = settings.autoCleanupEnabled,
+        cleanupKeepLimit = settings.cleanupKeepLimit,
+        cleanupIntervalHours = settings.cleanupIntervalHours,
+        onToggleAutoCleanup =
+        remember(onEvent) {
+            { enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleAutoCleanup(enabled)))
+            }
+        },
+        onSetCleanupKeepLimit =
+        remember(onEvent) {
+            { limit: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetCleanupKeepLimit(limit)))
+            }
+        },
+        onSetCleanupIntervalHours =
+        remember(onEvent) {
+            { hours: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetCleanupIntervalHours(hours)))
+            }
+        }
+    )
+}
+
+@Composable
+private fun DataSettingsContent(
+    onEvent: (SettingsUiEvent) -> Unit,
+    onExportClick: () -> Unit,
+    onImportClick: () -> Unit
+) {
+    SettingsStatisticsSectionSmart()
+    Divider()
+
+    SectionBackup(onExport = onExportClick, onImport = onImportClick)
+    Divider()
+
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.settings_reset_zone_title), color = MaterialTheme.colorScheme.error) },
+        supportingContent = { Text(stringResource(R.string.settings_reset_zone_subtitle)) },
+        leadingContent = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
+        modifier = Modifier.clickable { onEvent(SettingsUiEvent.OnResetClicked) }
+    )
 }
 
 // --- Smart Sections ---
