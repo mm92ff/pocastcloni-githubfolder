@@ -3,17 +3,11 @@ package com.example.pocastcloni.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
-import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 // TODO: ARCHITECTURE BOUNDARY VIOLATION - Data layer importing from UI layer
@@ -34,6 +28,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = Constants.Preferences.DATASTORE_NAME)
+private val Keys = UserPreferenceKeys
 
 @Singleton
 class UserPreferencesRepositoryImpl
@@ -41,50 +36,6 @@ class UserPreferencesRepositoryImpl
 constructor(
     @ApplicationContext private val context: Context
 ) : UserPreferencesRepository {
-    private object Keys {
-        val THEME = stringPreferencesKey(Constants.Preferences.KEY_THEME)
-        val APP_COLOR = stringPreferencesKey(Constants.Preferences.KEY_APP_COLOR)
-        val COLOR_STRENGTH = floatPreferencesKey(Constants.Preferences.KEY_COLOR_STRENGTH)
-        val BUFFER_MODE = stringPreferencesKey(Constants.Preferences.KEY_BUFFER_MODE)
-
-        val LAYOUT_MODE = stringPreferencesKey(Constants.Preferences.KEY_LAYOUT_MODE)
-
-        val GRID_SIZE = intPreferencesKey(Constants.Preferences.KEY_GRID_SIZE)
-        val SHOW_GRID_TITLES = booleanPreferencesKey(Constants.Preferences.KEY_SHOW_GRID_TITLES)
-        val CONFIRM_DELETE = booleanPreferencesKey(Constants.Preferences.KEY_CONFIRM_DELETE)
-        val PROGRESS_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_PROGRESS_BAR_HEIGHT)
-        val NAV_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_NAV_BAR_HEIGHT)
-        val SHOW_MINI_PLAYER_TIME_OVERLAY = booleanPreferencesKey(Constants.Preferences.KEY_SHOW_MINI_PLAYER_TIME_OVERLAY)
-        val ONE_HANDED_MODE = booleanPreferencesKey(Constants.Preferences.KEY_ONE_HANDED_MODE)
-        val BOTTOM_BAR_CLEAN_MODE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED)
-        val BOTTOM_BAR_AUTO_HIDE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED)
-        val BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS =
-            intPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS)
-        val GRADIENT_BACKGROUND_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_ENABLED)
-        val GRADIENT_BACKGROUND_STRENGTH = floatPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_STRENGTH)
-        val TRANSPARENT_SEARCH_CARDS = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_SEARCH_CARDS)
-        val TRANSPARENT_EPISODE_ROWS = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_EPISODE_ROWS)
-
-        val AUTO_DOWNLOAD_LIMIT = intPreferencesKey(Constants.Preferences.KEY_AUTO_DOWNLOAD_LIMIT)
-        val AUTO_REFRESH_ON_START = booleanPreferencesKey(Constants.Preferences.KEY_AUTO_REFRESH_ON_START)
-        val BACKGROUND_CHECK_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BACKGROUND_CHECK_ENABLED)
-        val BACKGROUND_CHECK_INTERVAL = intPreferencesKey(Constants.Preferences.KEY_BACKGROUND_CHECK_INTERVAL)
-
-        val MARK_PLAYED_DURATION = intPreferencesKey(Constants.Preferences.KEY_MARK_PLAYED_DURATION)
-
-        val FEED_UPDATE_MODE = stringPreferencesKey(Constants.KEY_FEED_UPDATE_MODE)
-
-        val INDICATOR_COLOR = longPreferencesKey(Constants.Preferences.KEY_INDICATOR_COLOR)
-        val INDICATOR_SIZE = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_SIZE)
-        val INDICATOR_BORDER = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_BORDER)
-        val INDICATOR_X_OFFSET = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_X_OFFSET)
-        val INDICATOR_Y_OFFSET = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_Y_OFFSET)
-        val SAVE_TO_DOWNLOADS_FOLDER = booleanPreferencesKey(Constants.Preferences.KEY_SAVE_TO_DOWNLOADS_FOLDER)
-        val AUTO_CLEANUP_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_AUTO_CLEANUP_ENABLED)
-        val CLEANUP_KEEP_LIMIT = intPreferencesKey(Constants.Preferences.KEY_CLEANUP_KEEP_LIMIT)
-        val CLEANUP_INTERVAL_HOURS = intPreferencesKey(Constants.Preferences.KEY_CLEANUP_INTERVAL_HOURS)
-    }
-
     override val userSettingsFlow: Flow<UserSettings> =
         context.dataStore.data
             .catch { exception ->
@@ -95,95 +46,7 @@ constructor(
                     throw exception
                 }
             }
-            .map { prefs ->
-                val defaultSettings = UserSettings()
-
-                val theme =
-                    try {
-                        AppTheme.valueOf(prefs[Keys.THEME] ?: defaultSettings.theme.name)
-                    } catch (e: Exception) {
-                        defaultSettings.theme
-                    }
-                val appColor =
-                    try {
-                        AppColor.valueOf(prefs[Keys.APP_COLOR] ?: defaultSettings.appColor.name)
-                    } catch (
-                        e: Exception
-                    ) {
-                        defaultSettings.appColor
-                    }
-                val bufferMode =
-                    try {
-                        BufferMode.valueOf(prefs[Keys.BUFFER_MODE] ?: defaultSettings.bufferMode.name)
-                    } catch (
-                        e: Exception
-                    ) {
-                        defaultSettings.bufferMode
-                    }
-                val feedMode =
-                    try {
-                        FeedUpdateMode.valueOf(prefs[Keys.FEED_UPDATE_MODE] ?: defaultSettings.feedUpdateMode.name)
-                    } catch (
-                        e: Exception
-                    ) {
-                        defaultSettings.feedUpdateMode
-                    }
-
-                val layoutMode =
-                    try {
-                        LayoutMode.valueOf(prefs[Keys.LAYOUT_MODE] ?: defaultSettings.layoutMode.name)
-                    } catch (e: Exception) {
-                        defaultSettings.layoutMode
-                    }
-
-                UserSettings(
-                    theme = theme,
-                    appColor = appColor,
-                    colorStrength = prefs[Keys.COLOR_STRENGTH] ?: defaultSettings.colorStrength,
-                    bufferMode = bufferMode,
-                    layoutMode = layoutMode,
-                    gridSize = prefs[Keys.GRID_SIZE] ?: defaultSettings.gridSize,
-                    showGridTitles = prefs[Keys.SHOW_GRID_TITLES] ?: defaultSettings.showGridTitles,
-                    confirmDelete = prefs[Keys.CONFIRM_DELETE] ?: defaultSettings.confirmDelete,
-                    progressBarHeight = prefs[Keys.PROGRESS_BAR_HEIGHT] ?: defaultSettings.progressBarHeight,
-                    navBarHeight = prefs[Keys.NAV_BAR_HEIGHT] ?: defaultSettings.navBarHeight,
-                    showMiniPlayerTimeOverlay =
-                    prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] ?: defaultSettings.showMiniPlayerTimeOverlay,
-                    oneHandedMode = prefs[Keys.ONE_HANDED_MODE] ?: defaultSettings.oneHandedMode,
-                    bottomBarCleanModeEnabled =
-                    prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] ?: defaultSettings.bottomBarCleanModeEnabled,
-                    bottomBarAutoHideEnabled =
-                    prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] ?: defaultSettings.bottomBarAutoHideEnabled,
-                    bottomBarAutoHideDelaySeconds =
-                    prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] ?: defaultSettings.bottomBarAutoHideDelaySeconds,
-                    gradientBackgroundEnabled =
-                    prefs[Keys.GRADIENT_BACKGROUND_ENABLED] ?: defaultSettings.gradientBackgroundEnabled,
-                    gradientBackgroundStrength =
-                    prefs[Keys.GRADIENT_BACKGROUND_STRENGTH] ?: defaultSettings.gradientBackgroundStrength,
-                    transparentSearchCards =
-                    prefs[Keys.TRANSPARENT_SEARCH_CARDS] ?: defaultSettings.transparentSearchCards,
-                    transparentEpisodeRows =
-                    prefs[Keys.TRANSPARENT_EPISODE_ROWS] ?: defaultSettings.transparentEpisodeRows,
-                    autoDownloadLimit = prefs[Keys.AUTO_DOWNLOAD_LIMIT] ?: defaultSettings.autoDownloadLimit,
-                    autoRefreshOnStart = prefs[Keys.AUTO_REFRESH_ON_START] ?: defaultSettings.autoRefreshOnStart,
-                    backgroundCheckEnabled = prefs[Keys.BACKGROUND_CHECK_ENABLED] ?: defaultSettings.backgroundCheckEnabled,
-                    backgroundCheckInterval = prefs[Keys.BACKGROUND_CHECK_INTERVAL] ?: defaultSettings.backgroundCheckInterval,
-                    markPlayedDurationSeconds = prefs[Keys.MARK_PLAYED_DURATION] ?: defaultSettings.markPlayedDurationSeconds,
-                    feedUpdateMode = feedMode,
-                    indicator =
-                    IndicatorSettings(
-                        colorArgb = prefs[Keys.INDICATOR_COLOR] ?: defaultSettings.indicator.colorArgb,
-                        size = prefs[Keys.INDICATOR_SIZE] ?: defaultSettings.indicator.size,
-                        borderWidth = prefs[Keys.INDICATOR_BORDER] ?: defaultSettings.indicator.borderWidth,
-                        xOffset = prefs[Keys.INDICATOR_X_OFFSET] ?: defaultSettings.indicator.xOffset,
-                        yOffset = prefs[Keys.INDICATOR_Y_OFFSET] ?: defaultSettings.indicator.yOffset
-                    ),
-                    saveToDownloadsFolder = prefs[Keys.SAVE_TO_DOWNLOADS_FOLDER] ?: Constants.Preferences.DEFAULT_SAVE_TO_DOWNLOADS_FOLDER,
-                    autoCleanupEnabled = prefs[Keys.AUTO_CLEANUP_ENABLED] ?: Constants.Preferences.DEFAULT_AUTO_CLEANUP_ENABLED,
-                    cleanupKeepLimit = prefs[Keys.CLEANUP_KEEP_LIMIT] ?: Constants.Preferences.DEFAULT_CLEANUP_KEEP_LIMIT,
-                    cleanupIntervalHours = prefs[Keys.CLEANUP_INTERVAL_HOURS] ?: Constants.Preferences.DEFAULT_CLEANUP_INTERVAL_HOURS,
-                )
-            }
+            .map { prefs -> prefs.toUserSettings() }
 
     override suspend fun updateTheme(theme: AppTheme) {
         try {
