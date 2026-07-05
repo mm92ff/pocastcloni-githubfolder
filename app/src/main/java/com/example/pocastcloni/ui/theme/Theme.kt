@@ -41,21 +41,41 @@ private fun Color.contrastColor(): Color {
     return if (this.luminance() > 0.5f) Color.Black else Color.White
 }
 
+fun gradientBackgroundBottomColor(
+    appColor: AppColor,
+    darkTheme: Boolean,
+    strength: Float
+): Color {
+    val topColor = if (darkTheme) Color.Black else Color.White
+    return Color(
+        ColorUtils.blendARGB(
+            topColor.toArgb(),
+            Color(appColor.hexValue).toArgb(),
+            strength.coerceIn(0f, 1f)
+        )
+    )
+}
+
 // --- THEME ---
+
+@Composable
+fun isPocastCloniDarkTheme(appTheme: AppTheme): Boolean =
+    when (appTheme) {
+        AppTheme.LIGHT -> false
+        AppTheme.DARK -> true
+        AppTheme.SYSTEM -> isSystemInDarkTheme()
+    }
 
 @Composable
 fun PocastCloniTheme(
     appTheme: AppTheme = AppTheme.SYSTEM,
     appColor: AppColor = AppColor.GREEN,
     colorStrength: Float = 0.1f, // Default to a subtle tint
+    gradientBackgroundEnabled: Boolean = false,
+    gradientBackgroundStrength: Float = 1.0f,
     content: @Composable () -> Unit
 ) {
-    val darkTheme =
-        when (appTheme) {
-            AppTheme.LIGHT -> false
-            AppTheme.DARK -> true
-            AppTheme.SYSTEM -> isSystemInDarkTheme()
-        }
+    val darkTheme = isPocastCloniDarkTheme(appTheme)
 
     val seedColor = Color(appColor.hexValue)
     val onSeedColor = seedColor.contrastColor()
@@ -105,16 +125,40 @@ fun PocastCloniTheme(
         SideEffect {
             val activity = view.context.findActivity()
             activity?.window?.let { window ->
-                val systemBarColor = colorScheme.background.toArgb()
-                window.statusBarColor = systemBarColor
-                window.navigationBarColor = systemBarColor
+                val statusBarColor =
+                    if (gradientBackgroundEnabled) {
+                        if (darkTheme) Color.Black.toArgb() else Color.White.toArgb()
+                    } else {
+                        colorScheme.background.toArgb()
+                    }
+                val navigationBarColor =
+                    if (gradientBackgroundEnabled) {
+                        gradientBackgroundBottomColor(
+                            appColor = appColor,
+                            darkTheme = darkTheme,
+                            strength = gradientBackgroundStrength
+                        ).toArgb()
+                    } else {
+                        colorScheme.background.toArgb()
+                    }
+                window.statusBarColor = statusBarColor
+                window.navigationBarColor = navigationBarColor
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     window.isNavigationBarContrastEnforced = false
                 }
 
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = !darkTheme
-                    isAppearanceLightNavigationBars = !darkTheme
+                    isAppearanceLightNavigationBars =
+                        if (gradientBackgroundEnabled) {
+                            gradientBackgroundBottomColor(
+                                appColor = appColor,
+                                darkTheme = darkTheme,
+                                strength = gradientBackgroundStrength
+                            ).luminance() > 0.5f
+                        } else {
+                            !darkTheme
+                        }
                 }
             }
         }

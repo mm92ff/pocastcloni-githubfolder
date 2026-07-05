@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -48,6 +47,9 @@ fun PodcastHeader(
     onToggleAutoDownload: (Boolean) -> Unit,
     onShowPodcastDescription: () -> Unit
 ) {
+    val contentColor = MaterialTheme.colorScheme.onBackground
+    val secondaryContentColor = contentColor.copy(alpha = 0.78f)
+
     Column(
         modifier =
         Modifier
@@ -75,7 +77,8 @@ fun PodcastHeader(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = contentColor
                 )
 
                 Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
@@ -84,11 +87,12 @@ fun PodcastHeader(
                     Icon(
                         imageVector = Icons.Default.DownloadDone,
                         contentDescription = null,
-                        tint = if (isAutoDownloadEnabled) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                        tint = if (isAutoDownloadEnabled) MaterialTheme.colorScheme.primary else secondaryContentColor
                     )
                     Spacer(modifier = Modifier.width(Dimens.PaddingSmall))
                     Text(
                         text = stringResource(R.string.title_auto_download),
+                        color = contentColor,
                         modifier = Modifier.weight(Constants.Weights.FULL)
                     )
                     Switch(checked = isAutoDownloadEnabled, onCheckedChange = onToggleAutoDownload)
@@ -101,6 +105,7 @@ fun PodcastHeader(
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
+            color = secondaryContentColor,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
@@ -217,11 +222,13 @@ private fun FavoriteActionButton(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit
 ) {
+    val inactiveColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.78f)
+
     IconButton(onClick = onToggleFavorite, modifier = Modifier.size(Dimens.ActionButtonSize)) {
         Icon(
             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
             contentDescription = stringResource(R.string.desc_toggle_favorite),
-            tint = if (isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current.copy(alpha = 0.7f),
+            tint = if (isFavorite) MaterialTheme.colorScheme.primary else inactiveColor,
             modifier = Modifier.size(Dimens.ActionButtonIconSize)
         )
     }
@@ -232,11 +239,13 @@ private fun PlayedActionButton(
     isPlayed: Boolean,
     onTogglePlayed: () -> Unit
 ) {
+    val inactiveColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.78f)
+
     IconButton(onClick = onTogglePlayed, modifier = Modifier.size(Dimens.ActionButtonSize)) {
         Icon(
             imageVector = Icons.Default.Check,
             contentDescription = stringResource(R.string.desc_toggle_played),
-            tint = if (isPlayed) MaterialTheme.colorScheme.primary else LocalContentColor.current.copy(alpha = 0.7f),
+            tint = if (isPlayed) MaterialTheme.colorScheme.primary else inactiveColor,
             modifier = Modifier.size(Dimens.ActionButtonIconSize)
         )
     }
@@ -269,6 +278,8 @@ private fun DownloadAction(
             }
         }
     } else {
+        val inactiveColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.78f)
+
         IconButton(onClick = onDownloadClick, modifier = Modifier.size(Dimens.ActionButtonSize)) {
             when (downloadStatus) {
                 DownloadStatusUiModel.DOWNLOADED -> {
@@ -283,7 +294,7 @@ private fun DownloadAction(
                     Icon(
                         imageVector = Icons.Default.CloudDownload,
                         contentDescription = stringResource(R.string.desc_download_episode),
-                        tint = LocalContentColor.current.copy(alpha = 0.7f),
+                        tint = inactiveColor,
                         modifier = Modifier.size(Dimens.ActionButtonIconSize)
                     )
                 }

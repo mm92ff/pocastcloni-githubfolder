@@ -15,10 +15,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -40,6 +42,7 @@ fun AddPodcastScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.title_add_podcast)) },
@@ -50,7 +53,8 @@ fun AddPodcastScreen(
                             contentDescription = stringResource(R.string.desc_back)
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->
@@ -84,6 +88,7 @@ fun AddPodcastScreen(
                     SearchResultsList(
                         results = uiState.searchResults,
                         subscribedUrls = uiState.subscribedUrls,
+                        transparentCards = uiState.transparentSearchCards,
                         onToggleClick = viewModel::onTogglePodcast,
                         reverseLayout = true
                     )
@@ -102,6 +107,7 @@ fun AddPodcastScreen(
                     SearchResultsList(
                         results = uiState.searchResults,
                         subscribedUrls = uiState.subscribedUrls,
+                        transparentCards = uiState.transparentSearchCards,
                         onToggleClick = viewModel::onTogglePodcast,
                         reverseLayout = false
                     )

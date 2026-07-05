@@ -23,11 +23,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -64,6 +66,7 @@ fun HistoryScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(id = R.string.history)) },
@@ -84,7 +87,8 @@ fun HistoryScreen(
                             )
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->
@@ -98,9 +102,11 @@ fun HistoryScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator()
             } else if (uiState.historyItems.isEmpty()) {
-                Text(text = stringResource(id = R.string.history_empty))
+                Text(
+                    text = stringResource(id = R.string.history_empty),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             } else {
-
                 val bottomPadding =
                     remember(
                         uiState.isPlayerVisible,
@@ -138,6 +144,7 @@ fun HistoryScreen(
                                     episode = item.episode,
                                     podcast = item.podcast,
                                     showPublishDate = true,
+                                    transparentBackground = uiState.transparentEpisodeRows,
                                     onClick = { viewModel.onAction(HistoryAction.OnEpisodeClick(item.episode.guid)) }
                                 )
                             }

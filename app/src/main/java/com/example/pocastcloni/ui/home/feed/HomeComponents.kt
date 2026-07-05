@@ -18,8 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -87,15 +88,13 @@ fun SwipeToDeleteItem(
 }
 
 @Composable
-fun BoxScope.IndicatorDot(
+fun BoxScope.IndicatorCutout(
     xOffset: Int,
     yOffset: Int,
     borderWidth: Int,
     size: Int,
-    colorArgb: Long,
     modifier: Modifier = Modifier
 ) {
-    // PERFORMANCE: pre-convert to Dp for use inside graphicsLayer
     val xOffsetDp = xOffset.dp
     val yOffsetDp = (-yOffset).dp
     val borderWidthDp = borderWidth.dp
@@ -106,19 +105,48 @@ fun BoxScope.IndicatorDot(
         modifier
             .align(Alignment.TopEnd)
             .zIndex(Constants.UI.INDICATOR_Z_INDEX)
-            // PERFORMANCE FIX: use graphicsLayer instead of .offset()
-            // to skip Measure/Layout and apply the translation directly in the Draw phase (GPU).
-            .graphicsLayer {
-                translationX = xOffsetDp.toPx()
-                translationY = yOffsetDp.toPx()
-            }
+            .offset(x = xOffsetDp, y = yOffsetDp)
             .size(totalSize)
-            .clip(CircleShape)
-            // background matches the app background to create a cutout effect
-            .background(MaterialTheme.colorScheme.background)
-            .padding(borderWidthDp)
-            .background(Color(colorArgb), CircleShape)
+            .drawBehind {
+                drawCircle(
+                    color = Color.Transparent,
+                    radius = this.size.minDimension / 2f,
+                    blendMode = BlendMode.Clear
+                )
+            }
     )
+}
+
+@Composable
+fun BoxScope.IndicatorDot(
+    xOffset: Int,
+    yOffset: Int,
+    borderWidth: Int,
+    size: Int,
+    colorArgb: Long,
+    modifier: Modifier = Modifier
+) {
+    val xOffsetDp = xOffset.dp
+    val yOffsetDp = (-yOffset).dp
+    val borderWidthDp = borderWidth.dp
+    val totalSize = size.dp + (borderWidthDp * 2)
+
+    Box(
+        modifier =
+        modifier
+            .align(Alignment.TopEnd)
+            .zIndex(Constants.UI.INDICATOR_Z_INDEX)
+            .offset(x = xOffsetDp, y = yOffsetDp)
+            .size(totalSize)
+    ) {
+        Box(
+            modifier =
+            Modifier
+                .align(Alignment.Center)
+                .size(size.dp)
+                .background(Color(colorArgb), CircleShape)
+        )
+    }
 }
 
 @Composable

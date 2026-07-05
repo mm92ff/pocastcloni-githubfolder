@@ -2,6 +2,7 @@ package com.example.pocastcloni.ui.player
 
 import android.text.Spanned
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -36,7 +39,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.example.pocastcloni.R
+import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.gradientBackgroundBottomColor
+import com.example.pocastcloni.ui.theme.isPocastCloniDarkTheme
 import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.foundation.layout.Column as LayoutColumn
 
@@ -44,6 +50,7 @@ import androidx.compose.foundation.layout.Column as LayoutColumn
 @Composable
 fun FullPlayerScreen(
     playerState: PlayerUiState,
+    userSettings: UserSettings,
     playbackStateFlow: StateFlow<PlaybackState>,
     episodeDescription: Spanned?,
     isDescriptionVisible: Boolean,
@@ -63,6 +70,25 @@ fun FullPlayerScreen(
     val density = LocalDensity.current
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     val rootHeightDp = with(density) { rootSize.height.toDp() }
+    val darkTheme = isPocastCloniDarkTheme(userSettings.theme)
+    val fullPlayerBackground =
+        if (userSettings.gradientBackgroundEnabled) {
+            Modifier.background(
+                Brush.verticalGradient(
+                    colors =
+                    listOf(
+                        if (darkTheme) Color.Black else Color.White,
+                        gradientBackgroundBottomColor(
+                            appColor = userSettings.appColor,
+                            darkTheme = darkTheme,
+                            strength = userSettings.gradientBackgroundStrength
+                        )
+                    )
+                )
+            )
+        } else {
+            Modifier.background(MaterialTheme.colorScheme.background)
+        }
 
     // Spacing between Progress/Time and Controls adapts to available height
     val progressToControlsSpacing: Dp =
@@ -73,79 +99,88 @@ fun FullPlayerScreen(
             else -> Dimens.PaddingSmall // 12dp
         }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onCollapse) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = stringResource(R.string.desc_close)
-                        )
-                    }
-                },
-                colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+    Box(
+        modifier =
+        Modifier
+            .fillMaxSize()
+            .then(fullPlayerBackground)
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {},
+                    navigationIcon = {
+                        IconButton(onClick = onCollapse) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = stringResource(R.string.desc_close),
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    },
+                    colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
-            )
-        }
-    ) { innerPadding ->
-        LayoutColumn(
-            modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = Dimens.PaddingLarge)
-                .onSizeChanged { rootSize = it },
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // TOP (flexible)
+            }
+        ) { innerPadding ->
             LayoutColumn(
                 modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = Dimens.PaddingLarge)
+                    .onSizeChanged { rootSize = it },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                FullPlayerMetadataFlexibleCover(
+                // TOP (flexible)
+                LayoutColumn(
                     modifier =
                     Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    playerState = playerState,
-                    onEvent = onEvent,
-                    onCollapse = onCollapse
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    FullPlayerMetadataFlexibleCover(
+                        modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        playerState = playerState,
+                        onEvent = onEvent,
+                        onCollapse = onCollapse
+                    )
+
+                    playerState.error?.let { msg ->
+                        Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
+                        FullPlayerErrorBanner(message = msg)
+                    }
+                }
+
+                // Progress + Time
+                FullPlayerProgressSection(
+                    playbackStateFlow = playbackStateFlow,
+                    isPlaying = playerState.isPlaying,
+                    progressBarHeight = progressBarHeight,
+                    onSeek = { onEvent(PlayerScreenEvent.SeekTo(it)) },
+                    onSeekStart = { onEvent(PlayerScreenEvent.SeekStarted) },
+                    onSeekEnd = { onEvent(PlayerScreenEvent.SeekFinished) }
                 )
 
-                playerState.error?.let { msg ->
-                    Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
-                    FullPlayerErrorBanner(message = msg)
-                }
+                // AUTO spacing
+                Spacer(modifier = Modifier.height(progressToControlsSpacing))
+
+                // Controls
+                FullPlayerControls(
+                    playerState = playerState,
+                    onEvent = onEvent
+                )
+
+                Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
             }
-
-            // Progress + Time
-            FullPlayerProgressSection(
-                playbackStateFlow = playbackStateFlow,
-                isPlaying = playerState.isPlaying,
-                progressBarHeight = progressBarHeight,
-                onSeek = { onEvent(PlayerScreenEvent.SeekTo(it)) },
-                onSeekStart = { onEvent(PlayerScreenEvent.SeekStarted) },
-                onSeekEnd = { onEvent(PlayerScreenEvent.SeekFinished) }
-            )
-
-            // AUTO spacing
-            Spacer(modifier = Modifier.height(progressToControlsSpacing))
-
-            // Controls
-            FullPlayerControls(
-                playerState = playerState,
-                onEvent = onEvent
-            )
-
-            Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
         }
     }
 }

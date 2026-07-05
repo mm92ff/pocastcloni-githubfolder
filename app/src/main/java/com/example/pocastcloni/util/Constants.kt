@@ -154,6 +154,10 @@ object Constants {
         const val KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED = "bottom_bar_clean_mode_enabled"
         const val KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED = "bottom_bar_auto_hide_enabled"
         const val KEY_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = "bottom_bar_auto_hide_delay_seconds"
+        const val KEY_GRADIENT_BACKGROUND_ENABLED = "gradient_background_enabled"
+        const val KEY_GRADIENT_BACKGROUND_STRENGTH = "gradient_background_strength"
+        const val KEY_TRANSPARENT_SEARCH_CARDS = "transparent_search_cards"
+        const val KEY_TRANSPARENT_EPISODE_ROWS = "transparent_episode_rows"
         const val KEY_AUTO_DOWNLOAD_LIMIT = "auto_download_limit"
         const val KEY_AUTO_REFRESH_ON_START = "auto_refresh_on_start"
         const val KEY_BACKGROUND_CHECK_ENABLED = "background_check_enabled"
@@ -176,6 +180,10 @@ object Constants {
         const val DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED = false
         const val DEFAULT_BOTTOM_BAR_AUTO_HIDE_ENABLED = false
         const val DEFAULT_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 5
+        const val DEFAULT_GRADIENT_BACKGROUND_ENABLED = false
+        const val DEFAULT_GRADIENT_BACKGROUND_STRENGTH = 1.0f
+        const val DEFAULT_TRANSPARENT_SEARCH_CARDS = false
+        const val DEFAULT_TRANSPARENT_EPISODE_ROWS = false
         const val DEFAULT_AUTO_DOWNLOAD_LIMIT = 3
         const val DEFAULT_AUTO_REFRESH_ON_START = true
         const val DEFAULT_BACKGROUND_CHECK_ENABLED = true

@@ -41,6 +41,14 @@ interface UserPreferencesRepository {
 
     suspend fun updateBottomBarAutoHideDelaySeconds(seconds: Int)
 
+    suspend fun updateGradientBackgroundEnabled(enabled: Boolean)
+
+    suspend fun updateGradientBackgroundStrength(strength: Float)
+
+    suspend fun updateTransparentSearchCards(enabled: Boolean)
+
+    suspend fun updateTransparentEpisodeRows(enabled: Boolean)
+
     suspend fun updateAutoDownloadLimit(limit: Int)
 
     suspend fun updateAutoRefreshOnStart(enabled: Boolean)

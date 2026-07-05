@@ -98,6 +98,7 @@ fun FullPlayerMetadataFlexibleCover(
                 style = titleStyle,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = TITLE_MAX_LINES,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.clickable(onClick = onCollapse)
@@ -108,7 +109,7 @@ fun FullPlayerMetadataFlexibleCover(
             Text(
                 text = playerState.currentEpisodeSubtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f),
                 maxLines = SUBTITLE_MAX_LINES,
                 overflow = TextOverflow.Ellipsis
             )

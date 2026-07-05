@@ -1,6 +1,7 @@
 package com.example.pocastcloni.ui.home.add
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -133,6 +134,7 @@ fun SearchArea(
 fun SearchResultsList(
     results: ImmutableList<PodcastSearchResult>,
     subscribedUrls: ImmutableSet<String>,
+    transparentCards: Boolean,
     onToggleClick: (PodcastSearchResult) -> Unit,
     reverseLayout: Boolean
 ) {
@@ -150,6 +152,7 @@ fun SearchResultsList(
             PodcastSearchItem(
                 podcast = podcast,
                 isSubscribed = isSubscribed,
+                transparentCard = transparentCards,
                 onToggle = { onToggleClick(podcast) }
             )
         }
@@ -160,15 +163,34 @@ fun SearchResultsList(
 fun PodcastSearchItem(
     podcast: PodcastSearchResult,
     isSubscribed: Boolean,
+    transparentCard: Boolean,
     onToggle: () -> Unit
 ) {
+    val textColor = if (transparentCard) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
+    val secondaryTextColor =
+        if (transparentCard) {
+            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+
     Card(
         modifier =
         Modifier
             .fillMaxWidth()
             .padding(vertical = Dimens.SearchCardOuterPaddingVertical),
-        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.CardElevation),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (transparentCard) Dimens.Zero else Dimens.CardElevation),
+        border =
+        if (transparentCard) {
+            BorderStroke(Dimens.BorderWidthDefault, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f))
+        } else {
+            null
+        },
+        colors =
+        CardDefaults.cardColors(
+            containerColor = if (transparentCard) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = textColor
+        )
     ) {
         Row(
             modifier = Modifier.padding(Dimens.SearchCardContentPadding),
@@ -191,13 +213,14 @@ fun PodcastSearchItem(
                 Text(
                     text = podcast.title,
                     style = MaterialTheme.typography.titleMedium,
+                    color = textColor,
                     maxLines = Constants.UI.PODCAST_SEARCH_ITEM_MAX_LINES,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
                     text = podcast.artist,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = secondaryTextColor,
                     maxLines = Constants.UI.PODCAST_SEARCH_ITEM_MAX_LINES,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )

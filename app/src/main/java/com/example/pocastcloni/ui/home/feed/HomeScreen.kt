@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -131,6 +132,7 @@ fun HomeScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(hostState = snackBarHostState) },
         topBar = {
             TopAppBar(
@@ -186,7 +188,7 @@ fun HomeScreen(
                 if (uiState.isEditMode) {
                     TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                 } else {
-                    TopAppBarDefaults.topAppBarColors()
+                    TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 }
             )
         }
@@ -224,7 +226,8 @@ fun HomeScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             stringResource(R.string.home_empty),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 } else {
@@ -251,10 +254,12 @@ fun HomeScreen(
                 }
             }
 
-            PullToRefreshContainer(
-                state = pullToRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
+            if (pullToRefreshState.progress > 0f || uiState.isRefreshing) {
+                PullToRefreshContainer(
+                    state = pullToRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
         }
     }
 }

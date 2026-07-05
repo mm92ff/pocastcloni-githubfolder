@@ -1,29 +1,32 @@
 package com.example.pocastcloni.ui.settings
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -85,33 +88,35 @@ fun SettingsListContent(
             }
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding =
-            PaddingValues(
-                start = Dimens.PaddingMedium,
-                top = Dimens.PaddingMedium,
-                end = Dimens.PaddingMedium,
-                bottom = bottomPadding
-            ),
-            verticalArrangement = Arrangement.spacedBy(Dimens.PaddingLarge)
-        ) {
-            item(key = selectedTab.name) {
-                when (selectedTab) {
-                    SettingsTab.DESIGN -> DesignSettingsContent(settings = settings, onEvent = onEvent)
-                    SettingsTab.PLAYBACK -> PlaybackSettingsContent(settings = settings, onEvent = onEvent)
-                    SettingsTab.SYNC_STORAGE ->
-                        SyncStorageSettingsContent(
-                            settings = settings,
-                            downloadMessage = downloadMessage,
-                            onEvent = onEvent
-                        )
-                    SettingsTab.DATA ->
-                        DataSettingsContent(
-                            onEvent = onEvent,
-                            onExportClick = onExportClick,
-                            onImportClick = onImportClick
-                        )
+        CompositionLocalProvider(LocalTransparentSettingsCards provides settings.transparentSearchCards) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding =
+                PaddingValues(
+                    start = Dimens.PaddingMedium,
+                    top = Dimens.PaddingMedium,
+                    end = Dimens.PaddingMedium,
+                    bottom = bottomPadding
+                ),
+                verticalArrangement = Arrangement.spacedBy(Dimens.PaddingLarge)
+            ) {
+                item(key = selectedTab.name) {
+                    when (selectedTab) {
+                        SettingsTab.DESIGN -> DesignSettingsContent(settings = settings, onEvent = onEvent)
+                        SettingsTab.PLAYBACK -> PlaybackSettingsContent(settings = settings, onEvent = onEvent)
+                        SettingsTab.SYNC_STORAGE ->
+                            SyncStorageSettingsContent(
+                                settings = settings,
+                                downloadMessage = downloadMessage,
+                                onEvent = onEvent
+                            )
+                        SettingsTab.DATA ->
+                            DataSettingsContent(
+                                onEvent = onEvent,
+                                onExportClick = onExportClick,
+                                onImportClick = onImportClick
+                            )
+                    }
                 }
             }
         }
@@ -127,6 +132,10 @@ private fun DesignSettingsContent(
         theme = settings.theme,
         appColor = settings.appColor,
         colorStrength = settings.colorStrength,
+        gradientBackgroundEnabled = settings.gradientBackgroundEnabled,
+        gradientBackgroundStrength = settings.gradientBackgroundStrength,
+        transparentSearchCards = settings.transparentSearchCards,
+        transparentEpisodeRows = settings.transparentEpisodeRows,
         onSetTheme =
         remember(onEvent) {
             {
@@ -146,6 +155,34 @@ private fun DesignSettingsContent(
             {
                     strength: Float ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetColorStrength(strength)))
+            }
+        },
+        onToggleGradientBackground =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleGradientBackground(enabled)))
+            }
+        },
+        onSetGradientBackgroundStrength =
+        remember(onEvent) {
+            {
+                    strength: Float ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetGradientBackgroundStrength(strength)))
+            }
+        },
+        onToggleTransparentSearchCards =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleTransparentSearchCards(enabled)))
+            }
+        },
+        onToggleTransparentEpisodeRows =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleTransparentEpisodeRows(enabled)))
             }
         }
     )
@@ -412,12 +449,23 @@ private fun DataSettingsContent(
     SectionBackup(onExport = onExportClick, onImport = onImportClick)
     Divider()
 
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.settings_reset_zone_title), color = MaterialTheme.colorScheme.error) },
-        supportingContent = { Text(stringResource(R.string.settings_reset_zone_subtitle)) },
-        leadingContent = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
-        modifier = Modifier.clickable { onEvent(SettingsUiEvent.OnResetClicked) }
-    )
+    SettingsCard(onClick = { onEvent(SettingsUiEvent.OnResetClicked) }) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.width(Dimens.PaddingMedium))
+            Column {
+                Text(stringResource(R.string.settings_reset_zone_title), color = MaterialTheme.colorScheme.error)
+                Text(
+                    stringResource(R.string.settings_reset_zone_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }
 
 // --- Smart Sections ---

@@ -20,5 +20,6 @@ data class AddPodcastScreenUiState(
     val subscribedUrls: ImmutableSet<String> = persistentHashSetOf(),
     val progressBarHeight: Int = Constants.ViewModel.DEFAULT_PROGRESS_BAR_HEIGHT,
     val navBarHeight: Int = Constants.ViewModel.DEFAULT_NAV_BAR_HEIGHT,
-    val isPlayerVisible: Boolean = false
+    val isPlayerVisible: Boolean = false,
+    val transparentSearchCards: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_SEARCH_CARDS
 )

@@ -115,6 +115,30 @@ class UpdateUserSettingsUseCaseTest {
         coVerify { repository.updateBottomBarAutoHideDelaySeconds(10) }
     }
 
+    @Test
+    fun `ToggleGradientBackground calls updateGradientBackgroundEnabled`() = runTest(testDispatcher) {
+        useCase(ToggleGradientBackground(true))
+        coVerify { repository.updateGradientBackgroundEnabled(true) }
+    }
+
+    @Test
+    fun `SetGradientBackgroundStrength calls updateGradientBackgroundStrength`() = runTest(testDispatcher) {
+        useCase(SetGradientBackgroundStrength(0.4f))
+        coVerify { repository.updateGradientBackgroundStrength(0.4f) }
+    }
+
+    @Test
+    fun `ToggleTransparentSearchCards calls updateTransparentSearchCards`() = runTest(testDispatcher) {
+        useCase(ToggleTransparentSearchCards(true))
+        coVerify { repository.updateTransparentSearchCards(true) }
+    }
+
+    @Test
+    fun `ToggleTransparentEpisodeRows calls updateTransparentEpisodeRows`() = runTest(testDispatcher) {
+        useCase(ToggleTransparentEpisodeRows(true))
+        coVerify { repository.updateTransparentEpisodeRows(true) }
+    }
+
     // --- Automation ---
 
     @Test

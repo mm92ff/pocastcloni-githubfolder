@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,8 +36,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -60,6 +67,8 @@ import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.player.PlayerContainer
 import com.example.pocastcloni.ui.settings.SettingsScreen
 import com.example.pocastcloni.ui.theme.PocastCloniTheme
+import com.example.pocastcloni.ui.theme.gradientBackgroundBottomColor
+import com.example.pocastcloni.ui.theme.isPocastCloniDarkTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import java.net.URLDecoder
@@ -84,6 +93,8 @@ private val BottomBarHandleHeight = 18.dp
 private val BottomBarHandleWidth = 44.dp
 private val BottomBarHandleThickness = 4.dp
 private val BottomBarSwipeThreshold = 48.dp
+private val MainScreenSwipeThreshold = 96.dp
+private const val MainScreenSwipeHorizontalBias = 1.4f
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -112,6 +123,17 @@ class MainActivity : ComponentActivity() {
                                 }
                             if (decodedUrl != url) {
                                 navController.navigate(Screen.PodcastDetail.createRoute(url))
+                            } else {
+                                val returnedHome = navController.popBackStack(Screen.Home.route, false)
+                                if (!returnedHome) {
+                                    navController.navigate(Screen.Home.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
                             }
                         }
                     }
@@ -120,7 +142,9 @@ class MainActivity : ComponentActivity() {
             PocastCloniTheme(
                 appTheme = uiState.userSettings.theme,
                 appColor = uiState.userSettings.appColor,
-                colorStrength = uiState.userSettings.colorStrength
+                colorStrength = uiState.userSettings.colorStrength,
+                gradientBackgroundEnabled = uiState.userSettings.gradientBackgroundEnabled,
+                gradientBackgroundStrength = uiState.userSettings.gradientBackgroundStrength
             ) {
                 when {
                     uiState.isLoading -> {
@@ -142,75 +166,196 @@ class MainActivity : ComponentActivity() {
                     }
 
                     else -> {
-                        Scaffold(
-                            bottomBar = {
-                                CleanModeBottomBarHost(
-                                    navController = navController,
-                                    userSettings = uiState.userSettings,
-                                    onPlayerExpanded = { viewModel.onPlayerExpanded(it) }
-                                )
-                            }
-                        ) { innerPadding ->
-                            Box(
-                                modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(innerPadding)
-                            ) {
-                                val currentBackStackEntry by navController.currentBackStackEntryAsState()
-                                val currentRoute = currentBackStackEntry?.destination?.route
-                                val suppressMiniPlayer = currentRoute == Screen.Search.route
-
-                                NavHost(
-                                    navController = navController,
-                                    startDestination = Screen.Home.route,
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    composable(Screen.Home.route) {
-                                        HomeScreen(
-                                            onPodcastClicked = { url ->
-                                                navController.navigate(Screen.PodcastDetail.createRoute(url))
-                                            },
-                                            onFavoritesClicked = {
-                                                navController.navigate(Screen.Favorites.route)
-                                            },
-                                            onHistoryClicked = {
-                                                navController.navigate(Screen.History.route)
-                                            }
-                                        )
-                                    }
-                                    composable(Screen.Search.route) {
-                                        AddPodcastScreen(
-                                            onNavigateBack = { navController.popBackStack() },
-                                            reserveSpaceForPlayer = false
-                                        )
-                                    }
-                                    composable(Screen.Downloads.route) { DownloadsScreen() }
-                                    composable(Screen.Settings.route) {
-                                        SettingsScreen(onNavigateBack = { navController.popBackStack() })
-                                    }
-                                    composable(Screen.Favorites.route) {
-                                        FavoritesScreen(onNavigateBack = { navController.popBackStack() })
-                                    }
-                                    composable(Screen.History.route) {
-                                        HistoryScreen(onNavigateBack = { navController.popBackStack() })
-                                    }
-                                    composable(Screen.PodcastDetail.route) {
-                                        PodcastDetailScreen(onNavigateBack = { navController.popBackStack() })
-                                    }
+                        AppGradientBackground(
+                            userSettings = uiState.userSettings,
+                            darkTheme = isPocastCloniDarkTheme(uiState.userSettings.theme)
+                        ) {
+                            Scaffold(
+                                containerColor = Color.Transparent,
+                                bottomBar = {
+                                    CleanModeBottomBarHost(
+                                        navController = navController,
+                                        userSettings = uiState.userSettings,
+                                        onPlayerExpanded = { viewModel.onPlayerExpanded(it) }
+                                    )
                                 }
+                            ) { innerPadding ->
+                                Box(
+                                    modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(innerPadding)
+                                ) {
+                                    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                                    val currentRoute = currentBackStackEntry?.destination?.route
+                                    val suppressMiniPlayer = currentRoute == Screen.Search.route
+                                    val mainScreenSwipeThresholdPx =
+                                        with(LocalDensity.current) { MainScreenSwipeThreshold.toPx() }
 
-                                PlayerContainer(
-                                    progressBarHeight = uiState.userSettings.progressBarHeight.dp,
-                                    navBarHeight = uiState.userSettings.navBarHeight.dp,
-                                    showMiniPlayerTimeOverlay = uiState.userSettings.showMiniPlayerTimeOverlay,
-                                    modifier = Modifier.align(Alignment.BottomCenter),
-                                    onNavigateToPodcastDetail = onNavigateToPodcastDetail,
-                                    suppress = suppressMiniPlayer
-                                )
+                                    NavHost(
+                                        navController = navController,
+                                        startDestination = Screen.Home.route,
+                                        modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .mainScreenSwipeNavigation(
+                                                enabled = currentRoute.isMainBottomNavRoute(),
+                                                currentRoute = currentRoute,
+                                                thresholdPx = mainScreenSwipeThresholdPx,
+                                                onNavigate = { screen ->
+                                                    navController.navigateMainScreen(screen)
+                                                }
+                                            )
+                                    ) {
+                                        composable(Screen.Home.route) {
+                                            HomeScreen(
+                                                onPodcastClicked = { url ->
+                                                    navController.navigate(Screen.PodcastDetail.createRoute(url))
+                                                },
+                                                onFavoritesClicked = {
+                                                    navController.navigate(Screen.Favorites.route)
+                                                },
+                                                onHistoryClicked = {
+                                                    navController.navigate(Screen.History.route)
+                                                }
+                                            )
+                                        }
+                                        composable(Screen.Search.route) {
+                                            AddPodcastScreen(
+                                                onNavigateBack = { navController.popBackStack() },
+                                                reserveSpaceForPlayer = false
+                                            )
+                                        }
+                                        composable(Screen.Downloads.route) { DownloadsScreen() }
+                                        composable(Screen.Settings.route) {
+                                            SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                                        }
+                                        composable(Screen.Favorites.route) {
+                                            FavoritesScreen(onNavigateBack = { navController.popBackStack() })
+                                        }
+                                        composable(Screen.History.route) {
+                                            HistoryScreen(onNavigateBack = { navController.popBackStack() })
+                                        }
+                                        composable(Screen.PodcastDetail.route) {
+                                            PodcastDetailScreen(onNavigateBack = { navController.popBackStack() })
+                                        }
+                                    }
+
+                                    PlayerContainer(
+                                        userSettings = uiState.userSettings,
+                                        progressBarHeight = uiState.userSettings.progressBarHeight.dp,
+                                        navBarHeight = uiState.userSettings.navBarHeight.dp,
+                                        showMiniPlayerTimeOverlay = uiState.userSettings.showMiniPlayerTimeOverlay,
+                                        modifier = Modifier.align(Alignment.BottomCenter),
+                                        onNavigateToPodcastDetail = onNavigateToPodcastDetail,
+                                        suppress = suppressMiniPlayer
+                                    )
+                                }
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppGradientBackground(
+    userSettings: UserSettings,
+    darkTheme: Boolean,
+    content: @Composable () -> Unit
+) {
+    val backgroundModifier =
+        if (userSettings.gradientBackgroundEnabled) {
+            Modifier.background(
+                Brush.verticalGradient(
+                    colors =
+                    listOf(
+                        if (darkTheme) Color.Black else Color.White,
+                        gradientBackgroundBottomColor(
+                            appColor = userSettings.appColor,
+                            darkTheme = darkTheme,
+                            strength = userSettings.gradientBackgroundStrength
+                        )
+                    )
+                )
+            )
+        } else {
+            Modifier.background(MaterialTheme.colorScheme.background)
+        }
+
+    Box(
+        modifier =
+        Modifier
+            .fillMaxSize()
+            .then(backgroundModifier)
+    ) {
+        content()
+    }
+}
+
+private fun String?.isMainBottomNavRoute(): Boolean =
+    bottomNavItems.any { item -> item.screen.route == this }
+
+private fun NavHostController.navigateMainScreen(screen: Screen) {
+    navigate(screen.route) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+private fun adjacentMainScreen(currentRoute: String?, direction: Int): Screen? {
+    val currentIndex = bottomNavItems.indexOfFirst { item -> item.screen.route == currentRoute }
+    if (currentIndex == -1) return null
+
+    val targetIndex = (currentIndex + direction).coerceIn(0, bottomNavItems.lastIndex)
+    if (targetIndex == currentIndex) return null
+
+    return bottomNavItems[targetIndex].screen
+}
+
+private fun Modifier.mainScreenSwipeNavigation(
+    enabled: Boolean,
+    currentRoute: String?,
+    thresholdPx: Float,
+    onNavigate: (Screen) -> Unit
+): Modifier {
+    if (!enabled) return this
+
+    return pointerInput(enabled, currentRoute, thresholdPx, onNavigate) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            var activePointerId = down.id
+            var totalX = 0f
+            var totalY = 0f
+
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Final)
+                val change =
+                    event.changes.firstOrNull { pointerChange -> pointerChange.id == activePointerId }
+                        ?: event.changes.firstOrNull()
+                        ?: break
+
+                activePointerId = change.id
+
+                if (change.changedToUpIgnoreConsumed()) break
+
+                val delta = change.positionChangeIgnoreConsumed()
+                totalX += delta.x
+                totalY += delta.y
+
+                val isClearHorizontalSwipe =
+                    abs(totalX) >= thresholdPx &&
+                        abs(totalX) > abs(totalY) * MainScreenSwipeHorizontalBias
+
+                if (isClearHorizontalSwipe) {
+                    val direction = if (totalX < 0f) 1 else -1
+                    adjacentMainScreen(currentRoute, direction)?.let(onNavigate)
+                    break
                 }
             }
         }

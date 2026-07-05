@@ -112,9 +112,17 @@ fun SectionAppearance(
     theme: AppTheme,
     appColor: AppColor,
     colorStrength: Float,
+    gradientBackgroundEnabled: Boolean,
+    gradientBackgroundStrength: Float,
+    transparentSearchCards: Boolean,
+    transparentEpisodeRows: Boolean,
     onSetTheme: (AppTheme) -> Unit,
     onSetAppColor: (AppColor) -> Unit,
-    onSetColorStrength: (Float) -> Unit
+    onSetColorStrength: (Float) -> Unit,
+    onToggleGradientBackground: (Boolean) -> Unit,
+    onSetGradientBackgroundStrength: (Float) -> Unit,
+    onToggleTransparentSearchCards: (Boolean) -> Unit,
+    onToggleTransparentEpisodeRows: (Boolean) -> Unit
 ) {
     Text(
         stringResource(R.string.settings_section_design),
@@ -147,6 +155,46 @@ fun SectionAppearance(
             }
         }
     }
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
+    SettingsSwitchCard(
+        title = stringResource(R.string.settings_gradient_background),
+        subtitle = stringResource(R.string.settings_gradient_background_subtitle),
+        checked = gradientBackgroundEnabled,
+        onCheckedChange = onToggleGradientBackground
+    )
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
+    if (gradientBackgroundEnabled) {
+        SettingsSliderCard(
+            title = stringResource(R.string.settings_gradient_strength),
+            value = (gradientBackgroundStrength.coerceIn(0f, 1f) * 100).toInt(),
+            valueRange = 0f..100f,
+            steps = 9,
+            onValueChangeFinished = { onSetGradientBackgroundStrength(it / 100f) },
+            valueDisplay = { Text(text = stringResource(R.string.settings_percentage, it.toFloat())) }
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+    }
+
+    SettingsSwitchCard(
+        title = stringResource(R.string.settings_transparent_search_cards),
+        subtitle = stringResource(R.string.settings_transparent_search_cards_subtitle),
+        checked = transparentSearchCards,
+        onCheckedChange = onToggleTransparentSearchCards
+    )
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
+    SettingsSwitchCard(
+        title = stringResource(R.string.settings_transparent_episode_rows),
+        subtitle = stringResource(R.string.settings_transparent_episode_rows_subtitle),
+        checked = transparentEpisodeRows,
+        onCheckedChange = onToggleTransparentEpisodeRows
+    )
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 
@@ -807,30 +855,28 @@ fun SectionDownloadLocation(
         modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
     )
 
-    SettingsCard {
-        SettingsSwitchCard(
-            title = "Save to Downloads folder",
-            subtitle = locationDescription,
-            checked = saveToDownloadsFolder,
-            onCheckedChange = { enabled ->
-                if (!enabled) {
-                    // Turning off: always allowed
-                    onToggle(false)
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    // API 29+: no permission needed
+    SettingsSwitchCard(
+        title = "Save to Downloads folder",
+        subtitle = locationDescription,
+        checked = saveToDownloadsFolder,
+        onCheckedChange = { enabled ->
+            if (!enabled) {
+                // Turning off: always allowed
+                onToggle(false)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // API 29+: no permission needed
+                onToggle(true)
+            } else {
+                // API < 29: check WRITE_EXTERNAL_STORAGE
+                val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
                     onToggle(true)
                 } else {
-                    // API < 29: check WRITE_EXTERNAL_STORAGE
-                    val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
-                        onToggle(true)
-                    } else {
-                        launcher.launch(permission)
-                    }
+                    launcher.launch(permission)
                 }
             }
-        )
-    }
+        }
+    )
 }
 
 @Composable

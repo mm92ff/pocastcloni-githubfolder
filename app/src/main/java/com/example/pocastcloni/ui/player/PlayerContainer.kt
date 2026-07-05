@@ -9,10 +9,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.pocastcloni.domain.repository.UserSettings
 
 @Composable
 fun PlayerContainer(
     modifier: Modifier = Modifier,
+    userSettings: UserSettings,
     progressBarHeight: Dp,
     navBarHeight: Dp,
     showMiniPlayerTimeOverlay: Boolean,
@@ -38,6 +40,7 @@ fun PlayerContainer(
             isExpanded = isExpanded,
             onExpandToggle = { isExpanded = !isExpanded },
             playerState = playerState,
+            userSettings = userSettings,
             playbackStateFlow = playbackStateFlow,
             episodeDescription = episodeDescription,
             isDescriptionVisible = isDescriptionVisible,

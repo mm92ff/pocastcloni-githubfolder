@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +45,7 @@ import coil.request.ImageRequest
 import coil.size.Precision
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.ui.home.feed.IndicatorCutout
 import com.example.pocastcloni.ui.home.feed.IndicatorDot
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
@@ -74,13 +76,24 @@ private fun rememberPodcastImageRequest(
 }
 
 @Composable
-private fun BoxScope.PodcastOverlays(
+private fun BoxScope.PodcastIndicatorCutout(
     podcast: Podcast,
-    isEditMode: Boolean,
-    isSelected: Boolean,
-    onDeleteClick: () -> Unit,
-    indicatorStyle: PodcastIndicatorStyle,
-    deleteIconAlignment: Alignment = Alignment.CenterEnd
+    indicatorStyle: PodcastIndicatorStyle
+) {
+    if (podcast.hasNewEpisodes) {
+        IndicatorCutout(
+            xOffset = indicatorStyle.xOffset,
+            yOffset = indicatorStyle.yOffset,
+            borderWidth = indicatorStyle.borderWidth,
+            size = indicatorStyle.size
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.PodcastIndicatorDot(
+    podcast: Podcast,
+    indicatorStyle: PodcastIndicatorStyle
 ) {
     if (podcast.hasNewEpisodes) {
         IndicatorDot(
@@ -91,8 +104,6 @@ private fun BoxScope.PodcastOverlays(
             colorArgb = indicatorStyle.colorArgb
         )
     }
-
-    // Note: DeleteIconOverlay was removed in favour of the trash icon in the TopBar.
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -128,70 +139,72 @@ fun PodcastItem(
     Box(
         modifier =
         Modifier
-            .background(MaterialTheme.colorScheme.background)
             .padding(vertical = animatedPadding / 2, horizontal = animatedPadding)
     ) {
-        Card(
+        Box(
             modifier =
             Modifier
-                .fillMaxWidth()
-                .alpha(alpha)
-                .then(clickableModifier),
-            shape = RoundedCornerShape(Dimens.RoundedCornerLarge),
-            elevation = CardDefaults.cardElevation(defaultElevation = elevation),
-            colors =
-            CardDefaults.cardColors(
-                containerColor = containerColor,
-                contentColor = contentColor
-            )
+                .graphicsLayer {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
         ) {
-            Row(
-                modifier = Modifier.padding(Dimens.PaddingSmall),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, Constants.Image.IMAGE_SIZE_LIST)
-
-                AsyncImage(
-                    model = imageRequest,
-                    contentDescription = stringResource(id = R.string.desc_cover),
-                    modifier =
-                    Modifier
-                        .size(Dimens.PodcastItemImageSize)
-                        .clip(RoundedCornerShape(Dimens.RoundedCornerMedium))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop
+            Card(
+                modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .alpha(alpha)
+                    .then(clickableModifier),
+                shape = RoundedCornerShape(Dimens.RoundedCornerLarge),
+                elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+                colors =
+                CardDefaults.cardColors(
+                    containerColor = containerColor,
+                    contentColor = contentColor
                 )
+            ) {
+                Row(
+                    modifier = Modifier.padding(Dimens.PaddingSmall),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, Constants.Image.IMAGE_SIZE_LIST)
 
-                Spacer(modifier = Modifier.width(Dimens.PaddingSmall))
-
-                Column {
-                    Text(
-                        text = podcast.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                    AsyncImage(
+                        model = imageRequest,
+                        contentDescription = stringResource(id = R.string.desc_cover),
+                        modifier =
+                        Modifier
+                            .size(Dimens.PodcastItemImageSize)
+                            .clip(RoundedCornerShape(Dimens.RoundedCornerMedium))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentScale = ContentScale.Crop
                     )
-                    if (podcast.description.isNotBlank()) {
+
+                    Spacer(modifier = Modifier.width(Dimens.PaddingSmall))
+
+                    Column {
                         Text(
-                            text = podcast.description,
-                            style = MaterialTheme.typography.bodySmall,
+                            text = podcast.title,
+                            style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = contentColor.copy(alpha = 0.8f)
+                            overflow = TextOverflow.Ellipsis
                         )
+                        if (podcast.description.isNotBlank()) {
+                            Text(
+                                text = podcast.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = contentColor.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                 }
             }
+
+            PodcastIndicatorCutout(podcast = podcast, indicatorStyle = indicatorStyle)
         }
 
-        PodcastOverlays(
-            podcast = podcast,
-            isEditMode = isEditMode,
-            isSelected = isSelected,
-            onDeleteClick = onDeleteClick,
-            deleteIconAlignment = Alignment.CenterEnd,
-            indicatorStyle = indicatorStyle
-        )
+        PodcastIndicatorDot(podcast = podcast, indicatorStyle = indicatorStyle)
     }
 }
 
@@ -222,35 +235,41 @@ fun PodcastGridItem(
         Box(
             modifier =
             Modifier
-                .graphicsLayer(scaleX = scale, scaleY = scale)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
         ) {
-            Card(
-                shape = RoundedCornerShape(Dimens.RoundedCornerLarge),
-                elevation = CardDefaults.cardElevation(defaultElevation = Dimens.PaddingSmall),
-                modifier = Modifier.border(borderWidth, borderColor, RoundedCornerShape(Dimens.RoundedCornerLarge))
+            Box(
+                modifier =
+                Modifier
+                    .graphicsLayer {
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
             ) {
-                val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, Constants.Image.IMAGE_SIZE_GRID)
+                Card(
+                    shape = RoundedCornerShape(Dimens.RoundedCornerLarge),
+                    elevation = CardDefaults.cardElevation(defaultElevation = Dimens.PaddingSmall),
+                    modifier = Modifier.border(borderWidth, borderColor, RoundedCornerShape(Dimens.RoundedCornerLarge))
+                ) {
+                    val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, Constants.Image.IMAGE_SIZE_GRID)
 
-                AsyncImage(
-                    model = imageRequest,
-                    contentDescription = stringResource(id = R.string.desc_cover),
-                    modifier =
-                    Modifier
-                        .aspectRatio(Constants.UI.ASPECT_RATIO_1F)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop
-                )
+                    AsyncImage(
+                        model = imageRequest,
+                        contentDescription = stringResource(id = R.string.desc_cover),
+                        modifier =
+                        Modifier
+                            .aspectRatio(Constants.UI.ASPECT_RATIO_1F)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                PodcastIndicatorCutout(podcast = podcast, indicatorStyle = indicatorStyle)
             }
 
-            PodcastOverlays(
-                podcast = podcast,
-                isEditMode = isEditMode,
-                isSelected = isSelected,
-                onDeleteClick = onDeleteClick,
-                deleteIconAlignment = Alignment.TopEnd,
-                indicatorStyle = indicatorStyle
-            )
+            PodcastIndicatorDot(podcast = podcast, indicatorStyle = indicatorStyle)
         }
 
         if (showGridTitles) {
@@ -263,6 +282,7 @@ fun PodcastGridItem(
                 minLines = Constants.UI.GRID_ITEM_TITLE_MAX_LINES,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(horizontal = Dimens.PaddingMicro)
             )
         }

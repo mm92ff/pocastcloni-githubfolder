@@ -112,7 +112,7 @@ private fun PreviewTile(
         }
 
         if (withDot) {
-            // Dot rendered exactly as in the Feed (cutout ring uses background colour; unchanged)
+            // Dot rendered exactly as in the Feed.
             IndicatorDot(
                 xOffset = indicatorState.xOffset,
                 yOffset = indicatorState.yOffset,

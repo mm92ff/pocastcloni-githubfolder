@@ -121,12 +121,12 @@ fun FullPlayerTimeLabels(playbackStateFlow: StateFlow<PlaybackState>) {
         Text(
             text = formatTime(seconds.positionSec * 1000L),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
         )
         Text(
             text = formatTime(seconds.durationSec * 1000L),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
         )
     }
 }

@@ -37,6 +37,14 @@ sealed interface UpdateUserSettingAction {
 
     data class SetBottomBarAutoHideDelay(val seconds: Int) : UpdateUserSettingAction
 
+    data class ToggleGradientBackground(val enabled: Boolean) : UpdateUserSettingAction
+
+    data class SetGradientBackgroundStrength(val strength: Float) : UpdateUserSettingAction
+
+    data class ToggleTransparentSearchCards(val enabled: Boolean) : UpdateUserSettingAction
+
+    data class ToggleTransparentEpisodeRows(val enabled: Boolean) : UpdateUserSettingAction
+
     data class SetAutoDownloadLimit(val limit: Int) : UpdateUserSettingAction
 
     data class ToggleAutoRefreshOnStart(val enabled: Boolean) : UpdateUserSettingAction

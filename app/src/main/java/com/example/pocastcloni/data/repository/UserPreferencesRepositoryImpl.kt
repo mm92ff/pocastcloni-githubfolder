@@ -60,6 +60,10 @@ constructor(
         val BOTTOM_BAR_AUTO_HIDE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED)
         val BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS =
             intPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS)
+        val GRADIENT_BACKGROUND_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_ENABLED)
+        val GRADIENT_BACKGROUND_STRENGTH = floatPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_STRENGTH)
+        val TRANSPARENT_SEARCH_CARDS = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_SEARCH_CARDS)
+        val TRANSPARENT_EPISODE_ROWS = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_EPISODE_ROWS)
 
         val AUTO_DOWNLOAD_LIMIT = intPreferencesKey(Constants.Preferences.KEY_AUTO_DOWNLOAD_LIMIT)
         val AUTO_REFRESH_ON_START = booleanPreferencesKey(Constants.Preferences.KEY_AUTO_REFRESH_ON_START)
@@ -152,6 +156,14 @@ constructor(
                     prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] ?: defaultSettings.bottomBarAutoHideEnabled,
                     bottomBarAutoHideDelaySeconds =
                     prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] ?: defaultSettings.bottomBarAutoHideDelaySeconds,
+                    gradientBackgroundEnabled =
+                    prefs[Keys.GRADIENT_BACKGROUND_ENABLED] ?: defaultSettings.gradientBackgroundEnabled,
+                    gradientBackgroundStrength =
+                    prefs[Keys.GRADIENT_BACKGROUND_STRENGTH] ?: defaultSettings.gradientBackgroundStrength,
+                    transparentSearchCards =
+                    prefs[Keys.TRANSPARENT_SEARCH_CARDS] ?: defaultSettings.transparentSearchCards,
+                    transparentEpisodeRows =
+                    prefs[Keys.TRANSPARENT_EPISODE_ROWS] ?: defaultSettings.transparentEpisodeRows,
                     autoDownloadLimit = prefs[Keys.AUTO_DOWNLOAD_LIMIT] ?: defaultSettings.autoDownloadLimit,
                     autoRefreshOnStart = prefs[Keys.AUTO_REFRESH_ON_START] ?: defaultSettings.autoRefreshOnStart,
                     backgroundCheckEnabled = prefs[Keys.BACKGROUND_CHECK_ENABLED] ?: defaultSettings.backgroundCheckEnabled,
@@ -290,6 +302,38 @@ constructor(
             context.dataStore.edit { it[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = seconds }
         } catch (e: IOException) {
             Timber.e(e, "Failed to persist bottom bar auto-hide delay preference")
+        }
+    }
+
+    override suspend fun updateGradientBackgroundEnabled(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.GRADIENT_BACKGROUND_ENABLED] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist gradient background preference")
+        }
+    }
+
+    override suspend fun updateGradientBackgroundStrength(strength: Float) {
+        try {
+            context.dataStore.edit { it[Keys.GRADIENT_BACKGROUND_STRENGTH] = strength.coerceIn(0f, 1f) }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist gradient background strength preference")
+        }
+    }
+
+    override suspend fun updateTransparentSearchCards(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.TRANSPARENT_SEARCH_CARDS] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist transparent search cards preference")
+        }
+    }
+
+    override suspend fun updateTransparentEpisodeRows(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.TRANSPARENT_EPISODE_ROWS] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist transparent episode rows preference")
         }
     }
 
@@ -433,6 +477,10 @@ constructor(
                 prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = settings.bottomBarCleanModeEnabled
                 prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = settings.bottomBarAutoHideEnabled
                 prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = settings.bottomBarAutoHideDelaySeconds
+                prefs[Keys.GRADIENT_BACKGROUND_ENABLED] = settings.gradientBackgroundEnabled
+                prefs[Keys.GRADIENT_BACKGROUND_STRENGTH] = settings.gradientBackgroundStrength
+                prefs[Keys.TRANSPARENT_SEARCH_CARDS] = settings.transparentSearchCards
+                prefs[Keys.TRANSPARENT_EPISODE_ROWS] = settings.transparentEpisodeRows
 
                 prefs[Keys.AUTO_DOWNLOAD_LIMIT] = settings.autoDownloadLimit
                 prefs[Keys.AUTO_REFRESH_ON_START] = settings.autoRefreshOnStart

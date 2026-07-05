@@ -148,6 +148,47 @@ class PodcastBackupHelperParsingTest {
     }
 
     @Test
+    fun exportBackupJson_writesGradientBackgroundSetting() {
+        val backupData =
+            BackupData(
+                settings =
+                UserSettings(
+                    gradientBackgroundEnabled = true,
+                    gradientBackgroundStrength = 0.4f
+                )
+            )
+
+        val json = objectMapper.writeValueAsString(backupData)
+
+        assertTrue(json.contains("\"gradientBackgroundEnabled\":true"))
+        assertTrue(json.contains("\"gradientBackgroundStrength\":0.4"))
+    }
+
+    @Test
+    fun exportBackupJson_writesTransparentSearchCardsSetting() {
+        val backupData =
+            BackupData(
+                settings = UserSettings(transparentSearchCards = true)
+            )
+
+        val json = objectMapper.writeValueAsString(backupData)
+
+        assertTrue(json.contains("\"transparentSearchCards\":true"))
+    }
+
+    @Test
+    fun exportBackupJson_writesTransparentEpisodeRowsSetting() {
+        val backupData =
+            BackupData(
+                settings = UserSettings(transparentEpisodeRows = true)
+            )
+
+        val json = objectMapper.writeValueAsString(backupData)
+
+        assertTrue(json.contains("\"transparentEpisodeRows\":true"))
+    }
+
+    @Test
     fun parseBackupJson_defaultsMissingMiniPlayerTimeOverlaySetting() {
         val result =
             parseBackupJson(
@@ -197,6 +238,58 @@ class PodcastBackupHelperParsingTest {
 
         assertFalse(result.settings?.bottomBarAutoHideEnabled ?: true)
         assertEquals(5, result.settings?.bottomBarAutoHideDelaySeconds)
+    }
+
+    @Test
+    fun parseBackupJson_defaultsMissingGradientBackgroundSetting() {
+        val result =
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "progressBarHeight": 30
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        assertFalse(result.settings?.gradientBackgroundEnabled ?: true)
+        assertEquals(1.0f, result.settings?.gradientBackgroundStrength ?: 0f, 0.001f)
+    }
+
+    @Test
+    fun parseBackupJson_defaultsMissingTransparentSearchCardsSetting() {
+        val result =
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "progressBarHeight": 30
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        assertFalse(result.settings?.transparentSearchCards ?: true)
+    }
+
+    @Test
+    fun parseBackupJson_defaultsMissingTransparentEpisodeRowsSetting() {
+        val result =
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "progressBarHeight": 30
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        assertFalse(result.settings?.transparentEpisodeRows ?: true)
     }
 
     @Test

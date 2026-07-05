@@ -43,7 +43,8 @@ data class HistoryUiState(
     val oneHandedMode: Boolean = false,
     val isPlayerVisible: Boolean = false,
     val navBarHeight: Int = 0,
-    val progressBarHeight: Int = 0
+    val progressBarHeight: Int = 0,
+    val transparentEpisodeRows: Boolean = false
 )
 
 sealed interface HistoryAction {

@@ -30,6 +30,7 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -66,6 +67,7 @@ fun FavoritesScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(id = R.string.favorites)) },
@@ -86,7 +88,8 @@ fun FavoritesScreen(
                             )
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->
@@ -100,7 +103,10 @@ fun FavoritesScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator()
             } else if (uiState.favorites.isEmpty()) {
-                Text(text = stringResource(id = R.string.favorites_empty))
+                Text(
+                    text = stringResource(id = R.string.favorites_empty),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             } else {
                 // PERFORMANCE: cache the padding calculation
                 val bottomPadding =
@@ -139,6 +145,7 @@ fun FavoritesScreen(
                             FavoriteEpisodeRow(
                                 item = item,
                                 swipeEnabled = !uiState.isEditMode,
+                                transparentBackground = uiState.transparentEpisodeRows,
                                 onAction = viewModel::onAction
                             )
                         }
@@ -165,6 +172,7 @@ fun FavoritesScreen(
                                         FavoriteEpisodeRow(
                                             item = row.item,
                                             swipeEnabled = true,
+                                            transparentBackground = uiState.transparentEpisodeRows,
                                             onAction = viewModel::onAction
                                         )
                                     }
@@ -235,6 +243,7 @@ private fun FavoriteSectionHeader(bucket: DateBucket) {
 private fun FavoriteEpisodeRow(
     item: FavoriteUiItem,
     swipeEnabled: Boolean,
+    transparentBackground: Boolean,
     onAction: (FavoritesAction) -> Unit
 ) {
     SwipeToDeleteFavorite(
@@ -245,6 +254,7 @@ private fun FavoriteEpisodeRow(
             episode = item.episode,
             podcast = item.podcast,
             showPublishDate = true,
+            transparentBackground = transparentBackground,
             onClick = {
                 onAction(FavoritesAction.OnEpisodeClick(item.episode.guid))
             },
@@ -276,13 +286,11 @@ private fun SwipeToDeleteFavorite(
         state = dismissState,
         enableDismissFromEndToStart = enabled,
         backgroundContent = {
+            val isDeleting =
+                dismissState.targetValue == SwipeToDismissBoxValue.EndToStart ||
+                    dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
             val color by animateColorAsState(
-                targetValue =
-                if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
-                    MaterialTheme.colorScheme.errorContainer
-                } else {
-                    Color.Transparent
-                },
+                targetValue = if (isDeleting) MaterialTheme.colorScheme.errorContainer else Color.Transparent,
                 label = "background color animation"
             )
 
@@ -293,10 +301,13 @@ private fun SwipeToDeleteFavorite(
                     .padding(horizontal = Dimens.PaddingLarge),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.desc_delete_episode)
-                )
+                if (isDeleting) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.desc_delete_episode),
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         },
         modifier = Modifier

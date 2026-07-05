@@ -49,6 +49,10 @@ class SettingsViewModelTest {
         bottomBarCleanModeEnabled = true,
         bottomBarAutoHideEnabled = true,
         bottomBarAutoHideDelaySeconds = 7,
+        gradientBackgroundEnabled = true,
+        gradientBackgroundStrength = 0.6f,
+        transparentSearchCards = true,
+        transparentEpisodeRows = true,
         backgroundCheckEnabled = false,
         backgroundCheckInterval = 12,
         indicator = IndicatorSettings()
@@ -138,6 +142,46 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun `uiState maps gradientBackgroundEnabled from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertTrue(success.gradientBackgroundEnabled)
+        }
+    }
+
+    @Test
+    fun `uiState maps gradientBackgroundStrength from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertEquals(0.6f, success.gradientBackgroundStrength, 0.001f)
+        }
+    }
+
+    @Test
+    fun `uiState maps transparentSearchCards from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertTrue(success.transparentSearchCards)
+        }
+    }
+
+    @Test
+    fun `uiState maps transparentEpisodeRows from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertTrue(success.transparentEpisodeRows)
+        }
+    }
+
     // ---- shouldDebounce ----
 
     @Test
@@ -153,6 +197,15 @@ class SettingsViewModelTest {
     fun `SetCleanupIntervalHours action is debounced`() = runTest(testDispatcher) {
         advanceUntilIdle() // let the SharedFlow collector start
         val action = UpdateUserSettingAction.SetCleanupIntervalHours(48)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `SetGradientBackgroundStrength action is debounced`() = runTest(testDispatcher) {
+        advanceUntilIdle() // let the SharedFlow collector start
+        val action = UpdateUserSettingAction.SetGradientBackgroundStrength(0.4f)
         viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
         advanceUntilIdle()
         coVerify { updateUserSettings(action) }
@@ -198,6 +251,33 @@ class SettingsViewModelTest {
     fun `SetBottomBarAutoHideDelay action is debounced`() = runTest(testDispatcher) {
         advanceUntilIdle() // let the SharedFlow collector start
         val action = UpdateUserSettingAction.SetBottomBarAutoHideDelay(10)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `ToggleGradientBackground action is NOT debounced (instant)`() = runTest(testDispatcher) {
+        advanceUntilIdle() // let the SharedFlow collector start
+        val action = UpdateUserSettingAction.ToggleGradientBackground(true)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `ToggleTransparentSearchCards action is NOT debounced (instant)`() = runTest(testDispatcher) {
+        advanceUntilIdle() // let the SharedFlow collector start
+        val action = UpdateUserSettingAction.ToggleTransparentSearchCards(true)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `ToggleTransparentEpisodeRows action is NOT debounced (instant)`() = runTest(testDispatcher) {
+        advanceUntilIdle() // let the SharedFlow collector start
+        val action = UpdateUserSettingAction.ToggleTransparentEpisodeRows(true)
         viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
         advanceUntilIdle()
         coVerify { updateUserSettings(action) }

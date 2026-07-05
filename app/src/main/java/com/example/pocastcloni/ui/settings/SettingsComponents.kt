@@ -1,6 +1,7 @@
 package com.example.pocastcloni.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +28,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -44,15 +46,37 @@ import kotlin.math.roundToInt
 
 // --- BASE CARD LAYOUTS ---
 
+internal val LocalTransparentSettingsCards = compositionLocalOf { false }
+
 @Composable
 fun SettingsCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val transparent = LocalTransparentSettingsCards.current
+    val contentColor =
+        if (transparent) {
+            MaterialTheme.colorScheme.onBackground
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+
     Card(
+        border =
+        if (transparent) {
+            BorderStroke(Dimens.BorderWidthDefault, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f))
+        } else {
+            null
+        },
         colors =
         CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = Constants.UI.SETTINGS_CARD_ALPHA)
+            containerColor =
+            if (transparent) {
+                Color.Transparent
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = Constants.UI.SETTINGS_CARD_ALPHA)
+            },
+            contentColor = contentColor
         ),
         shape = RoundedCornerShape(Dimens.RoundedCornerExtraLarge),
         modifier =

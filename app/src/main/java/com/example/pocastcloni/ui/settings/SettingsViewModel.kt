@@ -207,6 +207,7 @@ constructor(
     private fun UpdateUserSettingAction.shouldDebounce(): Boolean =
         when (this) {
             is UpdateUserSettingAction.SetColorStrength,
+            is UpdateUserSettingAction.SetGradientBackgroundStrength,
             is UpdateUserSettingAction.SetGridSize,
             is UpdateUserSettingAction.SetProgressBarHeight,
             is UpdateUserSettingAction.SetNavBarHeight,
@@ -245,6 +246,10 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
         bottomBarCleanModeEnabled = bottomBarCleanModeEnabled,
         bottomBarAutoHideEnabled = bottomBarAutoHideEnabled,
         bottomBarAutoHideDelaySeconds = bottomBarAutoHideDelaySeconds,
+        gradientBackgroundEnabled = gradientBackgroundEnabled,
+        gradientBackgroundStrength = gradientBackgroundStrength,
+        transparentSearchCards = transparentSearchCards,
+        transparentEpisodeRows = transparentEpisodeRows,
         autoDownloadLimit = autoDownloadLimit,
         autoRefreshOnStart = autoRefreshOnStart,
         backgroundCheckEnabled = backgroundCheckEnabled,

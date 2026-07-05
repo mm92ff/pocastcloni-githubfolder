@@ -11,7 +11,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.ui.theme.Dimens
 import kotlinx.coroutines.flow.StateFlow
 
@@ -20,6 +22,7 @@ private const val EXPAND_ANIMATION_DURATION_MS = 300
 @Composable
 fun ExpandablePlayer(
     playerState: PlayerUiState,
+    userSettings: UserSettings,
     playbackStateFlow: StateFlow<PlaybackState>,
     episodeDescription: Spanned?,
     isDescriptionVisible: Boolean,
@@ -38,18 +41,20 @@ fun ExpandablePlayer(
             .fillMaxWidth()
             .then(if (isExpanded) Modifier.fillMaxSize() else Modifier.wrapContentHeight())
             .animateContentSize(animationSpec = tween(EXPAND_ANIMATION_DURATION_MS)),
-        shadowElevation = Dimens.PaddingLarge,
         shape =
         if (isExpanded) {
             RoundedCornerShape(Dimens.Zero)
         } else {
             RoundedCornerShape(topStart = Dimens.PaddingLarge, topEnd = Dimens.PaddingLarge)
         },
-        color = MaterialTheme.colorScheme.surfaceContainer
+        shadowElevation = if (isExpanded) Dimens.Zero else Dimens.PaddingLarge,
+        color = if (isExpanded) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = if (isExpanded) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
     ) {
         if (isExpanded) {
             FullPlayerScreen(
                 playerState = playerState,
+                userSettings = userSettings,
                 playbackStateFlow = playbackStateFlow,
                 episodeDescription = episodeDescription,
                 isDescriptionVisible = isDescriptionVisible,

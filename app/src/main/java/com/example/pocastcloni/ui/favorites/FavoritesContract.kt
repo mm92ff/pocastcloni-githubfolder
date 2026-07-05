@@ -54,6 +54,7 @@ data class FavoritesUiState(
     val isPlayerVisible: Boolean = false,
     val navBarHeight: Int = 0,
     val progressBarHeight: Int = 0,
+    val transparentEpisodeRows: Boolean = false,
     val episodeForDetails: FavoriteUiItem? = null
 )
 

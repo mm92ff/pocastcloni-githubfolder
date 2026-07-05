@@ -19,6 +19,7 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,7 +75,13 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.nav_downloads)) }) }
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.nav_downloads)) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            )
+        }
     ) { innerPadding ->
         if (uiState.episodes.isEmpty()) {
             Box(
@@ -84,7 +91,10 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(stringResource(R.string.no_downloads))
+                Text(
+                    text = stringResource(R.string.no_downloads),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
         } else {
             val bottomPadding =

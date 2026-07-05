@@ -44,7 +44,8 @@ fun FullPlayerControls(
             Icon(
                 imageVector = Icons.Default.Replay10,
                 contentDescription = stringResource(R.string.desc_rewind),
-                modifier = Modifier.size(Dimens.LargeIconSize)
+                modifier = Modifier.size(Dimens.LargeIconSize),
+                tint = MaterialTheme.colorScheme.onBackground
             )
         }
 
@@ -81,7 +82,8 @@ fun FullPlayerControls(
             Icon(
                 imageVector = Icons.Default.Forward30,
                 contentDescription = stringResource(R.string.desc_fast_forward),
-                modifier = Modifier.size(Dimens.LargeIconSize)
+                modifier = Modifier.size(Dimens.LargeIconSize),
+                tint = MaterialTheme.colorScheme.onBackground
             )
         }
 
@@ -102,7 +104,7 @@ fun FullPlayerControls(
                 if (playerState.isCurrentEpisodeFavorite) {
                     MaterialTheme.colorScheme.primary
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    MaterialTheme.colorScheme.onBackground
                 }
             )
         }

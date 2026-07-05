@@ -71,6 +71,7 @@ constructor(
                 isPlayerVisible = isPlayerVisible,
                 navBarHeight = settings.navBarHeight,
                 progressBarHeight = settings.progressBarHeight,
+                transparentEpisodeRows = settings.transparentEpisodeRows,
                 showConfirmClearDialog = showConfirmClearDialog
             )
         }.stateIn(

@@ -68,7 +68,8 @@ constructor(
                 subscribedUrls = subscribedSet,
                 progressBarHeight = settings.progressBarHeight,
                 navBarHeight = settings.navBarHeight,
-                isPlayerVisible = isVisible
+                isPlayerVisible = isVisible,
+                transparentSearchCards = settings.transparentSearchCards
             )
         }.stateIn(
             scope = viewModelScope,
