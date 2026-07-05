@@ -70,6 +70,7 @@ constructor(
     @Volatile private var isUserSeeking: Boolean = false
     private var pendingSeekPositionMs: Long? = null
     private var progressJob: Job? = null
+    private var favoriteStatusJob: Job? = null
 
     private companion object {
         private const val TICK_INTERVAL_MS = 500L
@@ -183,7 +184,8 @@ constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun startFavoriteStatusLoop() {
-        playerState.map { it.currentEpisodeGuid }.distinctUntilChanged()
+        favoriteStatusJob?.cancel()
+        favoriteStatusJob = playerState.map { it.currentEpisodeGuid }.distinctUntilChanged()
             .flatMapLatest { guid -> if (guid.isNullOrBlank()) flowOf(false) else podcastRepository.isFavorite(guid) }
             .onEach { isFav -> _internalPlayerState.update { it.copy(isCurrentEpisodeFavorite = isFav) } }
             .launchIn(controllerScope)
@@ -200,6 +202,10 @@ constructor(
             if (currentId == episode.guid) {
                 if (!mediaController.isPlaying) mediaController.play()
                 return@withContext
+            }
+            if (!currentId.isNullOrBlank()) {
+                analyticsHandler.saveProgressBestEffort(controllerScope, currentId, mediaController.currentPosition)
+                analyticsHandler.flushListeningTime(controllerScope)
             }
             val mediaItem =
                 mapper.mapToMediaItem(
@@ -259,11 +265,15 @@ constructor(
     }
 
     override fun releaseResources() {
+        analyticsHandler.flushListeningTime(controllerScope)
         controller?.let {
                 p ->
             analyticsHandler.saveProgressBestEffort(controllerScope, p.currentMediaItem?.mediaId, p.currentPosition)
         }
         progressJob?.cancel()
+        progressJob = null
+        favoriteStatusJob?.cancel()
+        favoriteStatusJob = null
         val ctrl = controller
         val listener = controllerListener
         if (ctrl != null && listener != null) {
