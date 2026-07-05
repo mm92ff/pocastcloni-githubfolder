@@ -37,6 +37,7 @@ local.properties
 
 # Logs
 *.log
+logs/
 
 # Local runtime data
 *.sqlite
@@ -68,6 +69,7 @@ Prompt_Android_studio_v*.md
 
 # Local emulator/UI inspection dumps
 ui*.xml
+emulator-screen.png
 
 # Local exported copies and screenshots
 githubfolder/

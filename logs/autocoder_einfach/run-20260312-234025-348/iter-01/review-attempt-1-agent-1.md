@@ -1,1 +1,0 @@
-{"verdict":"ACCEPTED","reason":"DI module now exposes ImageLoader via @Provides while leaving context injections to @ApplicationContext, keeping bindings lean and respecting coroutine scope setup.","required_fixes":[]}

@@ -1,8 +1,0 @@
-{
-  "index": 1,
-  "title": "Kotlin Android Studio: Dependency Injection, KSP, and Coroutine Scope Contracts",
-  "enabled": true,
-  "implementation_mode": "auto",
-  "prompt": "Kotlin Android Studio iterative mode is enabled.\n\nOverall goal:\nImprove Kotlin Android code quality for production readiness.\n\nCurrent focus area:\nDependency Injection, KSP, and Coroutine Scope Contracts\n\nArea guidance:\nEnforce DI best practices (@Binds vs @Provides, qualifiers, KSP-only processors) and verify global application CoroutineScope setup with SupervisorJob plus correct dispatcher.\n\nExecution rules:\n- Keep scope limited to this focus area.\n- Respect phase boundaries:\n  - Evaluation and Review: analyze only, do not modify code.\n  - Implementation: modify code only for this focus area.\n- If adjacent issues are found, list them as dependencies but do not widen scope.\n- Include at least two irritation/failure scenarios for this area and define expected behavior.\n- Respect production-grade Android Kotlin standards (Compose, Room, resources, constants).\n- Evaluate whether required/optional checks are sufficient for this area and list missing or upgrade candidates.\n- Cover these focus points where relevant:\n  1. Focus Area Goal\n  2. Best Practices\n  3. Common Mistakes\n  4. Audit Criteria\n  5. Concrete Refactorings / Improvements\n  6. Small Kotlin Example\n  7. Priority\n  8. Dependencies To Other Areas\n  9. Irritations / Failure Injection and Expected Behavior",
-  "captured_at": "2026-03-12T23:40:25"
-}

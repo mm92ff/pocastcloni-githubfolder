@@ -1,8 +1,0 @@
-{
-  "index": 1,
-  "title": "Kotlin Android Studio: Dependency Stability and Version Policy",
-  "enabled": true,
-  "implementation_mode": "either",
-  "prompt": "Kotlin Android Studio iterative mode is enabled.\n\nOverall goal:\nImprove Kotlin Android code quality for production readiness.\n\nCurrent focus area:\nDependency Stability and Version Policy\n\nArea guidance:\nEnforce stable-only dependency policy, remove alpha/beta/rc artifacts, and use stable fallback patterns when feature syntax requires pre-release libraries.\n\nExecution rules:\n- Keep scope limited to this focus area.\n- Respect phase boundaries:\n  - Evaluation and Review: analyze only, do not modify code.\n  - Implementation: apply either code changes or meaningful documentation updates for this focus area.\n- If adjacent issues are found, list them as dependencies but do not widen scope.\n- Include at least two irritation/failure scenarios for this area and define expected behavior.\n- Respect production-grade Android Kotlin standards (Compose, Room, resources, constants).\n- Evaluate whether required/optional checks are sufficient for this area and list missing or upgrade candidates.\n- Cover these focus points where relevant:\n  1. Focus Area Goal\n  2. Best Practices\n  3. Common Mistakes\n  4. Audit Criteria\n  5. Concrete Refactorings / Improvements\n  6. Small Kotlin Example\n  7. Priority\n  8. Dependencies To Other Areas\n  9. Irritations / Failure Injection and Expected Behavior",
-  "captured_at": "2026-03-12T21:35:58"
-}
