@@ -108,18 +108,6 @@ committed.
 - `detekt.yml` Detekt-Regeln
 - `.editorconfig` gemeinsame Editor- und Formatierungsregeln
 
-## Lokale Dateien
-
-Diese Dateien und Ordner sind absichtlich nicht fuer GitHub gedacht:
-
-- `local.properties`
-- `.gradle/`, `.idea/`, `build/`, `app/build/`
-- `artifacts/`, `logs/`, `plans/`, `local-scripts/`
-- APK/AAB-Dateien, Keystores und lokale UI-/Emulator-Dumps
-
-Der Ordner `picture/` ist davon ausgenommen: Er enthält die README-Screenshots
-und wird versioniert.
-
 ## Lizenz
 
 Dieses Projekt steht unter der MIT-Lizenz. Details siehe `LICENSE`.
