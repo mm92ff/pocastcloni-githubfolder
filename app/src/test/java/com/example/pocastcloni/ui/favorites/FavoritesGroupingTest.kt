@@ -83,6 +83,41 @@ class FavoritesGroupingTest {
         )
     }
 
+    @Test
+    fun `buildFavoriteDateRows uses the full date bucket sequence`() {
+        val items =
+            listOf(
+                favoriteItem("today", millisDaysAgo(0)),
+                favoriteItem("yesterday", millisDaysAgo(1)),
+                favoriteItem("last-week", millisDaysAgo(7)),
+                favoriteItem("last-month", millisDaysAgo(30)),
+                favoriteItem("last-two-months", millisDaysAgo(60)),
+                favoriteItem("last-five-months", millisDaysAgo(150)),
+                favoriteItem("last-year", millisDaysAgo(365)),
+                favoriteItem("older", millisDaysAgo(366))
+            )
+
+        val rows = buildFavoriteDateRows(
+            items = items.shuffled(),
+            nowMillis = nowMillis,
+            zoneId = zoneId
+        )
+
+        assertEquals(
+            listOf(
+                DateBucket.TODAY,
+                DateBucket.YESTERDAY,
+                DateBucket.LAST_WEEK,
+                DateBucket.LAST_MONTH,
+                DateBucket.LAST_TWO_MONTHS,
+                DateBucket.LAST_FIVE_MONTHS,
+                DateBucket.LAST_YEAR,
+                DateBucket.OLDER
+            ),
+            rows.filterIsInstance<FavoriteListRow.SectionHeader>().map { it.bucket }
+        )
+    }
+
     private fun millisDaysAgo(daysAgo: Long): Long =
         LocalDateTime.of(2026, 6, 25, 10, 0)
             .minusDays(daysAgo)
