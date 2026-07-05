@@ -51,7 +51,7 @@ internal fun NavHostController.navigateMainScreen(screen: Screen) {
     }
 }
 
-private fun adjacentMainScreen(currentRoute: String?, direction: Int): Screen? {
+internal fun adjacentMainScreen(currentRoute: String?, direction: Int): Screen? {
     val currentIndex = mainBottomNavItems.indexOfFirst { item -> item.screen.route == currentRoute }
     if (currentIndex == -1) return null
 
