@@ -57,6 +57,8 @@ CLAUDE.md
 workflow/
 docs_context/
 governance/
+docs/
+plans/
 IterationManager.ps1
 select_profile.ps1
 
