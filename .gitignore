@@ -45,6 +45,19 @@ local.properties
 # Local agent/tool settings
 .claude/settings.json
 
+# Local agent/workflow context - keep on this machine, do not publish
+AGENTS.md
+MEMORY.md
+CLAUDE.md
+.agents/
+.codex/
+.claude/
+workflow/
+docs_context/
+governance/
+IterationManager.ps1
+select_profile.ps1
+
 # Local scratch prompts and notes
 Install
 Prompt_Android_studio_v*.md
