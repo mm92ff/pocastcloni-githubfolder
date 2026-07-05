@@ -1,8 +1,13 @@
 package com.example.pocastcloni.data.manager
 
 import com.example.pocastcloni.data.local.BackupData
+import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
+import com.example.pocastcloni.ui.settings.AppColor
+import com.example.pocastcloni.ui.settings.AppTheme
+import com.example.pocastcloni.ui.settings.BufferMode
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -186,6 +191,55 @@ class PodcastBackupHelperParsingTest {
         val json = objectMapper.writeValueAsString(backupData)
 
         assertTrue(json.contains("\"transparentEpisodeRows\":true"))
+    }
+
+    @Test
+    fun exportAndParseBackupJson_roundTripsAllCurrentUserSettings() {
+        val expectedSettings =
+            UserSettings(
+                theme = AppTheme.DARK,
+                appColor = AppColor.RED,
+                colorStrength = 0.5f,
+                bufferMode = BufferMode.MAXIMAL,
+                layoutMode = LayoutMode.LIST,
+                gridSize = 4,
+                showGridTitles = false,
+                confirmDelete = false,
+                progressBarHeight = 9,
+                navBarHeight = 88,
+                showMiniPlayerTimeOverlay = true,
+                oneHandedMode = true,
+                bottomBarCleanModeEnabled = true,
+                bottomBarAutoHideEnabled = true,
+                bottomBarAutoHideDelaySeconds = 8,
+                gradientBackgroundEnabled = true,
+                gradientBackgroundStrength = 0.75f,
+                transparentSearchCards = true,
+                transparentEpisodeRows = true,
+                autoDownloadLimit = 6,
+                autoRefreshOnStart = false,
+                backgroundCheckEnabled = false,
+                backgroundCheckInterval = 12,
+                markPlayedDurationSeconds = 45,
+                feedUpdateMode = FeedUpdateMode.SMART_STREAM,
+                indicator =
+                    IndicatorSettings(
+                        colorArgb = 0xFF112233,
+                        size = 24,
+                        borderWidth = 3,
+                        xOffset = 10,
+                        yOffset = -6
+                    ),
+                saveToDownloadsFolder = true,
+                autoCleanupEnabled = true,
+                cleanupKeepLimit = 42,
+                cleanupIntervalHours = 36
+            )
+        val json = objectMapper.writeValueAsString(BackupData(settings = expectedSettings))
+
+        val restoredSettings = parseBackupJson(json, objectMapper).settings
+
+        assertEquals(expectedSettings, restoredSettings)
     }
 
     @Test
