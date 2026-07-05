@@ -1,6 +1,8 @@
 alles.bat
 
 build-debug-apk.bat
+build-apk.bat
+check-release-apk-on-emulator.bat
 
 run-app-on-emulator.bat
 
