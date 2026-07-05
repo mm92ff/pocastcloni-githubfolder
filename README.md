@@ -31,21 +31,25 @@ RSS-Synchronisierung, Wiedergabe, Downloads und stark anpassbarer Bedienung.
 
 Aktuelle Emulator-Screenshots:
 
-| Home | Settings |
+| Home | Home with Bottom Bar |
 |---|---|
-| ![Home](picture/home.png) | ![Settings](picture/settings.png) |
+| ![Home](picture/home.png) | ![Home with Bottom Bar](picture/home2.png) |
 
-| Downloads | Search |
+| Settings | Downloads |
 |---|---|
-| ![Downloads](picture/downloads.png) | ![Search](picture/search.png) |
+| ![Settings](picture/settings.png) | ![Downloads](picture/downloads.png) |
 
-| History | Favorites |
+| Search | History |
 |---|---|
-| ![History](picture/history.png) | ![Favorites](picture/favorites.png) |
+| ![Search](picture/search.png) | ![History](picture/history.png) |
 
-| Podcast Detail | Player |
+| Favorites | Podcast Detail |
 |---|---|
-| ![Podcast Detail](picture/podcast_detail.png) | ![Player](picture/player.png) |
+| ![Favorites](picture/favorites.png) | ![Podcast Detail](picture/podcast_detail.png) |
+
+| Player | |
+|---|---|
+| ![Player](picture/player.png) | |
 
 ## Tech-Stack
 

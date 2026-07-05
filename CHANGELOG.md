@@ -7,7 +7,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 ## [Unreleased]
 
 ### Added
-- Current README screenshots in the versioned `picture/` folder.
+- Current README screenshots in the versioned `picture/` folder, including the
+  Home screen with visible bottom navigation.
 - Date-based grouping for playback history and favorites.
 - Favorites sort switch between manual order and added-date order.
 - Episode publish dates in history and favorites rows.
