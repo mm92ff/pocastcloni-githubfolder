@@ -53,6 +53,7 @@ logs/
 AGENTS.md
 MEMORY.md
 CLAUDE.md
+local-scripts/
 .agents/
 .codex/
 .claude/
