@@ -161,7 +161,13 @@ fun FavoritesScreen(
                         ) {
                             items(
                                 items = uiState.dateGroupedRows,
-                                key = { row -> row.key }
+                                key = { row -> row.key },
+                                contentType = { row ->
+                                    when (row) {
+                                        is FavoriteListRow.SectionHeader -> "favorite-section"
+                                        is FavoriteListRow.EpisodeRow -> "favorite-episode"
+                                    }
+                                }
                             ) { row ->
                                 when (row) {
                                     is FavoriteListRow.SectionHeader -> {

@@ -131,7 +131,13 @@ fun HistoryScreen(
                 ) {
                     items(
                         items = uiState.historyRows,
-                        key = { row -> row.key }
+                        key = { row -> row.key },
+                        contentType = { row ->
+                            when (row) {
+                                is HistoryListRow.SectionHeader -> "history-section"
+                                is HistoryListRow.EpisodeRow -> "history-episode"
+                            }
+                        }
                     ) { row ->
                         when (row) {
                             is HistoryListRow.SectionHeader -> {

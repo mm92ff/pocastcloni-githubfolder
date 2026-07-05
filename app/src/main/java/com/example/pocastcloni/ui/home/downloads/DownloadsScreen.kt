@@ -124,7 +124,8 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
             ) {
                 items(
                     items = uiState.episodes,
-                    key = { it.guid }
+                    key = { it.guid },
+                    contentType = { "download-episode" }
                 ) { episode ->
                     val isPlaying = (episode.guid == uiState.currentPlayingGuid) && uiState.isPlayerPlaying
 
