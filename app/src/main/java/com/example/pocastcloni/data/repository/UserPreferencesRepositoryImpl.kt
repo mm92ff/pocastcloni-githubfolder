@@ -6,17 +6,13 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.pocastcloni.domain.model.AppColor
+import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
-// TODO: ARCHITECTURE BOUNDARY VIOLATION - Data layer importing from UI layer
-// These UI enums (AppTheme, AppColor, BufferMode) should be moved to domain.model
-// to maintain proper dependency inversion. UI should depend on domain, not vice versa.
-// FIXME: Move these enums to com.example.pocastcloni.domain.model and update all imports
-import com.example.pocastcloni.ui.settings.AppColor
-import com.example.pocastcloni.ui.settings.AppTheme
-import com.example.pocastcloni.ui.settings.BufferMode
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow

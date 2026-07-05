@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
+import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.EpisodePresentation
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
@@ -17,7 +18,6 @@ import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.ui.player.PlayerScreenEvent
-import com.example.pocastcloni.ui.settings.AppTheme
 import com.example.pocastcloni.ui.settings.ThemeUiModel
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.stripHtml

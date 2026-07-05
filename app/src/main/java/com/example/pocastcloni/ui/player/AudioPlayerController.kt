@@ -8,6 +8,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
+import com.example.pocastcloni.domain.player.PlaybackStarter
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.player.PreparePlaybackUseCase
@@ -34,7 +35,7 @@ constructor(
     private val mapper: MediaStateMapper,
     private val ticker: PlaybackTicker,
     private val preparePlaybackUseCase: PreparePlaybackUseCase
-) : PlayerActions, PlayerStateObserver {
+) : PlaybackStarter, PlayerActions, PlayerStateObserver {
     // --- Scope ---
     private val controllerScope = CoroutineScope(dispatcherProvider.main + SupervisorJob())
 

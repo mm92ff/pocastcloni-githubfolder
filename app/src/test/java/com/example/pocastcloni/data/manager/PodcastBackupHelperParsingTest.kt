@@ -1,13 +1,13 @@
 package com.example.pocastcloni.data.manager
 
 import com.example.pocastcloni.data.local.BackupData
+import com.example.pocastcloni.domain.model.AppColor
+import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
-import com.example.pocastcloni.ui.settings.AppColor
-import com.example.pocastcloni.ui.settings.AppTheme
-import com.example.pocastcloni.ui.settings.BufferMode
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule

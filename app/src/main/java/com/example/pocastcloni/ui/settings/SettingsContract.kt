@@ -1,6 +1,9 @@
 package com.example.pocastcloni.ui.settings
 
 import androidx.compose.runtime.Immutable
+import com.example.pocastcloni.domain.model.AppColor
+import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction

@@ -28,11 +28,11 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
+import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.StatisticsRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.ui.main.MainActivity
-import com.example.pocastcloni.ui.settings.BufferMode
 import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.AndroidEntryPoint

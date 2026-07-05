@@ -1,4 +1,4 @@
-package com.example.pocastcloni.ui.settings
+package com.example.pocastcloni.domain.model
 
 enum class AppTheme {
     SYSTEM,

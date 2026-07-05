@@ -1,6 +1,8 @@
 package com.example.pocastcloni.di
 
+import com.example.pocastcloni.domain.player.PlaybackStarter
 import com.example.pocastcloni.domain.player.PlayerVisibilityProvider
+import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.ui.player.PlayerVisibilityProviderImpl
 import dagger.Binds
 import dagger.Module
@@ -12,4 +14,7 @@ import dagger.hilt.components.SingletonComponent
 abstract class PlayerVisibilityModule {
     @Binds
     abstract fun bindPlayerVisibilityProvider(impl: PlayerVisibilityProviderImpl): PlayerVisibilityProvider
+
+    @Binds
+    abstract fun bindPlaybackStarter(impl: AudioPlayerController): PlaybackStarter
 }

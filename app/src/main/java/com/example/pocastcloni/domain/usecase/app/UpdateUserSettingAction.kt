@@ -1,10 +1,10 @@
 package com.example.pocastcloni.domain.usecase.app
 
+import com.example.pocastcloni.domain.model.AppColor
+import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
-import com.example.pocastcloni.ui.settings.AppColor
-import com.example.pocastcloni.ui.settings.AppTheme
-import com.example.pocastcloni.ui.settings.BufferMode
 
 sealed interface UpdateUserSettingAction {
     data class SetAppTheme(val theme: AppTheme) : UpdateUserSettingAction

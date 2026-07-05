@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import com.example.pocastcloni.R
+import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants.SettingsDefaults

@@ -14,8 +14,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
-import com.example.pocastcloni.ui.settings.AppColor
-import com.example.pocastcloni.ui.settings.AppTheme
+import com.example.pocastcloni.domain.model.AppColor
+import com.example.pocastcloni.domain.model.AppTheme
 import kotlin.math.max
 
 // --- COLOR MATH HELPERS ---
