@@ -23,6 +23,7 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Room schema version 11.
 
 ### Changed
+- Project license changed from MIT to Mozilla Public License 2.0 (`MPL-2.0`).
 - Refactored oversized UI and settings files into smaller focused modules.
 - Improved dark-theme contrast across home, detail, history, favorites,
   downloads, settings and full-player screens.
