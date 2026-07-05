@@ -1,114 +1,164 @@
 # PocastCloni
 
-PocastCloni ist eine Android-Podcast-App mit Fokus auf lokale Bibliothek,
-RSS-Synchronisierung, Wiedergabe, Downloads und stark anpassbarer Bedienung.
+PocastCloni is a modern Android podcast player built with Kotlin, Jetpack
+Compose, Media3/ExoPlayer, Room, DataStore, WorkManager, and RSS feed
+synchronisation.
 
 ## Features
 
-- Podcast-Abos per RSS-URL oder iTunes-Suche hinzufügen
-- RSS-Synchronisierung als Smart Stream oder vollständiger Feed-Refresh
-- Hintergrundprüfung auf neue Episoden mit einstellbarem Intervall
-- Streaming und lokale Downloads mit Media3 ExoPlayer
-- Option zum Speichern in den Android-Downloads-Ordner
-- Auto-Download pro Podcast mit globalem Download-Limit
-- Auto-Cleanup für abgespielte Episoden mit Keep-Limit und Intervall
-- Favoriten mit manueller Sortierung oder Sortierung nach Hinzufügedatum
-- Verlauf und Favoriten mit Datumsgruppen wie Heute, Gestern, letzte Woche,
-  letzter Monat, letztes Jahr und älter
-- Episodenlisten mit Veröffentlichungsdatum, Podcastname und Wiedergabestatus
-- Mini-Player und Full-Player mit Fortschritt, Zeitanzeige und Skip-Steuerung
-- Mini-Player-Zeitoverlay auf der Timeline optional aktivierbar
-- Bottom-Bar-Navigation mit Clean Mode, Swipe-Reveal und Auto-Hide-Verzögerung
-- Wisch-Navigation zwischen den Hauptbereichen Settings, Home, Downloads und Search
-- One-Handed Mode für besser erreichbare Listen und Navigation
-- Hell-/Dunkel-/System-Theme mit Akzentfarbe und optionalem Hintergrundverlauf
-- Einstellbare Verlaufstärke, transparente Karten und transparente Episodenzeilen
-- Settings in Tabs für Design, Playback, Sync und Data
-- Backup & Restore für Podcasts, Favoriten, Verlauf und Einstellungen
-- Statistikansicht und Reset-Funktionen
+- **Podcast Library** - Add podcasts by RSS URL or iTunes search, reorder
+  subscriptions, inspect podcast details, and mark all new episodes as seen.
+- **Playback** - Mini player and full player with play/pause, seek, skip,
+  progress tracking, background playback, and notification support.
+- **Downloads & Sync** - Stream episodes, download episodes locally, optionally
+  save files to Android's Downloads folder, run background feed checks, and use
+  smart or full RSS refresh modes.
+- **Auto Download & Cleanup** - Per-podcast auto-download, global download
+  limits, retry handling for transient failures, and automatic cleanup of played
+  downloaded episodes.
+- **History & Favorites** - Playback history and favorites with date grouping,
+  publication dates, manual favorite ordering, and added-date sorting.
+- **Customisation** - Light, Dark, and System themes; custom accent colour;
+  optional gradient background; transparent cards and episode rows; one-handed
+  layout; bottom bar clean mode with swipe reveal and auto-hide delay.
+- **Settings** - Tabbed Settings screen for Design, Playback, Sync, and Data.
+- **Backup & Restore** - Export and import podcasts, favorites, history, and
+  user settings.
+- **Statistics** - Listening and download statistics with reset actions.
 
 ## Screenshots
 
-Aktuelle Emulator-Screenshots:
+| Home | Home with Bottom Bar | Settings |
+|:---:|:---:|:---:|
+| ![Home](picture/home.png) | ![Home with Bottom Bar](picture/home2.png) | ![Settings](picture/settings.png) |
 
-| Home | Home with Bottom Bar |
+| Downloads | Search | History |
+|:---:|:---:|:---:|
+| ![Downloads](picture/downloads.png) | ![Search](picture/search.png) | ![History](picture/history.png) |
+
+| Favorites | Podcast Detail | Player |
+|:---:|:---:|:---:|
+| ![Favorites](picture/favorites.png) | ![Podcast Detail](picture/podcast_detail.png) | ![Player](picture/player.png) |
+
+## Download
+
+Latest release:
+
+- [pocastcloni_v3.60-beta.apk](https://github.com/mm92ff/pocastcloni-githubfolder/releases/download/v3.60-beta/pocastcloni_v3.60-beta.apk)
+
+## Requirements
+
+| Item | Version |
 |---|---|
-| ![Home](picture/home.png) | ![Home with Bottom Bar](picture/home2.png) |
+| Android | 8.0 (API 26) and higher |
+| Target SDK | 34 |
+| Compile SDK | 34 |
+| JDK | 17 |
 
-| Settings | Downloads |
+## Tech Stack
+
+| Layer | Libraries |
 |---|---|
-| ![Settings](picture/settings.png) | ![Downloads](picture/downloads.png) |
+| UI | Jetpack Compose, Material 3, Navigation Compose |
+| Architecture | Domain / Data / UI layers, ViewModel, StateFlow |
+| Media | Media3 ExoPlayer, MediaSession, foreground playback service |
+| Database | Room with exported migration schemas |
+| Preferences | DataStore Preferences |
+| Networking | Retrofit, OkHttp, Jackson XML |
+| Images | Coil Compose, Coil SVG |
+| Background Work | WorkManager with Hilt workers |
+| Dependency Injection | Hilt |
+| Logging | Timber |
+| Quality | Detekt, ktlint, JUnit 4, MockK, Turbine, AndroidX tests |
 
-| Search | History |
-|---|---|
-| ![Search](picture/search.png) | ![History](picture/history.png) |
+## Build
 
-| Favorites | Podcast Detail |
-|---|---|
-| ![Favorites](picture/favorites.png) | ![Podcast Detail](picture/podcast_detail.png) |
-
-| Player | |
-|---|---|
-| ![Player](picture/player.png) | |
-
-## Tech-Stack
-
-- Kotlin + Jetpack Compose (Material 3)
-- Hilt für Dependency Injection
-- Room für lokale Datenbank und Migrationen
-- DataStore für Einstellungen
-- Retrofit/OkHttp + Jackson XML für RSS und Suche
-- Media3 ExoPlayer für Audio-Wiedergabe
-- WorkManager für Downloads, Feed-Updates, Backup und Cleanup
-- Coil für Bildladen
-- Detekt, ktlint, Unit- und Instrumentation-Tests für Qualitätssicherung
-
-## Voraussetzungen
+### Prerequisites
 
 - Android Studio
 - JDK 17
-- Android SDK mit compileSdk 34
-- minSdk 26, targetSdk 34
+- Android SDK 34
 
-## Build & Run
+### Clone & Run
 
-Linux/macOS:
+```bash
+git clone https://github.com/mm92ff/pocastcloni-githubfolder.git
+cd pocastcloni-githubfolder
+```
+
+Open the project in Android Studio and run it on a device or emulator with API
+26 or newer.
+
+### Build APK
 
 ```bash
 ./gradlew assembleDebug
+./gradlew assembleRelease
 ```
 
 Windows:
 
 ```powershell
 .\gradlew.bat assembleDebug
-```
-
-Release-Build lokal:
-
-```powershell
 .\gradlew.bat assembleRelease
 ```
 
-Signing-Schlüssel und lokale Pfade bleiben lokal und werden nicht ins Repository
-committed.
+### Run Checks
 
-## Checks
+```bash
+./gradlew testDebugUnitTest
+./gradlew detekt
+```
+
+Windows:
 
 ```powershell
 .\gradlew.bat testDebugUnitTest
 .\gradlew.bat detekt
 ```
 
-## Projektstruktur
+## Project Structure
 
-- `app/` App-Code, Ressourcen, Datenbank-Schemas und Tests
-- `gradle/` Gradle Wrapper und Versionskatalog
-- `build.gradle.kts` / `settings.gradle.kts` Root-Build-Konfiguration
-- `detekt.yml` Detekt-Regeln
-- `.editorconfig` gemeinsame Editor- und Formatierungsregeln
+```text
+app/src/main/java/com/example/pocastcloni/
+├── data/       # Room entities, DAO, repositories, RSS/search APIs, workers
+├── domain/     # Models, repository interfaces, player contracts, use cases
+├── di/         # Hilt modules
+├── service/    # PodcastPlaybackService
+├── ui/         # Compose screens, player UI, settings, theme, navigation
+└── util/       # Constants, formatting, HTML, network and time helpers
+```
 
-## Lizenz
+## Permissions
 
-Dieses Projekt steht unter der Mozilla Public License 2.0 (`MPL-2.0`).
-Details siehe `LICENSE`.
+| Permission | Purpose |
+|---|---|
+| `INTERNET` | Load RSS feeds, podcast artwork, search results, and episode streams |
+| `ACCESS_NETWORK_STATE` | Detect network state for downloads, sync, and statistics |
+| `WRITE_EXTERNAL_STORAGE` | Legacy public Downloads support on Android 9 and older |
+| `FOREGROUND_SERVICE` | Keep playback and long-running work stable |
+| `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Media playback foreground service on newer Android versions |
+| `FOREGROUND_SERVICE_DATA_SYNC` | Feed sync foreground service type on newer Android versions |
+| `POST_NOTIFICATIONS` | Show playback and foreground-service notifications |
+
+## Notes
+
+- RSS feed parsing supports smart stream updates and full refresh mode.
+- On Android 10 and newer, saving to the public Downloads folder uses
+  MediaStore.
+- Downloaded episodes fall back to streaming when the local file is missing.
+- The bottom navigation can be hidden in Clean Mode and revealed with an upward
+  swipe.
+- Backups are JSON-based and include restorable library and settings data.
+
+## Contributing
+
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/my-feature`).
+3. Commit your changes (`git commit -m "feat: add my feature"`).
+4. Push to the branch (`git push origin feature/my-feature`).
+5. Open a Pull Request.
+
+## License
+
+This project is licensed under the [Mozilla Public License 2.0](LICENSE).
