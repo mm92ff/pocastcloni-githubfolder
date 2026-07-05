@@ -29,8 +29,23 @@ RSS-Synchronisierung, Wiedergabe, Downloads und stark anpassbarer Bedienung.
 
 ## Screenshots
 
-Screenshots werden in diesem Repository aktuell nicht versioniert. Lokale
-Screenshots und Emulator-Dumps sind bewusst durch `.gitignore` ausgeschlossen.
+Aktuelle Emulator-Screenshots:
+
+| Home | Settings |
+|---|---|
+| ![Home](picture/home.png) | ![Settings](picture/settings.png) |
+
+| Downloads | Search |
+|---|---|
+| ![Downloads](picture/downloads.png) | ![Search](picture/search.png) |
+
+| History | Favorites |
+|---|---|
+| ![History](picture/history.png) | ![Favorites](picture/favorites.png) |
+
+| Podcast Detail | Player |
+|---|---|
+| ![Podcast Detail](picture/podcast_detail.png) | ![Player](picture/player.png) |
 
 ## Tech-Stack
 
@@ -97,6 +112,9 @@ Diese Dateien und Ordner sind absichtlich nicht fuer GitHub gedacht:
 - `.gradle/`, `.idea/`, `build/`, `app/build/`
 - `artifacts/`, `logs/`, `plans/`, `local-scripts/`
 - APK/AAB-Dateien, Keystores und lokale UI-/Emulator-Dumps
+
+Der Ordner `picture/` ist davon ausgenommen: Er enthält die README-Screenshots
+und wird versioniert.
 
 ## Lizenz
 
