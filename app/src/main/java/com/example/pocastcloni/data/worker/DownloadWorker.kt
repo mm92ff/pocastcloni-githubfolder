@@ -46,6 +46,7 @@ constructor(
 ) : CoroutineWorker(context, params) {
     companion object {
         private const val PROGRESS_MIN_INTERVAL_MS = 250L
+        private const val MAX_RETRY_ATTEMPTS = 3
     }
 
     override suspend fun doWork(): Result {
@@ -88,8 +89,13 @@ constructor(
             throw e
         } catch (e: Exception) {
             Timber.e(e, "Download failed for $guid")
-            podcastRepository.updateDownloadStatus(guid, DownloadStatus.FAILED, null)
-            Result.failure()
+            if (shouldRetryDownloadFailure(e, runAttemptCount, MAX_RETRY_ATTEMPTS)) {
+                podcastRepository.updateDownloadStatus(guid, DownloadStatus.QUEUED, null)
+                Result.retry()
+            } else {
+                podcastRepository.updateDownloadStatus(guid, DownloadStatus.FAILED, null)
+                Result.failure()
+            }
         }
     }
 
@@ -160,7 +166,7 @@ constructor(
         val response = okHttpClient.newCall(request).execute()
         try {
             if (!response.isSuccessful) {
-                throw IOException("Server responded with error: ${response.code}")
+                throw DownloadHttpException(response.code)
             }
             val body = response.body ?: throw IOException("Response body is null")
             val totalBytes = body.contentLength()
@@ -244,4 +250,22 @@ constructor(
             .replace(" ", "_")
             .trim()
             .ifEmpty { "episode_download" }
+}
+
+internal class DownloadHttpException(
+    val statusCode: Int
+) : IOException("Server responded with error: $statusCode")
+
+internal fun shouldRetryDownloadFailure(
+    error: Throwable,
+    runAttemptCount: Int,
+    maxRetryAttempts: Int
+): Boolean {
+    if (runAttemptCount >= maxRetryAttempts) return false
+    return when (error) {
+        is DownloadHttpException ->
+            error.statusCode == 408 || error.statusCode == 429 || error.statusCode >= 500
+        is IOException -> true
+        else -> false
+    }
 }
