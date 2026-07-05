@@ -30,6 +30,7 @@ local.properties
 *.iml
 
 # APK / AAB / signing artifacts
+artifacts/
 *.apk
 *.aab
 *.ap_
