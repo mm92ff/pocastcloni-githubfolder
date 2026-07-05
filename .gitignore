@@ -31,10 +31,14 @@ local.properties
 
 # APK / AAB / signing artifacts
 artifacts/
+apks/
 *.apk
 *.aab
 *.ap_
 *.idsig
+sign-release-local.bat
+signing.local.properties
+signing.local.properties.example
 
 # Logs
 *.log
