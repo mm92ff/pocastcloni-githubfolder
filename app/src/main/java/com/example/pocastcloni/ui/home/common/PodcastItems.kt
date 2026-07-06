@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Precision
 import com.example.pocastcloni.R
@@ -66,11 +67,24 @@ private fun rememberPodcastImageRequest(
 ): ImageRequest {
     val context = LocalContext.current
     return remember(url, context, size) {
+        val stableUrl = url.takeIf { it.isNotBlank() }
         ImageRequest.Builder(context)
-            .data(url.takeIf { it.isNotBlank() })
+            .data(stableUrl)
             .crossfade(true)
+            .placeholder(R.drawable.ic_launcher_foreground)
+            .error(R.drawable.ic_launcher_foreground)
+            .fallback(R.drawable.ic_launcher_foreground)
             .size(size)
             .precision(Precision.EXACT)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .networkCachePolicy(CachePolicy.ENABLED)
+            .apply {
+                if (stableUrl != null) {
+                    memoryCacheKey("$stableUrl#$size")
+                    diskCacheKey(stableUrl)
+                }
+            }
             .build()
     }
 }
