@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
@@ -25,6 +26,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.pocastcloni.ui.home.feed.IndicatorCutout
 import com.example.pocastcloni.ui.home.feed.IndicatorDot
 import com.example.pocastcloni.ui.theme.Dimens
 import kotlin.math.floor
@@ -99,20 +101,37 @@ private fun PreviewTile(
     indicatorState: IndicatorSettingsUiState
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
-        Card(
-            shape = RoundedCornerShape(Dimens.RoundedCornerLarge),
-            elevation = CardDefaults.cardElevation(defaultElevation = Dimens.PaddingSmall)
+        Box(
+            modifier =
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
         ) {
-            Box(
-                modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
+            Card(
+                shape = RoundedCornerShape(Dimens.RoundedCornerLarge),
+                elevation = CardDefaults.cardElevation(defaultElevation = Dimens.PaddingSmall)
+            ) {
+                Box(
+                    modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
+            }
+
+            if (withDot) {
+                IndicatorCutout(
+                    xOffset = indicatorState.xOffset,
+                    yOffset = indicatorState.yOffset,
+                    borderWidth = indicatorState.borderWidth,
+                    size = indicatorState.size
+                )
+            }
         }
 
         if (withDot) {
-            // Dot rendered exactly as in the Feed.
             IndicatorDot(
                 xOffset = indicatorState.xOffset,
                 yOffset = indicatorState.yOffset,
