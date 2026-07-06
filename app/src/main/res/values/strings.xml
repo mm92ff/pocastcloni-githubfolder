@@ -177,6 +177,8 @@
     <string name="settings_mark_as_played_after">Mark as played after</string>
     <string name="settings_mini_player_time_overlay">Mini player time overlay</string>
     <string name="settings_mini_player_time_overlay_subtitle">Show elapsed and total time on the mini player timeline</string>
+    <string name="settings_transparent_mini_player">Transparent Mini Player</string>
+    <string name="settings_transparent_mini_player_subtitle">Show the app background behind the mini player</string>
     <string name="settings_buffer_mode">Buffer Mode</string>
     <string name="settings_buffer_mode_normal">Normal (Android Default)</string>
     <string name="settings_buffer_mode_maximal">Maximal (Large Buffer)</string>

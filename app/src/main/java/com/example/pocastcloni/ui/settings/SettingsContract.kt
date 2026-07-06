@@ -84,6 +84,7 @@ sealed interface SettingsUiState {
         val progressBarHeight: Int = 4,
         val navBarHeight: Int = 56,
         val showMiniPlayerTimeOverlay: Boolean = Constants.Preferences.DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY,
+        val transparentMiniPlayer: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_MINI_PLAYER,
         val oneHandedMode: Boolean = false,
         val bottomBarCleanModeEnabled: Boolean = Constants.Preferences.DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED,
         val bottomBarAutoHideEnabled: Boolean = Constants.Preferences.DEFAULT_BOTTOM_BAR_AUTO_HIDE_ENABLED,

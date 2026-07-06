@@ -29,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
@@ -40,6 +39,7 @@ import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction
 import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 
 private enum class SettingsTab(@StringRes val labelRes: Int) {
@@ -68,11 +68,12 @@ fun SettingsListContent(
     var selectedTab by rememberSaveable { mutableStateOf(SettingsTab.DESIGN) }
     val tabs = SettingsTab.entries
     val bottomPadding =
-        if (isPlayerVisible) {
-            (settings.navBarHeight + settings.progressBarHeight).dp + Dimens.PaddingMedium
-        } else {
-            Dimens.PaddingMedium
-        }
+        MiniPlayerLayoutDefaults.reservedBottomPadding(
+            isPlayerVisible = isPlayerVisible,
+            navBarHeight = settings.navBarHeight,
+            progressBarHeight = settings.progressBarHeight,
+            extraPadding = Dimens.PaddingMedium
+        )
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -324,6 +325,7 @@ private fun PlaybackSettingsContent(
     SectionPlayback(
         markPlayedDurationSeconds = settings.markPlayedDurationSeconds,
         showMiniPlayerTimeOverlay = settings.showMiniPlayerTimeOverlay,
+        transparentMiniPlayer = settings.transparentMiniPlayer,
         bufferMode = settings.bufferMode,
         onSetMarkPlayedDuration =
         remember(onEvent) {
@@ -337,6 +339,13 @@ private fun PlaybackSettingsContent(
             {
                     enabled: Boolean ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleMiniPlayerTimeOverlay(enabled)))
+            }
+        },
+        onToggleTransparentMiniPlayer =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleTransparentMiniPlayer(enabled)))
             }
         },
         onSetBufferMode =

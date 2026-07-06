@@ -18,6 +18,7 @@ fun PlayerContainer(
     progressBarHeight: Dp,
     navBarHeight: Dp,
     showMiniPlayerTimeOverlay: Boolean,
+    transparentMiniPlayer: Boolean,
     onNavigateToPodcastDetail: (podcastUrl: String) -> Unit,
     suppress: Boolean = false
 ) {
@@ -48,6 +49,7 @@ fun PlayerContainer(
             onNavigateToPodcastDetail = onNavigateToPodcastDetail,
             progressBarHeight = progressBarHeight,
             showMiniPlayerTimeOverlay = showMiniPlayerTimeOverlay,
+            transparentMiniPlayer = transparentMiniPlayer,
             navBarHeight = navBarHeight
         )
     }

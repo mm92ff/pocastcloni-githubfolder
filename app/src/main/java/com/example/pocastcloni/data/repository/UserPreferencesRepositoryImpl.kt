@@ -132,6 +132,14 @@ constructor(
         }
     }
 
+    override suspend fun updateTransparentMiniPlayer(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.TRANSPARENT_MINI_PLAYER] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist transparent mini player preference")
+        }
+    }
+
     override suspend fun updateOneHandedMode(enabled: Boolean) {
         try {
             context.dataStore.edit { it[Keys.ONE_HANDED_MODE] = enabled }
@@ -332,6 +340,7 @@ constructor(
                 prefs[Keys.PROGRESS_BAR_HEIGHT] = settings.progressBarHeight
                 prefs[Keys.NAV_BAR_HEIGHT] = settings.navBarHeight
                 prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = settings.showMiniPlayerTimeOverlay
+                prefs[Keys.TRANSPARENT_MINI_PLAYER] = settings.transparentMiniPlayer
                 prefs[Keys.ONE_HANDED_MODE] = settings.oneHandedMode
                 prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = settings.bottomBarCleanModeEnabled
                 prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = settings.bottomBarAutoHideEnabled

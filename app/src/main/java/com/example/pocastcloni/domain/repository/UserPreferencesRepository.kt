@@ -33,6 +33,8 @@ interface UserPreferencesRepository {
 
     suspend fun updateShowMiniPlayerTimeOverlay(enabled: Boolean)
 
+    suspend fun updateTransparentMiniPlayer(enabled: Boolean)
+
     suspend fun updateOneHandedMode(enabled: Boolean)
 
     suspend fun updateBottomBarCleanModeEnabled(enabled: Boolean)

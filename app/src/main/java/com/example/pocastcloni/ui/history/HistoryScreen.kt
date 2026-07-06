@@ -31,12 +31,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.common.DateBucket
 import com.example.pocastcloni.ui.common.ListableEpisodeItem
+import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,16 +108,13 @@ fun HistoryScreen(
                 )
             } else {
                 val bottomPadding =
-                    remember(
-                        uiState.isPlayerVisible,
-                        uiState.navBarHeight,
-                        uiState.progressBarHeight
-                    ) {
-                        if (uiState.isPlayerVisible) {
-                            (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingSmall
-                        } else {
-                            Dimens.PaddingSmall
-                        }
+                    remember(uiState.isPlayerVisible, uiState.navBarHeight, uiState.progressBarHeight) {
+                        MiniPlayerLayoutDefaults.reservedBottomPadding(
+                            isPlayerVisible = uiState.isPlayerVisible,
+                            navBarHeight = uiState.navBarHeight,
+                            progressBarHeight = uiState.progressBarHeight,
+                            extraPadding = Dimens.PaddingSmall
+                        )
                     }
 
                 LazyColumn(

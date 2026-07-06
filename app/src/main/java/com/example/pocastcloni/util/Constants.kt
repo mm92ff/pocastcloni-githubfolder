@@ -150,6 +150,7 @@ object Constants {
         const val KEY_PROGRESS_BAR_HEIGHT = "progress_bar_height"
         const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
         const val KEY_SHOW_MINI_PLAYER_TIME_OVERLAY = "show_mini_player_time_overlay"
+        const val KEY_TRANSPARENT_MINI_PLAYER = "transparent_mini_player"
         const val KEY_ONE_HANDED_MODE = "one_handed_mode"
         const val KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED = "bottom_bar_clean_mode_enabled"
         const val KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED = "bottom_bar_auto_hide_enabled"
@@ -176,6 +177,7 @@ object Constants {
         const val DEFAULT_PROGRESS_BAR_HEIGHT = 30
         const val DEFAULT_NAV_BAR_HEIGHT = 80
         const val DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY = false
+        const val DEFAULT_TRANSPARENT_MINI_PLAYER = false
         const val DEFAULT_ONE_HANDED_MODE = false
         const val DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED = false
         const val DEFAULT_BOTTOM_BAR_AUTO_HIDE_ENABLED = false

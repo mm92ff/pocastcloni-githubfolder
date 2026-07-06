@@ -24,10 +24,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 
@@ -66,11 +66,12 @@ fun AddPodcastScreen(
                 uiState.navBarHeight,
                 uiState.progressBarHeight
             ) {
-                if (reserveSpaceForPlayer && uiState.isPlayerVisible) {
-                    (uiState.navBarHeight + uiState.progressBarHeight).dp + Dimens.PaddingMedium
-                } else {
-                    Dimens.Zero
-                }
+                MiniPlayerLayoutDefaults.reservedBottomPadding(
+                    isPlayerVisible = reserveSpaceForPlayer && uiState.isPlayerVisible,
+                    navBarHeight = uiState.navBarHeight,
+                    progressBarHeight = uiState.progressBarHeight,
+                    extraPadding = Dimens.Zero
+                )
             }
 
         Column(

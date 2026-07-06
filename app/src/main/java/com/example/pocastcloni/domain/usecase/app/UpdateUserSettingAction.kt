@@ -29,6 +29,8 @@ sealed interface UpdateUserSettingAction {
 
     data class ToggleMiniPlayerTimeOverlay(val enabled: Boolean) : UpdateUserSettingAction
 
+    data class ToggleTransparentMiniPlayer(val enabled: Boolean) : UpdateUserSettingAction
+
     data class ToggleOneHandedMode(val enabled: Boolean) : UpdateUserSettingAction
 
     data class ToggleBottomBarCleanMode(val enabled: Boolean) : UpdateUserSettingAction

@@ -21,6 +21,7 @@ internal object UserPreferenceKeys {
     val PROGRESS_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_PROGRESS_BAR_HEIGHT)
     val NAV_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_NAV_BAR_HEIGHT)
     val SHOW_MINI_PLAYER_TIME_OVERLAY = booleanPreferencesKey(Constants.Preferences.KEY_SHOW_MINI_PLAYER_TIME_OVERLAY)
+    val TRANSPARENT_MINI_PLAYER = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_MINI_PLAYER)
     val ONE_HANDED_MODE = booleanPreferencesKey(Constants.Preferences.KEY_ONE_HANDED_MODE)
     val BOTTOM_BAR_CLEAN_MODE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED)
     val BOTTOM_BAR_AUTO_HIDE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED)

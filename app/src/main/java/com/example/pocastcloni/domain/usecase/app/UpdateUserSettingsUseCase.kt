@@ -31,6 +31,7 @@ constructor(
                 is SetProgressBarHeight -> repository.updateProgressBarHeight(action.height)
                 is SetNavBarHeight -> repository.updateNavBarHeight(action.height)
                 is ToggleMiniPlayerTimeOverlay -> repository.updateShowMiniPlayerTimeOverlay(action.enabled)
+                is ToggleTransparentMiniPlayer -> repository.updateTransparentMiniPlayer(action.enabled)
                 is ToggleOneHandedMode -> repository.updateOneHandedMode(action.enabled)
                 is ToggleBottomBarCleanMode -> repository.updateBottomBarCleanModeEnabled(action.enabled)
                 is ToggleBottomBarAutoHide -> repository.updateBottomBarAutoHideEnabled(action.enabled)

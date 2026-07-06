@@ -190,6 +190,7 @@ class MainActivity : ComponentActivity() {
                                         progressBarHeight = uiState.userSettings.progressBarHeight.dp,
                                         navBarHeight = uiState.userSettings.navBarHeight.dp,
                                         showMiniPlayerTimeOverlay = uiState.userSettings.showMiniPlayerTimeOverlay,
+                                        transparentMiniPlayer = uiState.userSettings.transparentMiniPlayer,
                                         modifier = Modifier.align(Alignment.BottomCenter),
                                         onNavigateToPodcastDetail = onNavigateToPodcastDetail,
                                         suppress = suppressMiniPlayer

@@ -54,6 +54,7 @@ import com.example.pocastcloni.ui.common.ReorderableLazyVerticalGrid
 import com.example.pocastcloni.ui.home.common.PodcastGridItem
 import com.example.pocastcloni.ui.home.common.PodcastIndicatorStyle
 import com.example.pocastcloni.ui.home.common.PodcastItem
+import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 import kotlinx.collections.immutable.ImmutableList
@@ -319,11 +320,12 @@ fun PodcastListContent(
     }
 
     val bottomPadding =
-        if (isPlayerVisible) {
-            (navBarHeight + progressBarHeight).dp + Dimens.PaddingLarge
-        } else {
-            Dimens.PaddingLarge
-        }
+        MiniPlayerLayoutDefaults.reservedBottomPadding(
+            isPlayerVisible = isPlayerVisible,
+            navBarHeight = navBarHeight,
+            progressBarHeight = progressBarHeight,
+            extraPadding = Dimens.PaddingLarge
+        )
 
     val contentPadding =
         PaddingValues(

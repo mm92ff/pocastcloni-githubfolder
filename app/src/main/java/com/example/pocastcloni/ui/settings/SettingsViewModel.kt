@@ -242,6 +242,7 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
         progressBarHeight = progressBarHeight,
         navBarHeight = navBarHeight,
         showMiniPlayerTimeOverlay = showMiniPlayerTimeOverlay,
+        transparentMiniPlayer = transparentMiniPlayer,
         oneHandedMode = oneHandedMode,
         bottomBarCleanModeEnabled = bottomBarCleanModeEnabled,
         bottomBarAutoHideEnabled = bottomBarAutoHideEnabled,

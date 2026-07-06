@@ -30,10 +30,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 
@@ -117,11 +117,12 @@ fun PodcastDetailScreen(
                 val settings = state.appSettings
 
                 val bottomPadding =
-                    if (playerState.isPlayerVisible) {
-                        Dimens.MiniPlayerImageSize + (Dimens.PaddingMedium * 2) + settings.progressBarHeight.dp
-                    } else {
-                        Dimens.Zero
-                    }
+                    MiniPlayerLayoutDefaults.reservedBottomPadding(
+                        isPlayerVisible = playerState.isPlayerVisible,
+                        navBarHeight = settings.navBarHeight,
+                        progressBarHeight = settings.progressBarHeight,
+                        extraPadding = Dimens.Zero
+                    )
 
                 // Read once to avoid redundant lookups inside each item
                 val playingGuid = playerState.currentPlayingGuid

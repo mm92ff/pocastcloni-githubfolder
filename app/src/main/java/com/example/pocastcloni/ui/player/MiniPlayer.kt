@@ -1,5 +1,6 @@
 package com.example.pocastcloni.ui.player
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,27 +53,60 @@ fun MiniPlayer(
     onEvent: (PlayerScreenEvent) -> Unit,
     progressBarHeight: Dp,
     showTimeOverlay: Boolean,
+    transparentBackground: Boolean,
     modifier: Modifier = Modifier,
     onCoverClick: () -> Unit,
     onExpand: () -> Unit
 ) {
+    val cardShape = RoundedCornerShape(Dimens.RoundedCornerLarge)
+    val containerColor =
+        if (transparentBackground) {
+            Color.Transparent
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        }
+    val contentColor =
+        if (transparentBackground) {
+            MaterialTheme.colorScheme.onBackground
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+    val cardElevation =
+        if (transparentBackground) {
+            Dimens.Zero
+        } else {
+            Dimens.MiniPlayerElevation
+        }
+
     Card(
         modifier =
         modifier
             .fillMaxWidth()
             .padding(Dimens.PaddingVerySmall)
             .clickable(onClick = onExpand),
-        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.MiniPlayerElevation),
+        shape = cardShape,
+        border =
+        if (transparentBackground) {
+            BorderStroke(
+                MiniPlayerLayoutDefaults.BorderWidth,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f)
+            )
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
         colors =
         CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = containerColor,
+            contentColor = contentColor
         )
     ) {
         Column {
             MiniPlayerContent(
                 playerState = playerState,
                 onEvent = onEvent,
-                onCoverClick = onCoverClick
+                onCoverClick = onCoverClick,
+                transparentBackground = transparentBackground
             )
 
             // OPTIMIZED PROGRESS BAR
@@ -80,6 +115,7 @@ fun MiniPlayer(
                 isPlaying = playerState.isPlaying, // Required for interpolation
                 progressBarHeight = progressBarHeight,
                 showTimeOverlay = showTimeOverlay,
+                transparentBackground = transparentBackground,
                 onSeek = { onEvent(PlayerScreenEvent.SeekTo(it)) },
                 onSeekStart = { onEvent(PlayerScreenEvent.SeekStarted) },
                 onSeekEnd = { onEvent(PlayerScreenEvent.SeekFinished) },
@@ -95,6 +131,7 @@ private fun MiniPlayerProgressBar(
     isPlaying: Boolean,
     progressBarHeight: Dp,
     showTimeOverlay: Boolean,
+    transparentBackground: Boolean,
     onSeek: (Long) -> Unit,
     onSeekStart: () -> Unit,
     onSeekEnd: () -> Unit,
@@ -140,6 +177,7 @@ private fun MiniPlayerProgressBar(
             if (showTimeOverlay) {
                 MiniPlayerTimeOverlay(
                     playbackStateFlow = playbackStateFlow,
+                    transparentBackground = transparentBackground,
                     modifier = Modifier.matchParentSize()
                 )
             }
@@ -155,6 +193,7 @@ private data class MiniPlayerTimeSeconds(
 @Composable
 private fun MiniPlayerTimeOverlay(
     playbackStateFlow: StateFlow<PlaybackState>,
+    transparentBackground: Boolean,
     modifier: Modifier = Modifier
 ) {
     val secondsFlow =
@@ -183,17 +222,31 @@ private fun MiniPlayerTimeOverlay(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MiniPlayerTimeLabel(text = formatTime(seconds.positionSec * 1000L))
-        MiniPlayerTimeLabel(text = formatTime(seconds.durationSec * 1000L))
+        MiniPlayerTimeLabel(
+            text = formatTime(seconds.positionSec * 1000L),
+            transparentBackground = transparentBackground
+        )
+        MiniPlayerTimeLabel(
+            text = formatTime(seconds.durationSec * 1000L),
+            transparentBackground = transparentBackground
+        )
     }
 }
 
 @Composable
-private fun MiniPlayerTimeLabel(text: String) {
+private fun MiniPlayerTimeLabel(
+    text: String,
+    transparentBackground: Boolean
+) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurface,
+        color =
+        if (transparentBackground) {
+            MaterialTheme.colorScheme.onBackground
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
         maxLines = TEXT_MAX_LINES,
         softWrap = false,
         overflow = TextOverflow.Clip
@@ -204,7 +257,8 @@ private fun MiniPlayerTimeLabel(text: String) {
 private fun MiniPlayerContent(
     playerState: PlayerUiState,
     onEvent: (PlayerScreenEvent) -> Unit,
-    onCoverClick: () -> Unit
+    onCoverClick: () -> Unit,
+    transparentBackground: Boolean
 ) {
     Row(
         modifier =
@@ -232,13 +286,19 @@ private fun MiniPlayerContent(
             Text(
                 text = playerState.currentEpisodeTitle,
                 style = MaterialTheme.typography.bodyMedium,
+                color = if (transparentBackground) MaterialTheme.colorScheme.onBackground else Color.Unspecified,
                 maxLines = TEXT_MAX_LINES,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = playerState.currentEpisodeSubtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color =
+                if (transparentBackground) {
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 maxLines = TEXT_MAX_LINES,
                 overflow = TextOverflow.Ellipsis
             )

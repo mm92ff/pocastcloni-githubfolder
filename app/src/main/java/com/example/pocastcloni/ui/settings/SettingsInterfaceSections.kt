@@ -176,9 +176,11 @@ fun SectionInterface(
 fun SectionPlayback(
     markPlayedDurationSeconds: Int,
     showMiniPlayerTimeOverlay: Boolean,
+    transparentMiniPlayer: Boolean,
     bufferMode: BufferMode,
     onSetMarkPlayedDuration: (Int) -> Unit,
     onToggleMiniPlayerTimeOverlay: (Boolean) -> Unit,
+    onToggleTransparentMiniPlayer: (Boolean) -> Unit,
     onSetBufferMode: (BufferMode) -> Unit
 ) {
     Text(
@@ -211,6 +213,15 @@ fun SectionPlayback(
         subtitle = stringResource(R.string.settings_mini_player_time_overlay_subtitle),
         checked = showMiniPlayerTimeOverlay,
         onCheckedChange = onToggleMiniPlayerTimeOverlay
+    )
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
+    SettingsSwitchCard(
+        title = stringResource(R.string.settings_transparent_mini_player),
+        subtitle = stringResource(R.string.settings_transparent_mini_player_subtitle),
+        checked = transparentMiniPlayer,
+        onCheckedChange = onToggleTransparentMiniPlayer
     )
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))

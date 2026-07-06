@@ -58,6 +58,7 @@ internal fun Preferences.toUserSettings(): UserSettings {
         progressBarHeight = this[Keys.PROGRESS_BAR_HEIGHT] ?: defaultSettings.progressBarHeight,
         navBarHeight = this[Keys.NAV_BAR_HEIGHT] ?: defaultSettings.navBarHeight,
         showMiniPlayerTimeOverlay = this[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] ?: defaultSettings.showMiniPlayerTimeOverlay,
+        transparentMiniPlayer = this[Keys.TRANSPARENT_MINI_PLAYER] ?: defaultSettings.transparentMiniPlayer,
         oneHandedMode = this[Keys.ONE_HANDED_MODE] ?: defaultSettings.oneHandedMode,
         bottomBarCleanModeEnabled =
         this[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] ?: defaultSettings.bottomBarCleanModeEnabled,
