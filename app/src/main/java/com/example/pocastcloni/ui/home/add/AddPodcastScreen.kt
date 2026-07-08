@@ -128,6 +128,7 @@ private fun SearchSection(
         isSearching = uiState.isSearching,
         onSearchTriggered = viewModel::onSearchTriggered,
         searchError = uiState.searchError?.asString(),
+        transparentSearchBar = uiState.transparentSearchCards,
         keyboardController = keyboardController
     )
 }

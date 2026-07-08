@@ -1,6 +1,7 @@
 package com.example.pocastcloni.ui.home.add
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -58,8 +59,28 @@ fun SearchArea(
     isSearching: Boolean,
     onSearchTriggered: () -> Unit,
     searchError: String?,
+    transparentSearchBar: Boolean,
     keyboardController: SoftwareKeyboardController?
 ) {
+    val fieldContainerColor by TransparentSurfaceDefaults.animatedContainerColor(
+        transparent = transparentSearchBar,
+        filledColor = MaterialTheme.colorScheme.surfaceVariant,
+        label = "searchFieldContainerColor"
+    )
+    val fieldTextColor by TransparentSurfaceDefaults.animatedContentColor(
+        transparent = transparentSearchBar,
+        filledColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        label = "searchFieldTextColor"
+    )
+    val placeholderColor by TransparentSurfaceDefaults.animatedSecondaryTextColor(
+        transparent = transparentSearchBar,
+        label = "searchFieldPlaceholderColor"
+    )
+    val fieldBorder = TransparentSurfaceDefaults.border(
+        transparent = transparentSearchBar,
+        label = "searchFieldBorder"
+    )
+
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -73,7 +94,8 @@ fun SearchArea(
                 modifier =
                 Modifier
                     .weight(Constants.Weights.FULL)
-                    .heightIn(min = Dimens.SearchFieldMinHeight),
+                    .heightIn(min = Dimens.SearchFieldMinHeight)
+                    .border(fieldBorder, CircleShape),
                 singleLine = true,
                 shape = CircleShape,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -89,8 +111,15 @@ fun SearchArea(
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    focusedContainerColor = fieldContainerColor,
+                    unfocusedContainerColor = fieldContainerColor,
+                    disabledContainerColor = fieldContainerColor,
+                    focusedTextColor = fieldTextColor,
+                    unfocusedTextColor = fieldTextColor,
+                    disabledTextColor = fieldTextColor,
+                    focusedPlaceholderColor = placeholderColor,
+                    unfocusedPlaceholderColor = placeholderColor,
+                    disabledPlaceholderColor = placeholderColor
                 )
             )
 
