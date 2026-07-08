@@ -15,13 +15,11 @@ object MiniPlayerLayoutDefaults {
 
     fun reservedBottomPadding(
         isPlayerVisible: Boolean,
-        navBarHeight: Int,
         progressBarHeight: Int,
         extraPadding: Dp
     ): Dp {
         return if (isPlayerVisible) {
-            navBarHeight.dp +
-                collapsedHeight(progressBarHeight.dp) +
+            collapsedHeight(progressBarHeight.dp) +
                 extraPadding
         } else {
             extraPadding

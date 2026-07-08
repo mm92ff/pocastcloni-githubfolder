@@ -36,6 +36,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction
 import com.example.pocastcloni.ui.UiText
@@ -70,7 +71,6 @@ fun SettingsListContent(
     val bottomPadding =
         MiniPlayerLayoutDefaults.reservedBottomPadding(
             isPlayerVisible = isPlayerVisible,
-            navBarHeight = settings.navBarHeight,
             progressBarHeight = settings.progressBarHeight,
             extraPadding = Dimens.PaddingMedium
         )
@@ -138,8 +138,16 @@ private fun DesignSettingsContent(
         colorStrength = settings.colorStrength,
         gradientBackgroundEnabled = settings.gradientBackgroundEnabled,
         gradientBackgroundStrength = settings.gradientBackgroundStrength,
+        gradientBackgroundDirection = settings.gradientBackgroundDirection,
         transparentSearchCards = settings.transparentSearchCards,
+        transparentPodcastCards = settings.transparentPodcastCards,
         transparentEpisodeRows = settings.transparentEpisodeRows,
+        transparentBottomBar = settings.transparentBottomBar,
+        transparentMiniPlayer = settings.transparentMiniPlayer,
+        showMiniPlayerTimeOverlay = settings.showMiniPlayerTimeOverlay,
+        progressBarHeight = settings.progressBarHeight,
+        gridSize = settings.gridSize,
+        indicatorState = settings.indicator,
         onSetTheme =
         remember(onEvent) {
             {
@@ -175,18 +183,25 @@ private fun DesignSettingsContent(
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetGradientBackgroundStrength(strength)))
             }
         },
-        onToggleTransparentSearchCards =
+        onSetGradientBackgroundDirection =
         remember(onEvent) {
             {
-                    enabled: Boolean ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleTransparentSearchCards(enabled)))
+                    direction: GradientDirection ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetGradientBackgroundDirection(direction)))
             }
         },
-        onToggleTransparentEpisodeRows =
+        onToggleTransparentCardsAndRows =
         remember(onEvent) {
             {
                     enabled: Boolean ->
-                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleTransparentEpisodeRows(enabled)))
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleTransparentCardsAndRows(enabled)))
+            }
+        },
+        onToggleTransparentBottomBar =
+        remember(onEvent) {
+            {
+                    enabled: Boolean ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.ToggleTransparentBottomBar(enabled)))
             }
         }
     )
@@ -506,5 +521,9 @@ fun SettingsStatisticsSectionSmart(viewModel: SettingsStatisticsViewModel = hilt
 
 @Composable
 private fun Divider() {
-    HorizontalDivider(modifier = Modifier.padding(top = Dimens.PaddingLarge))
+    HorizontalDivider(
+        modifier = Modifier.padding(top = Dimens.PaddingMedium),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+        thickness = Dimens.ThicknessDefault
+    )
 }

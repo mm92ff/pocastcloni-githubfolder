@@ -1,6 +1,5 @@
 package com.example.pocastcloni.ui.player
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,11 +31,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.formatTime
 import kotlinx.coroutines.flow.StateFlow
@@ -60,17 +61,8 @@ fun MiniPlayer(
 ) {
     val cardShape = RoundedCornerShape(Dimens.RoundedCornerLarge)
     val containerColor =
-        if (transparentBackground) {
-            Color.Transparent
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
-        }
-    val contentColor =
-        if (transparentBackground) {
-            MaterialTheme.colorScheme.onBackground
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        }
+        TransparentSurfaceDefaults.containerColor(transparentBackground, MaterialTheme.colorScheme.surfaceVariant)
+    val contentColor = TransparentSurfaceDefaults.contentColor(transparentBackground, MaterialTheme.colorScheme.onSurface)
     val cardElevation =
         if (transparentBackground) {
             Dimens.Zero
@@ -85,15 +77,7 @@ fun MiniPlayer(
             .padding(Dimens.PaddingVerySmall)
             .clickable(onClick = onExpand),
         shape = cardShape,
-        border =
-        if (transparentBackground) {
-            BorderStroke(
-                MiniPlayerLayoutDefaults.BorderWidth,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f)
-            )
-        } else {
-            null
-        },
+        border = TransparentSurfaceDefaults.border(transparentBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
         colors =
         CardDefaults.cardColors(
@@ -171,6 +155,11 @@ private fun MiniPlayerProgressBar(
                 height = progressBarHeight,
                 color = MaterialTheme.colorScheme.primary,
                 onSeek = onSeekWrapped,
+                trackColor = if (transparentBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
+                bufferedColor =
+                TransparentSurfaceDefaults
+                    .secondaryTextColor(transparentBackground)
+                    .copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
                 onSeekStart = onSeekStart,
                 onSeekEnd = onSeekEnd
             )
@@ -264,7 +253,7 @@ private fun MiniPlayerContent(
         modifier =
         Modifier
             .fillMaxWidth()
-            .padding(Dimens.PaddingVerySmall),
+            .padding(horizontal = Dimens.PaddingVerySmall, vertical = Dimens.PaddingVerySmall),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // TODO: Replace android.R.drawable.ic_menu_gallery with a proper drawable resource from the project.
@@ -282,23 +271,27 @@ private fun MiniPlayerContent(
 
         Spacer(modifier = Modifier.width(Dimens.PaddingSmall))
 
-        Column(modifier = Modifier.weight(TEXT_COLUMN_WEIGHT)) {
+        Column(
+            modifier =
+            Modifier
+                .weight(TEXT_COLUMN_WEIGHT)
+                .padding(end = Dimens.PaddingVerySmall)
+        ) {
             Text(
                 text = playerState.currentEpisodeTitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (transparentBackground) MaterialTheme.colorScheme.onBackground else Color.Unspecified,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color =
+                TransparentSurfaceDefaults.contentColor(
+                    transparentBackground,
+                    MaterialTheme.colorScheme.onSurface
+                ),
                 maxLines = TEXT_MAX_LINES,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = playerState.currentEpisodeSubtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color =
-                if (transparentBackground) {
-                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                color = TransparentSurfaceDefaults.secondaryTextColor(transparentBackground),
                 maxLines = TEXT_MAX_LINES,
                 overflow = TextOverflow.Ellipsis
             )
@@ -308,7 +301,10 @@ private fun MiniPlayerContent(
             if (playerState.isBuffering) {
                 CircularProgressIndicator(modifier = Modifier.size(Dimens.MediumIconSize))
             } else {
-                IconButton(onClick = { onEvent(PlayerScreenEvent.TogglePlayPause) }) {
+                IconButton(
+                    onClick = { onEvent(PlayerScreenEvent.TogglePlayPause) },
+                    modifier = Modifier.size(Dimens.LargeIconSize)
+                ) {
                     Icon(
                         imageVector = if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = stringResource(if (playerState.isPlaying) R.string.desc_pause else R.string.desc_play),

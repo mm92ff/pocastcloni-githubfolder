@@ -88,7 +88,8 @@ class MainActivity : ComponentActivity() {
                 appColor = uiState.userSettings.appColor,
                 colorStrength = uiState.userSettings.colorStrength,
                 gradientBackgroundEnabled = uiState.userSettings.gradientBackgroundEnabled,
-                gradientBackgroundStrength = uiState.userSettings.gradientBackgroundStrength
+                gradientBackgroundStrength = uiState.userSettings.gradientBackgroundStrength,
+                gradientBackgroundDirection = uiState.userSettings.gradientBackgroundDirection
             ) {
                 when {
                     uiState.isLoading -> {

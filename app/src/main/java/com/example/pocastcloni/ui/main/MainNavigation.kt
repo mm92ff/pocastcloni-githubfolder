@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -87,7 +87,9 @@ internal fun Modifier.mainScreenSwipeNavigation(
 
                 if (change.changedToUpIgnoreConsumed()) break
 
-                val delta = change.positionChangeIgnoreConsumed()
+                val delta = change.positionChange()
+                if (delta.x == 0f && delta.y == 0f) continue
+
                 totalX += delta.x
                 totalY += delta.y
 

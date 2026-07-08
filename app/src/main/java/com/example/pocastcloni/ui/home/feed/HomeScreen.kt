@@ -244,9 +244,9 @@ fun HomeScreen(
                         isPlayerVisible = uiState.isPlayerVisible,
                         isEditMode = uiState.isEditMode,
                         selectedPodcastGuids = uiState.selectedPodcastGuids,
-                        navBarHeight = uiState.navBarHeight,
                         progressBarHeight = uiState.progressBarHeight,
                         showGridTitles = uiState.showGridTitles,
+                        transparentPodcastCards = uiState.transparentPodcastCards,
                         indicatorColorArgb = uiState.indicatorColorArgb,
                         indicatorSize = uiState.indicatorSize,
                         indicatorBorderWidth = uiState.indicatorBorderWidth,
@@ -279,8 +279,8 @@ fun PodcastListContent(
     isPlayerVisible: Boolean,
     isEditMode: Boolean,
     showGridTitles: Boolean,
+    transparentPodcastCards: Boolean,
     selectedPodcastGuids: ImmutableSet<String>,
-    navBarHeight: Int,
     progressBarHeight: Int,
     indicatorColorArgb: Long,
     indicatorSize: Int,
@@ -322,7 +322,6 @@ fun PodcastListContent(
     val bottomPadding =
         MiniPlayerLayoutDefaults.reservedBottomPadding(
             isPlayerVisible = isPlayerVisible,
-            navBarHeight = navBarHeight,
             progressBarHeight = progressBarHeight,
             extraPadding = Dimens.PaddingLarge
         )
@@ -395,7 +394,8 @@ fun PodcastListContent(
                     onClick = { onPodcastClick(podcast) },
                     onLongClick = null,
                     onDeleteClick = { },
-                    indicatorStyle = indicatorStyle
+                    indicatorStyle = indicatorStyle,
+                    transparentCard = transparentPodcastCards
                 )
             } else {
                 PodcastGridItem(

@@ -35,14 +35,13 @@ fun CustomProgressBar(
     color: Color,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    bufferedColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
     onSeekStart: (() -> Unit)? = null,
     onSeekEnd: (() -> Unit)? = null
 ) {
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(0f) }
-
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
-    val bufferedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA)
 
     Canvas(
         modifier =
@@ -98,22 +97,26 @@ fun CustomProgressBar(
         val visualProgress = if (isDragging) dragProgress else currentProgress
 
         // Track
-        drawLine(
-            color = trackColor,
-            start = Offset(0f, yCenter),
-            end = Offset(size.width, yCenter),
-            strokeWidth = strokeWidth,
-            cap = StrokeCap.Round
-        )
+        if (trackColor.alpha > 0f) {
+            drawLine(
+                color = trackColor,
+                start = Offset(0f, yCenter),
+                end = Offset(size.width, yCenter),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
+        }
 
         // Buffered
-        drawLine(
-            color = bufferedColor,
-            start = Offset(0f, yCenter),
-            end = Offset(size.width * bufferedProgress, yCenter),
-            strokeWidth = strokeWidth,
-            cap = StrokeCap.Round
-        )
+        if (bufferedColor.alpha > 0f && bufferedProgress > 0f) {
+            drawLine(
+                color = bufferedColor,
+                start = Offset(0f, yCenter),
+                end = Offset(size.width * bufferedProgress, yCenter),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
+        }
 
         // Current / Drag
         drawLine(
@@ -138,6 +141,8 @@ fun CustomProgressBar(
     color: Color,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    bufferedColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
     onSeekStart: (() -> Unit)? = null,
     onSeekEnd: (() -> Unit)? = null
 ) {
@@ -153,6 +158,8 @@ fun CustomProgressBar(
         color = color,
         onSeek = onSeek,
         modifier = modifier,
+        trackColor = trackColor,
+        bufferedColor = bufferedColor,
         onSeekStart = onSeekStart,
         onSeekEnd = onSeekEnd
     )

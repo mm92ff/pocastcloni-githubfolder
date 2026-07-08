@@ -8,6 +8,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
@@ -16,6 +19,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.domain.model.GradientDirection
 import kotlin.math.max
 
 // --- COLOR MATH HELPERS ---
@@ -56,6 +60,92 @@ fun gradientBackgroundBottomColor(
     )
 }
 
+fun gradientBackgroundColors(
+    appColor: AppColor,
+    darkTheme: Boolean,
+    strength: Float
+): List<Color> =
+    listOf(
+        if (darkTheme) Color.Black else Color.White,
+        gradientBackgroundBottomColor(
+            appColor = appColor,
+            darkTheme = darkTheme,
+            strength = strength
+        )
+    )
+
+fun gradientBackgroundBrush(
+    appColor: AppColor,
+    darkTheme: Boolean,
+    strength: Float,
+    direction: GradientDirection,
+    rootSize: Size,
+    offsetInRoot: Offset = Offset.Zero
+): Brush {
+    val safeSize =
+        Size(
+            width = rootSize.width.coerceAtLeast(1f),
+            height = rootSize.height.coerceAtLeast(1f)
+        )
+    val (start, end) = gradientDirectionOffsets(direction, safeSize)
+    return Brush.linearGradient(
+        colors = gradientBackgroundColors(appColor, darkTheme, strength),
+        start = start - offsetInRoot,
+        end = end - offsetInRoot
+    )
+}
+
+fun gradientBackgroundSystemBarColor(
+    appColor: AppColor,
+    darkTheme: Boolean,
+    strength: Float,
+    direction: GradientDirection,
+    topEdge: Boolean
+): Color {
+    val colors = gradientBackgroundColors(appColor, darkTheme, strength)
+    val fraction =
+        when (direction) {
+            GradientDirection.TOP_TO_BOTTOM -> if (topEdge) 0f else 1f
+            GradientDirection.BOTTOM_TO_TOP -> if (topEdge) 1f else 0f
+            GradientDirection.LEFT_TO_RIGHT,
+            GradientDirection.RIGHT_TO_LEFT -> 0.5f
+            GradientDirection.TOP_LEFT_TO_BOTTOM_RIGHT,
+            GradientDirection.TOP_RIGHT_TO_BOTTOM_LEFT -> if (topEdge) 0.25f else 0.75f
+            GradientDirection.BOTTOM_RIGHT_TO_TOP_LEFT,
+            GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT -> if (topEdge) 0.75f else 0.25f
+        }
+    return Color(
+        ColorUtils.blendARGB(
+            colors.first().toArgb(),
+            colors.last().toArgb(),
+            fraction
+        )
+    )
+}
+
+private fun gradientDirectionOffsets(
+    direction: GradientDirection,
+    size: Size
+): Pair<Offset, Offset> {
+    val left = 0f
+    val top = 0f
+    val right = size.width
+    val bottom = size.height
+    val centerX = size.width / 2f
+    val centerY = size.height / 2f
+
+    return when (direction) {
+        GradientDirection.TOP_TO_BOTTOM -> Offset(centerX, top) to Offset(centerX, bottom)
+        GradientDirection.BOTTOM_TO_TOP -> Offset(centerX, bottom) to Offset(centerX, top)
+        GradientDirection.LEFT_TO_RIGHT -> Offset(left, centerY) to Offset(right, centerY)
+        GradientDirection.RIGHT_TO_LEFT -> Offset(right, centerY) to Offset(left, centerY)
+        GradientDirection.TOP_LEFT_TO_BOTTOM_RIGHT -> Offset(left, top) to Offset(right, bottom)
+        GradientDirection.BOTTOM_RIGHT_TO_TOP_LEFT -> Offset(right, bottom) to Offset(left, top)
+        GradientDirection.TOP_RIGHT_TO_BOTTOM_LEFT -> Offset(right, top) to Offset(left, bottom)
+        GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT -> Offset(left, bottom) to Offset(right, top)
+    }
+}
+
 // --- THEME ---
 
 @Composable
@@ -73,6 +163,7 @@ fun PocastCloniTheme(
     colorStrength: Float = 0.1f, // Default to a subtle tint
     gradientBackgroundEnabled: Boolean = false,
     gradientBackgroundStrength: Float = 1.0f,
+    gradientBackgroundDirection: GradientDirection = GradientDirection.TOP_TO_BOTTOM,
     content: @Composable () -> Unit
 ) {
     val darkTheme = isPocastCloniDarkTheme(appTheme)
@@ -127,16 +218,24 @@ fun PocastCloniTheme(
             activity?.window?.let { window ->
                 val statusBarColor =
                     if (gradientBackgroundEnabled) {
-                        if (darkTheme) Color.Black.toArgb() else Color.White.toArgb()
+                        gradientBackgroundSystemBarColor(
+                            appColor = appColor,
+                            darkTheme = darkTheme,
+                            strength = gradientBackgroundStrength,
+                            direction = gradientBackgroundDirection,
+                            topEdge = true
+                        ).toArgb()
                     } else {
                         colorScheme.background.toArgb()
                     }
                 val navigationBarColor =
                     if (gradientBackgroundEnabled) {
-                        gradientBackgroundBottomColor(
+                        gradientBackgroundSystemBarColor(
                             appColor = appColor,
                             darkTheme = darkTheme,
-                            strength = gradientBackgroundStrength
+                            strength = gradientBackgroundStrength,
+                            direction = gradientBackgroundDirection,
+                            topEdge = false
                         ).toArgb()
                     } else {
                         colorScheme.background.toArgb()
@@ -151,10 +250,12 @@ fun PocastCloniTheme(
                     isAppearanceLightStatusBars = !darkTheme
                     isAppearanceLightNavigationBars =
                         if (gradientBackgroundEnabled) {
-                            gradientBackgroundBottomColor(
+                            gradientBackgroundSystemBarColor(
                                 appColor = appColor,
                                 darkTheme = darkTheme,
-                                strength = gradientBackgroundStrength
+                                strength = gradientBackgroundStrength,
+                                direction = gradientBackgroundDirection,
+                                topEdge = false
                             ).luminance() > 0.5f
                         } else {
                             !darkTheme

@@ -98,10 +98,9 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
             }
         } else {
             val bottomPadding =
-                remember(uiState.isPlayerVisible, uiState.navBarHeight, uiState.progressBarHeight) {
+                remember(uiState.isPlayerVisible, uiState.progressBarHeight) {
                     MiniPlayerLayoutDefaults.reservedBottomPadding(
                         isPlayerVisible = uiState.isPlayerVisible,
-                        navBarHeight = uiState.navBarHeight,
                         progressBarHeight = uiState.progressBarHeight,
                         extraPadding = Dimens.PaddingLarge
                     )

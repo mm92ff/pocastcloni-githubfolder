@@ -22,6 +22,7 @@ internal object UserPreferenceKeys {
     val NAV_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_NAV_BAR_HEIGHT)
     val SHOW_MINI_PLAYER_TIME_OVERLAY = booleanPreferencesKey(Constants.Preferences.KEY_SHOW_MINI_PLAYER_TIME_OVERLAY)
     val TRANSPARENT_MINI_PLAYER = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_MINI_PLAYER)
+    val TRANSPARENT_BOTTOM_BAR = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_BOTTOM_BAR)
     val ONE_HANDED_MODE = booleanPreferencesKey(Constants.Preferences.KEY_ONE_HANDED_MODE)
     val BOTTOM_BAR_CLEAN_MODE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED)
     val BOTTOM_BAR_AUTO_HIDE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED)
@@ -29,7 +30,9 @@ internal object UserPreferenceKeys {
         intPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS)
     val GRADIENT_BACKGROUND_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_ENABLED)
     val GRADIENT_BACKGROUND_STRENGTH = floatPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_STRENGTH)
+    val GRADIENT_BACKGROUND_DIRECTION = stringPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_DIRECTION)
     val TRANSPARENT_SEARCH_CARDS = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_SEARCH_CARDS)
+    val TRANSPARENT_PODCAST_CARDS = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_PODCAST_CARDS)
     val TRANSPARENT_EPISODE_ROWS = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_EPISODE_ROWS)
 
     val AUTO_DOWNLOAD_LIMIT = intPreferencesKey(Constants.Preferences.KEY_AUTO_DOWNLOAD_LIMIT)

@@ -2,6 +2,7 @@ package com.example.pocastcloni.ui.home.common
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,6 +47,7 @@ import coil.request.ImageRequest
 import coil.size.Precision
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
 import com.example.pocastcloni.ui.home.feed.IndicatorCutout
 import com.example.pocastcloni.ui.home.feed.IndicatorDot
 import com.example.pocastcloni.ui.theme.Dimens
@@ -129,18 +131,46 @@ fun PodcastItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onDeleteClick: () -> Unit,
-    indicatorStyle: PodcastIndicatorStyle
+    indicatorStyle: PodcastIndicatorStyle,
+    transparentCard: Boolean = false
 ) {
     val animatedPadding by animateDpAsState(
         targetValue = if (isSelected) Dimens.Zero else Dimens.PaddingTiny,
         label = "padding"
     )
 
-    val targetContainerColor = if (isSelected) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    val targetContainerColor =
+        when {
+            transparentCard -> TransparentSurfaceDefaults.containerColor(true, MaterialTheme.colorScheme.surfaceVariant)
+            isSelected -> MaterialTheme.colorScheme.tertiaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        }
     val containerColor by animateColorAsState(targetContainerColor, label = "color")
-    val contentColor = if (isSelected) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val contentColor =
+        when {
+            transparentCard -> TransparentSurfaceDefaults.contentColor(true, MaterialTheme.colorScheme.onSurfaceVariant)
+            isSelected -> MaterialTheme.colorScheme.onTertiaryContainer
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    val borderColor =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            TransparentSurfaceDefaults.borderColor()
+        }
+    val borderStroke =
+        if (transparentCard) {
+            BorderStroke(Dimens.BorderWidthDefault, borderColor)
+        } else {
+            null
+        }
 
-    val elevation = if (isSelected) Dimens.PaddingSix else Dimens.CardElevation
+    val elevation =
+        when {
+            transparentCard -> TransparentSurfaceDefaults.elevation(true, Dimens.CardElevation)
+            isSelected -> Dimens.PaddingSix
+            else -> Dimens.CardElevation
+        }
     val alpha = if (isEditMode && !isSelected) Constants.UI.EDIT_MODE_NON_SELECTED_ALPHA else 1f
 
     val clickableModifier =
@@ -170,6 +200,7 @@ fun PodcastItem(
                     .then(clickableModifier),
                 shape = RoundedCornerShape(Dimens.RoundedCornerLarge),
                 elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+                border = borderStroke,
                 colors =
                 CardDefaults.cardColors(
                     containerColor = containerColor,

@@ -50,12 +50,7 @@ fun SectionInterface(
     onSetNavBarHeight: (Int) -> Unit,
     onToggleConfirmDelete: (Boolean) -> Unit
 ) {
-    Text(
-        stringResource(R.string.settings_section_interface),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.settings_section_interface))
 
     SettingsCard {
         Text(stringResource(R.string.settings_layout_mode), style = MaterialTheme.typography.titleMedium)
@@ -183,12 +178,7 @@ fun SectionPlayback(
     onToggleTransparentMiniPlayer: (Boolean) -> Unit,
     onSetBufferMode: (BufferMode) -> Unit
 ) {
-    Text(
-        stringResource(R.string.settings_section_playback),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.settings_section_playback))
 
     SettingsSliderCard(
         title = stringResource(R.string.settings_mark_as_played_after),

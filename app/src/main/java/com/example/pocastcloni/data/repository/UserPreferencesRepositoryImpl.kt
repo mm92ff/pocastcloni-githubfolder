@@ -10,6 +10,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -140,6 +141,14 @@ constructor(
         }
     }
 
+    override suspend fun updateTransparentBottomBar(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.TRANSPARENT_BOTTOM_BAR] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist transparent bottom bar preference")
+        }
+    }
+
     override suspend fun updateOneHandedMode(enabled: Boolean) {
         try {
             context.dataStore.edit { it[Keys.ONE_HANDED_MODE] = enabled }
@@ -188,6 +197,14 @@ constructor(
         }
     }
 
+    override suspend fun updateGradientBackgroundDirection(direction: GradientDirection) {
+        try {
+            context.dataStore.edit { it[Keys.GRADIENT_BACKGROUND_DIRECTION] = direction.name }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist gradient background direction preference")
+        }
+    }
+
     override suspend fun updateTransparentSearchCards(enabled: Boolean) {
         try {
             context.dataStore.edit { it[Keys.TRANSPARENT_SEARCH_CARDS] = enabled }
@@ -196,11 +213,31 @@ constructor(
         }
     }
 
+    override suspend fun updateTransparentPodcastCards(enabled: Boolean) {
+        try {
+            context.dataStore.edit { it[Keys.TRANSPARENT_PODCAST_CARDS] = enabled }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist transparent podcast cards preference")
+        }
+    }
+
     override suspend fun updateTransparentEpisodeRows(enabled: Boolean) {
         try {
             context.dataStore.edit { it[Keys.TRANSPARENT_EPISODE_ROWS] = enabled }
         } catch (e: IOException) {
             Timber.e(e, "Failed to persist transparent episode rows preference")
+        }
+    }
+
+    override suspend fun updateTransparentCardsAndRows(enabled: Boolean) {
+        try {
+            context.dataStore.edit {
+                it[Keys.TRANSPARENT_SEARCH_CARDS] = enabled
+                it[Keys.TRANSPARENT_PODCAST_CARDS] = enabled
+                it[Keys.TRANSPARENT_EPISODE_ROWS] = enabled
+            }
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist transparent cards and rows preference")
         }
     }
 
@@ -341,13 +378,16 @@ constructor(
                 prefs[Keys.NAV_BAR_HEIGHT] = settings.navBarHeight
                 prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = settings.showMiniPlayerTimeOverlay
                 prefs[Keys.TRANSPARENT_MINI_PLAYER] = settings.transparentMiniPlayer
+                prefs[Keys.TRANSPARENT_BOTTOM_BAR] = settings.transparentBottomBar
                 prefs[Keys.ONE_HANDED_MODE] = settings.oneHandedMode
                 prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = settings.bottomBarCleanModeEnabled
                 prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = settings.bottomBarAutoHideEnabled
                 prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = settings.bottomBarAutoHideDelaySeconds
                 prefs[Keys.GRADIENT_BACKGROUND_ENABLED] = settings.gradientBackgroundEnabled
                 prefs[Keys.GRADIENT_BACKGROUND_STRENGTH] = settings.gradientBackgroundStrength
+                prefs[Keys.GRADIENT_BACKGROUND_DIRECTION] = settings.gradientBackgroundDirection.name
                 prefs[Keys.TRANSPARENT_SEARCH_CARDS] = settings.transparentSearchCards
+                prefs[Keys.TRANSPARENT_PODCAST_CARDS] = settings.transparentPodcastCards
                 prefs[Keys.TRANSPARENT_EPISODE_ROWS] = settings.transparentEpisodeRows
 
                 prefs[Keys.AUTO_DOWNLOAD_LIMIT] = settings.autoDownloadLimit

@@ -1,7 +1,6 @@
 package com.example.pocastcloni.ui.home.add
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 import kotlinx.collections.immutable.ImmutableList
@@ -166,29 +166,22 @@ fun PodcastSearchItem(
     transparentCard: Boolean,
     onToggle: () -> Unit
 ) {
-    val textColor = if (transparentCard) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
-    val secondaryTextColor =
-        if (transparentCard) {
-            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        }
+    val textColor = TransparentSurfaceDefaults.contentColor(transparentCard, MaterialTheme.colorScheme.onSurface)
+    val secondaryTextColor = TransparentSurfaceDefaults.secondaryTextColor(transparentCard)
 
     Card(
         modifier =
         Modifier
             .fillMaxWidth()
             .padding(vertical = Dimens.SearchCardOuterPaddingVertical),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (transparentCard) Dimens.Zero else Dimens.CardElevation),
-        border =
-        if (transparentCard) {
-            BorderStroke(Dimens.BorderWidthDefault, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f))
-        } else {
-            null
-        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = TransparentSurfaceDefaults.elevation(transparentCard, Dimens.CardElevation)
+        ),
+        border = TransparentSurfaceDefaults.border(transparentCard),
         colors =
         CardDefaults.cardColors(
-            containerColor = if (transparentCard) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
+            containerColor =
+            TransparentSurfaceDefaults.containerColor(transparentCard, MaterialTheme.colorScheme.surfaceVariant),
             contentColor = textColor
         )
     ) {

@@ -36,12 +36,7 @@ fun SectionDownloads(
     onStartManualDownload: () -> Unit
 ) {
     val context = LocalContext.current
-    Text(
-        stringResource(R.string.settings_section_downloads_data),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.settings_section_downloads_data))
 
     SettingsSliderCard(
         title = stringResource(R.string.settings_auto_download_limit),
@@ -102,12 +97,7 @@ fun SectionDownloadLocation(
         "Android 9 and below: Files are saved to the public Downloads folder. Storage access will be requested."
     }
 
-    Text(
-        text = "Download Location",
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle("Download Location")
 
     SettingsSwitchCard(
         title = "Save to Downloads folder",
@@ -139,12 +129,7 @@ fun SectionCleanup(
     onSetCleanupKeepLimit: (Int) -> Unit,
     onSetCleanupIntervalHours: (Int) -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.settings_section_cleanup),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.settings_section_cleanup))
 
     SettingsSwitchCard(
         title = stringResource(R.string.settings_cleanup_enabled),

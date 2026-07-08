@@ -119,7 +119,6 @@ fun PodcastDetailScreen(
                 val bottomPadding =
                     MiniPlayerLayoutDefaults.reservedBottomPadding(
                         isPlayerVisible = playerState.isPlayerVisible,
-                        navBarHeight = settings.navBarHeight,
                         progressBarHeight = settings.progressBarHeight,
                         extraPadding = Dimens.Zero
                     )

@@ -5,6 +5,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction
 import com.example.pocastcloni.ui.UiText
@@ -85,13 +86,16 @@ sealed interface SettingsUiState {
         val navBarHeight: Int = 56,
         val showMiniPlayerTimeOverlay: Boolean = Constants.Preferences.DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY,
         val transparentMiniPlayer: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_MINI_PLAYER,
+        val transparentBottomBar: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_BOTTOM_BAR,
         val oneHandedMode: Boolean = false,
         val bottomBarCleanModeEnabled: Boolean = Constants.Preferences.DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED,
         val bottomBarAutoHideEnabled: Boolean = Constants.Preferences.DEFAULT_BOTTOM_BAR_AUTO_HIDE_ENABLED,
         val bottomBarAutoHideDelaySeconds: Int = Constants.Preferences.DEFAULT_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS,
         val gradientBackgroundEnabled: Boolean = Constants.Preferences.DEFAULT_GRADIENT_BACKGROUND_ENABLED,
         val gradientBackgroundStrength: Float = Constants.Preferences.DEFAULT_GRADIENT_BACKGROUND_STRENGTH,
+        val gradientBackgroundDirection: GradientDirection = GradientDirection.TOP_TO_BOTTOM,
         val transparentSearchCards: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_SEARCH_CARDS,
+        val transparentPodcastCards: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_PODCAST_CARDS,
         val transparentEpisodeRows: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_EPISODE_ROWS,
         val autoDownloadLimit: Int = 5,
         val autoRefreshOnStart: Boolean = true,

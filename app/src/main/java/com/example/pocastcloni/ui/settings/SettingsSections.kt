@@ -57,12 +57,7 @@ fun SectionAddPodcast(
     onAddClick: () -> Unit
 ) {
     val context = LocalContext.current
-    Text(
-        text = stringResource(R.string.title_add_podcast),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.title_add_podcast))
 
     SettingsCard {
         OutlinedTextField(
@@ -117,12 +112,7 @@ fun SectionAutomation(
     onSetBackgroundCheckInterval: (Int) -> Unit,
     onSetFeedUpdateMode: (FeedUpdateMode) -> Unit
 ) {
-    Text(
-        stringResource(R.string.settings_section_automation),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.settings_section_automation))
 
     SettingsSwitchCard(
         title = stringResource(R.string.settings_auto_refresh_on_start),
@@ -193,12 +183,7 @@ fun SectionBackup(
     onExport: () -> Unit,
     onImport: () -> Unit
 ) {
-    Text(
-        stringResource(R.string.settings_section_backup_restore),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.settings_section_backup_restore))
 
     SettingsCard(onClick = onExport) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -225,12 +210,7 @@ fun SectionStatistics(
     onResetStatistics: () -> Unit
 ) {
     val context = LocalContext.current
-    Text(
-        stringResource(R.string.settings_section_statistics),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.settings_section_statistics))
 
     SettingsCard {
         when (statsState) {

@@ -19,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,23 +48,9 @@ fun ListableEpisodeItem(
         }
 
     val primaryTextColor =
-        if (transparentBackground) {
-            MaterialTheme.colorScheme.onBackground
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        }
-    val secondaryTextColor =
-        if (transparentBackground) {
-            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        }
-    val rowBackground =
-        if (transparentBackground) {
-            Color.Transparent
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
+        TransparentSurfaceDefaults.contentColor(transparentBackground, MaterialTheme.colorScheme.onSurface)
+    val secondaryTextColor = TransparentSurfaceDefaults.secondaryTextColor(transparentBackground)
+    val rowBackground = TransparentSurfaceDefaults.containerColor(transparentBackground, MaterialTheme.colorScheme.surface)
 
     Column(
         modifier =
@@ -128,7 +113,7 @@ fun ListableEpisodeItem(
         }
         if (transparentBackground) {
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f),
+                color = TransparentSurfaceDefaults.dividerColor(),
                 thickness = Dimens.ThicknessDefault
             )
         }

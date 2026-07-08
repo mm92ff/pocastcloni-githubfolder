@@ -16,7 +16,8 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -25,7 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.toSize
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.ui.theme.Dimens
-import com.example.pocastcloni.ui.theme.gradientBackgroundBottomColor
+import com.example.pocastcloni.ui.theme.gradientBackgroundBrush
 import com.example.pocastcloni.ui.theme.isPocastCloniDarkTheme
 import kotlinx.coroutines.flow.StateFlow
 
@@ -126,21 +127,30 @@ private fun transparentMiniPlayerBackdropModifier(
         return Modifier
     }
 
+    var leftInRootPx by remember { mutableFloatStateOf(0f) }
     var topInRootPx by remember { mutableFloatStateOf(0f) }
+    var rootWidthPx by remember { mutableFloatStateOf(1f) }
     var rootHeightPx by remember { mutableFloatStateOf(1f) }
     val backgroundModifier =
         Modifier.onGloballyPositioned { coordinates ->
-            topInRootPx = coordinates.positionInRoot().y
-            rootHeightPx = coordinates.findRootCoordinates().size.toSize().height.coerceAtLeast(1f)
+            val positionInRoot = coordinates.positionInRoot()
+            val rootSize = coordinates.findRootCoordinates().size.toSize()
+            leftInRootPx = positionInRoot.x
+            topInRootPx = positionInRoot.y
+            rootWidthPx = rootSize.width.coerceAtLeast(1f)
+            rootHeightPx = rootSize.height.coerceAtLeast(1f)
         }
 
     return if (userSettings.gradientBackgroundEnabled) {
         backgroundModifier.background(
             brush =
-            Brush.verticalGradient(
-                colors = transparentMiniPlayerGradientColors(userSettings),
-                startY = -topInRootPx,
-                endY = rootHeightPx - topInRootPx
+            gradientBackgroundBrush(
+                appColor = userSettings.appColor,
+                darkTheme = isPocastCloniDarkTheme(userSettings.theme),
+                strength = userSettings.gradientBackgroundStrength,
+                direction = userSettings.gradientBackgroundDirection,
+                rootSize = Size(rootWidthPx, rootHeightPx),
+                offsetInRoot = Offset(leftInRootPx, topInRootPx)
             ),
             shape = shape
         )
@@ -150,17 +160,4 @@ private fun transparentMiniPlayerBackdropModifier(
             shape = shape
         )
     }
-}
-
-@Composable
-private fun transparentMiniPlayerGradientColors(userSettings: UserSettings): List<Color> {
-    val darkTheme = isPocastCloniDarkTheme(userSettings.theme)
-    return listOf(
-        if (darkTheme) Color.Black else Color.White,
-        gradientBackgroundBottomColor(
-            appColor = userSettings.appColor,
-            darkTheme = darkTheme,
-            strength = userSettings.gradientBackgroundStrength
-        )
-    )
 }

@@ -1,11 +1,15 @@
 package com.example.pocastcloni.ui.settings
 
+import androidx.annotation.StringRes
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,15 +33,47 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.Constants.SettingsDefaults
+
+private val GradientDirection.labelRes: Int
+    @StringRes
+    get() =
+        when (this) {
+            GradientDirection.TOP_TO_BOTTOM -> R.string.settings_gradient_direction_top_to_bottom
+            GradientDirection.BOTTOM_TO_TOP -> R.string.settings_gradient_direction_bottom_to_top
+            GradientDirection.LEFT_TO_RIGHT -> R.string.settings_gradient_direction_left_to_right
+            GradientDirection.RIGHT_TO_LEFT -> R.string.settings_gradient_direction_right_to_left
+            GradientDirection.TOP_LEFT_TO_BOTTOM_RIGHT -> R.string.settings_gradient_direction_top_left_to_bottom_right
+            GradientDirection.BOTTOM_RIGHT_TO_TOP_LEFT -> R.string.settings_gradient_direction_bottom_right_to_top_left
+            GradientDirection.TOP_RIGHT_TO_BOTTOM_LEFT -> R.string.settings_gradient_direction_top_right_to_bottom_left
+            GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT -> R.string.settings_gradient_direction_bottom_left_to_top_right
+        }
+
+private val GradientDirection.rotationDegrees: Float
+    get() =
+        when (this) {
+            GradientDirection.BOTTOM_TO_TOP -> 0f
+            GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT -> 45f
+            GradientDirection.LEFT_TO_RIGHT -> 90f
+            GradientDirection.TOP_LEFT_TO_BOTTOM_RIGHT -> 135f
+            GradientDirection.TOP_TO_BOTTOM -> 180f
+            GradientDirection.TOP_RIGHT_TO_BOTTOM_LEFT -> -135f
+            GradientDirection.RIGHT_TO_LEFT -> -90f
+            GradientDirection.BOTTOM_RIGHT_TO_TOP_LEFT -> -45f
+        }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -47,22 +83,28 @@ fun SectionAppearance(
     colorStrength: Float,
     gradientBackgroundEnabled: Boolean,
     gradientBackgroundStrength: Float,
+    gradientBackgroundDirection: GradientDirection,
     transparentSearchCards: Boolean,
+    transparentPodcastCards: Boolean,
     transparentEpisodeRows: Boolean,
+    transparentBottomBar: Boolean,
+    transparentMiniPlayer: Boolean,
+    showMiniPlayerTimeOverlay: Boolean,
+    progressBarHeight: Int,
+    gridSize: Int,
+    indicatorState: IndicatorSettingsUiState,
     onSetTheme: (AppTheme) -> Unit,
     onSetAppColor: (AppColor) -> Unit,
     onSetColorStrength: (Float) -> Unit,
     onToggleGradientBackground: (Boolean) -> Unit,
     onSetGradientBackgroundStrength: (Float) -> Unit,
-    onToggleTransparentSearchCards: (Boolean) -> Unit,
-    onToggleTransparentEpisodeRows: (Boolean) -> Unit
+    onSetGradientBackgroundDirection: (GradientDirection) -> Unit,
+    onToggleTransparentCardsAndRows: (Boolean) -> Unit,
+    onToggleTransparentBottomBar: (Boolean) -> Unit
 ) {
-    Text(
-        stringResource(R.string.settings_section_design),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    val transparentCardsAndRows = transparentSearchCards && transparentPodcastCards && transparentEpisodeRows
+
+    SettingsSectionTitle(stringResource(R.string.settings_section_design))
 
     SettingsCard {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -91,6 +133,23 @@ fun SectionAppearance(
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 
+    DesignPreviewCard(
+        appColor = appColor,
+        theme = theme,
+        gradientBackgroundEnabled = gradientBackgroundEnabled,
+        gradientBackgroundStrength = gradientBackgroundStrength,
+        gradientBackgroundDirection = gradientBackgroundDirection,
+        transparentCardsAndRows = transparentCardsAndRows,
+        transparentBottomBar = transparentBottomBar,
+        transparentMiniPlayer = transparentMiniPlayer,
+        showMiniPlayerTimeOverlay = showMiniPlayerTimeOverlay,
+        progressBarHeight = progressBarHeight,
+        gridSize = gridSize,
+        indicatorState = indicatorState
+    )
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
     SettingsSwitchCard(
         title = stringResource(R.string.settings_gradient_background),
         subtitle = stringResource(R.string.settings_gradient_background_subtitle),
@@ -111,22 +170,44 @@ fun SectionAppearance(
         )
 
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
+        SettingsCard {
+            Text(stringResource(R.string.settings_gradient_direction), style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(Dimens.PaddingSmall))
+
+            GradientDirectionPicker(
+                selectedDirection = gradientBackgroundDirection,
+                onDirectionSelected = onSetGradientBackgroundDirection
+            )
+
+            Spacer(modifier = Modifier.height(Dimens.PaddingSmall))
+
+            Text(
+                text = stringResource(gradientBackgroundDirection.labelRes),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+
+        Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
     }
 
     SettingsSwitchCard(
-        title = stringResource(R.string.settings_transparent_search_cards),
-        subtitle = stringResource(R.string.settings_transparent_search_cards_subtitle),
-        checked = transparentSearchCards,
-        onCheckedChange = onToggleTransparentSearchCards
+        title = stringResource(R.string.settings_transparent_cards_rows),
+        subtitle = stringResource(R.string.settings_transparent_cards_rows_subtitle),
+        checked = transparentCardsAndRows,
+        onCheckedChange = onToggleTransparentCardsAndRows
     )
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 
     SettingsSwitchCard(
-        title = stringResource(R.string.settings_transparent_episode_rows),
-        subtitle = stringResource(R.string.settings_transparent_episode_rows_subtitle),
-        checked = transparentEpisodeRows,
-        onCheckedChange = onToggleTransparentEpisodeRows
+        title = stringResource(R.string.settings_transparent_bottom_bar),
+        subtitle = stringResource(R.string.settings_transparent_bottom_bar_subtitle),
+        checked = transparentBottomBar,
+        onCheckedChange = onToggleTransparentBottomBar
     )
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
@@ -153,6 +234,143 @@ fun SectionAppearance(
     }
 }
 
+@Composable
+private fun GradientDirectionPicker(
+    selectedDirection: GradientDirection,
+    onDirectionSelected: (GradientDirection) -> Unit
+) {
+    val grid =
+        listOf(
+            listOf(
+                GradientDirection.BOTTOM_RIGHT_TO_TOP_LEFT,
+                GradientDirection.BOTTOM_TO_TOP,
+                GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT
+            ),
+            listOf(
+                GradientDirection.RIGHT_TO_LEFT,
+                null,
+                GradientDirection.LEFT_TO_RIGHT
+            ),
+            listOf(
+                GradientDirection.TOP_RIGHT_TO_BOTTOM_LEFT,
+                GradientDirection.TOP_TO_BOTTOM,
+                GradientDirection.TOP_LEFT_TO_BOTTOM_RIGHT
+            )
+        )
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(GradientDirectionButtonGap)
+    ) {
+        grid.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(GradientDirectionButtonGap)) {
+                row.forEach { direction ->
+                    if (direction == null) {
+                        Box(modifier = Modifier.size(GradientDirectionButtonSize))
+                    } else {
+                        GradientDirectionButton(
+                            direction = direction,
+                            selected = selectedDirection == direction,
+                            onClick = { onDirectionSelected(direction) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GradientDirectionButton(
+    direction: GradientDirection,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(Dimens.RoundedCornerMedium)
+    val backgroundColor by animateColorAsState(
+        targetValue =
+        if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+        } else {
+            Color.Transparent
+        },
+        label = "gradientDirectionBackground"
+    )
+    val borderColor by animateColorAsState(
+        targetValue =
+        if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f)
+        },
+        label = "gradientDirectionBorder"
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+        label = "gradientDirectionIcon"
+    )
+
+    Box(
+        modifier =
+        Modifier
+            .size(GradientDirectionButtonSize)
+            .clip(shape)
+            .background(backgroundColor)
+            .border(Dimens.BorderWidthDefault, borderColor, shape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        DirectionArrowIcon(
+            rotationDegrees = direction.rotationDegrees,
+            color = iconColor
+        )
+    }
+}
+
+@Composable
+private fun DirectionArrowIcon(
+    rotationDegrees: Float,
+    color: Color
+) {
+    Canvas(modifier = Modifier.size(GradientDirectionArrowSize)) {
+        val strokeWidth = GradientDirectionArrowStrokeWidth.toPx()
+        val centerX = size.width / 2f
+        val start = Offset(centerX, size.height * 0.78f)
+        val end = Offset(centerX, size.height * 0.22f)
+        val headSize = size.width * 0.22f
+
+        rotate(degrees = rotationDegrees) {
+            drawLine(
+                color = color,
+                start = start,
+                end = end,
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = end,
+                end = Offset(end.x - headSize, end.y + headSize),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = end,
+                end = Offset(end.x + headSize, end.y + headSize),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+private val GradientDirectionButtonSize = 64.dp
+private val GradientDirectionButtonGap = 8.dp
+private val GradientDirectionArrowSize = 30.dp
+private val GradientDirectionArrowStrokeWidth = 2.4.dp
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SectionIndicator(
@@ -164,12 +382,7 @@ fun SectionIndicator(
     onXOffsetChange: (Int) -> Unit,
     onYOffsetChange: (Int) -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.settings_notification_dot),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingVerySmall)
-    )
+    SettingsSectionTitle(stringResource(R.string.settings_notification_dot))
 
     SettingsCard {
         Text(stringResource(R.string.settings_color), style = MaterialTheme.typography.titleMedium)

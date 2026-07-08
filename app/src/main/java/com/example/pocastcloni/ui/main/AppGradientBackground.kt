@@ -6,10 +6,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithCache
 import com.example.pocastcloni.domain.repository.UserSettings
-import com.example.pocastcloni.ui.theme.gradientBackgroundBottomColor
+import com.example.pocastcloni.ui.theme.gradientBackgroundBrush
 
 @Composable
 internal fun AppGradientBackground(
@@ -19,19 +18,17 @@ internal fun AppGradientBackground(
 ) {
     val backgroundModifier =
         if (userSettings.gradientBackgroundEnabled) {
-            Modifier.background(
-                Brush.verticalGradient(
-                    colors =
-                    listOf(
-                        if (darkTheme) Color.Black else Color.White,
-                        gradientBackgroundBottomColor(
-                            appColor = userSettings.appColor,
-                            darkTheme = darkTheme,
-                            strength = userSettings.gradientBackgroundStrength
-                        )
+            Modifier.drawWithCache {
+                val brush =
+                    gradientBackgroundBrush(
+                        appColor = userSettings.appColor,
+                        darkTheme = darkTheme,
+                        strength = userSettings.gradientBackgroundStrength,
+                        direction = userSettings.gradientBackgroundDirection,
+                        rootSize = size
                     )
-                )
-            )
+                onDrawBehind { drawRect(brush) }
+            }
         } else {
             Modifier.background(MaterialTheme.colorScheme.background)
         }

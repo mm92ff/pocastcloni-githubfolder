@@ -63,12 +63,10 @@ fun AddPodcastScreen(
             remember(
                 reserveSpaceForPlayer,
                 uiState.isPlayerVisible,
-                uiState.navBarHeight,
                 uiState.progressBarHeight
             ) {
                 MiniPlayerLayoutDefaults.reservedBottomPadding(
                     isPlayerVisible = reserveSpaceForPlayer && uiState.isPlayerVisible,
-                    navBarHeight = uiState.navBarHeight,
                     progressBarHeight = uiState.progressBarHeight,
                     extraPadding = Dimens.Zero
                 )

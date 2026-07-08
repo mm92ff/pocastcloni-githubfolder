@@ -1,7 +1,6 @@
 package com.example.pocastcloni.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 import kotlin.math.roundToInt
@@ -49,33 +49,34 @@ import kotlin.math.roundToInt
 internal val LocalTransparentSettingsCards = compositionLocalOf { false }
 
 @Composable
+fun SettingsSectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.88f),
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(start = Dimens.PaddingTiny, bottom = Dimens.PaddingTiny)
+    )
+}
+
+@Composable
 fun SettingsCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val transparent = LocalTransparentSettingsCards.current
-    val contentColor =
-        if (transparent) {
-            MaterialTheme.colorScheme.onBackground
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        }
+    val contentColor = TransparentSurfaceDefaults.contentColor(transparent, MaterialTheme.colorScheme.onSurface)
 
     Card(
-        border =
-        if (transparent) {
-            BorderStroke(Dimens.BorderWidthDefault, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f))
-        } else {
-            null
-        },
+        border = TransparentSurfaceDefaults.border(transparent),
         colors =
         CardDefaults.cardColors(
             containerColor =
-            if (transparent) {
-                Color.Transparent
-            } else {
+            TransparentSurfaceDefaults.containerColor(
+                transparent = transparent,
+                filledColor =
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = Constants.UI.SETTINGS_CARD_ALPHA)
-            },
+            ),
             contentColor = contentColor
         ),
         shape = RoundedCornerShape(Dimens.RoundedCornerExtraLarge),
@@ -83,7 +84,7 @@ fun SettingsCard(
         Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.Zero)
+        elevation = CardDefaults.cardElevation(defaultElevation = TransparentSurfaceDefaults.elevation(transparent, Dimens.Zero))
     ) {
         Column(
             modifier = Modifier.padding(Dimens.PaddingSmall),

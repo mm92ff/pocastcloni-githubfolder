@@ -4,6 +4,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 
 sealed interface UpdateUserSettingAction {
@@ -31,6 +32,8 @@ sealed interface UpdateUserSettingAction {
 
     data class ToggleTransparentMiniPlayer(val enabled: Boolean) : UpdateUserSettingAction
 
+    data class ToggleTransparentBottomBar(val enabled: Boolean) : UpdateUserSettingAction
+
     data class ToggleOneHandedMode(val enabled: Boolean) : UpdateUserSettingAction
 
     data class ToggleBottomBarCleanMode(val enabled: Boolean) : UpdateUserSettingAction
@@ -43,9 +46,15 @@ sealed interface UpdateUserSettingAction {
 
     data class SetGradientBackgroundStrength(val strength: Float) : UpdateUserSettingAction
 
+    data class SetGradientBackgroundDirection(val direction: GradientDirection) : UpdateUserSettingAction
+
     data class ToggleTransparentSearchCards(val enabled: Boolean) : UpdateUserSettingAction
 
+    data class ToggleTransparentPodcastCards(val enabled: Boolean) : UpdateUserSettingAction
+
     data class ToggleTransparentEpisodeRows(val enabled: Boolean) : UpdateUserSettingAction
+
+    data class ToggleTransparentCardsAndRows(val enabled: Boolean) : UpdateUserSettingAction
 
     data class SetAutoDownloadLimit(val limit: Int) : UpdateUserSettingAction
 

@@ -17,6 +17,7 @@ data class HomeUiState(
     val layoutMode: LayoutMode = LayoutMode.GRID,
     val gridSize: Int = Constants.Preferences.DEFAULT_GRID_SIZE,
     val showGridTitles: Boolean = Constants.Preferences.DEFAULT_SHOW_GRID_TITLES,
+    val transparentPodcastCards: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_PODCAST_CARDS,
     val oneHandedMode: Boolean = Constants.Preferences.DEFAULT_ONE_HANDED_MODE,
     val isEditMode: Boolean = false,
     // Set instead of a single String to support multi-select

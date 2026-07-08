@@ -110,10 +110,9 @@ fun FavoritesScreen(
             } else {
                 // PERFORMANCE: cache the padding calculation
                 val bottomPadding =
-                    remember(uiState.isPlayerVisible, uiState.navBarHeight, uiState.progressBarHeight) {
+                    remember(uiState.isPlayerVisible, uiState.progressBarHeight) {
                         MiniPlayerLayoutDefaults.reservedBottomPadding(
                             isPlayerVisible = uiState.isPlayerVisible,
-                            navBarHeight = uiState.navBarHeight,
                             progressBarHeight = uiState.progressBarHeight,
                             extraPadding = Dimens.PaddingSmall
                         )

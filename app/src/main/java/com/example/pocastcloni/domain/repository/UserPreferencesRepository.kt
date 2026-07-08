@@ -4,6 +4,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import kotlinx.coroutines.flow.Flow
 
@@ -35,6 +36,8 @@ interface UserPreferencesRepository {
 
     suspend fun updateTransparentMiniPlayer(enabled: Boolean)
 
+    suspend fun updateTransparentBottomBar(enabled: Boolean)
+
     suspend fun updateOneHandedMode(enabled: Boolean)
 
     suspend fun updateBottomBarCleanModeEnabled(enabled: Boolean)
@@ -47,9 +50,15 @@ interface UserPreferencesRepository {
 
     suspend fun updateGradientBackgroundStrength(strength: Float)
 
+    suspend fun updateGradientBackgroundDirection(direction: GradientDirection)
+
     suspend fun updateTransparentSearchCards(enabled: Boolean)
 
+    suspend fun updateTransparentPodcastCards(enabled: Boolean)
+
     suspend fun updateTransparentEpisodeRows(enabled: Boolean)
+
+    suspend fun updateTransparentCardsAndRows(enabled: Boolean)
 
     suspend fun updateAutoDownloadLimit(limit: Int)
 

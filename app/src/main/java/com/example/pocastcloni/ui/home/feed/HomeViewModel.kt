@@ -171,6 +171,7 @@ constructor(
                     layoutMode = state.settings.layoutMode,
                     gridSize = state.settings.gridSize,
                     showGridTitles = state.settings.showGridTitles,
+                    transparentPodcastCards = state.settings.transparentPodcastCards,
                     oneHandedMode = state.settings.oneHandedMode,
                     isEditMode = state.editState.isEditMode,
                     selectedPodcastGuids = state.editState.selectedPodcastGuids,

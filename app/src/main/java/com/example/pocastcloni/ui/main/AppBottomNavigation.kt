@@ -1,5 +1,10 @@
 package com.example.pocastcloni.ui.main
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -10,7 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -71,7 +79,11 @@ internal fun CleanModeBottomBarHost(
         }
     }
 
-    if (bottomBarVisible) {
+    AnimatedVisibility(
+        visible = bottomBarVisible,
+        enter = slideInVertically { height -> height } + fadeIn(),
+        exit = slideOutVertically { height -> height } + fadeOut()
+    ) {
         AppBottomNavigation(
             navController = navController,
             userSettings = userSettings,
@@ -90,7 +102,13 @@ internal fun CleanModeBottomBarHost(
                 onSwipeDown = { bottomBarRevealed = false }
             )
         )
-    } else {
+    }
+
+    AnimatedVisibility(
+        visible = !bottomBarVisible,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
         BottomBarRevealHandle(
             modifier =
             Modifier
@@ -169,8 +187,20 @@ private fun AppBottomNavigation(
     onNavigationItemClicked: (Screen) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val transparentBottomBar = userSettings.transparentBottomBar
+    val transparentItemColors =
+        NavigationBarItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.onBackground,
+            selectedTextColor = MaterialTheme.colorScheme.onBackground,
+            indicatorColor = Color.Transparent,
+            unselectedIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f),
+            unselectedTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
+        )
+
     NavigationBar(
-        modifier = modifier.height(userSettings.navBarHeight.dp)
+        modifier = modifier.height(userSettings.navBarHeight.dp),
+        containerColor = if (transparentBottomBar) Color.Transparent else NavigationBarDefaults.containerColor,
+        tonalElevation = if (transparentBottomBar) 0.dp else NavigationBarDefaults.Elevation
     ) {
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = currentBackStackEntry?.destination
@@ -186,6 +216,12 @@ private fun AppBottomNavigation(
                 icon = { Icon(item.icon, stringResource(id = item.labelResId)) },
                 label = { Text(stringResource(id = item.labelResId)) },
                 selected = isSelected,
+                colors =
+                if (transparentBottomBar) {
+                    transparentItemColors
+                } else {
+                    NavigationBarItemDefaults.colors()
+                },
                 onClick = {
                     if (item.screen == Screen.Home) {
                         when (currentDestination?.route) {

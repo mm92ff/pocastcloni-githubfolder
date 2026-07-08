@@ -5,6 +5,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -45,6 +46,14 @@ internal fun Preferences.toUserSettings(): UserSettings {
         } catch (e: Exception) {
             defaultSettings.layoutMode
         }
+    val gradientDirection =
+        try {
+            GradientDirection.valueOf(
+                this[Keys.GRADIENT_BACKGROUND_DIRECTION] ?: defaultSettings.gradientBackgroundDirection.name
+            )
+        } catch (e: Exception) {
+            defaultSettings.gradientBackgroundDirection
+        }
 
     return UserSettings(
         theme = theme,
@@ -59,6 +68,7 @@ internal fun Preferences.toUserSettings(): UserSettings {
         navBarHeight = this[Keys.NAV_BAR_HEIGHT] ?: defaultSettings.navBarHeight,
         showMiniPlayerTimeOverlay = this[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] ?: defaultSettings.showMiniPlayerTimeOverlay,
         transparentMiniPlayer = this[Keys.TRANSPARENT_MINI_PLAYER] ?: defaultSettings.transparentMiniPlayer,
+        transparentBottomBar = this[Keys.TRANSPARENT_BOTTOM_BAR] ?: defaultSettings.transparentBottomBar,
         oneHandedMode = this[Keys.ONE_HANDED_MODE] ?: defaultSettings.oneHandedMode,
         bottomBarCleanModeEnabled =
         this[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] ?: defaultSettings.bottomBarCleanModeEnabled,
@@ -68,7 +78,9 @@ internal fun Preferences.toUserSettings(): UserSettings {
         this[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] ?: defaultSettings.bottomBarAutoHideDelaySeconds,
         gradientBackgroundEnabled = this[Keys.GRADIENT_BACKGROUND_ENABLED] ?: defaultSettings.gradientBackgroundEnabled,
         gradientBackgroundStrength = this[Keys.GRADIENT_BACKGROUND_STRENGTH] ?: defaultSettings.gradientBackgroundStrength,
+        gradientBackgroundDirection = gradientDirection,
         transparentSearchCards = this[Keys.TRANSPARENT_SEARCH_CARDS] ?: defaultSettings.transparentSearchCards,
+        transparentPodcastCards = this[Keys.TRANSPARENT_PODCAST_CARDS] ?: defaultSettings.transparentPodcastCards,
         transparentEpisodeRows = this[Keys.TRANSPARENT_EPISODE_ROWS] ?: defaultSettings.transparentEpisodeRows,
         autoDownloadLimit = this[Keys.AUTO_DOWNLOAD_LIMIT] ?: defaultSettings.autoDownloadLimit,
         autoRefreshOnStart = this[Keys.AUTO_REFRESH_ON_START] ?: defaultSettings.autoRefreshOnStart,
