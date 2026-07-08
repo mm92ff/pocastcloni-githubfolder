@@ -1,5 +1,10 @@
 package com.example.pocastcloni.ui.main
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.material.icons.Icons
@@ -15,9 +20,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.navigation.Screen
+import com.example.pocastcloni.ui.theme.Motion
 import kotlin.math.abs
 
 internal data class BottomNavItem(
@@ -59,6 +66,56 @@ internal fun adjacentMainScreen(currentRoute: String?, direction: Int): Screen? 
     if (targetIndex == currentIndex) return null
 
     return mainBottomNavItems[targetIndex].screen
+}
+
+private fun mainRouteIndex(route: String?): Int =
+    mainBottomNavItems.indexOfFirst { item -> item.screen.route == route }
+
+private fun mainTransitionDirection(
+    initialRoute: String?,
+    targetRoute: String?
+): Int? {
+    val initialIndex = mainRouteIndex(initialRoute)
+    val targetIndex = mainRouteIndex(targetRoute)
+    if (initialIndex == -1 || targetIndex == -1 || initialIndex == targetIndex) return null
+
+    return if (targetIndex > initialIndex) 1 else -1
+}
+
+internal fun AnimatedContentTransitionScope<NavBackStackEntry>.mainScreenEnterTransition(): EnterTransition {
+    val direction = mainTransitionDirection(initialState.destination.route, targetState.destination.route)
+    return if (direction == null) {
+        fadeIn(animationSpec = Motion.enterSpec())
+    } else {
+        fadeIn(animationSpec = Motion.enterSpec()) +
+            slideIntoContainer(
+                towards =
+                if (direction > 0) {
+                    AnimatedContentTransitionScope.SlideDirection.Left
+                } else {
+                    AnimatedContentTransitionScope.SlideDirection.Right
+                },
+                animationSpec = Motion.enterSpec()
+            )
+    }
+}
+
+internal fun AnimatedContentTransitionScope<NavBackStackEntry>.mainScreenExitTransition(): ExitTransition {
+    val direction = mainTransitionDirection(initialState.destination.route, targetState.destination.route)
+    return if (direction == null) {
+        fadeOut(animationSpec = Motion.exitSpec())
+    } else {
+        fadeOut(animationSpec = Motion.exitSpec()) +
+            slideOutOfContainer(
+                towards =
+                if (direction > 0) {
+                    AnimatedContentTransitionScope.SlideDirection.Left
+                } else {
+                    AnimatedContentTransitionScope.SlideDirection.Right
+                },
+                animationSpec = Motion.exitSpec()
+            )
+    }
 }
 
 internal fun Modifier.mainScreenSwipeNavigation(

@@ -30,6 +30,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.example.pocastcloni.ui.theme.Motion
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -206,6 +207,7 @@ fun <T> ReorderableLazyColumn(
 
             val elevation by animateDpAsState(
                 targetValue = if (isDragging) 6.dp else 0.dp,
+                animationSpec = Motion.stateSpec(),
                 label = "elevation"
             )
 

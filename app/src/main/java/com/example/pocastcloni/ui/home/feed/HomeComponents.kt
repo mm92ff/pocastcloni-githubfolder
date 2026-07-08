@@ -1,5 +1,7 @@
 package com.example.pocastcloni.ui.home.feed
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.Motion
 import com.example.pocastcloni.util.Constants
 
 @Composable
@@ -95,10 +99,21 @@ fun BoxScope.IndicatorCutout(
     size: Int,
     modifier: Modifier = Modifier
 ) {
-    val xOffsetDp = xOffset.dp
-    val yOffsetDp = (-yOffset).dp
-    val borderWidthDp = borderWidth.dp
-    val totalSize = size.dp + (borderWidthDp * 2)
+    val xOffsetDp by animateDpAsState(
+        targetValue = xOffset.dp,
+        animationSpec = Motion.stateSpec(),
+        label = "indicatorCutoutXOffset"
+    )
+    val yOffsetDp by animateDpAsState(
+        targetValue = (-yOffset).dp,
+        animationSpec = Motion.stateSpec(),
+        label = "indicatorCutoutYOffset"
+    )
+    val totalSize by animateDpAsState(
+        targetValue = size.dp + (borderWidth.dp * 2),
+        animationSpec = Motion.stateSpec(),
+        label = "indicatorCutoutSize"
+    )
 
     Box(
         modifier =
@@ -126,10 +141,31 @@ fun BoxScope.IndicatorDot(
     colorArgb: Long,
     modifier: Modifier = Modifier
 ) {
-    val xOffsetDp = xOffset.dp
-    val yOffsetDp = (-yOffset).dp
-    val borderWidthDp = borderWidth.dp
-    val totalSize = size.dp + (borderWidthDp * 2)
+    val xOffsetDp by animateDpAsState(
+        targetValue = xOffset.dp,
+        animationSpec = Motion.stateSpec(),
+        label = "indicatorDotXOffset"
+    )
+    val yOffsetDp by animateDpAsState(
+        targetValue = (-yOffset).dp,
+        animationSpec = Motion.stateSpec(),
+        label = "indicatorDotYOffset"
+    )
+    val dotSize by animateDpAsState(
+        targetValue = size.dp,
+        animationSpec = Motion.stateSpec(),
+        label = "indicatorDotSize"
+    )
+    val totalSize by animateDpAsState(
+        targetValue = size.dp + (borderWidth.dp * 2),
+        animationSpec = Motion.stateSpec(),
+        label = "indicatorDotTotalSize"
+    )
+    val dotColor by animateColorAsState(
+        targetValue = Color(colorArgb),
+        animationSpec = Motion.stateSpec(),
+        label = "indicatorDotColor"
+    )
 
     Box(
         modifier =
@@ -143,8 +179,8 @@ fun BoxScope.IndicatorDot(
             modifier =
             Modifier
                 .align(Alignment.Center)
-                .size(size.dp)
-                .background(Color(colorArgb), CircleShape)
+                .size(dotSize)
+                .background(dotColor, CircleShape)
         )
     }
 }

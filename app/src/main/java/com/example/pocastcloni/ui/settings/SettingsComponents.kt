@@ -65,18 +65,22 @@ fun SettingsCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val transparent = LocalTransparentSettingsCards.current
-    val contentColor = TransparentSurfaceDefaults.contentColor(transparent, MaterialTheme.colorScheme.onSurface)
+    val contentColor by TransparentSurfaceDefaults.animatedContentColor(
+        transparent = transparent,
+        filledColor = MaterialTheme.colorScheme.onSurface,
+        label = "settingsCardContentColor"
+    )
+    val containerColor by TransparentSurfaceDefaults.animatedContainerColor(
+        transparent = transparent,
+        filledColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = Constants.UI.SETTINGS_CARD_ALPHA),
+        label = "settingsCardContainerColor"
+    )
 
     Card(
         border = TransparentSurfaceDefaults.border(transparent),
         colors =
         CardDefaults.cardColors(
-            containerColor =
-            TransparentSurfaceDefaults.containerColor(
-                transparent = transparent,
-                filledColor =
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = Constants.UI.SETTINGS_CARD_ALPHA)
-            ),
+            containerColor = containerColor,
             contentColor = contentColor
         ),
         shape = RoundedCornerShape(Dimens.RoundedCornerExtraLarge),
@@ -101,6 +105,11 @@ fun SettingsSwitchCard(
     onCheckedChange: (Boolean) -> Unit
 ) {
     SettingsCard(onClick = { onCheckedChange(!checked) }) {
+        val subtitleColor by TransparentSurfaceDefaults.animatedSecondaryTextColor(
+            transparent = LocalTransparentSettingsCards.current,
+            label = "settingsSwitchSubtitleColor"
+        )
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -117,7 +126,7 @@ fun SettingsSwitchCard(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = subtitleColor
                     )
                 }
             }

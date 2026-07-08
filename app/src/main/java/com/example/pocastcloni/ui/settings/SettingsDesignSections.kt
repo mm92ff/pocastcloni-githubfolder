@@ -45,6 +45,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.Motion
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.Constants.SettingsDefaults
 
@@ -295,6 +296,7 @@ private fun GradientDirectionButton(
         } else {
             Color.Transparent
         },
+        animationSpec = Motion.stateSpec(),
         label = "gradientDirectionBackground"
     )
     val borderColor by animateColorAsState(
@@ -304,10 +306,12 @@ private fun GradientDirectionButton(
         } else {
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f)
         },
+        animationSpec = Motion.stateSpec(),
         label = "gradientDirectionBorder"
     )
     val iconColor by animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+        animationSpec = Motion.stateSpec(),
         label = "gradientDirectionIcon"
     )
 

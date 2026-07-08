@@ -1,5 +1,6 @@
 package com.example.pocastcloni.ui.player
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,11 +25,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +40,7 @@ import coil.compose.AsyncImage
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.Motion
 import com.example.pocastcloni.util.formatTime
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -60,15 +62,26 @@ fun MiniPlayer(
     onExpand: () -> Unit
 ) {
     val cardShape = RoundedCornerShape(Dimens.RoundedCornerLarge)
-    val containerColor =
-        TransparentSurfaceDefaults.containerColor(transparentBackground, MaterialTheme.colorScheme.surfaceVariant)
-    val contentColor = TransparentSurfaceDefaults.contentColor(transparentBackground, MaterialTheme.colorScheme.onSurface)
-    val cardElevation =
+    val containerColor by TransparentSurfaceDefaults.animatedContainerColor(
+        transparent = transparentBackground,
+        filledColor = MaterialTheme.colorScheme.surfaceVariant,
+        label = "miniPlayerContainerColor"
+    )
+    val contentColor by TransparentSurfaceDefaults.animatedContentColor(
+        transparent = transparentBackground,
+        filledColor = MaterialTheme.colorScheme.onSurface,
+        label = "miniPlayerContentColor"
+    )
+    val cardElevation by animateDpAsState(
+        targetValue =
         if (transparentBackground) {
             Dimens.Zero
         } else {
             Dimens.MiniPlayerElevation
-        }
+        },
+        animationSpec = Motion.stateSpec(),
+        label = "miniPlayerElevation"
+    )
 
     Card(
         modifier =
@@ -135,6 +148,15 @@ private fun MiniPlayerProgressBar(
     val currentPositionProvider = remember(smoothState) { { smoothState.currentPosition.value } }
     val bufferedPositionProvider = remember(playbackStateState) { { playbackStateState.value.bufferedPositionMs } }
     val durationProvider = remember(playbackStateState) { { playbackStateState.value.durationMs } }
+    val trackColor by TransparentSurfaceDefaults.animatedContainerColor(
+        transparent = transparentBackground,
+        filledColor = MaterialTheme.colorScheme.surfaceVariant,
+        label = "miniPlayerProgressTrackColor"
+    )
+    val bufferedColor by TransparentSurfaceDefaults.animatedSecondaryTextColor(
+        transparent = transparentBackground,
+        label = "miniPlayerProgressBufferedColor"
+    )
 
     // 4. Seek wrapper for immediate visual feedback
     val onSeekWrapped: (Long) -> Unit =
@@ -155,11 +177,8 @@ private fun MiniPlayerProgressBar(
                 height = progressBarHeight,
                 color = MaterialTheme.colorScheme.primary,
                 onSeek = onSeekWrapped,
-                trackColor = if (transparentBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
-                bufferedColor =
-                TransparentSurfaceDefaults
-                    .secondaryTextColor(transparentBackground)
-                    .copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
+                trackColor = trackColor,
+                bufferedColor = bufferedColor.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
                 onSeekStart = onSeekStart,
                 onSeekEnd = onSeekEnd
             )
@@ -227,15 +246,16 @@ private fun MiniPlayerTimeLabel(
     text: String,
     transparentBackground: Boolean
 ) {
+    val labelColor by TransparentSurfaceDefaults.animatedContentColor(
+        transparent = transparentBackground,
+        filledColor = MaterialTheme.colorScheme.onSurface,
+        label = "miniPlayerTimeLabelColor"
+    )
+
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        color =
-        if (transparentBackground) {
-            MaterialTheme.colorScheme.onBackground
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
+        color = labelColor,
         maxLines = TEXT_MAX_LINES,
         softWrap = false,
         overflow = TextOverflow.Clip
@@ -249,6 +269,16 @@ private fun MiniPlayerContent(
     onCoverClick: () -> Unit,
     transparentBackground: Boolean
 ) {
+    val titleColor by TransparentSurfaceDefaults.animatedContentColor(
+        transparent = transparentBackground,
+        filledColor = MaterialTheme.colorScheme.onSurface,
+        label = "miniPlayerTitleColor"
+    )
+    val subtitleColor by TransparentSurfaceDefaults.animatedSecondaryTextColor(
+        transparent = transparentBackground,
+        label = "miniPlayerSubtitleColor"
+    )
+
     Row(
         modifier =
         Modifier
@@ -280,18 +310,14 @@ private fun MiniPlayerContent(
             Text(
                 text = playerState.currentEpisodeTitle,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                color =
-                TransparentSurfaceDefaults.contentColor(
-                    transparentBackground,
-                    MaterialTheme.colorScheme.onSurface
-                ),
+                color = titleColor,
                 maxLines = TEXT_MAX_LINES,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = playerState.currentEpisodeSubtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = TransparentSurfaceDefaults.secondaryTextColor(transparentBackground),
+                color = subtitleColor,
                 maxLines = TEXT_MAX_LINES,
                 overflow = TextOverflow.Ellipsis
             )

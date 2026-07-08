@@ -1,8 +1,11 @@
 package com.example.pocastcloni.ui.player
 
 import android.text.Spanned
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,11 +29,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.toSize
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.Motion
 import com.example.pocastcloni.ui.theme.gradientBackgroundBrush
 import com.example.pocastcloni.ui.theme.isPocastCloniDarkTheme
 import kotlinx.coroutines.flow.StateFlow
-
-private const val EXPAND_ANIMATION_DURATION_MS = 300
 
 @Composable
 fun ExpandablePlayer(
@@ -68,7 +70,7 @@ fun ExpandablePlayer(
             .fillMaxWidth()
             .then(if (isExpanded) Modifier.fillMaxSize() else Modifier.wrapContentHeight())
             .then(transparentBackdropModifier)
-            .animateContentSize(animationSpec = tween(EXPAND_ANIMATION_DURATION_MS)),
+            .animateContentSize(animationSpec = Motion.enterSpec()),
         shape = playerShape,
         shadowElevation = if (isExpanded || transparentMiniPlayer) Dimens.Zero else Dimens.PaddingLarge,
         color =
@@ -86,33 +88,42 @@ fun ExpandablePlayer(
             MaterialTheme.colorScheme.onSurface
         }
     ) {
-        if (isExpanded) {
-            FullPlayerScreen(
-                playerState = playerState,
-                userSettings = userSettings,
-                playbackStateFlow = playbackStateFlow,
-                episodeDescription = episodeDescription,
-                isDescriptionVisible = isDescriptionVisible,
-                onCollapse = onExpandToggle,
-                onEvent = onEvent,
-                progressBarHeight = progressBarHeight,
-                navBarHeight = navBarHeight
-            )
-        } else {
-            MiniPlayer(
-                playerState = playerState,
-                playbackStateFlow = playbackStateFlow,
-                onExpand = onExpandToggle,
-                onCoverClick = {
-                    playerState.currentPodcastUrl?.let {
-                        onNavigateToPodcastDetail(it)
-                    }
-                },
-                onEvent = onEvent,
-                progressBarHeight = progressBarHeight,
-                showTimeOverlay = showMiniPlayerTimeOverlay,
-                transparentBackground = transparentMiniPlayer
-            )
+        AnimatedContent(
+            targetState = isExpanded,
+            transitionSpec = {
+                fadeIn(animationSpec = Motion.enterSpec()) togetherWith
+                    fadeOut(animationSpec = Motion.exitSpec())
+            },
+            label = "playerExpansionContent"
+        ) { expanded ->
+            if (expanded) {
+                FullPlayerScreen(
+                    playerState = playerState,
+                    userSettings = userSettings,
+                    playbackStateFlow = playbackStateFlow,
+                    episodeDescription = episodeDescription,
+                    isDescriptionVisible = isDescriptionVisible,
+                    onCollapse = onExpandToggle,
+                    onEvent = onEvent,
+                    progressBarHeight = progressBarHeight,
+                    navBarHeight = navBarHeight
+                )
+            } else {
+                MiniPlayer(
+                    playerState = playerState,
+                    playbackStateFlow = playbackStateFlow,
+                    onExpand = onExpandToggle,
+                    onCoverClick = {
+                        playerState.currentPodcastUrl?.let {
+                            onNavigateToPodcastDetail(it)
+                        }
+                    },
+                    onEvent = onEvent,
+                    progressBarHeight = progressBarHeight,
+                    showTimeOverlay = showMiniPlayerTimeOverlay,
+                    transparentBackground = transparentMiniPlayer
+                )
+            }
         }
     }
 }

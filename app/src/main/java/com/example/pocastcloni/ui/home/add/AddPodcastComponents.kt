@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -166,8 +167,20 @@ fun PodcastSearchItem(
     transparentCard: Boolean,
     onToggle: () -> Unit
 ) {
-    val textColor = TransparentSurfaceDefaults.contentColor(transparentCard, MaterialTheme.colorScheme.onSurface)
-    val secondaryTextColor = TransparentSurfaceDefaults.secondaryTextColor(transparentCard)
+    val textColor by TransparentSurfaceDefaults.animatedContentColor(
+        transparent = transparentCard,
+        filledColor = MaterialTheme.colorScheme.onSurface,
+        label = "searchCardTextColor"
+    )
+    val secondaryTextColor by TransparentSurfaceDefaults.animatedSecondaryTextColor(
+        transparent = transparentCard,
+        label = "searchCardSecondaryTextColor"
+    )
+    val containerColor by TransparentSurfaceDefaults.animatedContainerColor(
+        transparent = transparentCard,
+        filledColor = MaterialTheme.colorScheme.surfaceVariant,
+        label = "searchCardContainerColor"
+    )
 
     Card(
         modifier =
@@ -180,8 +193,7 @@ fun PodcastSearchItem(
         border = TransparentSurfaceDefaults.border(transparentCard),
         colors =
         CardDefaults.cardColors(
-            containerColor =
-            TransparentSurfaceDefaults.containerColor(transparentCard, MaterialTheme.colorScheme.surfaceVariant),
+            containerColor = containerColor,
             contentColor = textColor
         )
     ) {

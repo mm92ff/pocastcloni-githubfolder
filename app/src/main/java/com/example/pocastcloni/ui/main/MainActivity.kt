@@ -140,6 +140,10 @@ class MainActivity : ComponentActivity() {
                                     NavHost(
                                         navController = navController,
                                         startDestination = Screen.Home.route,
+                                        enterTransition = { mainScreenEnterTransition() },
+                                        exitTransition = { mainScreenExitTransition() },
+                                        popEnterTransition = { mainScreenEnterTransition() },
+                                        popExitTransition = { mainScreenExitTransition() },
                                         modifier =
                                         Modifier
                                             .fillMaxSize()

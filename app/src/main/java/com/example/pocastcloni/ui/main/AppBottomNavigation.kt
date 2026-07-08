@@ -39,6 +39,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.ui.navigation.Screen
+import com.example.pocastcloni.ui.theme.Motion
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
@@ -81,8 +82,12 @@ internal fun CleanModeBottomBarHost(
 
     AnimatedVisibility(
         visible = bottomBarVisible,
-        enter = slideInVertically { height -> height } + fadeIn(),
-        exit = slideOutVertically { height -> height } + fadeOut()
+        enter =
+        slideInVertically(animationSpec = Motion.enterSpec()) { height -> height } +
+            fadeIn(animationSpec = Motion.enterSpec()),
+        exit =
+        slideOutVertically(animationSpec = Motion.exitSpec()) { height -> height } +
+            fadeOut(animationSpec = Motion.exitSpec())
     ) {
         AppBottomNavigation(
             navController = navController,
@@ -106,8 +111,12 @@ internal fun CleanModeBottomBarHost(
 
     AnimatedVisibility(
         visible = !bottomBarVisible,
-        enter = fadeIn(),
-        exit = fadeOut()
+        enter =
+        slideInVertically(animationSpec = Motion.enterSpec()) { height -> height / 2 } +
+            fadeIn(animationSpec = Motion.enterSpec()),
+        exit =
+        slideOutVertically(animationSpec = Motion.exitSpec()) { height -> height / 2 } +
+            fadeOut(animationSpec = Motion.exitSpec())
     ) {
         BottomBarRevealHandle(
             modifier =

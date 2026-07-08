@@ -51,6 +51,7 @@ import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
 import com.example.pocastcloni.ui.home.feed.IndicatorCutout
 import com.example.pocastcloni.ui.home.feed.IndicatorDot
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.Motion
 import com.example.pocastcloni.util.Constants
 
 @Immutable
@@ -136,6 +137,7 @@ fun PodcastItem(
 ) {
     val animatedPadding by animateDpAsState(
         targetValue = if (isSelected) Dimens.Zero else Dimens.PaddingTiny,
+        animationSpec = Motion.stateSpec(),
         label = "padding"
     )
 
@@ -145,19 +147,33 @@ fun PodcastItem(
             isSelected -> MaterialTheme.colorScheme.tertiaryContainer
             else -> MaterialTheme.colorScheme.surfaceVariant
         }
-    val containerColor by animateColorAsState(targetContainerColor, label = "color")
-    val contentColor =
+    val containerColor by animateColorAsState(
+        targetValue = targetContainerColor,
+        animationSpec = Motion.stateSpec(),
+        label = "podcastCardContainerColor"
+    )
+    val targetContentColor =
         when {
             transparentCard -> TransparentSurfaceDefaults.contentColor(true, MaterialTheme.colorScheme.onSurfaceVariant)
             isSelected -> MaterialTheme.colorScheme.onTertiaryContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
-    val borderColor =
+    val contentColor by animateColorAsState(
+        targetValue = targetContentColor,
+        animationSpec = Motion.stateSpec(),
+        label = "podcastCardContentColor"
+    )
+    val targetBorderColor =
         if (isSelected) {
             MaterialTheme.colorScheme.primary
         } else {
             TransparentSurfaceDefaults.borderColor()
         }
+    val borderColor by animateColorAsState(
+        targetValue = targetBorderColor,
+        animationSpec = Motion.stateSpec(),
+        label = "podcastCardBorderColor"
+    )
     val borderStroke =
         if (transparentCard) {
             BorderStroke(Dimens.BorderWidthDefault, borderColor)

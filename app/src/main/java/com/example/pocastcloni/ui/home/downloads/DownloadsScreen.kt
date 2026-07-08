@@ -36,6 +36,7 @@ import com.example.pocastcloni.ui.home.detail.EpisodeListItem
 import com.example.pocastcloni.ui.home.detail.EpisodeUiModel
 import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.Motion
 
 // Local dialog specific to Downloads (move to common if reused elsewhere)
 @Composable
@@ -174,10 +175,12 @@ private fun SwipeToDeleteBox(
                 } else {
                     Color.Transparent
                 },
+                animationSpec = Motion.stateSpec(),
                 label = "background color animation"
             )
             val scale by animateFloatAsState(
                 targetValue = if (isDeleting) 1.3f else 1.0f,
+                animationSpec = Motion.stateSpec(),
                 label = "icon scale animation"
             )
 

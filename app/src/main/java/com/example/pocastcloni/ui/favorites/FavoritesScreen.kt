@@ -48,6 +48,7 @@ import com.example.pocastcloni.ui.common.ListableEpisodeItem
 import com.example.pocastcloni.ui.common.ReorderableLazyColumn
 import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.Motion
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -293,6 +294,7 @@ private fun SwipeToDeleteFavorite(
                     dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
             val color by animateColorAsState(
                 targetValue = if (isDeleting) MaterialTheme.colorScheme.errorContainer else Color.Transparent,
+                animationSpec = Motion.stateSpec(),
                 label = "background color animation"
             )
 

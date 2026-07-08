@@ -15,6 +15,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,10 +48,21 @@ fun ListableEpisodeItem(
             }
         }
 
-    val primaryTextColor =
-        TransparentSurfaceDefaults.contentColor(transparentBackground, MaterialTheme.colorScheme.onSurface)
-    val secondaryTextColor = TransparentSurfaceDefaults.secondaryTextColor(transparentBackground)
-    val rowBackground = TransparentSurfaceDefaults.containerColor(transparentBackground, MaterialTheme.colorScheme.surface)
+    val primaryTextColor by TransparentSurfaceDefaults.animatedContentColor(
+        transparent = transparentBackground,
+        filledColor = MaterialTheme.colorScheme.onSurface,
+        label = "episodeRowPrimaryTextColor"
+    )
+    val secondaryTextColor by TransparentSurfaceDefaults.animatedSecondaryTextColor(
+        transparent = transparentBackground,
+        label = "episodeRowSecondaryTextColor"
+    )
+    val rowBackground by TransparentSurfaceDefaults.animatedContainerColor(
+        transparent = transparentBackground,
+        filledColor = MaterialTheme.colorScheme.surface,
+        label = "episodeRowBackground"
+    )
+    val dividerColor by TransparentSurfaceDefaults.animatedDividerColor(label = "episodeRowDivider")
 
     Column(
         modifier =
@@ -113,7 +125,7 @@ fun ListableEpisodeItem(
         }
         if (transparentBackground) {
             HorizontalDivider(
-                color = TransparentSurfaceDefaults.dividerColor(),
+                color = dividerColor,
                 thickness = Dimens.ThicknessDefault
             )
         }

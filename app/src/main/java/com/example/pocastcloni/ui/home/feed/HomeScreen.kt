@@ -1,6 +1,5 @@
 package com.example.pocastcloni.ui.home.feed
 
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,6 +55,7 @@ import com.example.pocastcloni.ui.home.common.PodcastIndicatorStyle
 import com.example.pocastcloni.ui.home.common.PodcastItem
 import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.theme.Motion
 import com.example.pocastcloni.util.Constants
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
@@ -381,7 +381,7 @@ fun PodcastListContent(
         Box(
             modifier =
             Modifier.animateItemPlacement(
-                animationSpec = spring(stiffness = Constants.Animation.STIFFNESS)
+                animationSpec = Motion.enterSpec()
             )
         ) {
             val isSelected = selectedPodcastGuids.contains(podcast.rssUrl) || isDragging
