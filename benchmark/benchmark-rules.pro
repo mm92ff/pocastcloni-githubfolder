@@ -1,0 +1,7 @@
+-keep class com.example.pocastcloni.benchmark.** { *; }
+-keep class androidx.test.** { *; }
+-keep class androidx.benchmark.** { *; }
+-keep class org.junit.** { *; }
+-keep class kotlin.** { *; }
+-dontwarn org.junit.**
+-dontwarn com.google.errorprone.annotations.**

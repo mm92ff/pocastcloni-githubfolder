@@ -39,6 +39,12 @@ android {
                 "proguard-rules.pro"
             )
         }
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            proguardFiles("benchmark-proguard-rules.pro")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -139,6 +145,11 @@ dependencies {
 
     // DataStore (Settings)
     implementation(libs.androidx.datastore.preferences)
+
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    add("benchmarkImplementation", platform(libs.compose.bom))
+    add("benchmarkImplementation", "androidx.compose.runtime:runtime-tracing:1.0.0-beta01")
+    add("benchmarkImplementation", "androidx.tracing:tracing:1.2.0")
 
     // WorkManager (Downloads)
     implementation(libsCatalog.findLibrary("androidx-work-runtime-ktx").get())

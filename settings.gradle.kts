@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "pocastcloni"
 include(":app")
+include(":benchmark")
