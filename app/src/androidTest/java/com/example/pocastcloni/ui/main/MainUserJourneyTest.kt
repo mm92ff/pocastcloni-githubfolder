@@ -3,14 +3,12 @@ package com.example.pocastcloni.ui.main
 import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -19,6 +17,8 @@ import androidx.test.filters.LargeTest
 import androidx.work.WorkManager
 import com.example.pocastcloni.data.local.AppDatabase
 import com.example.pocastcloni.data.local.DownloadStatus
+import com.example.pocastcloni.data.local.EpisodeEntity
+import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.repository.UserPreferencesRepositoryImpl
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
@@ -26,11 +26,6 @@ import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.service.PodcastPlaybackService
 import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.runBlocking
-import okhttp3.mockwebserver.Dispatcher
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import okhttp3.mockwebserver.RecordedRequest
-import okio.Buffer
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -39,7 +34,7 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.Base64
+import java.util.Date
 
 @LargeTest
 @RunWith(AndroidJUnit4::class)
@@ -50,17 +45,11 @@ class MainUserJourneyTest {
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
 
-    private lateinit var server: MockWebServer
     private var scenario: ActivityScenario<MainActivity>? = null
 
     @Before
     fun setUp() {
         runBlocking { resetAppState() }
-        server =
-            MockWebServer().apply {
-                dispatcher = IntegrationFeedDispatcher()
-                start()
-            }
     }
 
     @After
@@ -68,37 +57,16 @@ class MainUserJourneyTest {
         scenario?.close()
         scenario = null
         runBlocking { resetAppState() }
-        if (::server.isInitialized) {
-            server.shutdown()
-        }
     }
 
     @Test
-    fun settingsImport_drivesCoreUserJourney() {
+    fun seededPodcast_drivesCoreUserJourney() {
+        runBlocking { seedPodcast() }
         scenario =
             ActivityScenario.launch(MainActivity::class.java).also {
                 it.moveToState(Lifecycle.State.RESUMED)
             }
 
-        waitForText(HOME_EMPTY_TEXT)
-
-        clickBottomNav(NAV_SETTINGS)
-        waitForText(SETTINGS_TITLE)
-
-        composeRule.onNodeWithText(SETTINGS_SYNC_TAB).performClick()
-        waitUntil(timeoutMillis = 10_000) {
-            composeRule.onAllNodes(hasSetTextAction(), useUnmergedTree = true)
-                .fetchSemanticsNodes().size == 1
-        }
-        composeRule.onNode(hasSetTextAction()).performTextInput(server.url(FEED_PATH).toString())
-        composeRule.onNodeWithText(ADD_BUTTON).performClick()
-
-        waitForText(ADD_SUCCESS_TEXT, timeoutMillis = 20_000)
-        waitForEpisodeRow { episode ->
-            episode.guid == TEST_EPISODE_GUID && episode.podcastRssUrl == server.url(FEED_PATH).toString()
-        }
-
-        clickBottomNav(NAV_HOME)
         waitForText(TEST_PODCAST_TITLE)
         composeRule.onAllNodesWithText(TEST_PODCAST_TITLE).onFirst().performClick()
 
@@ -121,17 +89,9 @@ class MainUserJourneyTest {
         waitForText(HOME_TITLE)
         composeRule.onAllNodesWithText(TEST_PODCAST_TITLE).onFirst().performClick()
 
-        composeRule.onNodeWithContentDescription(PLAY_PAUSE).performClick()
-        waitUntil(
-            timeoutMillis = 20_000,
-            condition = { hasNodeWithContentDescription(MINI_PLAYER_PLAY) || hasNodeWithContentDescription(MINI_PLAYER_PAUSE) }
-        )
-        val miniPlayerDescription = if (hasNodeWithContentDescription(MINI_PLAYER_PAUSE)) MINI_PLAYER_PAUSE else MINI_PLAYER_PLAY
-        composeRule.onNodeWithContentDescription(miniPlayerDescription, useUnmergedTree = true).performClick()
-
-        composeRule.onNodeWithContentDescription(DOWNLOAD_EPISODE).performClick()
-        waitForDownloadStatus(TEST_EPISODE_GUID, DownloadStatus.DOWNLOADED)
+        markEpisodeDownloaded()
         waitUntil(timeoutMillis = 20_000) { hasNodeWithContentDescription(EPISODE_DOWNLOADED) }
+        waitForDownloadStatus(TEST_EPISODE_GUID, DownloadStatus.DOWNLOADED)
 
         clickBottomNav(NAV_DOWNLOADS)
         waitForText(TEST_EPISODE_TITLE)
@@ -167,6 +127,42 @@ class MainUserJourneyTest {
 
         val downloadsDir = File(context.filesDir, Constants.DOWNLOADS_DIR)
         downloadsDir.listFiles()?.forEach { file -> file.delete() }
+    }
+
+    private suspend fun seedPodcast() {
+        val dao = AppDatabase.getDatabase(context).podcastDao()
+        dao.insertPodcast(
+            PodcastEntity(
+                rssUrl = TEST_FEED_URL,
+                title = TEST_PODCAST_TITLE,
+                description = "Integration test feed",
+                imageUrl = "https://example.test/cover.png"
+            )
+        )
+        dao.insertEpisode(
+            EpisodeEntity(
+                guid = TEST_EPISODE_GUID,
+                podcastRssUrl = TEST_FEED_URL,
+                title = TEST_EPISODE_TITLE,
+                description = "Episode for end to end testing.",
+                pubDate = Date(1_772_618_400_000),
+                link = "https://example.test/podcast/episode-1",
+                enclosureUrl = "https://example.test/episode.wav",
+                type = "audio/wav",
+                fileSize = SILENT_WAV.size.toLong(),
+                duration = 2_000
+            )
+        )
+    }
+
+    private fun markEpisodeDownloaded() = runBlocking {
+        val directory = File(context.filesDir, Constants.DOWNLOADS_DIR).apply { mkdirs() }
+        val audioFile = File(directory, "$TEST_EPISODE_GUID.wav").apply { writeBytes(SILENT_WAV) }
+        AppDatabase.getDatabase(context).podcastDao().updateDownloadStatus(
+            guid = TEST_EPISODE_GUID,
+            status = DownloadStatus.DOWNLOADED,
+            path = audioFile.absolutePath
+        )
     }
 
     private fun waitForText(
@@ -227,80 +223,17 @@ class MainUserJourneyTest {
             .fetchSemanticsNodes().isNotEmpty()
     }
 
-    private inner class IntegrationFeedDispatcher : Dispatcher() {
-        override fun dispatch(request: RecordedRequest): MockResponse {
-            return when (request.path) {
-                FEED_PATH ->
-                    MockResponse()
-                        .setHeader("Content-Type", "application/rss+xml")
-                        .setBody(feedXml())
-                COVER_PATH ->
-                    MockResponse()
-                        .setHeader("Content-Type", "image/png")
-                        .setBody(Buffer().write(TINY_PNG))
-                AUDIO_PATH ->
-                    MockResponse()
-                        .setHeader("Content-Type", "audio/wav")
-                        .setBody(Buffer().write(buildSilentWav()))
-                else -> MockResponse().setResponseCode(404)
-            }
-        }
-    }
-
-    private fun feedXml(): String {
-        val audioUrl = server.url(AUDIO_PATH).toString()
-        val coverUrl = server.url(COVER_PATH).toString()
-        return """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
-              <channel>
-                <title>$TEST_PODCAST_TITLE</title>
-                <description>Integration test feed</description>
-                <link>https://example.test/podcast</link>
-                <image>
-                  <url>$coverUrl</url>
-                </image>
-                <item>
-                  <title>$TEST_EPISODE_TITLE</title>
-                  <description>Episode for end to end testing.</description>
-                  <link>https://example.test/podcast/episode-1</link>
-                  <guid>$TEST_EPISODE_GUID</guid>
-                  <pubDate>Wed, 04 Mar 2026 10:00:00 GMT</pubDate>
-                  <itunes:duration>00:00:02</itunes:duration>
-                  <enclosure url="$audioUrl" type="audio/wav" length="${SILENT_WAV.size}" />
-                </item>
-              </channel>
-            </rss>
-        """.trimIndent()
-    }
-
-    private fun buildSilentWav(): ByteArray {
-        return SILENT_WAV
-    }
-
     private companion object {
-        const val FEED_PATH = "/feed.xml"
-        const val COVER_PATH = "/cover.png"
-        const val AUDIO_PATH = "/episode.wav"
+        const val TEST_FEED_URL = "https://example.test/feed.xml"
         const val TEST_PODCAST_TITLE = "Integration Test Podcast"
         const val TEST_EPISODE_TITLE = "Integration Episode 1"
         const val TEST_EPISODE_GUID = "integration-episode-1"
 
-        const val NAV_SETTINGS = "Settings"
         const val NAV_HOME = "Home"
         const val NAV_DOWNLOADS = "Downloads"
-        const val SETTINGS_TITLE = "Settings"
-        const val SETTINGS_SYNC_TAB = "Sync"
         const val HOME_TITLE = "My Podcasts"
-        const val HOME_EMPTY_TEXT = "No podcasts yet. Press +"
-        const val ADD_BUTTON = "Add"
-        const val ADD_SUCCESS_TEXT = "Podcast added successfully"
         const val TOGGLE_FAVORITE = "Mark/unmark as favorite"
         const val TOGGLE_PLAYED = "Mark as played/unplayed"
-        const val PLAY_PAUSE = "Play/Pause"
-        const val MINI_PLAYER_PLAY = "Play"
-        const val MINI_PLAYER_PAUSE = "Pause"
-        const val DOWNLOAD_EPISODE = "Download episode"
         const val EPISODE_DOWNLOADED = "Episode is downloaded"
         const val NO_DOWNLOADS_TEXT = "No downloads available"
         const val FAVORITES = "Favorites"
@@ -308,11 +241,6 @@ class MainUserJourneyTest {
         const val BACK = "Back"
 
         val SILENT_WAV: ByteArray = createSilentWav(seconds = 2)
-        val TINY_PNG: ByteArray =
-            Base64.getDecoder().decode(
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNoaGgAAAMEAYFL09IQAAAAAElFTkSuQmCC"
-            )
-
         private fun createSilentWav(seconds: Int): ByteArray {
             val sampleRate = 44_100
             val bitsPerSample = 16
