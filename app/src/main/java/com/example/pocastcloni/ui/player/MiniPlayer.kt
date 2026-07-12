@@ -140,6 +140,16 @@ private fun MiniPlayerProgressBar(
 ) {
     // 1. Collect state object (avoids recomposition on every tick in the body)
     val playbackStateState = playbackStateFlow.collectAsStateWithLifecycle()
+    val hasDurationFlow =
+        remember(playbackStateFlow) {
+            playbackStateFlow
+                .map { state -> state.durationMs > 0L }
+                .distinctUntilChanged()
+        }
+    val hasDurationState =
+        hasDurationFlow.collectAsStateWithLifecycle(
+            initialValue = false
+        )
 
     // 2. Interpolation hook for 60 FPS smoothness
     val smoothState =
@@ -172,7 +182,7 @@ private fun MiniPlayerProgressBar(
         }
 
     // Only render when duration is known to avoid flickering during load
-    if (playbackStateState.value.durationMs > 0) {
+    if (hasDurationState.value) {
         Box(modifier = modifier) {
             CustomProgressBar(
                 currentPositionMs = currentPositionProvider,

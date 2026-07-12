@@ -1,15 +1,29 @@
+WITH measurement_window AS (
+  SELECT ts AS start_ts, ts + dur AS end_ts
+  FROM slice
+  WHERE name = 'measureBlock'
+  LIMIT 1
+)
 SELECT
-  name,
+  s.name,
   COUNT(*) AS occurrences,
-  ROUND(SUM(dur) / 1000000.0, 3) AS total_ms,
-  ROUND(MAX(dur) / 1000000.0, 3) AS longest_ms
-FROM slice
-WHERE dur > 0
+  ROUND(SUM(s.dur) / 1000000.0, 3) AS total_ms,
+  ROUND(MAX(s.dur) / 1000000.0, 3) AS longest_ms
+FROM slice s
+JOIN thread_track tt ON s.track_id = tt.id
+JOIN thread t ON tt.utid = t.utid
+JOIN process p ON t.upid = p.upid
+JOIN measurement_window w ON s.ts >= w.start_ts AND s.ts < w.end_ts
+WHERE p.name = 'com.example.pocastcloni'
+  AND s.dur > 0
   AND (
-    name GLOB '*compose*' COLLATE NOCASE
-    OR name GLOB '*Screen*'
-    OR name GLOB '*MiniPlayer*'
-    OR name GLOB '*ProgressBar*'
+    s.name GLOB 'com.example.pocastcloni.ui*'
+    OR s.name IN (
+      'Recomposer:recompose',
+      'Compose:recompose',
+      'Recomposer:animation',
+      'AndroidOwner:measureAndLayout'
+    )
   )
-GROUP BY name
+GROUP BY s.name
 ORDER BY occurrences DESC, total_ms DESC;

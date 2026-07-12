@@ -38,6 +38,7 @@ Run a focused Composition Tracing session:
 .\gradlew.bat :benchmark:connectedBenchmarkAndroidTest -PfullTracing=true `
   "-Pandroid.testInstrumentationRunnerArguments.class=com.example.pocastcloni.benchmark.PlayerRenderingBenchmark"
 .\benchmark\scripts\verify-compose-traces.ps1
+.\benchmark\scripts\analyze-compose-traces.ps1 -EnforceBudgets
 ```
 
 The standard runner deliberately invokes each class separately. Macrobenchmark
@@ -49,12 +50,42 @@ small AVD data partition. Reports are copied to the ignored
 
 `verify-compose-traces.ps1` provides a lightweight automated assertion that
 expected Compose names are embedded in generated traces. For detailed slice and
-frame analysis, run the SQL files in `trace-queries/` with Perfetto Trace
-Processor Shell or Android Studio Profiler.
+frame analysis, `analyze-compose-traces.ps1` restricts results to PocastCloni's
+Macrobenchmark `measureBlock`. The SQL files can also be run directly with
+Perfetto Trace Processor Shell or Android Studio Profiler.
 
-Trace Processor Shell was not present in the local Android SDK during the first
-baseline. The SQL is versioned and ready, but its CSV export is therefore not a
-hard local test yet.
+Install the official Windows Trace Processor wrapper once:
+
+```powershell
+$toolDir = "$env:LOCALAPPDATA/Pocastcloni/perfetto"
+New-Item -ItemType Directory -Force $toolDir
+Invoke-WebRequest https://get.perfetto.dev/trace_processor `
+  -OutFile "$toolDir/trace_processor"
+python "$toolDir/trace_processor" --version
+```
+
+The wrapper downloads and verifies the official native binary for the current
+platform on first use.
+
+### First Recomposition Finding
+
+Five five-second MiniPlayer traces initially showed ten executions of
+`MiniPlayerProgressBar`, caused by reading the complete playback state in the
+composition phase only to check whether a duration existed. Reading a distinct
+`hasDuration` value removed those executions. The repeated trace then showed:
+
+- zero actual recomposition slices during MiniPlayer idle playback
+- zero `HomeScreen`, podcast-grid, MiniPlayer-shell, and layout executions
+- frame-by-frame animation scheduling only for the draw-phase progress update
+
+Five FullPlayer traces showed two executions of the static screen, controls,
+cover metadata, and underlying detail screen. Those correspond to the measured
+pause and resume actions. Time labels executed six or seven times in the
+approximately 5.7-second window, as expected for second-level updates.
+
+`-EnforceBudgets` turns these observations into local regression checks. It does
+not constrain the animation-frame clock because draw-phase progress updates are
+expected to run every frame.
 
 ## First Baseline Decision
 
