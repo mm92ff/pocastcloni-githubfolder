@@ -221,7 +221,7 @@ internal fun validateBackupData(backupData: BackupData): BackupData {
         "Backup contains too many favorites."
     }
     backupData.settings?.let(::validateBackupSettings)
-    if (backupData.podcasts.any { parseNetworkUrl(it.url) == null }) {
+    if (backupData.podcasts.any { parseNetworkUrl(it.url, allowLocalNetwork = true) == null }) {
         throw IllegalArgumentException("Backup contains an invalid podcast URL.")
     }
     backupData.podcasts.forEach { podcast ->
@@ -237,7 +237,8 @@ internal fun validateBackupData(backupData: BackupData): BackupData {
         require(favorite.episodeGuid.length <= Constants.SecurityLimits.MAX_GUID_CHARS)
     }
     if (backupData.podcasts.any { podcast ->
-            !podcast.imageUrl.isNullOrBlank() && parseNetworkUrl(podcast.imageUrl) == null
+            !podcast.imageUrl.isNullOrBlank() &&
+                parseNetworkUrl(podcast.imageUrl, allowLocalNetwork = true) == null
         }
     ) {
         throw IllegalArgumentException("Backup contains an invalid image URL.")

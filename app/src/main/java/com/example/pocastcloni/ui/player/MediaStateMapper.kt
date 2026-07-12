@@ -11,6 +11,7 @@ import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.shouldUseLocalNetworkForResource
 import javax.inject.Inject
 
 class MediaStateMapper
@@ -21,7 +22,15 @@ constructor() {
         podcast: PodcastEntity?,
         playUri: String
     ): MediaItem {
-        val artworkUri = podcast?.imageUrl?.takeIf { it.isNotBlank() }?.toUri()
+        val artworkUri = podcast?.imageUrl
+            ?.takeIf { imageUrl ->
+                imageUrl.isNotBlank() && !shouldUseLocalNetworkForResource(
+                    podcast.rssUrl,
+                    imageUrl,
+                    podcast.allowLocalNetwork
+                )
+            }
+            ?.toUri()
         return MediaItem.Builder()
             .setMediaId(episode.guid)
             .setUri(playUri.toUri())

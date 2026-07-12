@@ -17,6 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import org.junit.rules.TemporaryFolder
 import java.util.Date
 
@@ -32,6 +33,7 @@ class PreparePlaybackUseCaseTest {
     private lateinit var repository: PodcastRepository
     private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var useCase: PreparePlaybackUseCase
+    private lateinit var localNetworkAccessRegistry: LocalNetworkAccessRegistry
 
     private val testDispatcher = StandardTestDispatcher()
     private val feedUrl = "https://example.com/feed.rss"
@@ -42,7 +44,12 @@ class PreparePlaybackUseCaseTest {
         repository = mockk(relaxed = true)
         dispatcherProvider = mockk()
         io.mockk.every { dispatcherProvider.io } returns testDispatcher
-        useCase = PreparePlaybackUseCase(repository, dispatcherProvider)
+        localNetworkAccessRegistry = LocalNetworkAccessRegistry()
+        useCase = PreparePlaybackUseCase(
+            repository,
+            dispatcherProvider,
+            localNetworkAccessRegistry
+        )
         coEvery { repository.getPodcastEntityByUrl(any()) } returns null
     }
 
@@ -152,5 +159,46 @@ class PreparePlaybackUseCaseTest {
         val result = useCase("guid-1")
 
         assertEquals("My Podcast", result.podcast?.title)
+    }
+
+    @Test
+    fun `approved same-origin local episode can stream`() = runTest(testDispatcher) {
+        val localFeed = "http://192.168.1.20:8080/feed.xml"
+        val localAudio = "http://192.168.1.20:8080/audio.mp3"
+        val ep = episode().copy(podcastRssUrl = localFeed, enclosureUrl = localAudio)
+        val podcast = PodcastEntity(
+            rssUrl = localFeed,
+            title = "Local",
+            description = "",
+            imageUrl = "http://192.168.1.20:8080/cover.jpg",
+            allowInsecureHttp = true,
+            allowLocalNetwork = true
+        )
+        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getPodcastEntityByUrl(localFeed) } returns podcast
+
+        val result = useCase("guid-1")
+
+        assertEquals(localAudio, result.playUri)
+        assertTrue(localNetworkAccessRegistry.isApproved(localAudio))
+    }
+
+    @Test
+    fun `approved local feed cannot stream from another private origin`() = runTest(testDispatcher) {
+        val localFeed = "http://192.168.1.20:8080/feed.xml"
+        val foreignAudio = "http://192.168.1.21:8080/audio.mp3"
+        val ep = episode().copy(podcastRssUrl = localFeed, enclosureUrl = foreignAudio)
+        val podcast = PodcastEntity(
+            rssUrl = localFeed,
+            title = "Local",
+            description = "",
+            imageUrl = "",
+            allowInsecureHttp = true,
+            allowLocalNetwork = true
+        )
+        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getPodcastEntityByUrl(localFeed) } returns podcast
+
+        assertTrue(runCatching { useCase("guid-1") }.isFailure)
     }
 }

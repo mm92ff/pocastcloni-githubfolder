@@ -18,7 +18,8 @@ data class Podcast(
     val eTagHeader: String?,
     val latestEpisodeDate: Date?,
     val isLatestEpisodePlayed: Boolean?,
-    val allowInsecureHttp: Boolean = false
+    val allowInsecureHttp: Boolean = false,
+    val allowLocalNetwork: Boolean = false
 ) {
     companion object {
         const val DEFAULT_SORT_ORDER = -1L
@@ -39,6 +40,7 @@ fun PodcastEntity.toPodcast(): Podcast {
         eTagHeader = eTagHeader,
         latestEpisodeDate = null, // This conversion is for a single entity, which doesn't have the joined data
         isLatestEpisodePlayed = null,
-        allowInsecureHttp = allowInsecureHttp
+        allowInsecureHttp = allowInsecureHttp,
+        allowLocalNetwork = allowLocalNetwork
     )
 }

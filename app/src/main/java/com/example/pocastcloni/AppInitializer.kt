@@ -8,6 +8,7 @@ import androidx.work.WorkManager
 import com.example.pocastcloni.data.worker.FeedUpdateWorker
 import com.example.pocastcloni.data.worker.LibraryCleanupWorker // Add import
 import com.example.pocastcloni.data.repository.BackupImportRecovery
+import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
@@ -32,9 +33,11 @@ constructor(
     @ApplicationScope private val scope: CoroutineScope,
     private val workManager: WorkManager,
     private val dispatcherProvider: DispatcherProvider,
-    private val backupImportRecovery: BackupImportRecovery
+    private val backupImportRecovery: BackupImportRecovery,
+    private val localNetworkAccessRegistry: LocalNetworkAccessRegistry
 ) {
     fun initialize() {
+        observeApprovedLocalFeeds()
         scope.launch(dispatcherProvider.io) {
             try {
                 backupImportRecovery.recoverInterruptedImport()
@@ -45,6 +48,18 @@ constructor(
             reconcileEpisodeStorage()
             observeCleanupSettings()
             observeBackgroundSyncSettings()
+        }
+    }
+
+    private fun observeApprovedLocalFeeds() {
+        scope.launch(dispatcherProvider.io) {
+            podcastRepository.getAllPodcastsFlow()
+                .catch { error -> Timber.e(error, "Failed to load approved local feeds") }
+                .collect { podcasts ->
+                    localNetworkAccessRegistry.replaceApprovedFeeds(
+                        podcasts.filter { it.allowLocalNetwork }.map { it.rssUrl }
+                    )
+                }
         }
     }
 

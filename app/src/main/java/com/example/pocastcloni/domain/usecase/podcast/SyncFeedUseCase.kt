@@ -6,6 +6,7 @@ import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.remote.PodcastService
 import com.example.pocastcloni.data.remote.RssItem
 import com.example.pocastcloni.data.remote.RssSmartSyncParser
+import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 // TODO: ARCHITECTURE BOUNDARY VIOLATION - Domain layer importing data mapper functions
 // FIXME: Domain use cases should not depend on data layer implementation details.
 // This mapper function should be moved to domain or accessed via repository interface.
@@ -17,7 +18,7 @@ import com.example.pocastcloni.domain.usecase.episode.DownloadEpisodeUseCase
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.stripHtml
 import com.example.pocastcloni.util.requireApprovedNetworkUrl
-import com.example.pocastcloni.util.isAllowedRemoteResource
+import com.example.pocastcloni.util.isAllowedPodcastResource
 import com.example.pocastcloni.util.SizeLimitedInputStream
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -26,15 +27,18 @@ import java.util.Date
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
+import javax.inject.Named
 
 @Singleton
 class SyncFeedUseCase
 @Inject
 constructor(
     private val podcastService: PodcastService,
+    @Named("LocalPodcastService") private val localPodcastService: PodcastService,
     private val podcastRepositoryProvider: Provider<PodcastRepository>,
     private val downloadEpisodeUseCase: DownloadEpisodeUseCase,
-    private val dispatcherProvider: DispatcherProvider
+    private val dispatcherProvider: DispatcherProvider,
+    private val localNetworkAccessRegistry: LocalNetworkAccessRegistry
 ) {
     private val streamParser = RssSmartSyncParser()
 
@@ -49,17 +53,32 @@ constructor(
         mode: FeedUpdateMode,
         sortOrder: Long? = null,
         forceFull: Boolean = false,
-        allowInsecureHttp: Boolean = false
+        allowInsecureHttp: Boolean = false,
+        allowLocalNetwork: Boolean = false
     ) {
         withContext(dispatcherProvider.io) {
             try {
                 val existingPodcast = repo.getPodcastEntityByUrl(url)
                 val effectiveAllowInsecureHttp =
                     existingPodcast?.allowInsecureHttp ?: allowInsecureHttp
-                requireApprovedNetworkUrl(url, effectiveAllowInsecureHttp)
+                val effectiveAllowLocalNetwork =
+                    existingPodcast?.allowLocalNetwork ?: allowLocalNetwork
+                requireApprovedNetworkUrl(
+                    url,
+                    effectiveAllowInsecureHttp,
+                    effectiveAllowLocalNetwork
+                )
+                val service = if (effectiveAllowLocalNetwork) localPodcastService else podcastService
 
                 if (mode == FeedUpdateMode.SMART_STREAM && !forceFull) {
-                    syncSmart(url, existingPodcast, downloadLimit, effectiveAllowInsecureHttp)
+                    syncSmart(
+                        url,
+                        existingPodcast,
+                        downloadLimit,
+                        effectiveAllowInsecureHttp,
+                        effectiveAllowLocalNetwork,
+                        service
+                    )
                 } else {
                     syncFull(
                         url,
@@ -67,7 +86,9 @@ constructor(
                         downloadLimit,
                         forceFull,
                         sortOrder,
-                        effectiveAllowInsecureHttp
+                        effectiveAllowInsecureHttp,
+                        effectiveAllowLocalNetwork,
+                        service
                     )
                 }
             } catch (e: Exception) {
@@ -81,14 +102,16 @@ constructor(
         url: String,
         existing: PodcastEntity?,
         downloadLimit: Int,
-        allowInsecureHttp: Boolean
+        allowInsecureHttp: Boolean,
+        allowLocalNetwork: Boolean,
+        service: PodcastService
     ) {
         val latestKnownGuid = repo.getLatestEpisodeGuid(url)
         val hasNoEpisodes = existing != null && latestKnownGuid == null
         val effectiveLastModified = if (hasNoEpisodes) null else existing?.lastModifiedHeader
         val effectiveEtag = if (hasNoEpisodes) null else existing?.eTagHeader
 
-        val response = podcastService.fetchRawFeed(url, effectiveLastModified, effectiveEtag)
+        val response = service.fetchRawFeed(url, effectiveLastModified, effectiveEtag)
         if (response.code() == HttpURLConnection.HTTP_NOT_MODIFIED) {
             existing?.let {
                 repo.updatePodcastEntity(it.copy(lastRefreshed = Date()))
@@ -124,7 +147,8 @@ constructor(
                 etag = response.headers()[Constants.Network.HEADER_ETAG],
                 sortOrder = existing?.sortOrder,
                 downloadLimit = downloadLimit,
-                allowInsecureHttp = allowInsecureHttp
+                allowInsecureHttp = allowInsecureHttp,
+                allowLocalNetwork = allowLocalNetwork
             )
         } finally {
             stream.close()
@@ -137,13 +161,15 @@ constructor(
         downloadLimit: Int,
         forceFull: Boolean,
         sortOrder: Long?,
-        allowInsecureHttp: Boolean
+        allowInsecureHttp: Boolean,
+        allowLocalNetwork: Boolean,
+        service: PodcastService
     ) {
         val hasNoEpisodes = existing != null && repo.getLatestEpisodeGuid(url) == null
         val effectiveForceFull = forceFull || hasNoEpisodes
         val lastModified = if (effectiveForceFull) null else existing?.lastModifiedHeader
         val etag = if (effectiveForceFull) null else existing?.eTagHeader
-        val response = podcastService.fetchRawFeed(url, lastModified, etag)
+        val response = service.fetchRawFeed(url, lastModified, etag)
 
         if (response.code() == HttpURLConnection.HTTP_NOT_MODIFIED) {
             existing?.let {
@@ -178,7 +204,8 @@ constructor(
                 etag = response.headers()[Constants.Network.HEADER_ETAG],
                 sortOrder = sortOrder,
                 downloadLimit = downloadLimit,
-                allowInsecureHttp = allowInsecureHttp
+                allowInsecureHttp = allowInsecureHttp,
+                allowLocalNetwork = allowLocalNetwork
             )
         } finally {
             stream.close()
@@ -196,7 +223,8 @@ constructor(
         etag: String?,
         sortOrder: Long?,
         downloadLimit: Int,
-        allowInsecureHttp: Boolean
+        allowInsecureHttp: Boolean,
+        allowLocalNetwork: Boolean
     ) {
         if (
             title.isNullOrBlank() ||
@@ -206,7 +234,12 @@ constructor(
             imageUrl.length > Constants.SecurityLimits.MAX_URL_CHARS ||
             lastModified.orEmpty().length > Constants.SecurityLimits.MAX_HEADER_CHARS ||
             etag.orEmpty().length > Constants.SecurityLimits.MAX_HEADER_CHARS ||
-            !isAllowedRemoteResource(imageUrl, allowInsecureHttp)
+            !isAllowedPodcastResource(
+                url,
+                imageUrl,
+                allowInsecureHttp,
+                allowLocalNetwork
+            )
         ) {
             throw IllegalStateException("Feed missing title or image for $url")
         }
@@ -236,7 +269,13 @@ constructor(
                 if (existingEpisodes.containsKey(entity.guid)) return@mapNotNull null
 
                 // An episode without an audio URL is useless
-                if (!isAllowedRemoteResource(entity.enclosureUrl, allowInsecureHttp)) {
+                if (!isAllowedPodcastResource(
+                        url,
+                        entity.enclosureUrl,
+                        allowInsecureHttp,
+                        allowLocalNetwork
+                    )
+                ) {
                     return@mapNotNull null
                 }
 
@@ -253,6 +292,7 @@ constructor(
                 description = description?.stripHtml() ?: "",
                 imageUrl = imageUrl,
                 allowInsecureHttp = allowInsecureHttp,
+                allowLocalNetwork = allowLocalNetwork,
                 lastRefreshed = Date(),
                 lastModifiedHeader = lastModified,
                 eTagHeader = etag,
@@ -263,6 +303,7 @@ constructor(
                 description = description?.stripHtml() ?: "",
                 imageUrl = imageUrl,
                 allowInsecureHttp = allowInsecureHttp,
+                allowLocalNetwork = allowLocalNetwork,
                 sortOrder = sortOrder ?: (repo.getMaxSortOrder() ?: 0) + 1,
                 lastModifiedHeader = lastModified,
                 eTagHeader = etag,
@@ -273,6 +314,10 @@ constructor(
             repo.insertPodcastEntity(podcastEntity)
         } else {
             repo.updatePodcastEntity(podcastEntity)
+        }
+
+        if (allowLocalNetwork) {
+            localNetworkAccessRegistry.approveFeed(url)
         }
 
         if (episodesToInsert.isNotEmpty()) {

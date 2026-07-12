@@ -153,21 +153,30 @@ constructor(
         mode: FeedUpdateMode,
         sortOrder: Long?,
         forceFull: Boolean,
-        allowInsecureHttp: Boolean
+        allowInsecureHttp: Boolean,
+        allowLocalNetwork: Boolean
     ) {
         withContext(dispatcherProvider.io) {
             val normalizedUrl = url.trim()
             val existing = podcastDao.getPodcastByUrl(normalizedUrl)
             if (existing != null) {
-                if (allowInsecureHttp && !existing.allowInsecureHttp) {
-                    podcastDao.updatePodcast(existing.copy(allowInsecureHttp = true))
+                if (
+                    (allowInsecureHttp && !existing.allowInsecureHttp) ||
+                    (allowLocalNetwork && !existing.allowLocalNetwork)
+                ) {
+                    val approved = existing.copy(
+                        allowInsecureHttp = existing.allowInsecureHttp || allowInsecureHttp,
+                        allowLocalNetwork = existing.allowLocalNetwork || allowLocalNetwork
+                    )
+                    podcastDao.updatePodcast(approved)
                     syncFeedUseCase.get().invoke(
                         normalizedUrl,
                         downloadLimit,
                         mode,
                         existing.sortOrder,
                         forceFull,
-                        allowInsecureHttp = true
+                        allowInsecureHttp = approved.allowInsecureHttp,
+                        allowLocalNetwork = approved.allowLocalNetwork
                     )
                 }
                 return@withContext
@@ -179,7 +188,8 @@ constructor(
                 mode,
                 orderToUse,
                 forceFull,
-                allowInsecureHttp
+                allowInsecureHttp,
+                allowLocalNetwork
             )
         }
     }

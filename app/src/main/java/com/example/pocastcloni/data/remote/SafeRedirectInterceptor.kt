@@ -8,7 +8,9 @@ import okhttp3.Response
 import java.io.IOException
 
 class SafeRedirectInterceptor(
-    private val isAllowedUrl: (String) -> Boolean = { parseNetworkUrl(it) != null }
+    private val isAllowedUrl: (String) -> Boolean = { parseNetworkUrl(it) != null },
+    private val allowOriginChange: Boolean = true,
+    private val isAllowedRedirect: (okhttp3.HttpUrl, okhttp3.HttpUrl) -> Boolean = { _, _ -> true }
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         var request = chain.request()
@@ -20,7 +22,12 @@ class SafeRedirectInterceptor(
 
             val location = response.header("Location") ?: return response
             val target = request.url.resolve(location) ?: return response
-            if (!isAllowedUrl(target.toString()) || isUnsafeRedirect(request.url, target)) {
+            if (
+                !isAllowedUrl(target.toString()) ||
+                isUnsafeRedirect(request.url, target) ||
+                (!allowOriginChange && !hasSameOrigin(request.url, target)) ||
+                !isAllowedRedirect(request.url, target)
+            ) {
                 response.close()
                 throw IOException("Blocked unsafe redirect")
             }

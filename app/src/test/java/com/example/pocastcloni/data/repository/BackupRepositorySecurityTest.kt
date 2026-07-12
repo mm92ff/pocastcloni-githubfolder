@@ -108,6 +108,44 @@ class BackupRepositorySecurityTest {
     }
 
     @Test
+    fun `backup cannot self-authorize local network access`() = runTest(dispatcher) {
+        val url = "https://192.168.1.20/feed.xml"
+        val storedStub = PodcastEntity(
+            rssUrl = url,
+            title = "Imported",
+            description = "",
+            imageUrl = "",
+            allowLocalNetwork = false
+        )
+        coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
+            podcasts = listOf(
+                BackupPodcast(
+                    url = url,
+                    title = "Imported",
+                    imageUrl = "https://192.168.1.20/cover.jpg",
+                    allowLocalNetwork = true
+                )
+            )
+        )
+        coEvery { dao.getPodcastByUrl(url) } returnsMany listOf(null, null, storedStub, storedStub)
+
+        repository.importFullBackup(
+            uri = mockk<Uri>(),
+            downloadLimit = 3,
+            mode = FeedUpdateMode.SMART_STREAM
+        )
+
+        coVerify {
+            dao.insertPodcasts(match { podcasts ->
+                podcasts.single().let { !it.allowLocalNetwork && it.imageUrl.isEmpty() }
+            })
+        }
+        coVerify(exactly = 0) {
+            syncFeed.invoke(any(), any(), any(), any(), any(), any(), any())
+        }
+    }
+
+    @Test
     fun `cancellation during local transaction rolls settings back and propagates`() = runTest(dispatcher) {
         val previous = UserSettings(theme = AppTheme.DARK)
         val imported = UserSettings(theme = AppTheme.LIGHT)

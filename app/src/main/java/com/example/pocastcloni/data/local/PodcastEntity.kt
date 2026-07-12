@@ -14,6 +14,7 @@ data class PodcastEntity(
     val lastRefreshed: Date = Date(),
     val autoDownloadEnabled: Boolean = false,
     val allowInsecureHttp: Boolean = false,
+    val allowLocalNetwork: Boolean = false,
     val sortOrder: Long = Constants.Database.DEFAULT_SORT_ORDER,
     // Denormalized fields for faster UI queries
     val hasNewEpisodes: Boolean = false,

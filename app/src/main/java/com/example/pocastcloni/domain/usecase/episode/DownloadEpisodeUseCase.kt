@@ -12,7 +12,7 @@ import com.example.pocastcloni.data.worker.DownloadWorker
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.util.Constants
-import com.example.pocastcloni.util.requireApprovedNetworkUrl
+import com.example.pocastcloni.util.requireApprovedPodcastResource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -69,9 +69,11 @@ constructor(
 
     private suspend fun startDownload(episode: EpisodeEntity) {
         val podcast = podcastRepository.getPodcastEntityByUrl(episode.podcastRssUrl)
-        requireApprovedNetworkUrl(
-            episode.enclosureUrl,
-            allowInsecureHttp = podcast?.allowInsecureHttp == true
+        requireApprovedPodcastResource(
+            feedUrl = episode.podcastRssUrl,
+            resourceUrl = episode.enclosureUrl,
+            allowInsecureHttp = podcast?.allowInsecureHttp == true,
+            allowLocalNetwork = podcast?.allowLocalNetwork == true
         )
         podcastRepository.updateDownloadStatus(episode.guid, DownloadStatus.QUEUED, null)
 

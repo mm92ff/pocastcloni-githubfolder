@@ -15,7 +15,7 @@ import com.example.pocastcloni.domain.repository.ImportResult
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
-import com.example.pocastcloni.util.parseNetworkUrl
+import com.example.pocastcloni.util.isAllowedRemoteResource
 import com.fasterxml.jackson.databind.ObjectMapper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.withContext
@@ -103,10 +103,12 @@ constructor(
                     var currentMaxSortOrder = podcastDao.getMaxSortOrder() ?: 0L
                     backupData.podcasts.forEach { backupPodcast ->
                         val existing = podcastDao.getPodcastByUrl(backupPodcast.url)
-                        val hasExistingApproval = existing?.allowInsecureHttp == true
                         val safeImageUrl = backupPodcast.imageUrl.orEmpty().takeIf { imageUrl ->
-                            val parsedImage = parseNetworkUrl(imageUrl)
-                            parsedImage?.isHttps == true || hasExistingApproval
+                            isAllowedRemoteResource(
+                                imageUrl,
+                                allowInsecureHttp = existing?.allowInsecureHttp == true,
+                                allowLocalNetwork = existing?.allowLocalNetwork == true
+                            )
                         }.orEmpty()
                         val orderToUse = if (backupPodcast.sortOrder > 0) {
                             backupPodcast.sortOrder
@@ -120,6 +122,7 @@ constructor(
                                 ?: context.getString(R.string.import_fallback_description),
                             imageUrl = safeImageUrl,
                             allowInsecureHttp = false,
+                            allowLocalNetwork = false,
                             sortOrder = orderToUse,
                             lastModifiedHeader = backupPodcast.lastModifiedHeader,
                             eTagHeader = backupPodcast.eTagHeader,
@@ -143,8 +146,13 @@ constructor(
             }
 
             syncTargets.forEach { storedPodcast ->
-                val feedIsHttps = parseNetworkUrl(storedPodcast.rssUrl)?.isHttps == true
-                if (maySyncImportedFeed(feedIsHttps, storedPodcast.allowInsecureHttp)) {
+                if (
+                    maySyncImportedFeed(
+                        storedPodcast.rssUrl,
+                        storedPodcast.allowInsecureHttp,
+                        storedPodcast.allowLocalNetwork
+                    )
+                ) {
                     try {
                         syncFeedUseCase.get().invoke(
                             storedPodcast.rssUrl,
@@ -152,7 +160,8 @@ constructor(
                             mode,
                             sortOrder = null,
                             forceFull = false,
-                            allowInsecureHttp = storedPodcast.allowInsecureHttp
+                            allowInsecureHttp = storedPodcast.allowInsecureHttp,
+                            allowLocalNetwork = storedPodcast.allowLocalNetwork
                         )
                     } catch (error: CancellationException) {
                         throw error
@@ -216,6 +225,11 @@ internal suspend fun insertPodcastStubPreservingExisting(
 }
 
 internal fun maySyncImportedFeed(
-    feedIsHttps: Boolean,
+    feedUrl: String,
+    hasExistingHttpApproval: Boolean,
     hasExistingLocalApproval: Boolean
-): Boolean = feedIsHttps || hasExistingLocalApproval
+): Boolean = isAllowedRemoteResource(
+    feedUrl,
+    allowInsecureHttp = hasExistingHttpApproval,
+    allowLocalNetwork = hasExistingLocalApproval
+)

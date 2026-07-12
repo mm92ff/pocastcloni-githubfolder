@@ -62,7 +62,56 @@ class PodcastRepositoryHttpApprovalTest {
                 FeedUpdateMode.SMART_STREAM,
                 4,
                 false,
-                true
+                allowInsecureHttp = true,
+                allowLocalNetwork = false
+            )
+        }
+    }
+
+    @Test
+    fun `explicit local approval activates an imported local stub`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val dao = mockk<PodcastDao>(relaxed = true)
+        val syncFeed = mockk<SyncFeedUseCase>(relaxed = true)
+        val dispatcherProvider = mockk<DispatcherProvider>().also {
+            every { it.io } returns dispatcher
+        }
+        val url = "https://192.168.1.20/feed.xml"
+        val stub = PodcastEntity(
+            rssUrl = url,
+            title = "Imported",
+            description = "",
+            imageUrl = "",
+            allowLocalNetwork = false,
+            sortOrder = 4
+        )
+        coEvery { dao.getPodcastByUrl(url) } returns stub
+        val repository = PodcastRepositoryImpl(
+            podcastDao = dao,
+            itunesSearchApi = mockk<ItunesSearchApi>(relaxed = true),
+            dispatcherProvider = dispatcherProvider,
+            downloader = mockk<PodcastDownloader>(relaxed = true),
+            syncFeedUseCase = Provider { syncFeed },
+            context = mockk<Context>(relaxed = true)
+        )
+
+        repository.addPodcast(
+            url = url,
+            downloadLimit = 3,
+            mode = FeedUpdateMode.SMART_STREAM,
+            allowLocalNetwork = true
+        )
+
+        coVerify { dao.updatePodcast(match { it.rssUrl == url && it.allowLocalNetwork }) }
+        coVerify {
+            syncFeed.invoke(
+                url,
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                4,
+                false,
+                allowInsecureHttp = false,
+                allowLocalNetwork = true
             )
         }
     }

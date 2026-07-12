@@ -19,6 +19,14 @@ object AppDatabaseMigrations {
         }
     }
 
+    internal val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `podcasts` ADD COLUMN `allowLocalNetwork` INTEGER NOT NULL DEFAULT 0"
+            )
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Legacy migrations (v1–v9 → v10)
     // All pre-v10 databases are rebuilt in one pass to the v10 schema.
@@ -78,7 +86,8 @@ object AppDatabaseMigrations {
                 )
             }
         },
-        MIGRATION_12_13
+        MIGRATION_12_13,
+        MIGRATION_13_14
     )
 
     val ALL_MIGRATIONS: Array<Migration> = legacyMigrations + incrementalMigrations

@@ -29,7 +29,8 @@ fun PodcastEntity.toDomain(): Podcast {
         eTagHeader = this.eTagHeader,
         isLatestEpisodePlayed = this.isLatestEpisodePlayed,
         latestEpisodeDate = null,
-        allowInsecureHttp = this.allowInsecureHttp
+        allowInsecureHttp = this.allowInsecureHttp,
+        allowLocalNetwork = this.allowLocalNetwork
     )
 }
 
@@ -43,6 +44,7 @@ fun Podcast.toEntity(): PodcastEntity {
         autoDownloadEnabled = this.autoDownloadEnabled,
         sortOrder = this.sortOrder,
         allowInsecureHttp = this.allowInsecureHttp,
+        allowLocalNetwork = this.allowLocalNetwork,
         hasNewEpisodes = this.hasNewEpisodes,
         lastModifiedHeader = this.lastModifiedHeader,
         eTagHeader = this.eTagHeader
@@ -72,6 +74,7 @@ fun PodcastEntity.toBackupPodcast(): BackupPodcast {
         url = this.rssUrl,
         sortOrder = this.sortOrder,
         allowInsecureHttp = this.allowInsecureHttp,
+        allowLocalNetwork = this.allowLocalNetwork,
         title = this.title,
         description = this.description,
         imageUrl = this.imageUrl,

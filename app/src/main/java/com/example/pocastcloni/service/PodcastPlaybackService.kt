@@ -48,6 +48,7 @@ import timber.log.Timber
 import okhttp3.OkHttpClient
 import java.io.File
 import javax.inject.Inject
+import javax.inject.Named
 
 @OptIn(UnstableApi::class)
 @AndroidEntryPoint
@@ -62,7 +63,7 @@ class PodcastPlaybackService : MediaSessionService() {
 
     @Inject lateinit var connectivityProvider: ConnectivityProvider
 
-    @Inject lateinit var okHttpClient: OkHttpClient
+    @Inject @Named("ApprovedMediaClient") lateinit var okHttpClient: OkHttpClient
 
     private lateinit var serviceScope: CoroutineScope
 

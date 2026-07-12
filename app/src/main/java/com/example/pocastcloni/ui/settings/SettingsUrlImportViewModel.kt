@@ -9,6 +9,7 @@ import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.util.parseNetworkUrl
 import com.example.pocastcloni.util.requiresCleartextConfirmation
+import com.example.pocastcloni.util.requiresLocalNetworkConfirmation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.BufferOverflow
@@ -47,6 +48,7 @@ constructor(
             is SettingsUiEvent.OnAddUrlQueryChange -> onUrlChange(event.url)
             SettingsUiEvent.AddPodcastViaUrl -> onAddPodcast()
             is SettingsUiEvent.SetAddUrlAllowInsecureHttp -> setAllowInsecureHttp(event.allowed)
+            is SettingsUiEvent.SetAddUrlAllowLocalNetwork -> setAllowLocalNetwork(event.allowed)
             else ->
                 Timber.w(
                     "SettingsUrlImportViewModel ignoring event %s",
@@ -62,7 +64,9 @@ constructor(
                 message = null,
                 isError = false,
                 pendingCleartextConfirmationUrl = null,
-                allowInsecureHttp = false
+                pendingLocalNetworkConfirmationUrl = null,
+                allowInsecureHttp = false,
+                allowLocalNetwork = false
             )
         }
     }
@@ -85,6 +89,17 @@ constructor(
         }
     }
 
+    fun setAllowLocalNetwork(allowed: Boolean) {
+        _uiState.update {
+            it.copy(
+                allowLocalNetwork = allowed,
+                pendingLocalNetworkConfirmationUrl = null,
+                message = null,
+                isError = false
+            )
+        }
+    }
+
     fun onAddPodcast() {
         val current = _uiState.value
         if (current.isAdding) return // double-tap / parallel request guard
@@ -96,8 +111,19 @@ constructor(
             return
         }
 
-        if (parseNetworkUrl(url) == null) {
+        if (parseNetworkUrl(url, allowLocalNetwork = true) == null) {
             postError(UiText.StringResource(R.string.error_add_url_invalid))
+            return
+        }
+
+        if (requiresLocalNetworkConfirmation(url) && !current.allowLocalNetwork) {
+            _uiState.update {
+                it.copy(
+                    message = UiText.StringResource(R.string.warning_add_url_local_confirmation),
+                    isError = true,
+                    pendingLocalNetworkConfirmationUrl = url
+                )
+            }
             return
         }
 
@@ -121,7 +147,8 @@ constructor(
             try {
                 addPodcastFromUrl(
                     url = url,
-                    allowInsecureHttp = current.allowInsecureHttp
+                    allowInsecureHttp = current.allowInsecureHttp,
+                    allowLocalNetwork = current.allowLocalNetwork
                 )
 
                 val msg = UiText.StringResource(R.string.add_podcast_success)
@@ -132,7 +159,9 @@ constructor(
                         message = msg,
                         isError = false,
                         pendingCleartextConfirmationUrl = null,
-                        allowInsecureHttp = false
+                        pendingLocalNetworkConfirmationUrl = null,
+                        allowInsecureHttp = false,
+                        allowLocalNetwork = false
                     )
                 }
                 _events.tryEmit(msg)

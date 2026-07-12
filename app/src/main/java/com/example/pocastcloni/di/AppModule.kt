@@ -13,6 +13,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import javax.inject.Singleton
+import javax.inject.Named
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -21,7 +22,7 @@ object AppModule {
     @Singleton
     fun provideImageLoader(
         @ApplicationContext context: Context,
-        okHttpClient: OkHttpClient
+        @Named("ApprovedMediaClient") okHttpClient: OkHttpClient
     ): ImageLoader {
         return ImageLoader.Builder(context)
             .okHttpClient(okHttpClient)

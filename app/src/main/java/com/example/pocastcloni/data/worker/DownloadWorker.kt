@@ -19,13 +19,15 @@ import com.example.pocastcloni.domain.repository.StatisticsRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
-import com.example.pocastcloni.util.requireApprovedNetworkUrl
+import com.example.pocastcloni.util.requireApprovedPodcastResource
+import com.example.pocastcloni.util.shouldUseLocalNetworkForResource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import javax.inject.Named
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
@@ -43,6 +45,7 @@ constructor(
     private val statsRepo: StatisticsRepository,
     private val connectivityProvider: ConnectivityProvider,
     private val okHttpClient: OkHttpClient,
+    @Named("LocalNetworkClient") private val localNetworkClient: OkHttpClient,
     private val userPreferencesRepository: UserPreferencesRepository,
 ) : CoroutineWorker(context, params) {
     companion object {
@@ -60,7 +63,12 @@ constructor(
         val episode = podcastRepository.getEpisode(guid) ?: return Result.failure()
         val podcast = podcastRepository.getPodcastEntityByUrl(episode.podcastRssUrl)
         runCatching {
-            requireApprovedNetworkUrl(url, podcast?.allowInsecureHttp == true)
+            requireApprovedPodcastResource(
+                feedUrl = episode.podcastRssUrl,
+                resourceUrl = url,
+                allowInsecureHttp = podcast?.allowInsecureHttp == true,
+                allowLocalNetwork = podcast?.allowLocalNetwork == true
+            )
         }.onFailure {
             Timber.w(it, "Rejected unsafe download URL")
             return Result.failure()
@@ -77,11 +85,23 @@ constructor(
                 false
             }
 
+            val downloadClient = if (
+                shouldUseLocalNetworkForResource(
+                    episode.podcastRssUrl,
+                    url,
+                    podcast?.allowLocalNetwork == true
+                )
+            ) {
+                localNetworkClient
+            } else {
+                okHttpClient
+            }
+
             val (storagePath, fileSize) =
                 if (saveToDownloads && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    downloadViaMediaStore(url, fileName)
+                    downloadViaMediaStore(url, fileName, downloadClient)
                 } else {
-                    val file = downloadToFile(url, fileName, saveToDownloads)
+                    val file = downloadToFile(url, fileName, saveToDownloads, downloadClient)
                     Pair(file.absolutePath, file.length())
                 }
 
@@ -112,7 +132,11 @@ constructor(
     // API 29+: writes to the public Downloads folder via MediaStore.
     // Stores a content:// URI string in the DB instead of a file path.
     @RequiresApi(Build.VERSION_CODES.Q)
-    private suspend fun downloadViaMediaStore(url: String, fileName: String): Pair<String, Long> {
+    private suspend fun downloadViaMediaStore(
+        url: String,
+        fileName: String,
+        client: OkHttpClient
+    ): Pair<String, Long> {
         val sanitizedFileName = sanitizeFileName(fileName)
 
         if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) {
@@ -137,7 +161,8 @@ constructor(
                 performDownload(
                     url = url,
                     outputStream = output,
-                    availableBytes = ::externalDownloadsAvailableBytes
+                    availableBytes = ::externalDownloadsAvailableBytes,
+                    client = client
                 )
             } catch (e: Exception) {
                 // Close stream if performDownload threw before its internal .use {} could close it
@@ -159,7 +184,8 @@ constructor(
     private suspend fun downloadToFile(
         url: String,
         fileName: String,
-        saveToDownloads: Boolean
+        saveToDownloads: Boolean,
+        client: OkHttpClient
     ): File {
         val dir = resolveDownloadDirectory(saveToDownloads)
         val file = File(dir, sanitizeFileName(fileName))
@@ -167,7 +193,8 @@ constructor(
             performDownload(
                 url = url,
                 outputStream = FileOutputStream(file),
-                availableBytes = { dir.usableSpace }
+                availableBytes = { dir.usableSpace },
+                client = client
             )
             file
         }
@@ -177,10 +204,11 @@ constructor(
     private suspend fun performDownload(
         url: String,
         outputStream: OutputStream,
-        availableBytes: () -> Long
+        availableBytes: () -> Long,
+        client: OkHttpClient
     ): Long {
         val request = Request.Builder().url(url).build()
-        val response = okHttpClient.newCall(request).execute()
+        val response = client.newCall(request).execute()
         try {
             if (!response.isSuccessful) {
                 throw DownloadHttpException(response.code)

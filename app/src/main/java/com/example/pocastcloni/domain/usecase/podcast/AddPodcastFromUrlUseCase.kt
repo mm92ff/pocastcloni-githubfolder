@@ -16,7 +16,8 @@ constructor(
 ) {
     suspend operator fun invoke(
         url: String,
-        allowInsecureHttp: Boolean = false
+        allowInsecureHttp: Boolean = false,
+        allowLocalNetwork: Boolean = false
     ) {
         withContext(dispatcherProvider.io) {
             // 1. Load current settings
@@ -30,7 +31,8 @@ constructor(
                 // FIX: set forceFull to false so the user's feedUpdateMode setting is respected.
                 // When "Smart Stream" is active, only up to the limit (e.g. 3 episodes) will be fetched.
                 forceFull = false,
-                allowInsecureHttp = allowInsecureHttp
+                allowInsecureHttp = allowInsecureHttp,
+                allowLocalNetwork = allowLocalNetwork
             )
         }
     }

@@ -6,7 +6,8 @@ import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.model.toPodcast
 import com.example.pocastcloni.domain.repository.PodcastRepository
-import com.example.pocastcloni.util.requireApprovedNetworkUrl
+import com.example.pocastcloni.util.requireApprovedPodcastResource
+import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -23,7 +24,8 @@ class PreparePlaybackUseCase
 @Inject
 constructor(
     private val repository: PodcastRepository,
-    private val dispatcherProvider: DispatcherProvider
+    private val dispatcherProvider: DispatcherProvider,
+    private val localNetworkAccessRegistry: LocalNetworkAccessRegistry
 ) {
     suspend operator fun invoke(guid: String): PlayEpisodeResult {
         return withContext(dispatcherProvider.io) {
@@ -68,10 +70,15 @@ constructor(
             }
 
             if (finalUri == savedEpisode.enclosureUrl) {
-                requireApprovedNetworkUrl(
-                    finalUri,
-                    allowInsecureHttp = podcastEntity?.allowInsecureHttp == true
+                requireApprovedPodcastResource(
+                    feedUrl = savedEpisode.podcastRssUrl,
+                    resourceUrl = finalUri,
+                    allowInsecureHttp = podcastEntity?.allowInsecureHttp == true,
+                    allowLocalNetwork = podcastEntity?.allowLocalNetwork == true
                 )
+                if (podcastEntity?.allowLocalNetwork == true) {
+                    localNetworkAccessRegistry.approveFeed(savedEpisode.podcastRssUrl)
+                }
             }
 
             PlayEpisodeResult(

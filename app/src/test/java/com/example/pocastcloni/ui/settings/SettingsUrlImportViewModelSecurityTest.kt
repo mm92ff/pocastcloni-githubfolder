@@ -35,13 +35,15 @@ class SettingsUrlImportViewModelSecurityTest {
         viewModel.onAddPodcast()
 
         assertEquals(url, viewModel.uiState.value.pendingCleartextConfirmationUrl)
-        coVerify(exactly = 0) { addPodcast(any()) }
+        coVerify(exactly = 0) { addPodcast(any(), any(), any()) }
 
         viewModel.setAllowInsecureHttp(true)
         viewModel.onAddPodcast()
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { addPodcast(url, allowInsecureHttp = true) }
+        coVerify(exactly = 1) {
+            addPodcast(url, allowInsecureHttp = true, allowLocalNetwork = false)
+        }
         assertNull(viewModel.uiState.value.pendingCleartextConfirmationUrl)
     }
 
@@ -53,7 +55,48 @@ class SettingsUrlImportViewModelSecurityTest {
         viewModel.onAddPodcast()
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { addPodcast(url, allowInsecureHttp = false) }
+        coVerify(exactly = 1) {
+            addPodcast(url, allowInsecureHttp = false, allowLocalNetwork = false)
+        }
         assertNull(viewModel.uiState.value.pendingCleartextConfirmationUrl)
+    }
+
+    @Test
+    fun `local HTTPS feed requires explicit local approval`() = runTest(dispatcher) {
+        val url = "https://192.168.1.20/feed.xml"
+        viewModel.onUrlChange(url)
+
+        viewModel.onAddPodcast()
+
+        assertEquals(url, viewModel.uiState.value.pendingLocalNetworkConfirmationUrl)
+        coVerify(exactly = 0) { addPodcast(any(), any(), any()) }
+
+        viewModel.setAllowLocalNetwork(true)
+        viewModel.onAddPodcast()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            addPodcast(url, allowInsecureHttp = false, allowLocalNetwork = true)
+        }
+    }
+
+    @Test
+    fun `local HTTP feed requires both approvals`() = runTest(dispatcher) {
+        val url = "http://10.0.2.2/feed.xml"
+        viewModel.onUrlChange(url)
+        viewModel.setAllowLocalNetwork(true)
+
+        viewModel.onAddPodcast()
+
+        assertEquals(url, viewModel.uiState.value.pendingCleartextConfirmationUrl)
+        coVerify(exactly = 0) { addPodcast(any(), any(), any()) }
+
+        viewModel.setAllowInsecureHttp(true)
+        viewModel.onAddPodcast()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            addPodcast(url, allowInsecureHttp = true, allowLocalNetwork = true)
+        }
     }
 }

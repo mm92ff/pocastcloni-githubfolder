@@ -52,10 +52,12 @@ fun SectionAddPodcast(
     urlInput: String,
     isAdding: Boolean,
     allowInsecureHttp: Boolean,
+    allowLocalNetwork: Boolean,
     message: UiText?,
     isError: Boolean,
     onUrlChange: (String) -> Unit,
     onAllowInsecureHttpChange: (Boolean) -> Unit,
+    onAllowLocalNetworkChange: (Boolean) -> Unit,
     onAddClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -86,6 +88,26 @@ fun SectionAddPodcast(
                 Text(stringResource(R.string.allow_legacy_http_media))
                 Text(
                     stringResource(R.string.allow_legacy_http_media_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = allowLocalNetwork,
+                onCheckedChange = onAllowLocalNetworkChange
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.allow_local_network_feed))
+                Text(
+                    stringResource(R.string.allow_local_network_feed_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

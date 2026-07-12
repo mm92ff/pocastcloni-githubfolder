@@ -6,8 +6,13 @@ import com.example.pocastcloni.data.remote.ItunesSearchApi
 import com.example.pocastcloni.data.remote.PodcastService
 import com.example.pocastcloni.data.remote.SafeRedirectInterceptor
 import com.example.pocastcloni.data.remote.PublicNetworkDns
+import com.example.pocastcloni.data.remote.ApprovedLocalRequestInterceptor
+import com.example.pocastcloni.data.remote.ApprovedOriginDns
+import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
+import com.example.pocastcloni.util.hasSameOrigin
 import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.parseNetworkUrl
 import com.example.pocastcloni.util.NetworkConnectivityProvider
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -28,6 +33,7 @@ import timber.log.Timber
 import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
+import okhttp3.Dns
 import javax.inject.Singleton
 
 @Module
@@ -80,6 +86,67 @@ abstract class NetworkModule {
 
         @Provides
         @Singleton
+        @Named("LocalNetworkClient")
+        fun provideLocalNetworkClient(
+            @ApplicationContext context: Context,
+            loggingInterceptor: HttpLoggingInterceptor
+        ): OkHttpClient {
+            val cache = Cache(File(context.cacheDir, "local_http_cache"), 20 * 1024 * 1024L)
+            return OkHttpClient.Builder()
+                .cache(cache)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .dns(Dns.SYSTEM)
+                .addInterceptor(
+                    SafeRedirectInterceptor(
+                        isAllowedUrl = { parseNetworkUrl(it, allowLocalNetwork = true) != null },
+                        allowOriginChange = false
+                    )
+                )
+                .apply { if (BuildConfig.DEBUG) addInterceptor(loggingInterceptor) }
+                .connectTimeout(Constants.Network.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .readTimeout(Constants.Network.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .writeTimeout(Constants.Network.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .build()
+        }
+
+        @Provides
+        @Singleton
+        @Named("ApprovedMediaClient")
+        fun provideApprovedMediaClient(
+            @ApplicationContext context: Context,
+            loggingInterceptor: HttpLoggingInterceptor,
+            registry: LocalNetworkAccessRegistry
+        ): OkHttpClient {
+            val cache = Cache(File(context.cacheDir, "approved_media_http_cache"), 20 * 1024 * 1024L)
+            return OkHttpClient.Builder()
+                .cache(cache)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .dns(ApprovedOriginDns(registry))
+                .addInterceptor(ApprovedLocalRequestInterceptor(registry))
+                .addInterceptor(
+                    SafeRedirectInterceptor(
+                        isAllowedUrl = { url ->
+                            parseNetworkUrl(url) != null || registry.isApproved(url)
+                        },
+                        isAllowedRedirect = { source, target ->
+                            val touchesApprovedOrigin =
+                                registry.isApproved(source.toString()) ||
+                                    registry.isApproved(target.toString())
+                            !touchesApprovedOrigin || hasSameOrigin(source, target)
+                        }
+                    )
+                )
+                .apply { if (BuildConfig.DEBUG) addInterceptor(loggingInterceptor) }
+                .connectTimeout(Constants.Network.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .readTimeout(Constants.Network.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .writeTimeout(Constants.Network.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .build()
+        }
+
+        @Provides
+        @Singleton
         fun provideXmlMapper(): XmlMapper {
             return XmlMapper().apply {
                 registerKotlinModule()
@@ -122,6 +189,19 @@ abstract class NetworkModule {
         ): PodcastService {
             return retrofit.create(PodcastService::class.java)
         }
+
+        @Provides
+        @Singleton
+        @Named("LocalPodcastService")
+        fun provideLocalPodcastService(
+            @Named("LocalNetworkClient") client: OkHttpClient,
+            xmlMapper: XmlMapper
+        ): PodcastService = Retrofit.Builder()
+            .baseUrl(Constants.Network.RSS_BASE_URL)
+            .client(client)
+            .addConverterFactory(JacksonConverterFactory.create(xmlMapper))
+            .build()
+            .create(PodcastService::class.java)
 
         @Provides
         @Singleton

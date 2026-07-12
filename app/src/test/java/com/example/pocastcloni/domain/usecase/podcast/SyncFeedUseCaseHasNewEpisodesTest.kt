@@ -5,6 +5,7 @@ import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.remote.PodcastService
+import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.repository.PodcastRepository
@@ -50,6 +51,7 @@ class SyncFeedUseCaseHasNewEpisodesTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var podcastService: PodcastService
+    private lateinit var localPodcastService: PodcastService
     private lateinit var repository: PodcastRepository
     private lateinit var downloadEpisodeUseCase: DownloadEpisodeUseCase
     private lateinit var dispatcherProvider: DispatcherProvider
@@ -69,6 +71,7 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         every { Xml.newPullParser() } returns XmlPullParserFactory.newInstance().newPullParser()
 
         podcastService = mockk()
+        localPodcastService = mockk()
         repository = mockk(relaxed = true)
         downloadEpisodeUseCase = mockk(relaxed = true)
         dispatcherProvider = mockk()
@@ -76,25 +79,29 @@ class SyncFeedUseCaseHasNewEpisodesTest {
 
         useCase = SyncFeedUseCase(
             podcastService = podcastService,
+            localPodcastService = localPodcastService,
             podcastRepositoryProvider = Provider { repository },
             downloadEpisodeUseCase = downloadEpisodeUseCase,
-            dispatcherProvider = dispatcherProvider
+            dispatcherProvider = dispatcherProvider,
+            localNetworkAccessRegistry = LocalNetworkAccessRegistry()
         )
     }
 
     private fun makeRssBody(
         guid: String,
-        episodeTitle: String = "Episode Title"
+        episodeTitle: String = "Episode Title",
+        imageUrl: String = "https://example.com/cover.jpg",
+        enclosureUrl: String = "https://example.com/$guid.mp3"
     ): okhttp3.ResponseBody {
         val xml = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
   <channel>
     <title>Test Podcast</title>
-    <itunes:image href="https://example.com/cover.jpg"/>
+    <itunes:image href="$imageUrl"/>
     <item>
       <title>$episodeTitle</title>
       <guid isPermaLink="false">$guid</guid>
-      <enclosure url="https://example.com/$guid.mp3" type="audio/mpeg" length="0"/>
+      <enclosure url="$enclosureUrl" type="audio/mpeg" length="0"/>
     </item>
   </channel>
 </rss>"""
@@ -228,5 +235,65 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         coVerify(exactly = 0) { repository.updatePodcastEntity(any()) }
         coVerify(exactly = 0) { repository.insertEpisodes(any()) }
         coVerify(exactly = 0) { downloadEpisodeUseCase(any()) }
+    }
+
+    @Test
+    fun `approved local feed uses only the local network service`() = runTest(testDispatcher) {
+        val localUrl = "http://10.0.2.2/feed.rss"
+        val existingLocalPodcast = existingPodcast().copy(
+            rssUrl = localUrl,
+            allowInsecureHttp = true,
+            allowLocalNetwork = true
+        )
+        coEvery {
+            localPodcastService.fetchRawFeed(localUrl, any(), any())
+        } returns Response.success(
+            makeRssBody(
+                guid = "local-guid",
+                imageUrl = "http://10.0.2.2/cover.jpg",
+                enclosureUrl = "http://10.0.2.2/local-guid.mp3"
+            ),
+            Headers.headersOf()
+        )
+        coEvery { repository.getPodcastEntityByUrl(localUrl) } returns existingLocalPodcast
+        coEvery { repository.getLatestEpisodeGuid(localUrl) } returns null
+        coEvery { repository.getEpisodesForSync(localUrl) } returns emptyList()
+
+        useCase(localUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+
+        coVerify(exactly = 1) { localPodcastService.fetchRawFeed(localUrl, any(), any()) }
+        coVerify(exactly = 0) { podcastService.fetchRawFeed(localUrl, any(), any()) }
+        coVerify {
+            repository.insertEpisodes(
+                match { episodes -> episodes.single().enclosureUrl == "http://10.0.2.2/local-guid.mp3" }
+            )
+        }
+    }
+
+    @Test
+    fun `local feed drops an enclosure from another private host`() = runTest(testDispatcher) {
+        val localUrl = "http://10.0.2.2/feed.rss"
+        val existingLocalPodcast = existingPodcast().copy(
+            rssUrl = localUrl,
+            allowInsecureHttp = true,
+            allowLocalNetwork = true
+        )
+        coEvery {
+            localPodcastService.fetchRawFeed(localUrl, any(), any())
+        } returns Response.success(
+            makeRssBody(
+                guid = "foreign-guid",
+                imageUrl = "http://10.0.2.2/cover.jpg",
+                enclosureUrl = "http://192.168.1.30/audio.mp3"
+            ),
+            Headers.headersOf()
+        )
+        coEvery { repository.getPodcastEntityByUrl(localUrl) } returns existingLocalPodcast
+        coEvery { repository.getLatestEpisodeGuid(localUrl) } returns null
+        coEvery { repository.getEpisodesForSync(localUrl) } returns emptyList()
+
+        useCase(localUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+
+        coVerify(exactly = 0) { repository.insertEpisodes(any()) }
     }
 }

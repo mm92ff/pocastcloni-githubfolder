@@ -68,7 +68,40 @@ class BackupJournalMigrationAndroidTest {
         database.close()
     }
 
+    @Test
+    fun migration13To14PreservesLibraryAndDefaultsLocalApprovalToFalse() {
+        helper.createDatabase(LOCAL_APPROVAL_TEST_DB, 13).apply {
+            execSQL(
+                """
+                INSERT INTO podcasts (
+                    rssUrl, title, description, imageUrl, lastRefreshed,
+                    autoDownloadEnabled, allowInsecureHttp, sortOrder, hasNewEpisodes
+                ) VALUES ('https://example.com/feed.xml', 'Existing', '', '', 0, 0, 1, 1, 0)
+                """.trimIndent()
+            )
+            close()
+        }
+
+        val database = helper.runMigrationsAndValidate(
+            LOCAL_APPROVAL_TEST_DB,
+            14,
+            true,
+            AppDatabaseMigrations.MIGRATION_13_14
+        )
+
+        database.query(
+            "SELECT title, allowInsecureHttp, allowLocalNetwork FROM podcasts"
+        ).use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("Existing", cursor.getString(0))
+            assertEquals(1, cursor.getInt(1))
+            assertEquals(0, cursor.getInt(2))
+        }
+        database.close()
+    }
+
     private companion object {
         const val TEST_DB = "backup-journal-migration-test"
+        const val LOCAL_APPROVAL_TEST_DB = "local-approval-migration-test"
     }
 }

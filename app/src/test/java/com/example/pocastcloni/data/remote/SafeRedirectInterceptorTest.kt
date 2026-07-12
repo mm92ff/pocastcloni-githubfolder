@@ -146,6 +146,70 @@ class SafeRedirectInterceptorTest {
         }
     }
 
+    @Test
+    fun `local policy rejects redirects to another host`() {
+        val origin = MockWebServer()
+        origin.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .addHeader("Location", "http://127.0.0.2/final")
+        )
+        origin.start()
+        try {
+            val localClient = OkHttpClient.Builder()
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .addInterceptor(
+                    SafeRedirectInterceptor(
+                        isAllowedUrl = { true },
+                        allowOriginChange = false
+                    )
+                )
+                .build()
+
+            assertThrows(IOException::class.java) {
+                localClient.newCall(Request.Builder().url(origin.url("/start")).build()).execute()
+            }
+            assertEquals(1, origin.requestCount)
+        } finally {
+            origin.shutdown()
+        }
+    }
+
+    @Test
+    fun `local policy rejects redirects to another port on the same host`() {
+        val origin = MockWebServer()
+        val target = MockWebServer()
+        origin.start()
+        target.start()
+        origin.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .addHeader("Location", target.url("/final"))
+        )
+        try {
+            val localClient = OkHttpClient.Builder()
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .addInterceptor(
+                    SafeRedirectInterceptor(
+                        isAllowedUrl = { true },
+                        allowOriginChange = false
+                    )
+                )
+                .build()
+
+            assertThrows(IOException::class.java) {
+                localClient.newCall(Request.Builder().url(origin.url("/start")).build()).execute()
+            }
+            assertEquals(1, origin.requestCount)
+            assertEquals(0, target.requestCount)
+        } finally {
+            origin.shutdown()
+            target.shutdown()
+        }
+    }
+
     private fun client(): OkHttpClient = OkHttpClient.Builder()
         .followRedirects(false)
         .followSslRedirects(false)

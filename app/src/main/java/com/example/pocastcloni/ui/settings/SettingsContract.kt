@@ -25,6 +25,8 @@ sealed interface SettingsUiEvent {
 
     data class SetAddUrlAllowInsecureHttp(val allowed: Boolean) : SettingsUiEvent
 
+    data class SetAddUrlAllowLocalNetwork(val allowed: Boolean) : SettingsUiEvent
+
     data object ResetStatistics : SettingsUiEvent
 
     data object StartManualDownload : SettingsUiEvent
@@ -150,7 +152,9 @@ data class SettingsAddUrlState(
     val message: UiText? = null,
     val isError: Boolean = false,
     val pendingCleartextConfirmationUrl: String? = null,
-    val allowInsecureHttp: Boolean = false
+    val pendingLocalNetworkConfirmationUrl: String? = null,
+    val allowInsecureHttp: Boolean = false,
+    val allowLocalNetwork: Boolean = false
 )
 
 // ============================================================================================
