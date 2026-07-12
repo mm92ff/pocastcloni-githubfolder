@@ -232,6 +232,8 @@ object Constants {
         const val MAX_FEED_BYTES = 20L * 1024L * 1024L
         const val MAX_FEED_ITEMS = 5_000
         const val MAX_DOWNLOAD_BYTES = 2L * 1024L * 1024L * 1024L
+        const val MIN_FREE_STORAGE_RESERVE_BYTES = 64L * 1024L * 1024L
+        const val STORAGE_RECHECK_INTERVAL_BYTES = 8L * 1024L * 1024L
         const val MAX_BACKUP_BYTES = 25L * 1024L * 1024L
         const val MAX_BACKUP_PODCASTS = 5_000
         const val MAX_BACKUP_FAVORITES = 100_000

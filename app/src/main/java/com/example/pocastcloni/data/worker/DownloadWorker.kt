@@ -134,7 +134,11 @@ constructor(
             val output = applicationContext.contentResolver.openOutputStream(itemUri)
                 ?: throw IOException("Cannot open OutputStream for MediaStore URI")
             val bytesCopied = try {
-                performDownload(url, output)
+                performDownload(
+                    url = url,
+                    outputStream = output,
+                    availableBytes = ::externalDownloadsAvailableBytes
+                )
             } catch (e: Exception) {
                 // Close stream if performDownload threw before its internal .use {} could close it
                 runCatching { output.close() }
@@ -160,13 +164,21 @@ constructor(
         val dir = resolveDownloadDirectory(saveToDownloads)
         val file = File(dir, sanitizeFileName(fileName))
         return runWithCleanupOnFailure(cleanup = { file.delete() }) {
-            performDownload(url, FileOutputStream(file))
+            performDownload(
+                url = url,
+                outputStream = FileOutputStream(file),
+                availableBytes = { dir.usableSpace }
+            )
             file
         }
     }
 
     // Core download loop shared by both storage paths.
-    private suspend fun performDownload(url: String, outputStream: OutputStream): Long {
+    private suspend fun performDownload(
+        url: String,
+        outputStream: OutputStream,
+        availableBytes: () -> Long
+    ): Long {
         val request = Request.Builder().url(url).build()
         val response = okHttpClient.newCall(request).execute()
         try {
@@ -178,10 +190,19 @@ constructor(
             if (exceedsDownloadLimit(totalBytes)) {
                 throw DownloadSizeLimitException()
             }
+            if (totalBytes >= 0L) {
+                ensureAvailableStorage(availableBytes(), totalBytes)
+            } else {
+                ensureAvailableStorage(
+                    availableBytes(),
+                    Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
+                )
+            }
 
             Timber.d("Expected size: $totalBytes Bytes")
 
             var bytesCopied = 0L
+            var nextStorageCheckAt = Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
             var lastWrittenPercent = 0
             var lastWriteAtMs = 0L
 
@@ -194,6 +215,16 @@ constructor(
                     val bytesRead = input.read(buffer)
                     if (bytesRead == -1) break
                     ensureDownloadChunkWithinLimit(bytesCopied, bytesRead)
+                    if (bytesCopied + bytesRead >= nextStorageCheckAt) {
+                        val remainingBytes = if (totalBytes >= 0L) {
+                            (totalBytes - bytesCopied).coerceAtLeast(bytesRead.toLong())
+                        } else {
+                            Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
+                        }
+                        ensureAvailableStorage(availableBytes(), remainingBytes)
+                        nextStorageCheckAt = bytesCopied + bytesRead +
+                            Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
+                    }
                     output.write(buffer, 0, bytesRead)
                     bytesCopied += bytesRead
 
@@ -251,6 +282,9 @@ constructor(
         }
     }
 
+    private fun externalDownloadsAvailableBytes(): Long =
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).usableSpace
+
     private fun sanitizeFileName(fileName: String): String =
         fileName
             .replace("..", "")
@@ -275,6 +309,18 @@ internal fun ensureDownloadChunkWithinLimit(
 
 internal class DownloadSizeLimitException : IOException("Download exceeds the maximum allowed size")
 
+internal fun ensureAvailableStorage(
+    availableBytes: Long,
+    requiredBytes: Long
+) {
+    val reserve = Constants.SecurityLimits.MIN_FREE_STORAGE_RESERVE_BYTES
+    if (availableBytes < reserve || requiredBytes < 0L || requiredBytes > availableBytes - reserve) {
+        throw DownloadStorageException()
+    }
+}
+
+internal class DownloadStorageException : IOException("Not enough free storage for download")
+
 internal suspend fun <T> runWithCleanupOnFailure(
     cleanup: () -> Unit,
     block: suspend () -> T
@@ -296,7 +342,7 @@ internal fun shouldRetryDownloadFailure(
 ): Boolean {
     if (runAttemptCount >= maxRetryAttempts) return false
     return when (error) {
-        is DownloadSizeLimitException -> false
+        is DownloadSizeLimitException, is DownloadStorageException -> false
         is DownloadHttpException ->
             error.statusCode == 408 || error.statusCode == 429 || error.statusCode >= 500
         is IOException -> true

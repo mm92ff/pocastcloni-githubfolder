@@ -40,6 +40,30 @@ class DownloadSizeLimitTest {
     }
 
     @Test
+    fun `storage guard keeps reserve before writing`() {
+        val reserve = Constants.SecurityLimits.MIN_FREE_STORAGE_RESERVE_BYTES
+
+        ensureAvailableStorage(availableBytes = reserve + 1_024, requiredBytes = 1_024)
+        assertThrows(DownloadStorageException::class.java) {
+            ensureAvailableStorage(availableBytes = reserve + 1_023, requiredBytes = 1_024)
+        }
+        assertThrows(DownloadStorageException::class.java) {
+            ensureAvailableStorage(availableBytes = reserve - 1, requiredBytes = 0)
+        }
+    }
+
+    @Test
+    fun `storage failure is permanent and is not retried`() {
+        assertFalse(
+            shouldRetryDownloadFailure(
+                DownloadStorageException(),
+                runAttemptCount = 0,
+                maxRetryAttempts = 3
+            )
+        )
+    }
+
+    @Test
     fun `private partial file is deleted after permanent limit failure`() = runTest {
         val file = File.createTempFile("podcast-limit", ".part")
         file.writeBytes(byteArrayOf(1, 2, 3))
