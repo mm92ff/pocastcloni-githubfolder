@@ -124,8 +124,9 @@ tracing. Use an API 30+ emulator; the reference setup is Android 15/API 35.
 All podcast, artwork, and audio data used by player benchmarks is served locally.
 
 ```powershell
-.\gradlew.bat :benchmark:connectedBenchmarkAndroidTest
-.\benchmark\scripts\summarize-benchmarks.ps1
+.\benchmark\scripts\run-benchmarks.ps1
+.\gradlew.bat :benchmark:connectedBenchmarkAndroidTest -PfullTracing=true `
+  "-Pandroid.testInstrumentationRunnerArguments.class=com.example.pocastcloni.benchmark.PlayerRenderingBenchmark"
 .\benchmark\scripts\verify-compose-traces.ps1
 ```
 
@@ -133,6 +134,10 @@ Benchmark JSON and Perfetto traces are generated below `benchmark/build/` and
 are intentionally not versioned. SQL templates for Perfetto Trace Processor are
 stored in `benchmark/trace-queries/`. Emulator numbers are local regression
 baselines and should not be compared directly with physical-device results.
+Full tracing is opt-in because its larger traces and runtime overhead distort
+frame baselines and can exhaust small emulator data partitions. The runner
+executes benchmark classes separately so their temporary device traces are
+released between classes, while reports are retained below `benchmark-reports/`.
 
 ## Project Structure
 

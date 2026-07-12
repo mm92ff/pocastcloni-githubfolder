@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val fullTracingEnabled = providers.gradleProperty("fullTracing").orElse("false")
+
 android {
     namespace = "com.example.pocastcloni.benchmark"
     compileSdk = 34
@@ -11,7 +13,7 @@ android {
         minSdk = 30
         targetSdk = 34
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        testInstrumentationRunnerArguments["androidx.benchmark.fullTracing.enable"] = "true"
+        testInstrumentationRunnerArguments["androidx.benchmark.fullTracing.enable"] = fullTracingEnabled.get()
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"
     }
 

@@ -89,7 +89,10 @@ internal class BenchmarkJourneys(
     }
 
     private fun waitFor(selector: BySelector, label: String, timeoutMs: Long = DEFAULT_TIMEOUT_MS): UiObject2 =
-        device.wait(Until.findObject(selector), timeoutMs) ?: fail(label)
+        device.findObject(selector)
+            ?: device.wait(Until.findObject(selector), timeoutMs)
+            ?: device.findObject(selector)
+            ?: fail(label)
 
     private fun fail(label: String): Nothing {
         val context = InstrumentationRegistry.getInstrumentation().context
