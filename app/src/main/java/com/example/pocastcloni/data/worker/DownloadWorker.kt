@@ -19,6 +19,7 @@ import com.example.pocastcloni.domain.repository.StatisticsRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.requireApprovedNetworkUrl
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
@@ -55,6 +56,15 @@ constructor(
         val fileName =
             inputData.getString(Constants.DOWNLOAD_WORKER_FILENAME)
                 ?: Constants.DOWNLOAD_WORKER_DEFAULT_FILENAME
+
+        val episode = podcastRepository.getEpisode(guid) ?: return Result.failure()
+        val podcast = podcastRepository.getPodcastEntityByUrl(episode.podcastRssUrl)
+        runCatching {
+            requireApprovedNetworkUrl(url, podcast?.allowInsecureHttp == true)
+        }.onFailure {
+            Timber.w(it, "Rejected unsafe download URL")
+            return Result.failure()
+        }
 
         return try {
             podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADING, null)

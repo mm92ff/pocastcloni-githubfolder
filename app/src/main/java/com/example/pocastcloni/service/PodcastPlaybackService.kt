@@ -12,7 +12,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import okhttp3.OkHttpClient
 import java.io.File
 import javax.inject.Inject
 
@@ -60,6 +61,8 @@ class PodcastPlaybackService : MediaSessionService() {
     @Inject lateinit var statisticsRepository: StatisticsRepository
 
     @Inject lateinit var connectivityProvider: ConnectivityProvider
+
+    @Inject lateinit var okHttpClient: OkHttpClient
 
     private lateinit var serviceScope: CoroutineScope
 
@@ -120,7 +123,7 @@ class PodcastPlaybackService : MediaSessionService() {
 
         // Attach stats listener to HTTP data source
         val httpDataSourceFactory =
-            DefaultHttpDataSource.Factory()
+            OkHttpDataSource.Factory(okHttpClient)
                 .setTransferListener(statsListener)
 
         // DefaultDataSource wraps HTTP + file

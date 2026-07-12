@@ -15,6 +15,7 @@ data class BackupData(
 data class BackupPodcast(
     @JsonProperty(Constants.Backup.KEY_URL) val url: String = "",
     @JsonProperty(Constants.Backup.KEY_SORT_ORDER) val sortOrder: Long = 0,
+    @JsonProperty("allow_insecure_http") val allowInsecureHttp: Boolean = false,
     // Metadata for offline import resilience
     @JsonProperty("title") val title: String? = null,
     @JsonProperty("description") val description: String? = null,

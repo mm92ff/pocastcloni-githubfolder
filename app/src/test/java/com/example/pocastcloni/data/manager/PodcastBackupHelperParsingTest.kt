@@ -367,4 +367,29 @@ class PodcastBackupHelperParsingTest {
             parseBackupJson("""{"podcasts":"not-a-list"}""", objectMapper)
         }
     }
+
+    @Test
+    fun parseBackupJson_rejectsUnsupportedOrCredentialedPodcastUrls() {
+        listOf(
+            "file:///data/local/feed.xml",
+            "content://provider/feed",
+            "https://user:secret@example.com/feed.xml"
+        ).forEach { url ->
+            assertThrows(IllegalArgumentException::class.java) {
+                parseBackupJson(
+                    """{"podcasts":[{"url":"$url"}]}""",
+                    objectMapper
+                )
+            }
+        }
+    }
+
+    @Test
+    fun parseBackupJson_preservesButDoesNotGrantHttpMetadata() {
+        val parsed = parseBackupJson(
+            """{"podcasts":[{"url":"http://example.com/feed.xml","allow_insecure_http":true}]}""",
+            objectMapper
+        )
+        assertTrue(parsed.podcasts.single().allowInsecureHttp)
+    }
 }

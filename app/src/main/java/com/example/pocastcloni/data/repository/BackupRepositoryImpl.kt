@@ -13,6 +13,7 @@ import com.example.pocastcloni.domain.repository.ImportResult
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
+import com.example.pocastcloni.util.parseNetworkUrl
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -74,6 +75,12 @@ constructor(
             backupData.podcasts.forEach { backupPodcast ->
                 val url = backupPodcast.url
                 if (url.isNotBlank()) {
+                    val existingBeforeImport = podcastDao.getPodcastByUrl(url)
+                    val hasExistingApproval = existingBeforeImport?.allowInsecureHttp == true
+                    val safeImageUrl = backupPodcast.imageUrl.orEmpty().takeIf { imageUrl ->
+                        val parsedImage = parseNetworkUrl(imageUrl)
+                        parsedImage?.isHttps == true || hasExistingApproval
+                    }.orEmpty()
                     // Step A: create a "stub" entity and insert it immediately (if not already present)
                     // This guarantees the podcast exists even if the sync fails (offline).
                     val orderToUse = if (backupPodcast.sortOrder > 0) backupPodcast.sortOrder else ++currentMaxSortOrder
@@ -83,7 +90,9 @@ constructor(
                             rssUrl = url,
                             title = backupPodcast.title ?: context.getString(R.string.import_fallback_title),
                             description = backupPodcast.description ?: context.getString(R.string.import_fallback_description),
-                            imageUrl = backupPodcast.imageUrl ?: "",
+                            imageUrl = safeImageUrl,
+                            // Backup files are untrusted and cannot grant their own HTTP permission.
+                            allowInsecureHttp = false,
                             sortOrder = orderToUse,
                             // Restore the caching headers here:
                             lastModifiedHeader = backupPodcast.lastModifiedHeader,
@@ -97,15 +106,20 @@ constructor(
                         podcastDao.insertPodcast(stubEntity)
                     }.onFailure { Timber.w(it, "Failed to insert stub for $url") }
 
-                    // Step B: attempt sync (network)
-                    // We use 'forceFull = false' so that ETag/LastModified is used if available!
+                    val storedPodcast = podcastDao.getPodcastByUrl(url)
+                    val feedIsHttps = parseNetworkUrl(url)?.isHttps == true
+                    val maySync = maySyncImportedFeed(feedIsHttps, storedPodcast?.allowInsecureHttp == true)
+
+                    // Step B: sync only when HTTPS or a pre-existing local approval permits it.
                     runCatching {
+                        check(maySync) { "Imported HTTP feed requires local approval before sync." }
                         syncFeedUseCase.get().invoke(
                             url,
                             downloadLimit,
                             mode,
                             sortOrder = null, // Do not overwrite sortOrder, it was already set above
-                            forceFull = false // Use smart update!
+                            forceFull = false, // Use smart update!
+                            allowInsecureHttp = storedPodcast?.allowInsecureHttp == true
                         )
                         success++
                     }.onFailure {
@@ -149,3 +163,8 @@ constructor(
         }
     }
 }
+
+internal fun maySyncImportedFeed(
+    feedIsHttps: Boolean,
+    hasExistingLocalApproval: Boolean
+): Boolean = feedIsHttps || hasExistingLocalApproval

@@ -43,6 +43,26 @@ object AppDatabaseMigrations {
                     """.trimIndent()
                 )
             }
+        },
+        object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `podcasts` ADD COLUMN `allowInsecureHttp` INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    """
+                    UPDATE `podcasts`
+                    SET `allowInsecureHttp` = 1
+                    WHERE lower(`rssUrl`) LIKE 'http://%'
+                       OR lower(`imageUrl`) LIKE 'http://%'
+                       OR EXISTS (
+                           SELECT 1 FROM `episodes`
+                           WHERE `episodes`.`podcastRssUrl` = `podcasts`.`rssUrl`
+                             AND lower(`episodes`.`enclosureUrl`) LIKE 'http://%'
+                       )
+                    """.trimIndent()
+                )
+            }
         }
     )
 

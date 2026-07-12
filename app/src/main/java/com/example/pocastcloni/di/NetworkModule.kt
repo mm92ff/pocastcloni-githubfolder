@@ -4,6 +4,8 @@ import android.content.Context
 import com.example.pocastcloni.BuildConfig
 import com.example.pocastcloni.data.remote.ItunesSearchApi
 import com.example.pocastcloni.data.remote.PodcastService
+import com.example.pocastcloni.data.remote.SafeRedirectInterceptor
+import com.example.pocastcloni.data.remote.PublicNetworkDns
 import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.NetworkConnectivityProvider
@@ -63,6 +65,10 @@ abstract class NetworkModule {
 
             return OkHttpClient.Builder()
                 .cache(cache)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .dns(PublicNetworkDns())
+                .addInterceptor(SafeRedirectInterceptor())
                 .apply {
                     if (BuildConfig.DEBUG) addInterceptor(loggingInterceptor)
                 }

@@ -6,6 +6,7 @@ import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.model.toPodcast
 import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.util.requireApprovedNetworkUrl
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -64,6 +65,13 @@ constructor(
                 }
             } else {
                 Timber.d("Episode not downloaded (Status: ${savedEpisode.downloadStatus}). Streaming: $finalUri")
+            }
+
+            if (finalUri == savedEpisode.enclosureUrl) {
+                requireApprovedNetworkUrl(
+                    finalUri,
+                    allowInsecureHttp = podcastEntity?.allowInsecureHttp == true
+                )
             }
 
             PlayEpisodeResult(

@@ -1,0 +1,154 @@
+package com.example.pocastcloni.data.remote
+
+import com.example.pocastcloni.util.MAX_NETWORK_REDIRECTS
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.tls.HandshakeCertificates
+import okhttp3.tls.HeldCertificate
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
+import org.junit.Test
+import java.io.IOException
+
+class SafeRedirectInterceptorTest {
+    @Test
+    fun `follows a bounded same-scheme redirect`() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", "/final"))
+        server.enqueue(MockResponse().setBody("ok"))
+        server.start()
+        try {
+            val response = client().newCall(Request.Builder().url(server.url("/start")).build()).execute()
+            response.use { assertEquals("ok", it.body?.string()) }
+            assertEquals(2, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `rejects redirect loops after the configured limit`() {
+        val server = MockWebServer()
+        repeat(MAX_NETWORK_REDIRECTS + 1) {
+            server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", "/again"))
+        }
+        server.start()
+        try {
+            assertThrows(IOException::class.java) {
+                client().newCall(Request.Builder().url(server.url("/start")).build()).execute()
+            }
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `removes authorization on cross-origin redirect`() {
+        val origin = MockWebServer()
+        val target = MockWebServer()
+        target.enqueue(MockResponse().setBody("ok"))
+        origin.start()
+        target.start()
+        origin.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .addHeader("Location", target.url("/final"))
+        )
+        try {
+            val request = Request.Builder()
+                .url(origin.url("/start"))
+                .header("Authorization", "Bearer secret")
+                .build()
+            client().newCall(request).execute().use { assertEquals(200, it.code) }
+            assertEquals(null, target.takeRequest().getHeader("Authorization"))
+        } finally {
+            origin.shutdown()
+            target.shutdown()
+        }
+    }
+
+    @Test
+    fun `scheme change is an origin change even with identical host and port`() {
+        assertEquals(
+            false,
+            hasSameOrigin(
+                "http://example.com:8443/path".toHttpUrl(),
+                "https://example.com:8443/path".toHttpUrl()
+            )
+        )
+    }
+
+    @Test
+    fun `rejects credentialed redirect target before following it`() {
+        val server = MockWebServer()
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .addHeader("Location", "https://user:secret@example.com/final")
+        )
+        server.start()
+        try {
+            val productionPolicyClient = OkHttpClient.Builder()
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .addInterceptor(SafeRedirectInterceptor())
+                .build()
+            assertThrows(IOException::class.java) {
+                productionPolicyClient.newCall(
+                    Request.Builder().url(server.url("/start")).build()
+                ).execute()
+            }
+            assertEquals(1, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `rejects an actual HTTPS to HTTP downgrade before the second request`() {
+        val certificate = HeldCertificate.Builder()
+            .addSubjectAlternativeName("localhost")
+            .addSubjectAlternativeName("127.0.0.1")
+            .build()
+        val serverCertificates = HandshakeCertificates.Builder()
+            .heldCertificate(certificate)
+            .build()
+        val clientCertificates = HandshakeCertificates.Builder()
+            .addTrustedCertificate(certificate.certificate)
+            .build()
+        val server = MockWebServer()
+        server.useHttps(serverCertificates.sslSocketFactory(), false)
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .addHeader("Location", "http://example.com/final")
+        )
+        server.start()
+        try {
+            val secureClient = OkHttpClient.Builder()
+                .sslSocketFactory(
+                    clientCertificates.sslSocketFactory(),
+                    clientCertificates.trustManager
+                )
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .addInterceptor(SafeRedirectInterceptor(isAllowedUrl = { true }))
+                .build()
+            val error = assertThrows(IOException::class.java) {
+                secureClient.newCall(Request.Builder().url(server.url("/start")).build()).execute()
+            }
+            assertEquals("Blocked unsafe redirect", error.message)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    private fun client(): OkHttpClient = OkHttpClient.Builder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .addInterceptor(SafeRedirectInterceptor(isAllowedUrl = { true }))
+        .build()
+}

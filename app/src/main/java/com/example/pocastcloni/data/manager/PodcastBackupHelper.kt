@@ -8,6 +8,7 @@ import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.parseNetworkUrl
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.withContext
@@ -123,6 +124,15 @@ internal fun parseBackupJson(
 internal fun validateBackupData(backupData: BackupData): BackupData {
     if (backupData.podcasts.isEmpty() && backupData.favorites.isEmpty() && backupData.settings == null) {
         throw IllegalArgumentException("Backup file does not contain any restorable data.")
+    }
+    if (backupData.podcasts.any { parseNetworkUrl(it.url) == null }) {
+        throw IllegalArgumentException("Backup contains an invalid podcast URL.")
+    }
+    if (backupData.podcasts.any { podcast ->
+            !podcast.imageUrl.isNullOrBlank() && parseNetworkUrl(podcast.imageUrl) == null
+        }
+    ) {
+        throw IllegalArgumentException("Backup contains an invalid image URL.")
     }
     return backupData
 }

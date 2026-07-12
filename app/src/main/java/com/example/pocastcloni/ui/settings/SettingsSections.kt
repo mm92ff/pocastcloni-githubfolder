@@ -51,9 +51,11 @@ import com.example.pocastcloni.util.formatDuration
 fun SectionAddPodcast(
     urlInput: String,
     isAdding: Boolean,
+    allowInsecureHttp: Boolean,
     message: UiText?,
     isError: Boolean,
     onUrlChange: (String) -> Unit,
+    onAllowInsecureHttpChange: (Boolean) -> Unit,
     onAddClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -69,6 +71,26 @@ fun SectionAddPodcast(
             singleLine = true,
             isError = isError
         )
+
+        Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = allowInsecureHttp,
+                onCheckedChange = onAllowInsecureHttpChange
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.allow_legacy_http_media))
+                Text(
+                    stringResource(R.string.allow_legacy_http_media_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
 

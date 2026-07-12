@@ -511,9 +511,11 @@ fun SettingsUrlImportSectionSmart(viewModel: SettingsUrlImportViewModel = hiltVi
     SectionAddPodcast(
         urlInput = state.urlInput,
         isAdding = state.isAdding,
+        allowInsecureHttp = state.allowInsecureHttp,
         message = state.message,
         isError = state.isError,
         onUrlChange = viewModel::onUrlChange,
+        onAllowInsecureHttpChange = viewModel::setAllowInsecureHttp,
         onAddClick = viewModel::onAddPodcast
     )
 }

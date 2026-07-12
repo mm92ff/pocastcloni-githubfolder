@@ -17,7 +17,8 @@ data class Podcast(
     val lastModifiedHeader: String?,
     val eTagHeader: String?,
     val latestEpisodeDate: Date?,
-    val isLatestEpisodePlayed: Boolean?
+    val isLatestEpisodePlayed: Boolean?,
+    val allowInsecureHttp: Boolean = false
 ) {
     companion object {
         const val DEFAULT_SORT_ORDER = -1L
@@ -37,6 +38,7 @@ fun PodcastEntity.toPodcast(): Podcast {
         lastModifiedHeader = lastModifiedHeader,
         eTagHeader = eTagHeader,
         latestEpisodeDate = null, // This conversion is for a single entity, which doesn't have the joined data
-        isLatestEpisodePlayed = null
+        isLatestEpisodePlayed = null,
+        allowInsecureHttp = allowInsecureHttp
     )
 }

@@ -7,6 +7,8 @@ import com.example.pocastcloni.BuildConfig
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
 import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.util.parseNetworkUrl
+import com.example.pocastcloni.util.requiresCleartextConfirmation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.BufferOverflow
@@ -17,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.net.URL
 import javax.inject.Inject
 
 @HiltViewModel
@@ -45,6 +46,7 @@ constructor(
         when (event) {
             is SettingsUiEvent.OnAddUrlQueryChange -> onUrlChange(event.url)
             SettingsUiEvent.AddPodcastViaUrl -> onAddPodcast()
+            is SettingsUiEvent.SetAddUrlAllowInsecureHttp -> setAllowInsecureHttp(event.allowed)
             else ->
                 Timber.w(
                     "SettingsUrlImportViewModel ignoring event %s",
@@ -58,7 +60,9 @@ constructor(
             it.copy(
                 urlInput = newUrl,
                 message = null,
-                isError = false
+                isError = false,
+                pendingCleartextConfirmationUrl = null,
+                allowInsecureHttp = false
             )
         }
     }
@@ -68,6 +72,17 @@ constructor(
      */
     fun onMessageConsumed() {
         _uiState.update { it.copy(message = null, isError = false) }
+    }
+
+    fun setAllowInsecureHttp(allowed: Boolean) {
+        _uiState.update {
+            it.copy(
+                allowInsecureHttp = allowed,
+                pendingCleartextConfirmationUrl = null,
+                message = null,
+                isError = false
+            )
+        }
     }
 
     fun onAddPodcast() {
@@ -81,8 +96,22 @@ constructor(
             return
         }
 
-        if (!url.isLikelyHttpUrl()) {
+        if (parseNetworkUrl(url) == null) {
             postError(UiText.StringResource(R.string.error_add_url_invalid))
+            return
+        }
+
+        if (
+            requiresCleartextConfirmation(url) &&
+            !current.allowInsecureHttp
+        ) {
+            _uiState.update {
+                it.copy(
+                    message = UiText.StringResource(R.string.warning_add_url_http_confirmation),
+                    isError = true,
+                    pendingCleartextConfirmationUrl = url
+                )
+            }
             return
         }
 
@@ -90,7 +119,10 @@ constructor(
             _uiState.update { it.copy(isAdding = true, message = null, isError = false) }
 
             try {
-                addPodcastFromUrl(url)
+                addPodcastFromUrl(
+                    url = url,
+                    allowInsecureHttp = current.allowInsecureHttp
+                )
 
                 val msg = UiText.StringResource(R.string.add_podcast_success)
                 _uiState.update {
@@ -98,7 +130,9 @@ constructor(
                         isAdding = false,
                         urlInput = "",
                         message = msg,
-                        isError = false
+                        isError = false,
+                        pendingCleartextConfirmationUrl = null,
+                        allowInsecureHttp = false
                     )
                 }
                 _events.tryEmit(msg)
@@ -138,9 +172,4 @@ constructor(
         _events.tryEmit(message)
     }
 
-    private fun String.isLikelyHttpUrl(): Boolean {
-        val parsed = runCatching { URL(this) }.getOrNull() ?: return false
-        val scheme = parsed.protocol?.lowercase() ?: return false
-        return scheme == "http" || scheme == "https"
-    }
 }

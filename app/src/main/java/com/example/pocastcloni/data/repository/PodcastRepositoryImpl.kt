@@ -152,13 +152,35 @@ constructor(
         downloadLimit: Int,
         mode: FeedUpdateMode,
         sortOrder: Long?,
-        forceFull: Boolean
+        forceFull: Boolean,
+        allowInsecureHttp: Boolean
     ) {
         withContext(dispatcherProvider.io) {
             val normalizedUrl = url.trim()
-            if (podcastDao.getPodcastByUrl(normalizedUrl) != null) return@withContext
+            val existing = podcastDao.getPodcastByUrl(normalizedUrl)
+            if (existing != null) {
+                if (allowInsecureHttp && !existing.allowInsecureHttp) {
+                    podcastDao.updatePodcast(existing.copy(allowInsecureHttp = true))
+                    syncFeedUseCase.get().invoke(
+                        normalizedUrl,
+                        downloadLimit,
+                        mode,
+                        existing.sortOrder,
+                        forceFull,
+                        allowInsecureHttp = true
+                    )
+                }
+                return@withContext
+            }
             val orderToUse = sortOrder ?: ((podcastDao.getMaxSortOrder() ?: 0L) + 1L)
-            syncFeedUseCase.get().invoke(normalizedUrl, downloadLimit, mode, orderToUse, forceFull)
+            syncFeedUseCase.get().invoke(
+                normalizedUrl,
+                downloadLimit,
+                mode,
+                orderToUse,
+                forceFull,
+                allowInsecureHttp
+            )
         }
     }
 

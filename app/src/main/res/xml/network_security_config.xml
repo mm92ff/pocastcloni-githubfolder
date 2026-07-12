@@ -7,7 +7,13 @@
     Android 9+ blocks HTTP by default; without this config, those feeds would
     silently fail on real devices (Huawei P30 Pro, etc.).
 -->
-<network-security-config>
+<network-security-config xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="InsecureBaseConfiguration">
+    <!--
+        Existing user-selected legacy feeds and their media may still require HTTP.
+        New HTTP feeds require an explicit second confirmation in Settings, URLs are
+        restricted to HTTP(S), and HTTPS-to-HTTP redirects are blocked in OkHttp.
+    -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />

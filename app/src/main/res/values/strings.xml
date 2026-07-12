@@ -9,6 +9,9 @@
     <string name="label_input">Input</string>
     <string name="error_add_url_empty">Please enter a URL.</string>
     <string name="error_add_url_invalid">Invalid URL. Please use http(s).</string>
+    <string name="warning_add_url_http_confirmation">This feed uses unencrypted HTTP. Enable legacy HTTP media before adding it.</string>
+    <string name="allow_legacy_http_media">Allow legacy HTTP media</string>
+    <string name="allow_legacy_http_media_subtitle">Permits unencrypted feed, image, and audio URLs for this podcast.</string>
 
     <string name="error_add_podcast_failed">Could not load podcast. Check the URL.</string>
     <string name="error_add_general">Error while adding</string>

@@ -16,6 +16,8 @@ import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.usecase.episode.DownloadEpisodeUseCase
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.stripHtml
+import com.example.pocastcloni.util.requireApprovedNetworkUrl
+import com.example.pocastcloni.util.isAllowedRemoteResource
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.net.HttpURLConnection
@@ -45,16 +47,27 @@ constructor(
         downloadLimit: Int,
         mode: FeedUpdateMode,
         sortOrder: Long? = null,
-        forceFull: Boolean = false
+        forceFull: Boolean = false,
+        allowInsecureHttp: Boolean = false
     ) {
         withContext(dispatcherProvider.io) {
             try {
                 val existingPodcast = repo.getPodcastEntityByUrl(url)
+                val effectiveAllowInsecureHttp =
+                    existingPodcast?.allowInsecureHttp ?: allowInsecureHttp
+                requireApprovedNetworkUrl(url, effectiveAllowInsecureHttp)
 
                 if (mode == FeedUpdateMode.SMART_STREAM && !forceFull) {
-                    syncSmart(url, existingPodcast, downloadLimit)
+                    syncSmart(url, existingPodcast, downloadLimit, effectiveAllowInsecureHttp)
                 } else {
-                    syncFull(url, existingPodcast, downloadLimit, forceFull, sortOrder)
+                    syncFull(
+                        url,
+                        existingPodcast,
+                        downloadLimit,
+                        forceFull,
+                        sortOrder,
+                        effectiveAllowInsecureHttp
+                    )
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error with $url")
@@ -66,7 +79,8 @@ constructor(
     private suspend fun syncSmart(
         url: String,
         existing: PodcastEntity?,
-        downloadLimit: Int
+        downloadLimit: Int,
+        allowInsecureHttp: Boolean
     ) {
         val latestKnownGuid = repo.getLatestEpisodeGuid(url)
         val hasNoEpisodes = existing != null && latestKnownGuid == null
@@ -104,7 +118,8 @@ constructor(
                 lastModified = response.headers()[Constants.Network.HEADER_LAST_MODIFIED],
                 etag = response.headers()[Constants.Network.HEADER_ETAG],
                 sortOrder = existing?.sortOrder,
-                downloadLimit = downloadLimit
+                downloadLimit = downloadLimit,
+                allowInsecureHttp = allowInsecureHttp
             )
         } finally {
             stream.close()
@@ -116,7 +131,8 @@ constructor(
         existing: PodcastEntity?,
         downloadLimit: Int,
         forceFull: Boolean,
-        sortOrder: Long?
+        sortOrder: Long?,
+        allowInsecureHttp: Boolean
     ) {
         val hasNoEpisodes = existing != null && repo.getLatestEpisodeGuid(url) == null
         val effectiveForceFull = forceFull || hasNoEpisodes
@@ -147,7 +163,8 @@ constructor(
                 lastModified = response.headers()[Constants.Network.HEADER_LAST_MODIFIED],
                 etag = response.headers()[Constants.Network.HEADER_ETAG],
                 sortOrder = sortOrder,
-                downloadLimit = downloadLimit
+                downloadLimit = downloadLimit,
+                allowInsecureHttp = allowInsecureHttp
             )
         } finally {
             stream.close()
@@ -164,9 +181,14 @@ constructor(
         lastModified: String?,
         etag: String?,
         sortOrder: Long?,
-        downloadLimit: Int
+        downloadLimit: Int,
+        allowInsecureHttp: Boolean
     ) {
-        if (title.isNullOrBlank() || imageUrl.isNullOrBlank()) {
+        if (
+            title.isNullOrBlank() ||
+            imageUrl.isNullOrBlank() ||
+            !isAllowedRemoteResource(imageUrl, allowInsecureHttp)
+        ) {
             throw IllegalStateException("Feed missing title or image for $url")
         }
 
@@ -194,7 +216,9 @@ constructor(
                 if (existingEpisodes.containsKey(entity.guid)) return@mapNotNull null
 
                 // An episode without an audio URL is useless
-                if (entity.enclosureUrl.isBlank()) return@mapNotNull null
+                if (!isAllowedRemoteResource(entity.enclosureUrl, allowInsecureHttp)) {
+                    return@mapNotNull null
+                }
 
                 // Strip HTML if the mapper left it raw (description is passed through as-is)
                 entity.copy(
@@ -208,6 +232,7 @@ constructor(
                 title = title,
                 description = description?.stripHtml() ?: "",
                 imageUrl = imageUrl,
+                allowInsecureHttp = allowInsecureHttp,
                 lastRefreshed = Date(),
                 lastModifiedHeader = lastModified,
                 eTagHeader = etag,
@@ -217,6 +242,7 @@ constructor(
                 title = title,
                 description = description?.stripHtml() ?: "",
                 imageUrl = imageUrl,
+                allowInsecureHttp = allowInsecureHttp,
                 sortOrder = sortOrder ?: (repo.getMaxSortOrder() ?: 0) + 1,
                 lastModifiedHeader = lastModified,
                 eTagHeader = etag,

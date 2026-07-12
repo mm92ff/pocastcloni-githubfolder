@@ -55,7 +55,8 @@ interface PodcastRepository {
         downloadLimit: Int,
         mode: FeedUpdateMode,
         sortOrder: Long? = null,
-        forceFull: Boolean = false
+        forceFull: Boolean = false,
+        allowInsecureHttp: Boolean = false
     )
 
     suspend fun removePodcastByUrl(url: String)

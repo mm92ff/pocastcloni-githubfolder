@@ -87,7 +87,7 @@ class AppDatabaseMigrationTest {
                     'https://example.com/feed.xml',
                     'Example Podcast',
                     'Legacy description',
-                    'https://example.com/cover.png',
+                    'http://example.com/cover.png',
                     1700000000000,
                     1,
                     7,
@@ -123,7 +123,7 @@ class AppDatabaseMigrationTest {
                     'Legacy episode description',
                     1700000100000,
                     'https://example.com/episodes/1',
-                    'https://example.com/audio/1.mp3',
+                    'http://example.com/audio/1.mp3',
                     'audio/mpeg',
                     12345,
                     0,
@@ -152,6 +152,7 @@ class AppDatabaseMigrationTest {
             assertEquals("Example Podcast", podcast?.title)
             assertEquals("episode-1", podcast?.latestEpisodeGuid)
             assertEquals("etag-1", podcast?.eTagHeader)
+            assertEquals(true, podcast?.allowInsecureHttp)
 
             val episode = db.podcastDao().getEpisodeByGuid("episode-1")
             assertNotNull(episode)

@@ -140,6 +140,7 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.androidx.media)
     implementation(libs.media3.database)
+    implementation(libs.media3.datasource.okhttp)
 
     // Guava Support
     implementation(libs.kotlinx.coroutines.guava)
@@ -161,6 +162,8 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockwebserver)
+    testImplementation(libs.okhttp.tls)
     testImplementation("net.sf.kxml:kxml2:2.3.0")
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)

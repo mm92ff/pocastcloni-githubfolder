@@ -74,7 +74,7 @@ object Constants {
 
     object Database {
         const val DATABASE_NAME = "pocast_cloni_db"
-        const val DATABASE_VERSION = 11
+        const val DATABASE_VERSION = 12
         const val DEFAULT_SORT_ORDER = 0L
         const val TABLE_PODCASTS = "podcasts"
         const val TABLE_EPISODES = "episodes"
