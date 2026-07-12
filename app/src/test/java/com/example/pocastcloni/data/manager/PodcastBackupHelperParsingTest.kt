@@ -9,6 +9,8 @@ import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
+import com.example.pocastcloni.data.local.BackupPodcast
+import com.example.pocastcloni.util.Constants
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -391,5 +393,93 @@ class PodcastBackupHelperParsingTest {
             objectMapper
         )
         assertTrue(parsed.podcasts.single().allowInsecureHttp)
+    }
+
+    @Test
+    fun validateBackupData_rejectsUnsupportedVersionAndExcessiveCollections() {
+        assertThrows(IllegalArgumentException::class.java) {
+            validateBackupData(
+                BackupData(
+                    version = Constants.Backup.BACKUP_VERSION + 1,
+                    settings = UserSettings()
+                )
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            validateBackupData(
+                BackupData(
+                    podcasts = List(Constants.SecurityLimits.MAX_BACKUP_PODCASTS + 1) {
+                        BackupPodcast(url = "https://example.com/$it.xml")
+                    }
+                )
+            )
+        }
+    }
+
+    @Test
+    fun validateBackupData_rejectsOversizedMetadata() {
+        assertThrows(IllegalArgumentException::class.java) {
+            validateBackupData(
+                BackupData(
+                    podcasts = listOf(
+                        BackupPodcast(
+                            url = "https://example.com/feed.xml",
+                            title = "x".repeat(Constants.SecurityLimits.MAX_TITLE_CHARS + 1)
+                        )
+                    )
+                )
+            )
+        }
+    }
+
+    @Test
+    fun prevalidateBackupJson_rejectsLargeArraysBeforeBinding() {
+        val json = buildString {
+            append("{\"podcasts\":[")
+            repeat(Constants.SecurityLimits.MAX_BACKUP_PODCASTS + 1) { index ->
+                if (index > 0) append(',')
+                append("{\"url\":\"https://example.com/")
+                append(index)
+                append("\"}")
+            }
+            append("]}")
+        }
+
+        assertThrows(IllegalArgumentException::class.java) {
+            prevalidateBackupJson(json, objectMapper)
+        }
+    }
+
+    @Test
+    fun prevalidateBackupJson_rejectsOversizedStringsAndNesting() {
+        val longTitle = "x".repeat(Constants.SecurityLimits.MAX_TITLE_CHARS + 1)
+        assertThrows(IllegalArgumentException::class.java) {
+            prevalidateBackupJson("""{"podcasts":[{"title":"$longTitle"}]}""", objectMapper)
+        }
+
+        val deeplyNested = "[".repeat(101) + "0" + "]".repeat(101)
+        assertThrows(IllegalArgumentException::class.java) {
+            prevalidateBackupJson(deeplyNested, objectMapper)
+        }
+    }
+
+    @Test
+    fun prevalidateBackupJson_countsNullElementsAndLimitsLegacyUrls() {
+        val manyNulls = buildString {
+            append("{\"podcasts\":[")
+            repeat(Constants.SecurityLimits.MAX_BACKUP_PODCASTS + 1) { index ->
+                if (index > 0) append(',')
+                append("null")
+            }
+            append("]}")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            prevalidateBackupJson(manyNulls, objectMapper)
+        }
+
+        val longLegacyUrl = "x".repeat(Constants.SecurityLimits.MAX_URL_CHARS + 1)
+        assertThrows(IllegalArgumentException::class.java) {
+            prevalidateBackupJson("[\"$longLegacyUrl\"]", objectMapper)
+        }
     }
 }

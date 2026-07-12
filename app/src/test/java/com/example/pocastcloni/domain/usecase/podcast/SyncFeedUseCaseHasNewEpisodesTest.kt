@@ -23,6 +23,10 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.ResponseBody
+import okio.Buffer
+import okio.BufferedSource
+import com.example.pocastcloni.util.Constants
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -78,14 +82,17 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         )
     }
 
-    private fun makeRssBody(guid: String): okhttp3.ResponseBody {
+    private fun makeRssBody(
+        guid: String,
+        episodeTitle: String = "Episode Title"
+    ): okhttp3.ResponseBody {
         val xml = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
   <channel>
     <title>Test Podcast</title>
     <itunes:image href="https://example.com/cover.jpg"/>
     <item>
-      <title>Episode Title</title>
+      <title>$episodeTitle</title>
       <guid isPermaLink="false">$guid</guid>
       <enclosure url="https://example.com/$guid.mp3" type="audio/mpeg" length="0"/>
     </item>
@@ -179,5 +186,47 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         val slot = slot<PodcastEntity>()
         coVerify { repository.insertPodcastEntity(capture(slot)) }
         assertTrue("New podcast should have hasNewEpisodes=true", slot.captured.hasNewEpisodes)
+    }
+
+    @Test
+    fun `oversized declared feed does not write partial data or start downloads`() = runTest(testDispatcher) {
+        val body = object : ResponseBody() {
+            override fun contentType() = "application/rss+xml".toMediaType()
+            override fun contentLength() = Constants.SecurityLimits.MAX_FEED_BYTES + 1
+            override fun source(): BufferedSource = Buffer()
+        }
+        coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns
+            Response.success(body, Headers.headersOf())
+        coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns null
+
+        assertTrue(
+            runCatching {
+                useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+            }.isFailure
+        )
+        coVerify(exactly = 0) { repository.insertPodcastEntity(any()) }
+        coVerify(exactly = 0) { repository.updatePodcastEntity(any()) }
+        coVerify(exactly = 0) { repository.insertEpisodes(any()) }
+        coVerify(exactly = 0) { downloadEpisodeUseCase(any()) }
+    }
+
+    @Test
+    fun `oversized episode metadata does not write partial data or start downloads`() = runTest(testDispatcher) {
+        val longTitle = "x".repeat(Constants.SecurityLimits.MAX_TITLE_CHARS + 1)
+        coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns
+            Response.success(makeRssBody("oversized", longTitle), Headers.headersOf())
+        coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns null
+        coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns null
+        coEvery { repository.getEpisodesForSync(feedUrl) } returns emptyList()
+
+        assertTrue(
+            runCatching {
+                useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+            }.isFailure
+        )
+        coVerify(exactly = 0) { repository.insertPodcastEntity(any()) }
+        coVerify(exactly = 0) { repository.updatePodcastEntity(any()) }
+        coVerify(exactly = 0) { repository.insertEpisodes(any()) }
+        coVerify(exactly = 0) { downloadEpisodeUseCase(any()) }
     }
 }

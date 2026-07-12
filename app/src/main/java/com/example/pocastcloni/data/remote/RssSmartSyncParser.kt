@@ -183,6 +183,9 @@ class RssSmartSyncParser {
         var result = ""
         if (parser.next() == XmlPullParser.TEXT) {
             result = parser.text ?: ""
+            require(result.length <= Constants.SecurityLimits.MAX_DESCRIPTION_CHARS) {
+                "RSS text field is too long"
+            }
             parser.nextTag()
         }
         return result

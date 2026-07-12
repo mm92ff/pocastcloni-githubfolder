@@ -228,6 +228,20 @@ object Constants {
         const val HEADER_IF_NONE_MATCH = "If-None-Match"
     }
 
+    object SecurityLimits {
+        const val MAX_FEED_BYTES = 20L * 1024L * 1024L
+        const val MAX_FEED_ITEMS = 5_000
+        const val MAX_DOWNLOAD_BYTES = 2L * 1024L * 1024L * 1024L
+        const val MAX_BACKUP_BYTES = 25L * 1024L * 1024L
+        const val MAX_BACKUP_PODCASTS = 5_000
+        const val MAX_BACKUP_FAVORITES = 100_000
+        const val MAX_URL_CHARS = 8_192
+        const val MAX_TITLE_CHARS = 2_000
+        const val MAX_DESCRIPTION_CHARS = 500_000
+        const val MAX_GUID_CHARS = 8_192
+        const val MAX_HEADER_CHARS = 8_192
+    }
+
     object ViewModel {
         const val STATE_IN_TIMEOUT = 5000L
         const val DEFAULT_PROGRESS_BAR_HEIGHT = 4

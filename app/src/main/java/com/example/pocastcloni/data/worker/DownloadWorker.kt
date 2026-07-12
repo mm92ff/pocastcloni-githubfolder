@@ -128,7 +128,9 @@ constructor(
             .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
             ?: throw IOException("MediaStore.insert failed for $sanitizedFileName")
 
-        try {
+        return runWithCleanupOnFailure(
+            cleanup = { applicationContext.contentResolver.delete(itemUri, null, null) }
+        ) {
             val output = applicationContext.contentResolver.openOutputStream(itemUri)
                 ?: throw IOException("Cannot open OutputStream for MediaStore URI")
             val bytesCopied = try {
@@ -145,11 +147,7 @@ constructor(
                 ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
                 null, null
             )
-            return Pair(itemUri.toString(), bytesCopied)
-        } catch (e: Exception) {
-            // Clean up incomplete MediaStore entry on failure
-            runCatching { applicationContext.contentResolver.delete(itemUri, null, null) }
-            throw e
+            Pair(itemUri.toString(), bytesCopied)
         }
     }
 
@@ -161,13 +159,10 @@ constructor(
     ): File {
         val dir = resolveDownloadDirectory(saveToDownloads)
         val file = File(dir, sanitizeFileName(fileName))
-        try {
+        return runWithCleanupOnFailure(cleanup = { file.delete() }) {
             performDownload(url, FileOutputStream(file))
-        } catch (e: Exception) {
-            if (file.exists()) file.delete()
-            throw e
+            file
         }
-        return file
     }
 
     // Core download loop shared by both storage paths.
@@ -180,6 +175,9 @@ constructor(
             }
             val body = response.body ?: throw IOException("Response body is null")
             val totalBytes = body.contentLength()
+            if (exceedsDownloadLimit(totalBytes)) {
+                throw DownloadSizeLimitException()
+            }
 
             Timber.d("Expected size: $totalBytes Bytes")
 
@@ -195,6 +193,7 @@ constructor(
                     if (isStopped) throw CancellationException("Worker stopped")
                     val bytesRead = input.read(buffer)
                     if (bytesRead == -1) break
+                    ensureDownloadChunkWithinLimit(bytesCopied, bytesRead)
                     output.write(buffer, 0, bytesRead)
                     bytesCopied += bytesRead
 
@@ -262,6 +261,30 @@ constructor(
             .ifEmpty { "episode_download" }
 }
 
+internal fun exceedsDownloadLimit(bytes: Long): Boolean =
+    bytes > Constants.SecurityLimits.MAX_DOWNLOAD_BYTES
+
+internal fun ensureDownloadChunkWithinLimit(
+    bytesCopied: Long,
+    nextChunkBytes: Int
+) {
+    if (nextChunkBytes < 0 || bytesCopied > Constants.SecurityLimits.MAX_DOWNLOAD_BYTES - nextChunkBytes) {
+        throw DownloadSizeLimitException()
+    }
+}
+
+internal class DownloadSizeLimitException : IOException("Download exceeds the maximum allowed size")
+
+internal suspend fun <T> runWithCleanupOnFailure(
+    cleanup: () -> Unit,
+    block: suspend () -> T
+): T = try {
+    block()
+} catch (error: Throwable) {
+    runCatching(cleanup)
+    throw error
+}
+
 internal class DownloadHttpException(
     val statusCode: Int
 ) : IOException("Server responded with error: $statusCode")
@@ -273,6 +296,7 @@ internal fun shouldRetryDownloadFailure(
 ): Boolean {
     if (runAttemptCount >= maxRetryAttempts) return false
     return when (error) {
+        is DownloadSizeLimitException -> false
         is DownloadHttpException ->
             error.statusCode == 408 || error.statusCode == 429 || error.statusCode >= 500
         is IOException -> true

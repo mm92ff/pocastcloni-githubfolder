@@ -18,6 +18,7 @@ import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.stripHtml
 import com.example.pocastcloni.util.requireApprovedNetworkUrl
 import com.example.pocastcloni.util.isAllowedRemoteResource
+import com.example.pocastcloni.util.SizeLimitedInputStream
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.net.HttpURLConnection
@@ -98,13 +99,17 @@ constructor(
         if (!response.isSuccessful || response.body() == null) throw Exception("Smart Sync Fail: ${response.code()}")
 
         val body = response.body() ?: throw java.io.IOException("Empty response body from $url")
-        val stream = body.byteStream()
+        rejectOversizedFeed(body.contentLength())
+        val stream = SizeLimitedInputStream(
+            body.byteStream(),
+            Constants.SecurityLimits.MAX_FEED_BYTES
+        )
         try {
             val result =
                 streamParser.parse(
                     stream,
                     url,
-                    downloadLimit,
+                    effectiveFeedParserLimit(downloadLimit),
                     isFullSync = false,
                     latestKnownGuid = latestKnownGuid
                 )
@@ -150,9 +155,18 @@ constructor(
         if (!response.isSuccessful || response.body() == null) throw Exception("Full Sync Fail: ${response.code()}")
 
         val body = response.body() ?: throw java.io.IOException("Empty response body from $url")
-        val stream = body.byteStream()
+        rejectOversizedFeed(body.contentLength())
+        val stream = SizeLimitedInputStream(
+            body.byteStream(),
+            Constants.SecurityLimits.MAX_FEED_BYTES
+        )
         try {
-            val result = streamParser.parse(stream, url, Int.MAX_VALUE, isFullSync = true)
+            val result = streamParser.parse(
+                stream,
+                url,
+                Constants.SecurityLimits.MAX_FEED_ITEMS,
+                isFullSync = true
+            )
             processParsedData(
                 url = url,
                 existing = existing,
@@ -186,7 +200,12 @@ constructor(
     ) {
         if (
             title.isNullOrBlank() ||
+            title.length > Constants.SecurityLimits.MAX_TITLE_CHARS ||
+            description.orEmpty().length > Constants.SecurityLimits.MAX_DESCRIPTION_CHARS ||
             imageUrl.isNullOrBlank() ||
+            imageUrl.length > Constants.SecurityLimits.MAX_URL_CHARS ||
+            lastModified.orEmpty().length > Constants.SecurityLimits.MAX_HEADER_CHARS ||
+            etag.orEmpty().length > Constants.SecurityLimits.MAX_HEADER_CHARS ||
             !isAllowedRemoteResource(imageUrl, allowInsecureHttp)
         ) {
             throw IllegalStateException("Feed missing title or image for $url")
@@ -210,6 +229,7 @@ constructor(
                 // 2. Parsing duration
                 // 3. Setting defaults
 
+                validateRssItemLimits(item)
                 val entity = item.toEpisodeEntity(url)
 
                 // Duplicate check
@@ -277,6 +297,46 @@ constructor(
         episodesToDownload.forEach { episode ->
             downloadEpisodeUseCase(episode.guid)
         }
+    }
+}
+
+internal fun rejectOversizedFeed(contentLength: Long) {
+    if (contentLength > Constants.SecurityLimits.MAX_FEED_BYTES) {
+        throw java.io.IOException("Feed response is too large")
+    }
+}
+
+internal fun effectiveFeedParserLimit(requestedLimit: Int): Int =
+    if (requestedLimit <= 0) {
+        Constants.SecurityLimits.MAX_FEED_ITEMS
+    } else {
+        requestedLimit.coerceAtMost(Constants.SecurityLimits.MAX_FEED_ITEMS)
+    }
+
+private fun validateRssItemLimits(item: RssItem) {
+    require(item.title.orEmpty().length <= Constants.SecurityLimits.MAX_TITLE_CHARS) {
+        "Episode title is too long"
+    }
+    require(item.description.orEmpty().length <= Constants.SecurityLimits.MAX_DESCRIPTION_CHARS) {
+        "Episode description is too long"
+    }
+    require(item.guid.orEmpty().length <= Constants.SecurityLimits.MAX_GUID_CHARS) {
+        "Episode GUID is too long"
+    }
+    require(item.link.orEmpty().length <= Constants.SecurityLimits.MAX_URL_CHARS) {
+        "Episode link is too long"
+    }
+    require(item.enclosure?.url.orEmpty().length <= Constants.SecurityLimits.MAX_URL_CHARS) {
+        "Episode enclosure URL is too long"
+    }
+    require(item.pubDate.orEmpty().length <= Constants.SecurityLimits.MAX_HEADER_CHARS) {
+        "Episode publication date is too long"
+    }
+    require(item.itunesDuration.orEmpty().length <= 128) {
+        "Episode duration is too long"
+    }
+    require(item.enclosure?.type.orEmpty().length <= 256) {
+        "Episode enclosure type is too long"
     }
 }
 
