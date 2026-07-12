@@ -338,15 +338,25 @@ class PodcastPlaybackService : MediaSessionService() {
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
             val availablePlayerCommands =
-                player.availableCommands.buildUpon()
-                    .add(Player.COMMAND_PLAY_PAUSE)
-                    .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-                    .add(Player.COMMAND_SEEK_TO_NEXT)
-                    .add(Player.COMMAND_SEEK_TO_PREVIOUS)
-                    .build()
+                mediaControllerCommands(
+                    isTrusted = controller.isTrusted,
+                    availableCommands = player.availableCommands
+                )
+            if (availablePlayerCommands == null) {
+                Timber.w("Rejected untrusted media controller")
+                return MediaSession.ConnectionResult.reject()
+            }
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailablePlayerCommands(availablePlayerCommands)
                 .build()
         }
     }
+}
+
+internal fun mediaControllerCommands(
+    isTrusted: Boolean,
+    availableCommands: Player.Commands
+): Player.Commands? {
+    if (!isTrusted) return null
+    return availableCommands
 }

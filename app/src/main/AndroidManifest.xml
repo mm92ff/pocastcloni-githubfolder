@@ -37,10 +37,16 @@
         </intent-filter>
         </activity>
 
+        <!--
+            Media3 requires this service to be exported for system, Bluetooth, media-button,
+            and notification controllers. PodcastPlaybackService.onConnect rejects every
+            controller that Media3 does not identify as trusted.
+        -->
         <service
             android:name=".service.PodcastPlaybackService"
             android:exported="true"
-            android:foregroundServiceType="mediaPlayback">
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaSessionService" />
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
