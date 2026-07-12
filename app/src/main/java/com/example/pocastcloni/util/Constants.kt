@@ -242,6 +242,23 @@ object Constants {
         const val MAX_DESCRIPTION_CHARS = 500_000
         const val MAX_GUID_CHARS = 8_192
         const val MAX_HEADER_CHARS = 8_192
+        const val MIN_BACKUP_GRID_SIZE = 1
+        const val MAX_BACKUP_GRID_SIZE = 200
+        const val MIN_BACKUP_UI_HEIGHT = 1
+        const val MAX_BACKUP_UI_HEIGHT = 200
+        const val MIN_BACKUP_AUTO_HIDE_SECONDS = 1
+        const val MAX_BACKUP_AUTO_HIDE_SECONDS = 300
+        const val MAX_BACKUP_AUTO_DOWNLOAD_LIMIT = 100
+        const val MIN_BACKUP_BACKGROUND_INTERVAL_HOURS = 1
+        const val MAX_BACKUP_BACKGROUND_INTERVAL_HOURS = 168
+        const val MAX_BACKUP_MARK_PLAYED_SECONDS = 3_600
+        const val MIN_BACKUP_INDICATOR_SIZE = 1
+        const val MAX_BACKUP_INDICATOR_SIZE = 100
+        const val MAX_BACKUP_INDICATOR_BORDER = 50
+        const val MAX_BACKUP_INDICATOR_OFFSET_ABS = 100
+        const val MAX_BACKUP_CLEANUP_KEEP_LIMIT = 10_000
+        const val MIN_BACKUP_CLEANUP_INTERVAL_HOURS = 1
+        const val MAX_BACKUP_CLEANUP_INTERVAL_HOURS = 8_760
     }
 
     object ViewModel {

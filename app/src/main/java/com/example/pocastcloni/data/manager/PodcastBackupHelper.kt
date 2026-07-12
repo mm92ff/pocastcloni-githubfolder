@@ -38,6 +38,7 @@ constructor(
     ) {
         withContext(dispatcherProvider.io) {
             try {
+                validateBackupSettings(settings)
                 val backupData =
                     BackupData(
                         version = Constants.Backup.BACKUP_VERSION,
@@ -219,6 +220,7 @@ internal fun validateBackupData(backupData: BackupData): BackupData {
     require(backupData.favorites.size <= Constants.SecurityLimits.MAX_BACKUP_FAVORITES) {
         "Backup contains too many favorites."
     }
+    backupData.settings?.let(::validateBackupSettings)
     if (backupData.podcasts.any { parseNetworkUrl(it.url) == null }) {
         throw IllegalArgumentException("Backup contains an invalid podcast URL.")
     }
@@ -241,4 +243,59 @@ internal fun validateBackupData(backupData: BackupData): BackupData {
         throw IllegalArgumentException("Backup contains an invalid image URL.")
     }
     return backupData
+}
+
+internal fun validateBackupSettings(settings: UserSettings) {
+    val limits = Constants.SecurityLimits
+    require(settings.colorStrength.isFinite() && settings.colorStrength in 0f..1f) {
+        "Backup color strength is outside the supported range."
+    }
+    require(settings.gridSize in limits.MIN_BACKUP_GRID_SIZE..limits.MAX_BACKUP_GRID_SIZE)
+    require(settings.progressBarHeight in limits.MIN_BACKUP_UI_HEIGHT..limits.MAX_BACKUP_UI_HEIGHT)
+    require(settings.navBarHeight in limits.MIN_BACKUP_UI_HEIGHT..limits.MAX_BACKUP_UI_HEIGHT)
+    require(
+        settings.bottomBarAutoHideDelaySeconds in
+            limits.MIN_BACKUP_AUTO_HIDE_SECONDS..limits.MAX_BACKUP_AUTO_HIDE_SECONDS
+    )
+    require(
+        settings.gradientBackgroundStrength.isFinite() &&
+            settings.gradientBackgroundStrength in 0f..1f
+    ) { "Backup gradient strength is outside the supported range." }
+    require(
+        settings.autoDownloadLimit == Constants.Preferences.NO_DOWNLOAD_LIMIT ||
+            settings.autoDownloadLimit in 1..limits.MAX_BACKUP_AUTO_DOWNLOAD_LIMIT
+    )
+    require(
+        settings.backgroundCheckInterval in
+            limits.MIN_BACKUP_BACKGROUND_INTERVAL_HOURS..limits.MAX_BACKUP_BACKGROUND_INTERVAL_HOURS
+    )
+    require(
+        settings.markPlayedDurationSeconds in
+            0..limits.MAX_BACKUP_MARK_PLAYED_SECONDS
+    )
+    require(settings.indicator.colorArgb in 0L..0xFFFF_FFFFL)
+    require(
+        settings.indicator.size in
+            limits.MIN_BACKUP_INDICATOR_SIZE..limits.MAX_BACKUP_INDICATOR_SIZE
+    )
+    require(
+        settings.indicator.borderWidth in
+            0..limits.MAX_BACKUP_INDICATOR_BORDER
+    )
+    require(
+        settings.indicator.xOffset in
+            -limits.MAX_BACKUP_INDICATOR_OFFSET_ABS..limits.MAX_BACKUP_INDICATOR_OFFSET_ABS
+    )
+    require(
+        settings.indicator.yOffset in
+            -limits.MAX_BACKUP_INDICATOR_OFFSET_ABS..limits.MAX_BACKUP_INDICATOR_OFFSET_ABS
+    )
+    require(
+        settings.cleanupKeepLimit in
+            0..limits.MAX_BACKUP_CLEANUP_KEEP_LIMIT
+    )
+    require(
+        settings.cleanupIntervalHours in
+            limits.MIN_BACKUP_CLEANUP_INTERVAL_HOURS..limits.MAX_BACKUP_CLEANUP_INTERVAL_HOURS
+    )
 }
