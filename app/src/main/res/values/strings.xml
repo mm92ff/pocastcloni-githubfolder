@@ -27,6 +27,7 @@
 
     <string name="desc_close">Close</string>
     <string name="desc_play_pause">Play/Pause</string>
+    <string name="desc_open_full_player">Open full player</string>
     <string name="desc_rewind">Rewind 10 seconds</string>
     <string name="desc_fast_forward">Fast forward 30 seconds</string>
     <string name="desc_play">Play</string>

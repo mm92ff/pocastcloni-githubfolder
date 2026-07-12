@@ -23,7 +23,20 @@ class StartupBenchmark {
             metrics = listOf(StartupTimingMetric()),
             compilationMode = CompilationMode.None(),
             startupMode = StartupMode.COLD,
-            iterations = 5,
+            iterations = 10,
+            setupBlock = { pressHome() }
+        ) {
+            startActivityAndWait()
+        }
+
+    @Test
+    fun warmStartup() =
+        benchmarkRule.measureRepeated(
+            packageName = TARGET_PACKAGE,
+            metrics = listOf(StartupTimingMetric()),
+            compilationMode = CompilationMode.None(),
+            startupMode = StartupMode.WARM,
+            iterations = 10,
             setupBlock = { pressHome() }
         ) {
             startActivityAndWait()

@@ -23,6 +23,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("boolean", "BENCHMARK_BUILD", "false")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -44,6 +45,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
             proguardFiles("benchmark-proguard-rules.pro")
+            buildConfigField("boolean", "BENCHMARK_BUILD", "true")
         }
     }
     compileOptions {

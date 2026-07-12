@@ -32,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -61,6 +63,7 @@ fun MiniPlayer(
     onCoverClick: () -> Unit,
     onExpand: () -> Unit
 ) {
+    val openFullPlayerDescription = stringResource(R.string.desc_open_full_player)
     val cardShape = RoundedCornerShape(Dimens.RoundedCornerLarge)
     val containerColor by TransparentSurfaceDefaults.animatedContainerColor(
         transparent = transparentBackground,
@@ -88,6 +91,7 @@ fun MiniPlayer(
         modifier
             .fillMaxWidth()
             .padding(Dimens.PaddingVerySmall)
+            .semantics { contentDescription = openFullPlayerDescription }
             .clickable(onClick = onExpand),
         shape = cardShape,
         border = TransparentSurfaceDefaults.border(transparentBackground),

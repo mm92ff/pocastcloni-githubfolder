@@ -3,6 +3,7 @@ package com.example.pocastcloni.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.R
+import com.example.pocastcloni.BuildConfig
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
 import com.example.pocastcloni.ui.UiText
@@ -107,7 +108,13 @@ constructor(
                 Timber.e(t, "Add podcast via URL failed")
 
                 // Do NOT leak exception details to the UI
-                val msg = UiText.StringResource(R.string.add_podcast_failure, "")
+                val benchmarkDetails =
+                    if (BuildConfig.BENCHMARK_BUILD) {
+                        "${t::class.java.simpleName}: ${t.message.orEmpty()}"
+                    } else {
+                        ""
+                    }
+                val msg = UiText.StringResource(R.string.add_podcast_failure, benchmarkDetails)
                 _uiState.update {
                     it.copy(
                         isAdding = false,
