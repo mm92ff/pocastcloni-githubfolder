@@ -21,6 +21,9 @@ __*.bat
 .gradle/
 build/
 **/build/
+*.perfetto-trace
+*benchmarkData.json
+benchmark-reports/
 
 # Local SDK path / local machine config
 local.properties

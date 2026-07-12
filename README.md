@@ -117,6 +117,23 @@ Windows:
 .\gradlew.bat detekt
 ```
 
+### Performance Benchmarks
+
+The `:benchmark` module runs release-like Macrobenchmarks with Compose runtime
+tracing. Use an API 30+ emulator; the reference setup is Android 15/API 35.
+All podcast, artwork, and audio data used by player benchmarks is served locally.
+
+```powershell
+.\gradlew.bat :benchmark:connectedBenchmarkAndroidTest
+.\benchmark\scripts\summarize-benchmarks.ps1
+.\benchmark\scripts\verify-compose-traces.ps1
+```
+
+Benchmark JSON and Perfetto traces are generated below `benchmark/build/` and
+are intentionally not versioned. SQL templates for Perfetto Trace Processor are
+stored in `benchmark/trace-queries/`. Emulator numbers are local regression
+baselines and should not be compared directly with physical-device results.
+
 ## Project Structure
 
 ```text
