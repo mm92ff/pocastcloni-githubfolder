@@ -85,6 +85,11 @@ class MainUserJourneyTest {
         clickBottomNav(NAV_SETTINGS)
         waitForText(SETTINGS_TITLE)
 
+        composeRule.onNodeWithText(SETTINGS_SYNC_TAB).performClick()
+        waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodes(hasSetTextAction(), useUnmergedTree = true)
+                .fetchSemanticsNodes().size == 1
+        }
         composeRule.onNode(hasSetTextAction()).performTextInput(server.url(FEED_PATH).toString())
         composeRule.onNodeWithText(ADD_BUTTON).performClick()
 
@@ -285,17 +290,18 @@ class MainUserJourneyTest {
         const val NAV_HOME = "Home"
         const val NAV_DOWNLOADS = "Downloads"
         const val SETTINGS_TITLE = "Settings"
+        const val SETTINGS_SYNC_TAB = "Sync"
         const val HOME_TITLE = "My Podcasts"
         const val HOME_EMPTY_TEXT = "No podcasts yet. Press +"
         const val ADD_BUTTON = "Add"
         const val ADD_SUCCESS_TEXT = "Podcast added successfully"
-        const val TOGGLE_FAVORITE = "Favorit markieren/entfernen"
-        const val TOGGLE_PLAYED = "Als gespielt/ungespielt markieren"
+        const val TOGGLE_FAVORITE = "Mark/unmark as favorite"
+        const val TOGGLE_PLAYED = "Mark as played/unplayed"
         const val PLAY_PAUSE = "Play/Pause"
         const val MINI_PLAYER_PLAY = "Play"
         const val MINI_PLAYER_PAUSE = "Pause"
-        const val DOWNLOAD_EPISODE = "Episode herunterladen"
-        const val EPISODE_DOWNLOADED = "Episode ist heruntergeladen"
+        const val DOWNLOAD_EPISODE = "Download episode"
+        const val EPISODE_DOWNLOADED = "Episode is downloaded"
         const val NO_DOWNLOADS_TEXT = "No downloads available"
         const val FAVORITES = "Favorites"
         const val HISTORY = "History"

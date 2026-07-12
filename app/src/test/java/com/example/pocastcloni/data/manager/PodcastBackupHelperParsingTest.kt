@@ -5,6 +5,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -208,13 +209,17 @@ class PodcastBackupHelperParsingTest {
                 progressBarHeight = 9,
                 navBarHeight = 88,
                 showMiniPlayerTimeOverlay = true,
+                transparentMiniPlayer = true,
+                transparentBottomBar = true,
                 oneHandedMode = true,
                 bottomBarCleanModeEnabled = true,
                 bottomBarAutoHideEnabled = true,
                 bottomBarAutoHideDelaySeconds = 8,
                 gradientBackgroundEnabled = true,
                 gradientBackgroundStrength = 0.75f,
+                gradientBackgroundDirection = GradientDirection.BOTTOM_RIGHT_TO_TOP_LEFT,
                 transparentSearchCards = true,
+                transparentPodcastCards = true,
                 transparentEpisodeRows = true,
                 autoDownloadLimit = 6,
                 autoRefreshOnStart = false,

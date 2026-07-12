@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.HorizontalDivider
@@ -21,6 +22,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +70,11 @@ fun SettingsListContent(
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(SettingsTab.DESIGN) }
     val tabs = SettingsTab.entries
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedTab) {
+        listState.scrollToItem(0)
+    }
     val bottomPadding =
         MiniPlayerLayoutDefaults.reservedBottomPadding(
             isPlayerVisible = isPlayerVisible,
@@ -95,6 +102,7 @@ fun SettingsListContent(
         CompositionLocalProvider(LocalTransparentSettingsCards provides settings.transparentSearchCards) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
+                state = listState,
                 contentPadding =
                 PaddingValues(
                     start = Dimens.PaddingMedium,
