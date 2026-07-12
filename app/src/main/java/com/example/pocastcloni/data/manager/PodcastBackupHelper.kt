@@ -157,7 +157,7 @@ internal fun prevalidateBackupJson(
                 JsonToken.START_ARRAY -> {
                     depth++
                     require(depth <= 100) { "Backup nesting is too deep." }
-                    arrays += BackupArrayFrame(parser.currentName, depth)
+                    arrays += BackupArrayFrame(parser.currentName(), depth)
                 }
                 JsonToken.END_ARRAY -> {
                     arrays.removeLastOrNull()
@@ -166,7 +166,7 @@ internal fun prevalidateBackupJson(
                 JsonToken.VALUE_STRING -> {
                     val value = parser.text
                     val isLegacyUrl = arrays.lastOrNull()?.let { it.name == null && depth == it.depth } == true
-                    enforceBackupStringLimit(parser.currentName, value.length, isLegacyUrl)
+                    enforceBackupStringLimit(parser.currentName(), value.length, isLegacyUrl)
                 }
                 else -> Unit
             }
