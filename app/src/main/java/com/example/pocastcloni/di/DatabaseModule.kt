@@ -3,6 +3,7 @@ package com.example.pocastcloni.di
 import android.content.Context
 import com.example.pocastcloni.data.local.AppDatabase
 import com.example.pocastcloni.data.local.PodcastDao
+import com.example.pocastcloni.data.local.BackupImportJournalDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,4 +27,9 @@ object DatabaseModule {
     fun providePodcastDao(database: AppDatabase): PodcastDao {
         return database.podcastDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideBackupImportJournalDao(database: AppDatabase): BackupImportJournalDao =
+        database.backupImportJournalDao()
 }

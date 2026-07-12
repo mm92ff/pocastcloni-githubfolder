@@ -8,13 +8,20 @@ import androidx.room.TypeConverters
 import com.example.pocastcloni.util.Constants
 
 @Database(
-    entities = [PodcastEntity::class, EpisodeEntity::class, EpisodeFts::class],
+    entities = [
+        PodcastEntity::class,
+        EpisodeEntity::class,
+        EpisodeFts::class,
+        BackupImportJournalEntity::class
+    ],
     version = Constants.Database.DATABASE_VERSION,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao
+
+    abstract fun backupImportJournalDao(): BackupImportJournalDao
 
     companion object {
         @Volatile

@@ -92,5 +92,7 @@ interface UserPreferencesRepository {
 
     suspend fun restoreSettings(settings: UserSettings)
 
+    suspend fun restoreSettingsOrThrow(settings: UserSettings)
+
     suspend fun clearSettings()
 }

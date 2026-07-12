@@ -7,6 +7,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.pocastcloni.data.worker.FeedUpdateWorker
 import com.example.pocastcloni.data.worker.LibraryCleanupWorker // Add import
+import com.example.pocastcloni.data.repository.BackupImportRecovery
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
@@ -30,12 +31,24 @@ constructor(
     private val podcastRepository: PodcastRepository,
     @ApplicationScope private val scope: CoroutineScope,
     private val workManager: WorkManager,
-    private val dispatcherProvider: DispatcherProvider
+    private val dispatcherProvider: DispatcherProvider,
+    private val backupImportRecovery: BackupImportRecovery
 ) {
     fun initialize() {
-        reconcileEpisodeStorage()
-        observeCleanupSettings()
+        scope.launch(dispatcherProvider.io) {
+            try {
+                backupImportRecovery.recoverInterruptedImport()
+            } catch (error: Exception) {
+                Timber.e(error, "Failed to recover interrupted backup import")
+                return@launch
+            }
+            reconcileEpisodeStorage()
+            observeCleanupSettings()
+            observeBackgroundSyncSettings()
+        }
+    }
 
+    private fun observeBackgroundSyncSettings() {
         scope.launch(dispatcherProvider.io) {
             try {
                 userPreferencesRepository.userSettingsFlow

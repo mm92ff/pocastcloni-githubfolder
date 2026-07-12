@@ -363,7 +363,14 @@ constructor(
 
     override suspend fun restoreSettings(settings: UserSettings) {
         try {
-            context.dataStore.edit { prefs ->
+            restoreSettingsOrThrow(settings)
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to restore settings to DataStore")
+        }
+    }
+
+    override suspend fun restoreSettingsOrThrow(settings: UserSettings) {
+        context.dataStore.edit { prefs ->
                 prefs[Keys.THEME] = settings.theme.name
                 prefs[Keys.APP_COLOR] = settings.appColor.name
                 prefs[Keys.COLOR_STRENGTH] = settings.colorStrength
@@ -407,9 +414,6 @@ constructor(
                 prefs[Keys.AUTO_CLEANUP_ENABLED] = settings.autoCleanupEnabled
                 prefs[Keys.CLEANUP_KEEP_LIMIT] = settings.cleanupKeepLimit
                 prefs[Keys.CLEANUP_INTERVAL_HOURS] = settings.cleanupIntervalHours
-            }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to restore settings to DataStore")
         }
     }
 

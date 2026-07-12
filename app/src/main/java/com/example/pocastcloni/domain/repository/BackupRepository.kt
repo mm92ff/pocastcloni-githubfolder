@@ -3,7 +3,11 @@ package com.example.pocastcloni.domain.repository
 import android.net.Uri
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 
-data class ImportResult(val success: Int, val total: Int)
+data class ImportResult(
+    val success: Int,
+    val total: Int,
+    val skippedFavorites: Int = 0
+)
 
 interface BackupRepository {
     suspend fun exportFullBackup(

@@ -5,6 +5,8 @@ import android.net.Uri
 import com.example.pocastcloni.R
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
+import com.example.pocastcloni.data.local.BackupImportJournalDao
+import com.example.pocastcloni.data.local.BackupImportJournalEntity
 import com.example.pocastcloni.data.manager.PodcastBackupHelper
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
@@ -14,8 +16,14 @@ import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
 import com.example.pocastcloni.util.parseNetworkUrl
+import com.fasterxml.jackson.databind.ObjectMapper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import java.util.Date
 import javax.inject.Inject
@@ -31,8 +39,14 @@ constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val syncFeedUseCase: Provider<SyncFeedUseCase>,
     private val dispatcherProvider: DispatcherProvider,
+    private val transactionRunner: BackupImportTransactionRunner,
+    private val backupImportJournalDao: BackupImportJournalDao,
+    private val objectMapper: ObjectMapper,
+    private val backupImportRecovery: BackupImportRecovery,
     @ApplicationContext private val context: Context
 ) : BackupRepository {
+    private val importMutex = Mutex()
+
     override suspend fun exportFullBackup(
         uri: Uri,
         settings: UserSettings
@@ -60,108 +74,145 @@ constructor(
         mode: FeedUpdateMode
     ): ImportResult {
         return withContext(dispatcherProvider.io) {
+            importMutex.withLock {
+                importFullBackupLocked(uri, downloadLimit, mode)
+            }
+        }
+    }
+
+    private suspend fun importFullBackupLocked(
+        uri: Uri,
+        downloadLimit: Int,
+        mode: FeedUpdateMode
+    ): ImportResult {
+            backupImportRecovery.recoverInterruptedImport()
             val backupData = backupHelper.importBackup(uri, context.contentResolver)
-
-            // 1. Restore settings
-            backupData.settings?.let { userPreferencesRepository.restoreSettings(it) }
-
-            // 2. Import podcasts (offline-first strategy)
-            var success = 0
             val total = backupData.podcasts.size
+            val previousSettings = userPreferencesRepository.userSettingsFlow.first()
+            val pendingImport = BackupImportJournalEntity(
+                previousSettingsJson = objectMapper.writeValueAsString(previousSettings)
+            )
+            backupImportJournalDao.savePendingImport(pendingImport)
 
-            // Determine the next sort order in case the backup has 0
-            var currentMaxSortOrder = podcastDao.getMaxSortOrder() ?: 0L
-
-            backupData.podcasts.forEach { backupPodcast ->
-                val url = backupPodcast.url
-                if (url.isNotBlank()) {
-                    val existingBeforeImport = podcastDao.getPodcastByUrl(url)
-                    val hasExistingApproval = existingBeforeImport?.allowInsecureHttp == true
-                    val safeImageUrl = backupPodcast.imageUrl.orEmpty().takeIf { imageUrl ->
-                        val parsedImage = parseNetworkUrl(imageUrl)
-                        parsedImage?.isHttps == true || hasExistingApproval
-                    }.orEmpty()
-                    // Step A: create a "stub" entity and insert it immediately (if not already present)
-                    // This guarantees the podcast exists even if the sync fails (offline).
-                    val orderToUse = if (backupPodcast.sortOrder > 0) backupPodcast.sortOrder else ++currentMaxSortOrder
-
-                    val stubEntity =
-                        PodcastEntity(
-                            rssUrl = url,
+            val syncTargets = mutableListOf<PodcastEntity>()
+            try {
+                backupData.settings?.let { settings ->
+                    userPreferencesRepository.restoreSettingsOrThrow(settings)
+                }
+                transactionRunner.run {
+                    var currentMaxSortOrder = podcastDao.getMaxSortOrder() ?: 0L
+                    backupData.podcasts.forEach { backupPodcast ->
+                        val existing = podcastDao.getPodcastByUrl(backupPodcast.url)
+                        val hasExistingApproval = existing?.allowInsecureHttp == true
+                        val safeImageUrl = backupPodcast.imageUrl.orEmpty().takeIf { imageUrl ->
+                            val parsedImage = parseNetworkUrl(imageUrl)
+                            parsedImage?.isHttps == true || hasExistingApproval
+                        }.orEmpty()
+                        val orderToUse = if (backupPodcast.sortOrder > 0) {
+                            backupPodcast.sortOrder
+                        } else {
+                            ++currentMaxSortOrder
+                        }
+                        val stub = PodcastEntity(
+                            rssUrl = backupPodcast.url,
                             title = backupPodcast.title ?: context.getString(R.string.import_fallback_title),
-                            description = backupPodcast.description ?: context.getString(R.string.import_fallback_description),
+                            description = backupPodcast.description
+                                ?: context.getString(R.string.import_fallback_description),
                             imageUrl = safeImageUrl,
-                            // Backup files are untrusted and cannot grant their own HTTP permission.
                             allowInsecureHttp = false,
                             sortOrder = orderToUse,
-                            // Restore the caching headers here:
                             lastModifiedHeader = backupPodcast.lastModifiedHeader,
                             eTagHeader = backupPodcast.eTagHeader,
-                            lastRefreshed = Date(0) // Marks the podcast as "needs update"
+                            lastRefreshed = Date(0)
                         )
+                        insertPodcastStubPreservingExisting(podcastDao, stub)?.let(syncTargets::add)
+                    }
+                    restoreAvailableFavorites(backupData.favorites)
+                    backupImportJournalDao.clearPendingImport()
+                }
+            } catch (error: CancellationException) {
+                withContext(NonCancellable) {
+                    rollbackInterruptedImport(previousSettings, error)
+                }
+                throw error
+            } catch (error: Exception) {
+                withContext(NonCancellable) {
+                    rollbackInterruptedImport(previousSettings, error)
+                }
+                throw error
+            }
 
-                    // Insert Ignore: if it already exists, we do NOT overwrite it (to protect local updates)
-                    // If it is new, it is now visible.
-                    runCatching {
-                        podcastDao.insertPodcast(stubEntity)
-                    }.onFailure { Timber.w(it, "Failed to insert stub for $url") }
-
-                    val storedPodcast = podcastDao.getPodcastByUrl(url)
-                    val feedIsHttps = parseNetworkUrl(url)?.isHttps == true
-                    val maySync = maySyncImportedFeed(feedIsHttps, storedPodcast?.allowInsecureHttp == true)
-
-                    // Step B: sync only when HTTPS or a pre-existing local approval permits it.
-                    runCatching {
-                        check(maySync) { "Imported HTTP feed requires local approval before sync." }
+            syncTargets.forEach { storedPodcast ->
+                val feedIsHttps = parseNetworkUrl(storedPodcast.rssUrl)?.isHttps == true
+                if (maySyncImportedFeed(feedIsHttps, storedPodcast.allowInsecureHttp)) {
+                    try {
                         syncFeedUseCase.get().invoke(
-                            url,
+                            storedPodcast.rssUrl,
                             downloadLimit,
                             mode,
-                            sortOrder = null, // Do not overwrite sortOrder, it was already set above
-                            forceFull = false, // Use smart update!
-                            allowInsecureHttp = storedPodcast?.allowInsecureHttp == true
+                            sortOrder = null,
+                            forceFull = false,
+                            allowInsecureHttp = storedPodcast.allowInsecureHttp
                         )
-                        success++
-                    }.onFailure {
-                        Timber.w(it, "Sync failed during import for $url (Offline?)")
-                        // Despite the sync failure we count it as a "partial success" since the podcast is now in the DB.
-                        // If the stub was inserted successfully, it is acceptable for the user.
-                        if (podcastDao.getPodcastByUrl(url) != null) {
-                            success++
-                        }
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        Timber.w(error, "Post-import sync failed for ${storedPodcast.rssUrl}")
                     }
                 }
             }
 
-            // 3. Restore favorites
-            val favoriteGuids = backupData.favorites.map { it.episodeGuid }.distinct()
-            val existingFavoriteGuids =
-                if (favoriteGuids.isEmpty()) {
-                    emptySet()
-                } else {
-                    podcastDao.getExistingGuids(favoriteGuids).toSet()
-                }
-
-            val restorableFavorites =
-                backupData.favorites
-                    .filter { it.episodeGuid in existingFavoriteGuids }
-            restorableFavorites.forEach { fav ->
-                podcastDao.setFavoriteStatus(
-                    guid = fav.episodeGuid,
-                    isFavorite = true,
-                    timestamp = fav.timestamp,
-                    favoriteAddedAt = fav.timestamp
-                )
+            var skippedFavorites = 0
+            transactionRunner.run {
+                skippedFavorites = restoreAvailableFavorites(backupData.favorites)
             }
+            return ImportResult(total, total, skippedFavorites)
+    }
 
-            val skippedFavorites = backupData.favorites.size - restorableFavorites.size
-            if (skippedFavorites > 0) {
-                Timber.w("Skipped restoring %d favorites because the episodes are not available locally.", skippedFavorites)
-            }
+    private suspend fun restoreAvailableFavorites(
+        favorites: List<com.example.pocastcloni.data.local.BackupFavorite>
+    ): Int {
+        val favoriteGuids = favorites.map { it.episodeGuid }.distinct()
+        val existingFavoriteGuids = if (favoriteGuids.isEmpty()) {
+            emptySet()
+        } else {
+            podcastDao.getExistingGuids(favoriteGuids).toSet()
+        }
+        favorites.filter { it.episodeGuid in existingFavoriteGuids }.forEach { favorite ->
+            podcastDao.setFavoriteStatus(
+                guid = favorite.episodeGuid,
+                isFavorite = true,
+                timestamp = favorite.timestamp,
+                favoriteAddedAt = favorite.timestamp
+            )
+        }
+        val skipped = favorites.size - existingFavoriteGuids.size
+        if (skipped > 0) {
+            Timber.w("Skipped restoring %d favorites because episodes are unavailable.", skipped)
+        }
+        return skipped
+    }
 
-            ImportResult(success, total)
+    private suspend fun rollbackInterruptedImport(
+        previousSettings: UserSettings,
+        importError: Throwable
+    ) {
+        try {
+            userPreferencesRepository.restoreSettingsOrThrow(previousSettings)
+            backupImportJournalDao.clearPendingImport()
+        } catch (rollbackError: Throwable) {
+            importError.addSuppressed(rollbackError)
         }
     }
+}
+
+internal suspend fun insertPodcastStubPreservingExisting(
+    podcastDao: PodcastDao,
+    stub: PodcastEntity
+): PodcastEntity? {
+    podcastDao.getPodcastByUrl(stub.rssUrl)?.let { return it }
+    podcastDao.insertPodcasts(listOf(stub))
+    return podcastDao.getPodcastByUrl(stub.rssUrl)
 }
 
 internal fun maySyncImportedFeed(

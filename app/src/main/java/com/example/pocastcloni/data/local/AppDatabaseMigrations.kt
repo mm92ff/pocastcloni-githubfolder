@@ -5,6 +5,20 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 object AppDatabaseMigrations {
 
+    internal val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `backup_import_journal` (
+                    `id` INTEGER NOT NULL,
+                    `previousSettingsJson` TEXT NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Legacy migrations (v1–v9 → v10)
     // All pre-v10 databases are rebuilt in one pass to the v10 schema.
@@ -63,7 +77,8 @@ object AppDatabaseMigrations {
                     """.trimIndent()
                 )
             }
-        }
+        },
+        MIGRATION_12_13
     )
 
     val ALL_MIGRATIONS: Array<Migration> = legacyMigrations + incrementalMigrations
