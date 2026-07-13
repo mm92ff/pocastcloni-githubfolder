@@ -9,13 +9,6 @@ import retrofit2.http.Streaming
 import retrofit2.http.Url
 
 interface PodcastService {
-    @GET
-    suspend fun fetchFeed(
-        @Url url: String,
-        @Header(Constants.Network.HEADER_IF_MODIFIED_SINCE) lastModified: String? = null,
-        @Header(Constants.Network.HEADER_IF_NONE_MATCH) eTag: String? = null
-    ): Response<RssFeed>
-
     @Streaming
     @GET
     suspend fun fetchRawFeed(

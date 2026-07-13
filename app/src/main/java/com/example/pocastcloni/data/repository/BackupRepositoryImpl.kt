@@ -117,8 +117,8 @@ constructor(
                         allowInsecureHttp = false,
                         allowLocalNetwork = false,
                         sortOrder = 0,
-                        lastModifiedHeader = backupPodcast.lastModifiedHeader,
-                        eTagHeader = backupPodcast.eTagHeader,
+                        lastModifiedHeader = null,
+                        eTagHeader = null,
                         lastRefreshed = Date(0)
                     )
                     insertPodcastStubPreservingExisting(podcastDao, stub)

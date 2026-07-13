@@ -18,6 +18,8 @@ import com.example.pocastcloni.domain.repository.FeedSyncPersistence
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.usecase.episode.DownloadEpisodeUseCase
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.hasSameOrigin
+import com.example.pocastcloni.util.parseNetworkUrl
 import com.example.pocastcloni.util.stripHtml
 import com.example.pocastcloni.util.requireApprovedNetworkUrl
 import com.example.pocastcloni.util.isAllowedPodcastResource
@@ -132,6 +134,7 @@ constructor(
             Constants.SecurityLimits.MAX_FEED_BYTES
         )
         try {
+            val validators = originBoundFeedValidators(url, response)
             val result =
                 streamParser.parse(
                     stream,
@@ -147,8 +150,8 @@ constructor(
                 description = result.channel.description,
                 imageUrl = result.channel.finalImageUrl,
                 newItems = result.newItems,
-                lastModified = response.headers()[Constants.Network.HEADER_LAST_MODIFIED],
-                etag = response.headers()[Constants.Network.HEADER_ETAG],
+                lastModified = validators.lastModified,
+                etag = validators.etag,
                 sortOrder = existing?.sortOrder,
                 downloadLimit = downloadLimit,
                 allowInsecureHttp = allowInsecureHttp,
@@ -191,6 +194,7 @@ constructor(
             Constants.SecurityLimits.MAX_FEED_BYTES
         )
         try {
+            val validators = originBoundFeedValidators(url, response)
             val result = streamParser.parse(
                 stream,
                 url,
@@ -204,8 +208,8 @@ constructor(
                 description = result.channel.description,
                 imageUrl = result.channel.finalImageUrl,
                 newItems = result.newItems,
-                lastModified = response.headers()[Constants.Network.HEADER_LAST_MODIFIED],
-                etag = response.headers()[Constants.Network.HEADER_ETAG],
+                lastModified = validators.lastModified,
+                etag = validators.etag,
                 sortOrder = sortOrder,
                 downloadLimit = downloadLimit,
                 allowInsecureHttp = allowInsecureHttp,
@@ -339,6 +343,26 @@ internal fun rejectOversizedFeed(contentLength: Long) {
     if (contentLength > Constants.SecurityLimits.MAX_FEED_BYTES) {
         throw java.io.IOException("Feed response is too large")
     }
+}
+
+internal data class FeedResponseValidators(
+    val lastModified: String?,
+    val etag: String?
+)
+
+internal fun originBoundFeedValidators(
+    requestedUrl: String,
+    response: retrofit2.Response<okhttp3.ResponseBody>
+): FeedResponseValidators {
+    val requested = parseNetworkUrl(requestedUrl, allowLocalNetwork = true)
+    val finalUrl = response.raw().request.url
+    if (requested == null || !hasSameOrigin(requested, finalUrl)) {
+        return FeedResponseValidators(lastModified = null, etag = null)
+    }
+    return FeedResponseValidators(
+        lastModified = response.headers()[Constants.Network.HEADER_LAST_MODIFIED],
+        etag = response.headers()[Constants.Network.HEADER_ETAG]
+    )
 }
 
 internal fun effectiveFeedParserLimit(requestedLimit: Int): Int =

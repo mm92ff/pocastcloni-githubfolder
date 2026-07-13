@@ -11,7 +11,22 @@ import kotlinx.coroutines.yield
 import org.xmlpull.v1.XmlPullParser
 import java.io.InputStream
 
-class RssSmartSyncParser {
+class RssSmartSyncParser(
+    private val limits: Limits = Limits(),
+    private val parserFactory: () -> XmlPullParser = { Xml.newPullParser() }
+) {
+    data class Limits(
+        val maxDepth: Int = Constants.SecurityLimits.MAX_RSS_XML_DEPTH,
+        val maxTokens: Int = Constants.SecurityLimits.MAX_RSS_XML_TOKENS,
+        val maxExpandedChars: Long = Constants.SecurityLimits.MAX_RSS_EXPANDED_CHARS
+    ) {
+        init {
+            require(maxDepth > 0)
+            require(maxTokens > 0)
+            require(maxExpandedChars > 0)
+        }
+    }
+
     data class ParseResult(
         val channel: RssChannel,
         val newItems: List<RssItem>
@@ -27,11 +42,11 @@ class RssSmartSyncParser {
         isFullSync: Boolean = false,
         latestKnownGuid: String? = null
     ): ParseResult {
-        val parser = Xml.newPullParser()
+        val parser = parserFactory()
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
+        parser.setFeature(XmlPullParser.FEATURE_PROCESS_DOCDECL, false)
         parser.setInput(inputStream, null)
-
-        var eventType = parser.eventType
+        val events = LimitedXmlEventReader(parser, limits)
 
         var title: String? = null
         var description: String? = null
@@ -41,36 +56,33 @@ class RssSmartSyncParser {
 
         val effectiveLatestKnownGuid = if (isFullSync) null else latestKnownGuid
 
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            val name = parser.name
+        while (events.eventType != XmlPullParser.END_DOCUMENT) {
+            val name = events.name
 
-            when (eventType) {
+            when (events.eventType) {
                 XmlPullParser.START_TAG -> {
                     if (name == Constants.Parsing.ITEM) {
-                        // Hard cap: always respect limit (when limit > 0), regardless of whether we have a known GUID.
                         if (limit > 0 && newItems.size >= limit) {
                             return buildResult(title, description, image, itunesImage, newItems)
                         }
 
-                        val itemResult = parseItem(parser, effectiveLatestKnownGuid)
+                        val itemResult = parseItem(events, effectiveLatestKnownGuid)
 
                         if (itemResult.isKnown) {
                             return buildResult(title, description, image, itunesImage, newItems)
                         } else if (itemResult.item != null) {
                             newItems.add(itemResult.item)
-
-                            // Cap again after adding, to guarantee newItems.size <= limit
                             if (limit > 0 && newItems.size >= limit) {
                                 return buildResult(title, description, image, itunesImage, newItems)
                             }
                         }
                     } else {
                         when (name) {
-                            Constants.Parsing.TITLE -> title = readText(parser)
-                            Constants.Parsing.DESCRIPTION -> description = readText(parser)
-                            Constants.Parsing.IMAGE -> image = RssImage(urlFromTag = parseImageUrl(parser))
-                            Constants.Parsing.ITUNES_IMAGE, "itunes:image" -> {
-                                val href = parser.getAttributeValue(null, Constants.Parsing.HREF)
+                            Constants.Parsing.TITLE -> title = readText(events)
+                            Constants.Parsing.DESCRIPTION -> description = readText(events)
+                            Constants.Parsing.IMAGE -> image = RssImage(urlFromTag = parseImageUrl(events))
+                            Constants.Parsing.ITUNES_IMAGE -> {
+                                val href = events.getAttributeValue(null, Constants.Parsing.HREF)
                                 itunesImage = RssImage(urlFromAttribute = href)
                             }
                         }
@@ -78,40 +90,36 @@ class RssSmartSyncParser {
                 }
 
                 XmlPullParser.END_TAG -> {
-                    if (name == Constants.Parsing.CHANNEL) {
-                        break
-                    }
+                    if (name == Constants.Parsing.CHANNEL) break
                 }
             }
-            eventType = parser.next()
+            events.nextToken()
             yield()
         }
         return buildResult(title, description, image, itunesImage, newItems)
     }
 
-    private fun parseImageUrl(parser: XmlPullParser): String? {
+    private fun parseImageUrl(events: LimitedXmlEventReader): String? {
         var imageUrl: String? = null
-        var inImageTag = true
-        while (inImageTag) {
-            when (parser.next()) {
+        while (true) {
+            when (events.nextToken()) {
                 XmlPullParser.START_TAG -> {
-                    if (parser.name == Constants.Parsing.URL) {
-                        imageUrl = readText(parser)
+                    if (events.name == Constants.Parsing.URL) {
+                        imageUrl = readText(events)
                     }
                 }
 
                 XmlPullParser.END_TAG -> {
-                    if (parser.name == Constants.Parsing.IMAGE) {
-                        inImageTag = false
-                    }
+                    if (events.name == Constants.Parsing.IMAGE) return imageUrl
                 }
+
+                XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException("Unexpected end of RSS image")
             }
         }
-        return imageUrl
     }
 
-    private suspend fun parseItem(
-        parser: XmlPullParser,
+    private fun parseItem(
+        events: LimitedXmlEventReader,
         latestKnownGuid: String?
     ): ItemParseResult {
         var title: String? = null
@@ -126,41 +134,43 @@ class RssSmartSyncParser {
         var inItem = true
 
         while (inItem) {
-            when (parser.next()) {
+            when (events.nextToken()) {
                 XmlPullParser.START_TAG -> {
-                    when (parser.name) {
-                        Constants.Parsing.TITLE -> title = readText(parser)
-                        Constants.Parsing.DESCRIPTION -> description = readText(parser)
-                        Constants.Parsing.LINK -> link = readText(parser)
+                    when (events.name) {
+                        Constants.Parsing.TITLE -> title = readText(events)
+                        Constants.Parsing.DESCRIPTION -> description = readText(events)
+                        Constants.Parsing.LINK -> link = readText(events)
                         Constants.Parsing.GUID -> {
-                            guid = readText(parser)
+                            guid = readText(events)
                             if (latestKnownGuid != null && guid == latestKnownGuid) {
                                 isKnown = true
                             }
                         }
 
-                        Constants.Parsing.PUB_DATE -> pubDate = readText(parser)
-                        Constants.Parsing.ITUNES_DURATION, "itunes:duration" -> itunesDuration = readText(parser)
+                        Constants.Parsing.PUB_DATE -> pubDate = readText(events)
+                        Constants.Parsing.ITUNES_DURATION -> itunesDuration = readText(events)
 
                         Constants.Parsing.ENCLOSURE -> {
-                            val url = parser.getAttributeValue(null, Constants.Parsing.URL)
-                            val length = parser.getAttributeValue(null, Constants.Parsing.LENGTH)?.toLongOrNull() ?: Constants.Parsing.DEFAULT_ENCLOSURE_LENGTH
-                            val type = parser.getAttributeValue(null, Constants.Parsing.TYPE)
+                            val url = events.getAttributeValue(null, Constants.Parsing.URL)
+                            val length =
+                                events.getAttributeValue(null, Constants.Parsing.LENGTH)?.toLongOrNull()
+                                    ?: Constants.Parsing.DEFAULT_ENCLOSURE_LENGTH
+                            val type = events.getAttributeValue(null, Constants.Parsing.TYPE)
                             enclosure = RssEnclosure(url, type, length)
                         }
                     }
                 }
 
                 XmlPullParser.END_TAG -> {
-                    if (parser.name == Constants.Parsing.ITEM) {
-                        inItem = false
-                    }
+                    if (events.name == Constants.Parsing.ITEM) inItem = false
                 }
+
+                XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException("Unexpected end of RSS item")
             }
 
             if (isKnown) {
-                while (parser.eventType != XmlPullParser.END_TAG || parser.name != Constants.Parsing.ITEM) {
-                    parser.next()
+                while (events.eventType != XmlPullParser.END_TAG || events.name != Constants.Parsing.ITEM) {
+                    events.nextToken()
                 }
                 return ItemParseResult(null, true)
             }
@@ -179,16 +189,26 @@ class RssSmartSyncParser {
         return ItemParseResult(item, false)
     }
 
-    private fun readText(parser: XmlPullParser): String {
-        var result = ""
-        if (parser.next() == XmlPullParser.TEXT) {
-            result = parser.text ?: ""
-            require(result.length <= Constants.SecurityLimits.MAX_DESCRIPTION_CHARS) {
-                "RSS text field is too long"
+    private fun readText(events: LimitedXmlEventReader): String {
+        val result = StringBuilder()
+        while (true) {
+            when (events.nextToken()) {
+                XmlPullParser.TEXT,
+                XmlPullParser.CDSECT,
+                XmlPullParser.ENTITY_REF,
+                XmlPullParser.IGNORABLE_WHITESPACE -> {
+                    val text = events.eventText()
+                    require(result.length.toLong() + text.length <= Constants.SecurityLimits.MAX_DESCRIPTION_CHARS) {
+                        "RSS text field is too long"
+                    }
+                    result.append(text)
+                }
+
+                XmlPullParser.END_TAG -> return result.toString()
+                XmlPullParser.START_TAG -> throw IllegalArgumentException("Nested XML is not allowed in RSS text fields")
+                XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException("Unexpected end of RSS text field")
             }
-            parser.nextTag()
         }
-        return result
     }
 
     private fun buildResult(
@@ -206,5 +226,93 @@ class RssSmartSyncParser {
                 itunesImage = itunesImage
             )
         return ParseResult(channel, newItems)
+    }
+}
+
+private class LimitedXmlEventReader(
+    private val parser: XmlPullParser,
+    private val limits: RssSmartSyncParser.Limits
+) {
+    private var depth = 0
+    private var tokenCount = 0
+    private var expandedChars = 0L
+
+    val eventType: Int
+        get() = parser.eventType
+
+    val name: String?
+        get() = parser.name
+
+    fun getAttributeValue(
+        namespace: String?,
+        name: String
+    ): String? = parser.getAttributeValue(namespace, name)
+
+    fun nextToken(): Int {
+        val next = parser.nextToken()
+        tokenCount++
+        require(tokenCount <= limits.maxTokens) { "RSS XML token limit exceeded" }
+
+        when (next) {
+            XmlPullParser.DOCDECL -> throw IllegalArgumentException("RSS XML document declarations are not allowed")
+            XmlPullParser.START_TAG -> {
+                depth++
+                require(depth <= limits.maxDepth) { "RSS XML depth limit exceeded" }
+            }
+            XmlPullParser.END_TAG -> {
+                depth--
+                require(depth >= 0) { "RSS XML contains an invalid closing tag" }
+            }
+            XmlPullParser.TEXT,
+            XmlPullParser.CDSECT,
+            XmlPullParser.IGNORABLE_WHITESPACE -> countExpandedChars(parser.text.orEmpty())
+            XmlPullParser.ENTITY_REF -> countExpandedChars(entityReplacement())
+        }
+        return next
+    }
+
+    fun eventText(): String =
+        if (eventType == XmlPullParser.ENTITY_REF) entityReplacement() else parser.text.orEmpty()
+
+    private fun countExpandedChars(text: String) {
+        expandedChars += text.length
+        require(expandedChars <= limits.maxExpandedChars) { "RSS XML expanded text limit exceeded" }
+    }
+
+    private fun entityReplacement(): String {
+        val entityName = parser.name.orEmpty()
+        PREDEFINED_ENTITIES[entityName]?.let { return it }
+        if (entityName.startsWith("#")) return decodeNumericEntity(entityName)
+        throw IllegalArgumentException("Custom RSS XML entities are not allowed")
+    }
+
+    private fun decodeNumericEntity(entityName: String): String {
+        val codePoint =
+            if (entityName.startsWith("#x", ignoreCase = true)) {
+                entityName.substring(2).toIntOrNull(16)
+            } else {
+                entityName.substring(1).toIntOrNull()
+            }
+        require(codePoint != null && isValidXmlCodePoint(codePoint)) { "Invalid numeric RSS XML entity" }
+        return Character.toChars(codePoint).concatToString()
+    }
+
+    private fun isValidXmlCodePoint(value: Int): Boolean =
+        value == 0x9 ||
+            value == 0xA ||
+            value == 0xD ||
+            value in 0x20..0xD7FF ||
+            value in 0xE000..0xFFFD ||
+            value in 0x10000..0x10FFFF
+
+    private companion object {
+        val PREDEFINED_ENTITIES =
+            mapOf(
+                "amp" to "&",
+                "lt" to "<",
+                "gt" to ">",
+                "apos" to "'",
+                "quot" to "\""
+            )
     }
 }

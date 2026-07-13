@@ -4,6 +4,7 @@ import android.util.Xml
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
+import com.example.pocastcloni.data.local.PodcastFeedUpdate
 import com.example.pocastcloni.data.remote.PodcastService
 import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import com.example.pocastcloni.di.DispatcherProvider
@@ -12,6 +13,7 @@ import com.example.pocastcloni.domain.repository.FeedSyncPersistence
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.usecase.episode.DownloadEpisodeUseCase
 import com.example.pocastcloni.util.MainDispatcherRule
+import com.example.pocastcloni.testutil.DocDeclFeatureKXmlParser
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
@@ -28,6 +30,8 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Protocol
+import okhttp3.Request
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.ResponseBody
 import okio.Buffer
@@ -35,11 +39,12 @@ import okio.BufferedSource
 import com.example.pocastcloni.util.Constants
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.xmlpull.v1.XmlPullParserFactory
 import retrofit2.Response
 import java.net.HttpURLConnection
 import java.util.Date
@@ -75,7 +80,7 @@ class SyncFeedUseCaseHasNewEpisodesTest {
     @Before
     fun setup() {
         mockkStatic(Xml::class)
-        every { Xml.newPullParser() } returns XmlPullParserFactory.newInstance().newPullParser()
+        every { Xml.newPullParser() } answers { DocDeclFeatureKXmlParser() }
 
         podcastService = mockk()
         localPodcastService = mockk()
@@ -119,10 +124,19 @@ class SyncFeedUseCaseHasNewEpisodesTest {
 
     private fun mockSuccessResponse(
         guid: String,
-        headers: Headers = Headers.headersOf()
+        headers: Headers = Headers.headersOf(),
+        finalUrl: String = feedUrl
     ): Response<okhttp3.ResponseBody> {
         val body = makeRssBody(guid)
-        return Response.success(body, headers)
+        val rawResponse =
+            okhttp3.Response.Builder()
+                .request(Request.Builder().url(finalUrl).build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(HttpURLConnection.HTTP_OK)
+                .message("OK")
+                .headers(headers)
+                .build()
+        return Response.success(body, rawResponse)
     }
 
     private fun existingPodcast(hasNew: Boolean = false) = PodcastEntity(
@@ -439,5 +453,53 @@ class SyncFeedUseCaseHasNewEpisodesTest {
             podcastService.fetchRawFeed(feedUrl, "old-last-modified", "old-etag")
         }
         coVerify(exactly = 1) { feedSyncPersistence.touchLastRefreshed(feedUrl, any()) }
+    }
+
+    @Test
+    fun `same-origin final response persists feed validators`() = runTest(testDispatcher) {
+        coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns existingPodcast()
+        coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns "known-guid"
+        coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns
+            mockSuccessResponse(
+                guid = "new-guid",
+                finalUrl = "https://example.com/canonical/feed.rss",
+                headers = Headers.headersOf(
+                    Constants.Network.HEADER_LAST_MODIFIED,
+                    "new-last-modified",
+                    Constants.Network.HEADER_ETAG,
+                    "new-etag"
+                )
+            )
+
+        useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.SMART_STREAM)
+
+        val update = slot<PodcastFeedUpdate>()
+        coVerify { feedSyncPersistence.persistFeedUpdate(capture(update), null, any()) }
+        assertEquals("new-last-modified", update.captured.lastModifiedHeader)
+        assertEquals("new-etag", update.captured.eTagHeader)
+    }
+
+    @Test
+    fun `cross-origin final response discards both feed validators`() = runTest(testDispatcher) {
+        coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns existingPodcast()
+        coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns "known-guid"
+        coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns
+            mockSuccessResponse(
+                guid = "new-guid",
+                finalUrl = "https://feeds.example.net/canonical/feed.rss",
+                headers = Headers.headersOf(
+                    Constants.Network.HEADER_LAST_MODIFIED,
+                    "cross-origin-last-modified",
+                    Constants.Network.HEADER_ETAG,
+                    "cross-origin-etag"
+                )
+            )
+
+        useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+
+        val update = slot<PodcastFeedUpdate>()
+        coVerify { feedSyncPersistence.persistFeedUpdate(capture(update), null, any()) }
+        assertNull(update.captured.lastModifiedHeader)
+        assertNull(update.captured.eTagHeader)
     }
 }

@@ -54,6 +54,17 @@ class PodcastMappersTest {
     }
 
     @Test
+    fun `toBackupPodcast omits origin-bound validators`() {
+        val backup = podcastEntity().copy(
+            lastModifiedHeader = "private-last-modified",
+            eTagHeader = "private-etag"
+        ).toBackupPodcast()
+
+        assertNull(backup.lastModifiedHeader)
+        assertNull(backup.eTagHeader)
+    }
+
+    @Test
     fun `portable state mapping keeps duplicate guids feed scoped and assigns contiguous favorite order`() {
         val sharedGuid = "shared-guid"
         val states = listOf(

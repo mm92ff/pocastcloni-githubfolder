@@ -113,6 +113,14 @@ object AppDatabaseMigrations {
         }
     }
 
+    internal val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "UPDATE `podcasts` SET `lastModifiedHeader` = NULL, `eTagHeader` = NULL"
+            )
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Legacy migrations (v1–v9 → v10)
     // All pre-v10 databases are rebuilt in one pass to the v10 schema.
@@ -174,7 +182,8 @@ object AppDatabaseMigrations {
         },
         MIGRATION_12_13,
         MIGRATION_13_14,
-        MIGRATION_14_15
+        MIGRATION_14_15,
+        MIGRATION_15_16
     )
 
     val ALL_MIGRATIONS: Array<Migration> = legacyMigrations + incrementalMigrations

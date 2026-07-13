@@ -380,6 +380,31 @@ class BackupRepositorySecurityTest {
     }
 
     @Test
+    fun `legacy backup validators are ignored when creating an imported podcast`() = runTest(dispatcher) {
+        val url = "https://example.com/feed.xml"
+        val storedStub = PodcastEntity(url, "Imported", "", "")
+        coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
+            podcasts = listOf(
+                BackupPodcast(
+                    url = url,
+                    title = "Imported",
+                    lastModifiedHeader = "legacy-last-modified",
+                    eTagHeader = "legacy-etag"
+                )
+            )
+        )
+        coEvery { dao.getPodcastByUrl(url) } returnsMany listOf(null, null, storedStub, storedStub)
+
+        repository.importFullBackup(mockk<Uri>())
+
+        coVerify {
+            dao.insertPodcasts(match { podcasts ->
+                podcasts.single().lastModifiedHeader == null && podcasts.single().eTagHeader == null
+            })
+        }
+    }
+
+    @Test
     fun `cancellation during local transaction rolls settings back and propagates`() = runTest(dispatcher) {
         val previous = UserSettings(theme = AppTheme.DARK)
         val imported = UserSettings(theme = AppTheme.LIGHT)

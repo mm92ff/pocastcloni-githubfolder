@@ -79,9 +79,7 @@ fun PodcastEntity.toBackupPodcast(): BackupPodcast {
         allowLocalNetwork = this.allowLocalNetwork,
         title = this.title,
         description = this.description,
-        imageUrl = this.imageUrl,
-        lastModifiedHeader = this.lastModifiedHeader,
-        eTagHeader = this.eTagHeader
+        imageUrl = this.imageUrl
     )
 }
 

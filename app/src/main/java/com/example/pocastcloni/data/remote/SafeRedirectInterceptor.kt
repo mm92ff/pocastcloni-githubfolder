@@ -42,7 +42,7 @@ class SafeRedirectInterceptor(
             }
             val nextBuilder = request.newBuilder().url(target)
             if (!hasSameOrigin(request.url, target)) {
-                nextBuilder.removeHeader("Authorization")
+                CROSS_ORIGIN_HEADERS.forEach(nextBuilder::removeHeader)
             }
             response.close()
             request = nextBuilder.build()
@@ -51,6 +51,20 @@ class SafeRedirectInterceptor(
 
     private companion object {
         val REDIRECT_CODES = setOf(301, 302, 303, 307, 308)
+        val CROSS_ORIGIN_HEADERS =
+            listOf(
+                "Authorization",
+                "Proxy-Authorization",
+                "Connection",
+                "Proxy-Connection",
+                "Cookie",
+                "Cookie2",
+                "If-Match",
+                "If-Modified-Since",
+                "If-None-Match",
+                "If-Range",
+                "If-Unmodified-Since"
+            )
     }
 }
 

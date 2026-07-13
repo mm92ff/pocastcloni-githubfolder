@@ -199,9 +199,13 @@ data class BackupPodcast(
     @JsonProperty("title") val title: String? = null,
     @JsonProperty("description") val description: String? = null,
     @JsonProperty("image_url") val imageUrl: String? = null,
-    // NEW: Caching headers for smart updates (important for traffic savings after restore)
-    @JsonProperty("last_modified") val lastModifiedHeader: String? = null,
-    @JsonProperty("etag") val eTagHeader: String? = null
+    // Read-only compatibility for backups created before validators became origin-bound.
+    @param:JsonProperty("last_modified")
+    @get:JsonProperty(value = "last_modified", access = JsonProperty.Access.WRITE_ONLY)
+    val lastModifiedHeader: String? = null,
+    @param:JsonProperty("etag")
+    @get:JsonProperty(value = "etag", access = JsonProperty.Access.WRITE_ONLY)
+    val eTagHeader: String? = null
 )
 
 data class BackupEpisodeState(

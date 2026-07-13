@@ -9,6 +9,7 @@ import okhttp3.mockwebserver.MockWebServer
 import okhttp3.tls.HandshakeCertificates
 import okhttp3.tls.HeldCertificate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.IOException
@@ -67,6 +68,60 @@ class SafeRedirectInterceptorTest {
         } finally {
             origin.shutdown()
             target.shutdown()
+        }
+    }
+
+    @Test
+    fun `cross-origin redirect strips credentials cookies connection and conditional validators`() {
+        val origin = MockWebServer()
+        val target = MockWebServer()
+        target.enqueue(MockResponse().setBody("ok"))
+        origin.start()
+        target.start()
+        origin.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .addHeader("Location", target.url("/final"))
+        )
+        try {
+            val requestBuilder = Request.Builder().url(origin.url("/start"))
+            CROSS_ORIGIN_HEADERS.forEach { header -> requestBuilder.header(header, "sensitive") }
+
+            client().newCall(requestBuilder.build()).execute().use { assertEquals(200, it.code) }
+
+            val redirectedRequest = target.takeRequest()
+            CROSS_ORIGIN_HEADERS.forEach { header ->
+                val redirectedValue = redirectedRequest.getHeader(header)
+                assertNotEquals("Expected inherited $header value to be stripped", "sensitive", redirectedValue)
+                if (header != "Connection") {
+                    assertEquals("Expected $header to be stripped", null, redirectedValue)
+                }
+            }
+        } finally {
+            origin.shutdown()
+            target.shutdown()
+        }
+    }
+
+    @Test
+    fun `same-origin redirect preserves credentials cookies and validators`() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", "/final"))
+        server.enqueue(MockResponse().setBody("ok"))
+        server.start()
+        try {
+            val requestBuilder = Request.Builder().url(server.url("/start"))
+            CROSS_ORIGIN_HEADERS.forEach { header -> requestBuilder.header(header, "same-origin") }
+
+            client().newCall(requestBuilder.build()).execute().use { assertEquals(200, it.code) }
+
+            server.takeRequest()
+            val redirectedRequest = server.takeRequest()
+            CROSS_ORIGIN_HEADERS.forEach { header ->
+                assertEquals("Expected $header to be preserved", "same-origin", redirectedRequest.getHeader(header))
+            }
+        } finally {
+            server.shutdown()
         }
     }
 
@@ -215,4 +270,21 @@ class SafeRedirectInterceptorTest {
         .followSslRedirects(false)
         .addInterceptor(SafeRedirectInterceptor(isAllowedUrl = { true }))
         .build()
+
+    private companion object {
+        val CROSS_ORIGIN_HEADERS =
+            listOf(
+                "Authorization",
+                "Proxy-Authorization",
+                "Connection",
+                "Proxy-Connection",
+                "Cookie",
+                "Cookie2",
+                "If-Match",
+                "If-Modified-Since",
+                "If-None-Match",
+                "If-Range",
+                "If-Unmodified-Since"
+            )
+    }
 }

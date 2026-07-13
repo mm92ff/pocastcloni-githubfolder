@@ -137,11 +137,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libsCatalog.findLibrary("okhttp-logging-interceptor").get())
 
-    // Jackson XML Parsing Libraries
-    implementation(libs.stax)
-    implementation(libs.jackson.dataformat.xml)
+    // Jackson JSON support for backups and settings
     implementation(libs.jackson.module.kotlin)
-    implementation(libs.woodstox.core)
 
     // Coil (Image Loading)
     implementation(libs.coil.compose)

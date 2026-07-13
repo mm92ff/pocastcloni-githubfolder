@@ -9,6 +9,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -151,7 +152,8 @@ class AppDatabaseMigrationTest {
             assertNotNull(podcast)
             assertEquals("Example Podcast", podcast?.title)
             assertEquals("episode-1", podcast?.latestEpisodeGuid)
-            assertEquals("etag-1", podcast?.eTagHeader)
+            assertNull(podcast?.lastModifiedHeader)
+            assertNull(podcast?.eTagHeader)
             assertEquals(true, podcast?.allowInsecureHttp)
 
             val episode =

@@ -95,7 +95,7 @@ object Constants {
 
     object Database {
         const val DATABASE_NAME = "pocast_cloni_db"
-        const val DATABASE_VERSION = 15
+        const val DATABASE_VERSION = 16
         const val DEFAULT_SORT_ORDER = 0L
         const val TABLE_PODCASTS = "podcasts"
         const val TABLE_EPISODES = "episodes"
@@ -254,6 +254,10 @@ object Constants {
     object SecurityLimits {
         const val MAX_FEED_BYTES = 20L * 1024L * 1024L
         const val MAX_FEED_ITEMS = 5_000
+        const val MAX_RSS_XML_DEPTH = 64
+        const val MAX_RSS_XML_TOKENS = 500_000
+        const val MAX_RSS_EXPANDED_CHARS = 20L * 1024L * 1024L
+        const val MAX_RSS_ERROR_BODY_BYTES = 64L * 1024L
         const val MAX_DOWNLOAD_BYTES = 2L * 1024L * 1024L * 1024L
         const val MIN_FREE_STORAGE_RESERVE_BYTES = 64L * 1024L * 1024L
         const val STORAGE_RECHECK_INTERVAL_BYTES = 8L * 1024L * 1024L

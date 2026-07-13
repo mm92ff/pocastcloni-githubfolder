@@ -52,6 +52,46 @@ class PodcastBackupHelperParsingTest {
     }
 
     @Test
+    fun `legacy backup validators remain readable for compatibility`() {
+        val result = parseBackupJson(
+            """
+            {
+              "version": 1,
+              "podcasts": [{
+                "url": "https://example.com/feed.xml",
+                "last_modified": "legacy-last-modified",
+                "etag": "legacy-etag"
+              }]
+            }
+            """.trimIndent(),
+            objectMapper
+        )
+
+        assertEquals("legacy-last-modified", result.podcasts.single().lastModifiedHeader)
+        assertEquals("legacy-etag", result.podcasts.single().eTagHeader)
+    }
+
+    @Test
+    fun `backup serialization never exports validators`() {
+        val json = objectMapper.writeValueAsString(
+            BackupData(
+                podcasts = listOf(
+                    BackupPodcast(
+                        url = "https://example.com/feed.xml",
+                        lastModifiedHeader = "private-last-modified",
+                        eTagHeader = "private-etag"
+                    )
+                )
+            )
+        )
+
+        assertFalse(json.contains("last_modified"))
+        assertFalse(json.contains("etag"))
+        assertFalse(json.contains("private-last-modified"))
+        assertFalse(json.contains("private-etag"))
+    }
+
+    @Test
     fun parseBackupJson_treatsMissingVersionAsVersionOne() {
         val result = parseBackupJson(
             """

@@ -2,6 +2,7 @@ package com.example.pocastcloni.di
 
 import android.content.Context
 import com.example.pocastcloni.BuildConfig
+import com.example.pocastcloni.data.remote.ErrorResponseBodyLimitInterceptor
 import com.example.pocastcloni.data.remote.ItunesSearchApi
 import com.example.pocastcloni.data.remote.PodcastService
 import com.example.pocastcloni.data.remote.SafeRedirectInterceptor
@@ -16,7 +17,6 @@ import com.example.pocastcloni.util.parseNetworkUrl
 import com.example.pocastcloni.util.NetworkConnectivityProvider
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import dagger.Binds
 import dagger.Module
@@ -111,6 +111,24 @@ abstract class NetworkModule {
 
         @Provides
         @Singleton
+        @Named("RssNetworkClient")
+        fun provideRssNetworkClient(okHttpClient: OkHttpClient): OkHttpClient =
+            okHttpClient.newBuilder()
+                .addInterceptor(ErrorResponseBodyLimitInterceptor())
+                .build()
+
+        @Provides
+        @Singleton
+        @Named("LocalRssNetworkClient")
+        fun provideLocalRssNetworkClient(
+            @Named("LocalNetworkClient") localNetworkClient: OkHttpClient
+        ): OkHttpClient =
+            localNetworkClient.newBuilder()
+                .addInterceptor(ErrorResponseBodyLimitInterceptor())
+                .build()
+
+        @Provides
+        @Singleton
         @Named("ApprovedMediaClient")
         fun provideApprovedMediaClient(
             @ApplicationContext context: Context,
@@ -149,24 +167,13 @@ abstract class NetworkModule {
 
         @Provides
         @Singleton
-        fun provideXmlMapper(): XmlMapper {
-            return XmlMapper().apply {
-                registerKotlinModule()
-                configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            }
-        }
-
-        @Provides
-        @Singleton
         @Named("RssRetrofit")
         fun provideRssRetrofit(
-            okHttpClient: OkHttpClient,
-            xmlMapper: XmlMapper
+            @Named("RssNetworkClient") okHttpClient: OkHttpClient
         ): Retrofit {
             return Retrofit.Builder()
                 .baseUrl(Constants.Network.RSS_BASE_URL)
                 .client(okHttpClient)
-                .addConverterFactory(JacksonConverterFactory.create(xmlMapper))
                 .build()
         }
 
@@ -196,12 +203,10 @@ abstract class NetworkModule {
         @Singleton
         @Named("LocalPodcastService")
         fun provideLocalPodcastService(
-            @Named("LocalNetworkClient") client: OkHttpClient,
-            xmlMapper: XmlMapper
+            @Named("LocalRssNetworkClient") client: OkHttpClient
         ): PodcastService = Retrofit.Builder()
             .baseUrl(Constants.Network.RSS_BASE_URL)
             .client(client)
-            .addConverterFactory(JacksonConverterFactory.create(xmlMapper))
             .build()
             .create(PodcastService::class.java)
 
