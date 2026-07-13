@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "podcasts": [
+    {
+      "url": "https://feed-a.example/rss",
+      "sortOrder": 0,
+      "title": "Feed A"
+    },
+    {
+      "url": "https://feed-b.example/rss",
+      "sortOrder": 1,
+      "title": "Feed B"
+    }
+  ],
+  "settings": null,
+  "favorites": [
+    {
+      "podcast_url": "https://feed-a.example/rss",
+      "episode_guid": "shared-guid-across-feeds",
+      "timestamp": 1000
+    }
+  ]
+}

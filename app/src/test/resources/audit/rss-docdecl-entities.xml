@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rss [
+  <!ENTITY level1 "entity">
+  <!ENTITY level2 "&level1;&level1;&level1;&level1;">
+  <!ENTITY level3 "&level2;&level2;&level2;&level2;">
+]>
+<rss version="2.0">
+  <channel>
+    <title>&level3;</title>
+    <description>Audit security fixture</description>
+    <item>
+      <guid>security-fixture</guid>
+      <title>Security fixture</title>
+      <enclosure url="https://example.com/audio.mp3" type="audio/mpeg" />
+    </item>
+  </channel>
+</rss>
