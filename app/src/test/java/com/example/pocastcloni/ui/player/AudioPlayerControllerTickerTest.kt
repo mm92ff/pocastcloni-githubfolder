@@ -123,7 +123,6 @@ class AudioPlayerControllerTickerTest {
         assertEquals(listOf(500L, 5_000L), ticker.cancelledIntervals)
         verify {
             analytics.onTick(
-                scope = any(),
                 guid = GUID,
                 currentPositionMs = 10_000L,
                 durationMs = 40_000L,
@@ -132,8 +131,8 @@ class AudioPlayerControllerTickerTest {
                 markPlayedThresholdSeconds = 0
             )
         }
-        verify { analytics.saveProgressBestEffort(any(), GUID, 10_000L) }
-        verify { analytics.flushListeningTime(any()) }
+        verify { analytics.saveProgressBestEffort(GUID, 10_000L) }
+        verify { analytics.flushListeningTime() }
 
         positionMs = 12_345L
         foreground.isForeground.value = true
@@ -149,7 +148,6 @@ class AudioPlayerControllerTickerTest {
         runCurrent()
         verify {
             analytics.onTick(
-                scope = any(),
                 guid = GUID,
                 currentPositionMs = 12_345L,
                 durationMs = 40_000L,

@@ -240,8 +240,14 @@ constructor(
         datePlayed: Date?
     ) {
         withContext(dispatcherProvider.io) {
-            podcastDao.markEpisodePlayed(guid, played, datePlayed)
-            updatePodcastNewFlagIfLatest(guid, played)
+            val changedRows =
+                if (played) {
+                    podcastDao.markEpisodePlayedIfNeeded(guid, datePlayed ?: Date())
+                } else {
+                    podcastDao.markEpisodePlayed(guid, false, null)
+                    1
+                }
+            if (changedRows > 0) updatePodcastNewFlagIfLatest(guid, played)
         }
     }
 
@@ -282,27 +288,6 @@ constructor(
     ) {
         withContext(dispatcherProvider.io) {
             podcastDao.updateEpisodeProgressOnly(guid, positionMs)
-
-            if (positionMs > 0) {
-                // 1. Fetch duration (in seconds)
-                val durationSeconds = podcastDao.getEpisodeDuration(guid) ?: 0L
-
-                if (durationSeconds > 0) {
-                    // 2. Convert to milliseconds for comparison
-                    val durationMs = durationSeconds * 1000L
-
-                    // 3. 95% logic
-                    val thresholdMs = (durationMs * 0.95).toLong()
-
-                    if (positionMs >= thresholdMs) {
-                        Timber.d("Smart Completion: Marking $guid as played (pos=$positionMs, durMs=$durationMs)")
-
-                        // FIX: Mark as played + dot update
-                        podcastDao.markEpisodePlayed(guid, true, Date())
-                        updatePodcastNewFlagIfLatest(guid, true)
-                    }
-                }
-            }
         }
     }
 

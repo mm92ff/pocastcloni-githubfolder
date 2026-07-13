@@ -23,11 +23,6 @@ interface StatisticsRepository {
         isWifi: Boolean
     )
 
-    suspend fun addStreamBytes(
-        bytes: Long,
-        isWifi: Boolean
-    )
-
     suspend fun addUploadBytes(bytes: Long)
 
     suspend fun addListeningTime(ms: Long)

@@ -296,9 +296,6 @@ interface PodcastDao {
     @Query("SELECT * FROM episodes WHERE guid = :guid")
     suspend fun getEpisodeByGuid(guid: String): EpisodeEntity?
 
-    @Query("SELECT duration FROM episodes WHERE guid = :guid")
-    suspend fun getEpisodeDuration(guid: String): Long?
-
     @Query("SELECT guid FROM episodes WHERE guid IN (:guids)")
     suspend fun getExistingGuids(guids: List<String>): List<String>
 
@@ -382,6 +379,12 @@ interface PodcastDao {
         isPlayed: Boolean,
         datePlayed: Date?
     )
+
+    @Query("UPDATE episodes SET isPlayed = 1, datePlayed = :datePlayed WHERE guid = :guid AND isPlayed = 0")
+    suspend fun markEpisodePlayedIfNeeded(
+        guid: String,
+        datePlayed: Date
+    ): Int
 
     @Query("UPDATE episodes SET isPlayed = 1, datePlayed = :datePlayed WHERE podcastRssUrl = :rssUrl AND isPlayed = 0")
     suspend fun markPodcastEpisodesPlayed(

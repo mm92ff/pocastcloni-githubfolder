@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import com.example.pocastcloni.di.ApplicationScope // Ensure this Qualifier exists
+import com.example.pocastcloni.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.awaitClose
@@ -25,7 +25,6 @@ class NetworkConnectivityProvider
 @Inject
 constructor(
     @ApplicationContext private val context: Context,
-    // FIX: Inject the central Application Scope instead of creating a new one
     @ApplicationScope private val externalScope: CoroutineScope
 ) : ConnectivityProvider {
     private val connectivityManager =
@@ -40,7 +39,7 @@ constructor(
                     }
 
                     override fun onLost(network: Network) {
-                        trySend(false)
+                        trySend(isWifiConnected())
                     }
 
                     override fun onCapabilitiesChanged(
@@ -57,8 +56,8 @@ constructor(
         }
             .distinctUntilChanged()
             .stateIn(
-                scope = externalScope, // Use injected scope
-                started = SharingStarted.WhileSubscribed(5000),
+                scope = externalScope,
+                started = SharingStarted.Eagerly,
                 initialValue = isWifiConnected()
             )
 

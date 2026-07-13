@@ -27,10 +27,10 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.example.pocastcloni.R
+import com.example.pocastcloni.data.repository.StreamingStatisticsRecorder
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.repository.PodcastRepository
-import com.example.pocastcloni.domain.repository.StatisticsRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.ui.main.MainActivity
 import com.example.pocastcloni.util.ConnectivityProvider
@@ -59,7 +59,7 @@ class PodcastPlaybackService : MediaSessionService() {
 
     @Inject lateinit var userPreferencesRepository: UserPreferencesRepository
 
-    @Inject lateinit var statisticsRepository: StatisticsRepository
+    @Inject lateinit var streamingStatisticsRecorder: StreamingStatisticsRecorder
 
     @Inject lateinit var connectivityProvider: ConnectivityProvider
 
@@ -296,10 +296,10 @@ class PodcastPlaybackService : MediaSessionService() {
             bytesTransferred: Int
         ) {
             if (isNetwork && bytesTransferred > 0) {
-                serviceScope.launch(dispatcherProvider.io) {
-                    val isWifi = connectivityProvider.wifiStatus.value
-                    statisticsRepository.addStreamBytes(bytesTransferred.toLong(), isWifi)
-                }
+                streamingStatisticsRecorder.recordBytes(
+                    bytes = bytesTransferred.toLong(),
+                    isWifi = connectivityProvider.wifiStatus.value
+                )
             }
         }
 
@@ -307,7 +307,11 @@ class PodcastPlaybackService : MediaSessionService() {
             source: DataSource,
             dataSpec: androidx.media3.datasource.DataSpec,
             isNetwork: Boolean
-        ) = Unit
+        ) {
+            if (isNetwork) {
+                streamingStatisticsRecorder.requestFlush()
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
@@ -322,9 +326,6 @@ class PodcastPlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        if (this::serviceScope.isInitialized) {
-            serviceScope.cancel()
-        }
         if (this::mediaSession.isInitialized) {
             runCatching { mediaSession.release() }
         }
@@ -333,6 +334,10 @@ class PodcastPlaybackService : MediaSessionService() {
         }
         runCatching { cache?.release() }
         cache = null
+        streamingStatisticsRecorder.requestFlush()
+        if (this::serviceScope.isInitialized) {
+            serviceScope.cancel()
+        }
         super.onDestroy()
     }
 

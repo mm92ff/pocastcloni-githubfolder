@@ -1,29 +1,27 @@
 package com.example.pocastcloni.ui.player
 
-import android.os.SystemClock
+import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.domain.usecase.player.MarkEpisodePlayedUseCase
-import com.example.pocastcloni.domain.usecase.player.SavePlaybackProgressUseCase
-import com.example.pocastcloni.domain.usecase.stats.AddListeningTimeUseCase
 import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
-import kotlin.math.abs
+import javax.inject.Singleton
 
+@Singleton
 class PlaybackAnalyticsHandler
 @Inject
 constructor(
-    private val savePlaybackProgressUseCase: SavePlaybackProgressUseCase,
+    private val progressWriter: PlaybackProgressWriter,
     private val markEpisodePlayedUseCase: MarkEpisodePlayedUseCase,
-    private val addListeningTimeUseCase: AddListeningTimeUseCase
+    private val listeningTimeWriter: PlaybackListeningTimeWriter,
+    private val monotonicClock: MonotonicClock,
+    @ApplicationScope private val applicationScope: CoroutineScope
 ) {
     private companion object {
         private const val LISTENING_FLUSH_INTERVAL_MS = 60_000L
-        private const val AUTO_SAVE_INTERVAL_MS = 15_000L
-        private const val MIN_MANUAL_SAVE_INTERVAL_MS = 3_000L
-        private const val MIN_MANUAL_SAVE_DELTA_MS = 1_000L
-
+        private const val AUTO_SAVE_INTERVAL_MS = 30_000L
         // Throttle debug logging to avoid flooding Logcat
         private const val DEBUG_LOG_INTERVAL_MS = 5_000L
     }
@@ -31,20 +29,21 @@ constructor(
     private var listeningAccumMs = 0L
     private var lastListeningFlushMs = 0L
     private var lastDbSaveMs = 0L
-    private var lastSavedGuid: String? = null
-    private var lastPersistedPositionMs: Long = 0L
-    private var lastPersistedAtMs: Long = 0L
+    private var lastObservedGuid: String? = null
+    private var lastObservedPositionMs: Long = 0L
     private var hasBeenMarkedAsPlayed: Boolean = false
 
     private var lastDebugLogMs = 0L
 
     fun onMediaItemTransition() {
+        lastObservedGuid?.let { progressWriter.request(it, lastObservedPositionMs) }
+        lastObservedGuid = null
+        lastObservedPositionMs = 0L
         hasBeenMarkedAsPlayed = false
         Timber.d("Analytics: Media Item Transition -> Reset markedAsPlayed")
     }
 
     fun onTick(
-        scope: CoroutineScope,
         guid: String?,
         currentPositionMs: Long,
         durationMs: Long,
@@ -53,7 +52,9 @@ constructor(
         markPlayedThresholdSeconds: Int
     ) {
         if (guid.isNullOrBlank() || !isPlaying) return
-        val nowMs = SystemClock.elapsedRealtime()
+        val nowMs = monotonicClock.elapsedRealtimeMs()
+        lastObservedGuid = guid
+        lastObservedPositionMs = currentPositionMs
 
         // --- DEBUG LOGGING (every 5 seconds) ---
         if (nowMs - lastDebugLogMs > DEBUG_LOG_INTERVAL_MS) {
@@ -67,12 +68,12 @@ constructor(
 
         listeningAccumMs += deltaMs
         if ((nowMs - lastListeningFlushMs) >= LISTENING_FLUSH_INTERVAL_MS) {
-            flushListeningTime(scope)
+            flushListeningTime()
             lastListeningFlushMs = nowMs
         }
 
         if ((nowMs - lastDbSaveMs) >= AUTO_SAVE_INTERVAL_MS) {
-            saveProgressInternal(scope, guid, currentPositionMs, nowMs)
+            saveProgressInternal(guid, currentPositionMs, nowMs)
         }
 
         if (hasBeenMarkedAsPlayed) return
@@ -103,7 +104,7 @@ constructor(
         if (shouldMark) {
             Timber.i("Analytics: Marking as played! Reason: $reason")
             hasBeenMarkedAsPlayed = true
-            scope.launch {
+            applicationScope.launch {
                 runCatching {
                     markEpisodePlayedUseCase(guid)
                 }.onFailure {
@@ -114,47 +115,30 @@ constructor(
         }
     }
 
-    fun flushListeningTime(scope: CoroutineScope) {
-        if (listeningAccumMs <= 0) return
+    fun flushListeningTime() {
         val toFlush = listeningAccumMs
         listeningAccumMs = 0L
-        scope.launch {
-            runCatching { addListeningTimeUseCase(toFlush) }
-                .onFailure { Timber.e(it, "Failed to flush listening time") }
-        }
+        listeningTimeWriter.recordAndFlush(toFlush)
     }
 
     fun saveProgressBestEffort(
-        scope: CoroutineScope,
         guid: String?,
         positionMs: Long
     ) {
         if (guid.isNullOrBlank()) return
-        val now = SystemClock.elapsedRealtime()
-        val isRedundant =
-            (guid == lastSavedGuid) &&
-                (abs(positionMs - lastPersistedPositionMs) < MIN_MANUAL_SAVE_DELTA_MS) &&
-                ((now - lastPersistedAtMs) < MIN_MANUAL_SAVE_INTERVAL_MS)
-        if (!isRedundant) {
-            saveProgressInternal(scope, guid, positionMs, now)
-        }
+        val now = monotonicClock.elapsedRealtimeMs()
+        lastObservedGuid = guid
+        lastObservedPositionMs = positionMs
+        saveProgressInternal(guid, positionMs, now)
     }
 
     private fun saveProgressInternal(
-        scope: CoroutineScope,
         guid: String,
         positionMs: Long,
         nowMs: Long
     ) {
-        scope.launch {
-            runCatching { savePlaybackProgressUseCase(guid, positionMs) }
-                .onFailure { Timber.e(it, "Failed to auto-save progress") }
-                .onSuccess {
-                    lastSavedGuid = guid
-                    lastPersistedPositionMs = positionMs
-                    lastPersistedAtMs = nowMs
-                    lastDbSaveMs = nowMs
-                }
-        }
+        // Reserve the interval before the asynchronous write to prevent slow I/O from spawning more work.
+        lastDbSaveMs = nowMs
+        progressWriter.request(guid, positionMs)
     }
 }

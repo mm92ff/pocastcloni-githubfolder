@@ -157,11 +157,10 @@ constructor(
     private fun flushCurrentPlaybackSnapshot() {
         val player = controller ?: return
         analyticsHandler.saveProgressBestEffort(
-            controllerScope,
             player.currentMediaItem?.mediaId,
             player.currentPosition
         )
-        analyticsHandler.flushListeningTime(controllerScope)
+        analyticsHandler.flushListeningTime()
     }
 
     private fun updateProgressAndAnalytics(
@@ -178,7 +177,6 @@ constructor(
 
         if (settings != null && deltaMs > 0L) {
             analyticsHandler.onTick(
-                scope = controllerScope,
                 guid = player.currentMediaItem?.mediaId,
                 currentPositionMs = currentPositionMs,
                 durationMs = durationMs,
@@ -274,8 +272,8 @@ constructor(
                 return@withContext
             }
             if (!currentId.isNullOrBlank()) {
-                analyticsHandler.saveProgressBestEffort(controllerScope, currentId, mediaController.currentPosition)
-                analyticsHandler.flushListeningTime(controllerScope)
+                analyticsHandler.saveProgressBestEffort(currentId, mediaController.currentPosition)
+                analyticsHandler.flushListeningTime()
             }
             val mediaItem =
                 mapper.mapToMediaItem(
@@ -316,7 +314,16 @@ constructor(
             }
             PlayerScreenEvent.SeekStarted -> isUserSeeking = true
             PlayerScreenEvent.SeekFinished -> {
-                pendingSeekPositionMs?.let { launchOnMedia { controller?.seekTo(it) } }
+                pendingSeekPositionMs?.let { positionMs ->
+                    launchOnMedia {
+                        controller?.seekTo(positionMs)
+                        analyticsHandler.saveProgressBestEffort(
+                            controller?.currentMediaItem?.mediaId,
+                            positionMs
+                        )
+                        analyticsHandler.flushListeningTime()
+                    }
+                }
                 pendingSeekPositionMs = null
                 isUserSeeking = false
             }
