@@ -12,6 +12,12 @@ plugins {
 
 val libs = the<LibrariesForLibs>()
 val libsCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+val appVersionCode = providers.gradleProperty("appVersionCode").get().toInt().also {
+    require(it > 0) { "appVersionCode must be positive" }
+}
+val appVersionName = providers.gradleProperty("appVersionName").get().also {
+    require(it.isNotBlank()) { "appVersionName must not be blank" }
+}
 
 android {
     namespace = "com.example.pocastcloni"
@@ -21,8 +27,8 @@ android {
         applicationId = "com.example.pocastcloni"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         buildConfigField("boolean", "BENCHMARK_BUILD", "false")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
