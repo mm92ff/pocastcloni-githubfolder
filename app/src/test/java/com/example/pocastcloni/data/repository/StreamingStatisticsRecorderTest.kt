@@ -74,24 +74,26 @@ class StreamingStatisticsRecorderTest {
     }
 
     @Test
-    fun `failed flush requeues both network totals`() = runTest {
+    fun `failed flush self retries and aggregates bytes received during backoff`() = runTest {
         val writer = RecordingWriter(IllegalStateException("disk unavailable"))
         val recorder = recorder(writer)
         recorder.recordBytes(13L, isWifi = true)
+
+        recorder.requestFlush()
+        runCurrent()
         recorder.recordBytes(17L, isWifi = false)
-
-        recorder.requestFlush()
-        runCurrent()
-        recorder.requestFlush()
+        advanceTimeBy(StreamingStatisticsRecorder.INITIAL_RETRY_DELAY_MS)
         runCurrent()
 
-        val expected = StreamWrite(13L, 17L)
-        assertEquals(listOf(expected, expected), writer.attempts)
-        assertEquals(listOf(expected), writer.writes)
+        assertEquals(
+            listOf(StreamWrite(13L, 0L), StreamWrite(13L, 17L)),
+            writer.attempts
+        )
+        assertEquals(listOf(StreamWrite(13L, 17L)), writer.writes)
     }
 
     @Test
-    fun `cancelled flush requeues bytes while recorder scope remains active`() = runTest {
+    fun `cancelled flush retains bytes but stops autonomous retries`() = runTest {
         val writer = RecordingWriter(CancellationException("cancelled write"))
         val recorder = recorder(writer)
         recorder.recordBytes(19L, isWifi = true)
@@ -99,12 +101,45 @@ class StreamingStatisticsRecorderTest {
 
         recorder.requestFlush()
         runCurrent()
+        advanceTimeBy(StreamingStatisticsRecorder.MAX_RETRY_DELAY_MS)
         recorder.requestFlush()
         runCurrent()
 
         val expected = StreamWrite(19L, 23L)
-        assertEquals(listOf(expected, expected), writer.attempts)
-        assertEquals(listOf(expected), writer.writes)
+        assertEquals(listOf(expected), writer.attempts)
+        assertTrue(writer.writes.isEmpty())
+    }
+
+    @Test
+    fun `successful retry resets exponential backoff`() = runTest {
+        val attemptTimes = mutableListOf<Long>()
+        var attempt = 0
+        val writer =
+            object : StreamStatisticsWriter {
+                override suspend fun addStreamBytes(
+                    wifiBytes: Long,
+                    mobileBytes: Long
+                ) {
+                    attempt += 1
+                    attemptTimes += testScheduler.currentTime
+                    if (attempt == 1 || attempt == 3) error("temporary failure")
+                }
+            }
+        val recorder = recorder(writer)
+
+        recorder.recordBytes(10L, isWifi = true)
+        recorder.requestFlush()
+        runCurrent()
+        advanceTimeBy(StreamingStatisticsRecorder.INITIAL_RETRY_DELAY_MS)
+        runCurrent()
+
+        recorder.recordBytes(20L, isWifi = false)
+        recorder.requestFlush()
+        runCurrent()
+        advanceTimeBy(StreamingStatisticsRecorder.INITIAL_RETRY_DELAY_MS)
+        runCurrent()
+
+        assertEquals(listOf(0L, 5_000L, 5_000L, 10_000L), attemptTimes)
     }
 
     @Test

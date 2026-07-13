@@ -16,11 +16,16 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+@Suppress("TooManyFunctions")
 class AudioPlayerController
 @Inject
 constructor(
@@ -46,6 +51,13 @@ constructor(
 
     @Volatile private var controller: MediaController? = null
     private var controllerListener: Player.Listener? = null
+    private val connectMutex = Mutex()
+    private val playCommitMutex = Mutex()
+    private val playRequestGeneration = AtomicLong(0L)
+    private val mediaStateRevision = AtomicLong(0L)
+    private val reconnectScheduled = AtomicBoolean(false)
+    private var reconnectJob: Job? = null
+    @Volatile private var explicitlyReleased = false
 
     // --- State Management (Internal) ---
     private val _internalPlayerState = MutableStateFlow(PlayerUiState())
@@ -70,13 +82,17 @@ constructor(
 
     // Seek State
     @Volatile private var isUserSeeking: Boolean = false
-    private var pendingSeekPositionMs: Long? = null
+    private var pendingSeek: SeekSnapshot? = null
     private var progressJob: Job? = null
     private var foregroundJob: Job? = null
     private var favoriteStatusJob: Job? = null
     private val tickerLifecycle = PlaybackTickerLifecycle(monotonicClock)
+    private val flushLock = Any()
+    private var flushRevision = 0L
+    private var lastFlushedSnapshot: TerminalPlaybackSnapshot? = null
 
     init {
+        mediaConnection.setOnDisconnected(::onControllerDisconnected)
         ensureForegroundObservation()
     }
 
@@ -88,22 +104,68 @@ constructor(
                 .launchIn(controllerScope)
     }
 
-    private suspend fun connectInternal() {
-        if (controller != null) return
-        ensureForegroundObservation()
-
-        val connectedController =
-            mediaConnection.connect() ?: run {
-                _internalPlayerState.update { it.copy(error = context.getString(R.string.playback_failed_error)) }
-                return
+    private suspend fun connectInternal(userInitiated: Boolean = false) {
+        if (userInitiated) explicitlyReleased = false
+        if (!explicitlyReleased && controller == null) {
+            ensureForegroundObservation()
+            val connectedController = connectMutex.withLock { connectControllerLocked() }
+            if (connectedController != null && controller === connectedController) {
+                updateProgressAndAnalytics(deltaMs = 0L, updateUi = true)
+                reconcileTicker()
+                syncCurrentEpisodeUi()
             }
+        }
+    }
 
-        controller = connectedController
-        ensureMediaScope(connectedController)
-        attachListener(connectedController)
-        updateProgressAndAnalytics(deltaMs = 0L, updateUi = true)
-        reconcileTicker()
-        syncCurrentEpisodeUi()
+    private suspend fun connectControllerLocked(): MediaController? {
+        var connectedController: MediaController? = null
+        if (!explicitlyReleased && controller == null) {
+            val candidate = mediaConnection.connect()
+            when {
+                candidate == null -> {
+                    _internalPlayerState.update {
+                        it.copy(error = context.getString(R.string.playback_failed_error))
+                    }
+                }
+                explicitlyReleased -> mediaConnection.release()
+                else -> {
+                    controller = candidate
+                    ensureMediaScope(candidate)
+                    attachListener(candidate)
+                    connectedController = candidate
+                }
+            }
+        }
+        return connectedController
+    }
+
+    private fun onControllerDisconnected(disconnectedController: MediaController) {
+        controllerScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            val shouldReconnect =
+                connectMutex.withLock {
+                    if (controller !== disconnectedController) return@withLock false
+                    val releaseTransition = tickerLifecycle.release()
+                    applyTickerTransition(releaseTransition)
+                    if (!releaseTransition.flushPlayback) {
+                        flushCurrentPlaybackSnapshot(disconnectedController)
+                    }
+                    cleanupController(disconnectedController)
+                    !explicitlyReleased
+                }
+            if (shouldReconnect) scheduleReconnect()
+        }
+    }
+
+    private fun scheduleReconnect() {
+        if (!reconnectScheduled.compareAndSet(false, true)) return
+        reconnectJob =
+            controllerScope.launch {
+                try {
+                    connectInternal()
+                } finally {
+                    reconnectScheduled.set(false)
+                }
+            }
     }
 
     private fun requestTickerReconciliation() {
@@ -149,13 +211,29 @@ constructor(
         if (transition.flushPlayback) flushCurrentPlaybackSnapshot()
     }
 
-    private fun flushCurrentPlaybackSnapshot() {
-        val player = controller ?: return
-        analyticsHandler.saveProgressBestEffort(
-            player.currentMediaItem?.mediaId?.toLongOrNull(),
-            player.currentPosition
-        )
+    private fun flushCurrentPlaybackSnapshot(
+        player: MediaController? = controller,
+        episodeId: Long? = player?.currentMediaItem?.mediaId?.toLongOrNull(),
+        positionMs: Long? = player?.currentPosition
+    ) {
+        if (episodeId == null || episodeId <= 0L || positionMs == null) return
+        val snapshot =
+            synchronized(flushLock) {
+                TerminalPlaybackSnapshot(
+                    episodeId = episodeId,
+                    positionMs = positionMs.coerceAtLeast(0L),
+                    revision = flushRevision
+                ).also { candidate ->
+                    if (candidate == lastFlushedSnapshot) return
+                    lastFlushedSnapshot = candidate
+                }
+            }
+        analyticsHandler.saveProgressBestEffort(snapshot.episodeId, snapshot.positionMs)
         analyticsHandler.flushListeningTime()
+    }
+
+    private fun markPlaybackSnapshotDirty() {
+        synchronized(flushLock) { flushRevision += 1L }
     }
 
     private fun updateProgressAndAnalytics(
@@ -171,6 +249,7 @@ constructor(
         val isPlaying = player.isPlaying && player.playbackState == Player.STATE_READY
 
         if (settings != null && deltaMs > 0L) {
+            markPlaybackSnapshotDirty()
             analyticsHandler.onTick(
                 episodeId = player.currentMediaItem?.mediaId?.toLongOrNull(),
                 currentPositionMs = currentPositionMs,
@@ -236,6 +315,9 @@ constructor(
                     mediaItem: MediaItem?,
                     reason: Int
                 ) {
+                    mediaStateRevision.incrementAndGet()
+                    pendingSeek = null
+                    isUserSeeking = false
                     analyticsHandler.onMediaItemTransition()
                     controllerScope.launch { syncCurrentEpisodeUi() }
                 }
@@ -249,46 +331,111 @@ constructor(
     private fun startFavoriteStatusLoop() {
         favoriteStatusJob?.cancel()
         favoriteStatusJob = playerState.map { it.currentEpisodeId }.distinctUntilChanged()
-            .flatMapLatest { episodeId -> if (episodeId == null) flowOf(false) else podcastRepository.isFavorite(episodeId) }
+            .flatMapLatest { episodeId ->
+                if (episodeId == null) flowOf(false) else podcastRepository.isFavorite(episodeId)
+            }
             .onEach { isFav -> _internalPlayerState.update { it.copy(isCurrentEpisodeFavorite = isFav) } }
             .launchIn(controllerScope)
     }
 
     override suspend fun play(episodeId: Long) {
-        connectInternal()
-        val playbackInfo = preparePlaybackUseCase(episodeId)
-        val episode = playbackInfo.episode
-        _internalPlayerState.update { it.copy(currentPodcastUrl = episode.podcastRssUrl) }
-        val mediaController = controller ?: return
-        withContext(mediaDispatcherOrFallback()) {
-            val currentId = mediaController.currentMediaItem?.mediaId
-            if (currentId == episode.episodeId.toString()) {
-                if (!mediaController.isPlaying) mediaController.play()
-                return@withContext
-            }
-            if (!currentId.isNullOrBlank()) {
-                analyticsHandler.saveProgressBestEffort(currentId.toLongOrNull(), mediaController.currentPosition)
-                analyticsHandler.flushListeningTime()
-            }
-            val mediaItem =
-                mapper.mapToMediaItem(
-                    episode,
-                    playbackInfo.podcast?.let { podcastRepository.getPodcastEntityByUrl(it.rssUrl) },
-                    playbackInfo.playUri
-                )
-            mediaController.setMediaItem(mediaItem, playbackInfo.startPosition)
-            mediaController.prepare()
-            mediaController.play()
-        }
+        val request = preparePlayRequest(episodeId) ?: return
+        withContext(mediaDispatcherOrFallback()) { commitPlayRequest(request) }
         controllerScope.launch { syncCurrentEpisodeUi() }
     }
 
+    private suspend fun preparePlayRequest(episodeId: Long): PreparedPlayRequest? {
+        val requestGeneration =
+            playCommitMutex.withLock {
+                playRequestGeneration.incrementAndGet()
+            }
+        val playbackInfo = preparePlaybackUseCase(episodeId)
+        var preparedRequest: PreparedPlayRequest? = null
+        if (playRequestGeneration.get() == requestGeneration) {
+            val episode = playbackInfo.episode
+            val podcast =
+                playbackInfo.podcast?.let {
+                    withContext(dispatcherProvider.io) {
+                        podcastRepository.getPodcastEntityByUrl(it.rssUrl)
+                    }
+                }
+            if (playRequestGeneration.get() == requestGeneration) {
+                connectInternal(userInitiated = true)
+                val connectedController = controller
+                if (playRequestGeneration.get() == requestGeneration && connectedController != null) {
+                    preparedRequest =
+                        PreparedPlayRequest(
+                            generation = requestGeneration,
+                            controller = connectedController,
+                            episodeId = episode.episodeId,
+                            podcastRssUrl = episode.podcastRssUrl,
+                            mediaItem = mapper.mapToMediaItem(episode, podcast, playbackInfo.playUri),
+                            startPositionMs = playbackInfo.startPosition
+                        )
+                }
+            }
+        }
+        return preparedRequest
+    }
+
+    private suspend fun commitPlayRequest(request: PreparedPlayRequest) {
+        playCommitMutex.withLock {
+            if (!isCurrentPlayRequest(request)) return@withLock
+            _internalPlayerState.update { current ->
+                if (isCurrentPlayRequest(request)) {
+                    current.copy(currentPodcastUrl = request.podcastRssUrl)
+                } else {
+                    current
+                }
+            }
+
+            val currentId = request.controller.currentMediaItem?.mediaId
+            if (currentId == request.episodeId.toString()) {
+                if (!request.controller.isPlaying) {
+                    request.controller.play()
+                    reconcileTicker()
+                }
+            } else {
+                if (!currentId.isNullOrBlank()) settlePlaybackBeforeSwitch(request.controller)
+                if (isCurrentPlayRequest(request)) {
+                    request.controller.setMediaItem(request.mediaItem, request.startPositionMs)
+                    request.controller.prepare()
+                    request.controller.play()
+                    reconcileTicker()
+                }
+            }
+        }
+    }
+
+    private fun isCurrentPlayRequest(request: PreparedPlayRequest): Boolean =
+        playRequestGeneration.get() == request.generation && controller === request.controller
+
+    private fun settlePlaybackBeforeSwitch(mediaController: MediaController) {
+        val transition =
+            tickerLifecycle.reconcile(
+                isPlayingReady = false,
+                isForeground = foregroundMonitor.isForeground.value
+            )
+        applyTickerTransition(transition)
+        if (!transition.flushPlayback) flushCurrentPlaybackSnapshot(mediaController)
+    }
+
     override fun pause() {
-        launchOnMedia { controller?.pause() }
+        launchOnMedia {
+            controller?.let {
+                it.pause()
+                reconcileTicker()
+            }
+        }
     }
 
     override fun resume() {
-        launchOnMedia { controller?.play() }
+        launchOnMedia {
+            controller?.let {
+                it.play()
+                reconcileTicker()
+            }
+        }
     }
 
     override fun onEvent(event: PlayerScreenEvent) {
@@ -310,38 +457,133 @@ constructor(
             is PlayerScreenEvent.SeekTo -> {
                 val pos = event.positionMs.coerceAtLeast(0L)
                 _internalPlaybackState.update { it.copy(currentPositionMs = pos) }
-                if (isUserSeeking) pendingSeekPositionMs = pos else launchOnMedia { controller?.seekTo(pos) }
-            }
-            PlayerScreenEvent.SeekStarted -> isUserSeeking = true
-            PlayerScreenEvent.SeekFinished -> {
-                pendingSeekPositionMs?.let { positionMs ->
-                    launchOnMedia {
-                        controller?.seekTo(positionMs)
-                        analyticsHandler.saveProgressBestEffort(
-                            controller?.currentMediaItem?.mediaId?.toLongOrNull(),
-                            positionMs
-                        )
-                        analyticsHandler.flushListeningTime()
-                    }
+                if (isUserSeeking) {
+                    pendingSeek = pendingSeek?.copy(targetPositionMs = pos)
+                } else {
+                    val snapshot = currentSeekSnapshot(pos)
+                    if (snapshot != null) launchOnMedia { finishSeek(snapshot) }
                 }
-                pendingSeekPositionMs = null
+            }
+            PlayerScreenEvent.SeekStarted -> {
+                isUserSeeking = true
+                pendingSeek = currentSeekSnapshot(_internalPlaybackState.value.currentPositionMs)
+            }
+            PlayerScreenEvent.SeekFinished -> {
+                val snapshot = pendingSeek
+                pendingSeek = null
                 isUserSeeking = false
+                if (snapshot != null) launchOnMedia { finishSeek(snapshot) }
             }
             else -> Unit
         }
     }
 
-    private suspend fun syncCurrentEpisodeUi() {
-        val ctrl = controller ?: return
-        val episodeId = ctrl.currentMediaItem?.mediaId?.toLongOrNull()
-        val episode = if (episodeId != null) withContext(dispatcherProvider.io) { podcastRepository.getEpisode(episodeId) } else null
-        val podcast = episode?.podcastRssUrl?.let { withContext(dispatcherProvider.io) { podcastRepository.getPodcastEntityByUrl(it) } }
-        _internalPlayerState.update { current ->
-            mapper.mapToUiState(ctrl, episode, podcast, current)
+    private fun currentSeekSnapshot(targetPositionMs: Long): SeekSnapshot? {
+        val currentController = controller
+        val episodeId = currentController?.currentMediaItem?.mediaId?.toLongOrNull()
+        return if (currentController != null && episodeId != null) {
+            SeekSnapshot(
+                controller = currentController,
+                episodeId = episodeId,
+                requestGeneration = playRequestGeneration.get(),
+                mediaRevision = mediaStateRevision.get(),
+                targetPositionMs = targetPositionMs.coerceAtLeast(0L)
+            )
+        } else {
+            null
         }
     }
 
+    private fun finishSeek(snapshot: SeekSnapshot) {
+        val currentController = controller ?: return
+        if (
+            currentController !== snapshot.controller ||
+            playRequestGeneration.get() != snapshot.requestGeneration ||
+            mediaStateRevision.get() != snapshot.mediaRevision ||
+            currentController.currentMediaItem?.mediaId?.toLongOrNull() != snapshot.episodeId
+        ) {
+            return
+        }
+        currentController.seekTo(snapshot.targetPositionMs)
+        markPlaybackSnapshotDirty()
+        flushCurrentPlaybackSnapshot(
+            player = currentController,
+            episodeId = snapshot.episodeId,
+            positionMs = snapshot.targetPositionMs
+        )
+    }
+
+    private suspend fun syncCurrentEpisodeUi() {
+        controller?.let { capturedController ->
+            val capturedEpisodeId = capturedController.currentMediaItem?.mediaId?.toLongOrNull()
+            val capturedRequestGeneration = playRequestGeneration.get()
+            val capturedMediaRevision = mediaStateRevision.get()
+            val episode =
+                if (capturedEpisodeId != null) {
+                    withContext(dispatcherProvider.io) {
+                        podcastRepository.getEpisode(capturedEpisodeId)
+                    }
+                } else {
+                    null
+                }
+            if (
+                isCurrentUiSnapshot(
+                    capturedController,
+                    capturedEpisodeId,
+                    capturedRequestGeneration,
+                    capturedMediaRevision
+                )
+            ) {
+                val podcast =
+                    episode?.podcastRssUrl?.let {
+                        withContext(dispatcherProvider.io) {
+                            podcastRepository.getPodcastEntityByUrl(it)
+                        }
+                    }
+                if (
+                    isCurrentUiSnapshot(
+                        capturedController,
+                        capturedEpisodeId,
+                        capturedRequestGeneration,
+                        capturedMediaRevision
+                    )
+                ) {
+                    _internalPlayerState.update { current ->
+                        if (
+                            isCurrentUiSnapshot(
+                                capturedController,
+                                capturedEpisodeId,
+                                capturedRequestGeneration,
+                                capturedMediaRevision
+                            )
+                        ) {
+                            mapper.mapToUiState(capturedController, episode, podcast, current)
+                        } else {
+                            current
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isCurrentUiSnapshot(
+        capturedController: MediaController,
+        capturedEpisodeId: Long?,
+        capturedRequestGeneration: Long,
+        capturedMediaRevision: Long
+    ): Boolean =
+        controller === capturedController &&
+            playRequestGeneration.get() == capturedRequestGeneration &&
+            mediaStateRevision.get() == capturedMediaRevision &&
+            capturedController.currentMediaItem?.mediaId?.toLongOrNull() == capturedEpisodeId
+
     override fun releaseResources() {
+        explicitlyReleased = true
+        playRequestGeneration.incrementAndGet()
+        mediaStateRevision.incrementAndGet()
+        reconnectJob?.cancel()
+        reconnectJob = null
         val releaseTransition = tickerLifecycle.release()
         applyTickerTransition(releaseTransition)
         if (!releaseTransition.flushPlayback) flushCurrentPlaybackSnapshot()
@@ -352,18 +594,50 @@ constructor(
         favoriteStatusJob?.cancel()
         favoriteStatusJob = null
         val ctrl = controller
-        val listener = controllerListener
-        if (ctrl != null && listener != null) {
+        if (ctrl != null) cleanupController(ctrl)
+        mediaConnection.release()
+    }
+
+    private fun cleanupController(ctrl: MediaController) {
+        if (controller !== ctrl) return
+        controllerListener?.let { listener ->
             runCatching { ctrl.removeListener(listener) }
         }
         controller = null
         controllerListener = null
-        mediaConnection.release()
+        progressJob?.cancel()
+        progressJob = null
         mediaScope?.cancel()
         mediaScope = null
         mediaDispatcher = null
+        pendingSeek = null
+        isUserSeeking = false
+        _internalPlayerState.update { it.copy(isPlaying = false, isBuffering = false) }
     }
 }
+
+private data class PreparedPlayRequest(
+    val generation: Long,
+    val controller: MediaController,
+    val episodeId: Long,
+    val podcastRssUrl: String,
+    val mediaItem: MediaItem,
+    val startPositionMs: Long
+)
+
+private data class SeekSnapshot(
+    val controller: MediaController,
+    val episodeId: Long,
+    val requestGeneration: Long,
+    val mediaRevision: Long,
+    val targetPositionMs: Long
+)
+
+private data class TerminalPlaybackSnapshot(
+    val episodeId: Long,
+    val positionMs: Long,
+    val revision: Long
+)
 
 internal fun playbackTickIntervalMs(
     isPlayingReady: Boolean,

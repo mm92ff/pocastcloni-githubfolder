@@ -76,6 +76,24 @@ class PlaybackAnalyticsHandlerTest {
     }
 
     @Test
+    fun `media transition resets analytics without duplicating old progress`() = runTest {
+        val progressWriter = mockk<PlaybackProgressWriter>(relaxed = true)
+        val handler = createHandler(progressWriter = progressWriter, clock = MonotonicClock { 1_000L })
+
+        handler.onTick(
+            episodeId = EPISODE_ID,
+            currentPositionMs = 1_000L,
+            durationMs = 100_000L,
+            deltaMs = 500L,
+            isPlaying = true,
+            markPlayedThresholdSeconds = 10_000
+        )
+        handler.onMediaItemTransition()
+
+        verify(exactly = 0) { progressWriter.request(any(), any()) }
+    }
+
+    @Test
     fun `repeated completion ticks mark an episode only once`() = runTest {
         var nowMs = 30_000L
         val markPlayed = mockk<MarkEpisodePlayedUseCase>(relaxed = true)

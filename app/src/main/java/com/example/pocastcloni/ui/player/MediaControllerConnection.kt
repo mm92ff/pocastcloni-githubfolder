@@ -7,8 +7,11 @@ import androidx.media3.session.SessionToken
 import com.example.pocastcloni.service.PodcastPlaybackService
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,6 +21,7 @@ import javax.inject.Singleton
  * Hides ListenableFuture complexity and connection retries.
  */
 @Singleton
+@Suppress("TooGenericExceptionCaught")
 class MediaControllerConnection
 @Inject
 constructor(
@@ -28,67 +32,183 @@ constructor(
         private const val MAX_RETRIES = 20
     }
 
+    private val connectMutex = Mutex()
+    private val stateLock = Any()
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
+    private var connectingAttempt: MediaControllerConnectionAttempt? = null
+    private var onDisconnected: ((MediaController) -> Unit)? = null
 
-    // We keep a reference to the active controller to avoid re-connecting if alive
+    @Volatile
     var activeController: MediaController? = null
         private set
 
-    suspend fun connect(): MediaController? {
-        if (activeController != null) return activeController
-        if (mediaControllerFuture != null) {
-            // Already connecting, wait for that one
-            return try {
-                mediaControllerFuture?.await()
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-        val sessionToken =
-            SessionToken(
-                context,
-                ComponentName(context, PodcastPlaybackService::class.java)
-            )
-
-        var attempt = 0
-        while (attempt < MAX_RETRIES) {
-            try {
-                val future = MediaController.Builder(context, sessionToken).buildAsync()
-                mediaControllerFuture = future
-
-                val controller = future.await()
-                activeController = controller
-                return controller
-            } catch (t: Throwable) {
-                Timber.w(t, "Connection attempt ${attempt + 1} failed")
-                releaseFuture()
-                attempt++
-                if (attempt < MAX_RETRIES) {
-                    delay(RETRY_DELAY_MS)
-                }
-            }
-        }
-
-        Timber.e("Failed to connect to MediaController after $MAX_RETRIES attempts")
-        return null
+    fun setOnDisconnected(listener: (MediaController) -> Unit) {
+        synchronized(stateLock) { onDisconnected = listener }
     }
 
+    suspend fun connect(): MediaController? =
+        connectMutex.withLock {
+            activeController?.let { return@withLock it }
+
+            val sessionToken =
+                SessionToken(
+                    context,
+                    ComponentName(context, PodcastPlaybackService::class.java)
+                )
+
+            var attempt = 0
+            while (attempt < MAX_RETRIES) {
+                val connectionAttempt = MediaControllerConnectionAttempt()
+                synchronized(stateLock) { connectingAttempt = connectionAttempt }
+                val future =
+                    MediaController.Builder(context, sessionToken)
+                        .setListener(
+                            object : MediaController.Listener {
+                                override fun onDisconnected(controller: MediaController) {
+                                    handleDisconnected(controller, connectionAttempt)
+                                }
+                            }
+                        ).buildAsync()
+                val futureAttached =
+                    synchronized(stateLock) {
+                        if (connectingAttempt === connectionAttempt) {
+                            mediaControllerFuture = future
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                if (!futureAttached) {
+                    releaseFuture(future)
+                    return@withLock null
+                }
+
+                try {
+                    val controller = future.await()
+                    val decision =
+                        synchronized(stateLock) {
+                            when {
+                                mediaControllerFuture !== future || connectingAttempt !== connectionAttempt ->
+                                    AwaitedControllerDecision.INVALIDATED
+                                connectionAttempt.awaitedControllerDecision(controller) ==
+                                    AwaitedControllerDecision.RETRY -> {
+                                    mediaControllerFuture = null
+                                    connectingAttempt = null
+                                    AwaitedControllerDecision.RETRY
+                                }
+                                else -> {
+                                    activeController = controller
+                                    connectingAttempt = null
+                                    AwaitedControllerDecision.ACCEPTED
+                                }
+                            }
+                        }
+                    when (decision) {
+                        AwaitedControllerDecision.ACCEPTED -> return@withLock controller
+                        AwaitedControllerDecision.INVALIDATED -> {
+                            releaseFuture(future)
+                            return@withLock null
+                        }
+                        AwaitedControllerDecision.RETRY -> {
+                            releaseFuture(future)
+                            attempt++
+                            if (attempt < MAX_RETRIES) delay(RETRY_DELAY_MS)
+                        }
+                    }
+                } catch (cancellation: CancellationException) {
+                    clearFuture(future, connectionAttempt)
+                    throw cancellation
+                } catch (error: Exception) {
+                    Timber.w(error, "Connection attempt ${attempt + 1} failed")
+                    clearFuture(future, connectionAttempt)
+                    attempt++
+                    if (attempt < MAX_RETRIES) delay(RETRY_DELAY_MS)
+                }
+            }
+
+            Timber.e("Failed to connect to MediaController after $MAX_RETRIES attempts")
+            null
+        }
+
     fun release() {
-        activeController?.let { controller ->
-            runCatching { controller.release() }
+        val (controller, future) =
+            synchronized(stateLock) {
+                val current = activeController
+                val currentFuture = mediaControllerFuture
+                activeController = null
+                mediaControllerFuture = null
+                connectingAttempt = null
+                current to currentFuture
+            }
+        controller?.let {
+            runCatching { it.release() }
                 .onFailure { error ->
                     Timber.w(error, "Failed to release active MediaController cleanly")
                 }
         }
-        releaseFuture()
-        activeController = null
+        future?.let(::releaseFuture)
     }
 
-    private fun releaseFuture() {
-        mediaControllerFuture?.let {
-            runCatching { MediaController.releaseFuture(it) }
+    private fun handleDisconnected(
+        disconnectedController: MediaController,
+        connectionAttempt: MediaControllerConnectionAttempt
+    ) {
+        var future: ListenableFuture<MediaController>? = null
+        var callback: ((MediaController) -> Unit)? = null
+        synchronized(stateLock) {
+            if (activeController === disconnectedController) {
+                activeController = null
+                future = mediaControllerFuture
+                mediaControllerFuture = null
+                connectingAttempt = null
+                callback = onDisconnected
+            } else if (connectingAttempt === connectionAttempt) {
+                connectionAttempt.onDisconnected(disconnectedController)
+            }
         }
-        mediaControllerFuture = null
+        future?.let(::releaseFuture)
+        callback?.invoke(disconnectedController)
     }
+
+    private fun clearFuture(
+        future: ListenableFuture<MediaController>,
+        connectionAttempt: MediaControllerConnectionAttempt
+    ) {
+        val shouldRelease =
+            synchronized(stateLock) {
+                if (mediaControllerFuture !== future || connectingAttempt !== connectionAttempt) {
+                    false
+                } else {
+                    mediaControllerFuture = null
+                    connectingAttempt = null
+                    true
+                }
+            }
+        if (shouldRelease) releaseFuture(future)
+    }
+
+    private fun releaseFuture(future: ListenableFuture<MediaController>) {
+        runCatching { MediaController.releaseFuture(future) }
+    }
+}
+
+internal class MediaControllerConnectionAttempt {
+    private var disconnectedController: MediaController? = null
+
+    fun onDisconnected(controller: MediaController) {
+        disconnectedController = controller
+    }
+
+    fun awaitedControllerDecision(controller: MediaController): AwaitedControllerDecision =
+        if (disconnectedController === controller) {
+            AwaitedControllerDecision.RETRY
+        } else {
+            AwaitedControllerDecision.ACCEPTED
+        }
+}
+
+internal enum class AwaitedControllerDecision {
+    ACCEPTED,
+    RETRY,
+    INVALIDATED
 }

@@ -37,7 +37,6 @@ constructor(
     private var lastDebugLogMs = 0L
 
     fun onMediaItemTransition() {
-        lastObservedEpisodeId?.let { progressWriter.request(it, lastObservedPositionMs) }
         lastObservedEpisodeId = null
         lastObservedPositionMs = 0L
         hasBeenMarkedAsPlayed = false

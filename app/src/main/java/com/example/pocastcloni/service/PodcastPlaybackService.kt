@@ -90,6 +90,8 @@ class PodcastPlaybackService : MediaSessionService() {
 
         // One-time setup (cache, data source, notification provider, session activity intent)
         initializeStaticComponents()
+        currentBufferMode = BufferMode.NORMAL
+        recreatePlayer(BufferMode.NORMAL)
 
         // React to buffer mode changes while the service stays alive (e.g. playback ongoing).
         // Only rebuild the player when bufferMode actually changes.

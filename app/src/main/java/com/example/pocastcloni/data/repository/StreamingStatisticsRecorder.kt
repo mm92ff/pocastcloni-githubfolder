@@ -6,9 +6,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -37,10 +35,18 @@ constructor(
 
     init {
         applicationScope.launch(ioDispatcher) {
-            for (ignored in flushRequests) {
-                flushPendingBytes()
+            var retryDelayMs = INITIAL_RETRY_DELAY_MS
+            while (true) {
+                flushRequests.receive()
                 cancelTimedFlush()
-                if (!pendingBytes.get().isEmpty) scheduleTimedFlush()
+                while (!pendingBytes.get().isEmpty) {
+                    if (flushPendingBytes()) {
+                        retryDelayMs = INITIAL_RETRY_DELAY_MS
+                    } else {
+                        delay(retryDelayMs)
+                        retryDelayMs = (retryDelayMs * 2L).coerceAtMost(MAX_RETRY_DELAY_MS)
+                    }
+                }
             }
         }
     }
@@ -77,23 +83,23 @@ constructor(
         if (!pendingBytes.get().isEmpty) scheduleTimedFlush()
     }
 
-    private suspend fun flushPendingBytes() {
+    private suspend fun flushPendingBytes(): Boolean =
         flushMutex.withLock {
             val batch = pendingBytes.getAndSet(StreamByteBatch())
-            if (batch.isEmpty) return
+            if (batch.isEmpty) return@withLock true
 
             try {
                 writer.addStreamBytes(batch.wifiBytes, batch.mobileBytes)
+                true
             } catch (cancellation: CancellationException) {
                 addPending(batch)
-                currentCoroutineContext().ensureActive()
-                Timber.w(cancellation, "Streaming statistics write was cancelled; bytes retained for retry")
+                throw cancellation
             } catch (error: Exception) {
                 addPending(batch)
                 Timber.w(error, "Streaming statistics flush failed; bytes retained for retry")
+                false
             }
         }
-    }
 
     private fun addPending(addition: StreamByteBatch): StreamByteBatch {
         while (true) {
@@ -127,6 +133,8 @@ constructor(
     internal companion object {
         const val FLUSH_THRESHOLD_BYTES = 1024L * 1024L
         const val FLUSH_INTERVAL_MS = 30_000L
+        const val INITIAL_RETRY_DELAY_MS = 5_000L
+        const val MAX_RETRY_DELAY_MS = 5L * 60L * 1_000L
     }
 }
 
