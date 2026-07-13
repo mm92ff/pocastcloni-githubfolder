@@ -13,7 +13,6 @@ import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -29,7 +28,6 @@ class UpdateUserSettingsUseCaseTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: UserPreferencesRepository
-    private lateinit var backgroundWorker: UpdateBackgroundWorkerUseCase
     private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var useCase: UpdateUserSettingsUseCase
 
@@ -38,11 +36,10 @@ class UpdateUserSettingsUseCaseTest {
     @Before
     fun setup() {
         repository = mockk(relaxed = true)
-        backgroundWorker = mockk(relaxed = true)
         dispatcherProvider = mockk()
         every { dispatcherProvider.io } returns testDispatcher
         every { repository.userSettingsFlow } returns flowOf(UserSettings())
-        useCase = UpdateUserSettingsUseCase(repository, backgroundWorker, dispatcherProvider)
+        useCase = UpdateUserSettingsUseCase(repository, dispatcherProvider)
     }
 
     // --- Appearance ---
@@ -142,24 +139,21 @@ class UpdateUserSettingsUseCaseTest {
     // --- Automation ---
 
     @Test
-    fun `ToggleBackgroundCheck calls updateBackgroundCheckEnabled and triggers worker sync`() = runTest(testDispatcher) {
+    fun `ToggleBackgroundCheck only persists background setting`() = runTest(testDispatcher) {
         useCase(ToggleBackgroundCheck(true))
         coVerify { repository.updateBackgroundCheckEnabled(true) }
-        verify { backgroundWorker(any(), any()) }
     }
 
     @Test
-    fun `SetBackgroundCheckInterval calls updateBackgroundCheckInterval and triggers worker sync`() = runTest(testDispatcher) {
+    fun `SetBackgroundCheckInterval only persists interval`() = runTest(testDispatcher) {
         useCase(SetBackgroundCheckInterval(6))
         coVerify { repository.updateBackgroundCheckInterval(6) }
-        verify { backgroundWorker(any(), any()) }
     }
 
     @Test
     fun `SetFeedUpdateMode does NOT trigger background worker sync`() = runTest(testDispatcher) {
         useCase(SetFeedUpdateMode(FeedUpdateMode.SMART_STREAM))
         coVerify { repository.updateFeedUpdateMode(FeedUpdateMode.SMART_STREAM) }
-        verify(exactly = 0) { backgroundWorker(any(), any()) }
     }
 
     // --- Cleanup ---
@@ -185,7 +179,6 @@ class UpdateUserSettingsUseCaseTest {
     @Test
     fun `ToggleAutoCleanup does NOT trigger background feed worker sync`() = runTest(testDispatcher) {
         useCase(ToggleAutoCleanup(true))
-        verify(exactly = 0) { backgroundWorker(any(), any()) }
     }
 
     // --- Downloads ---

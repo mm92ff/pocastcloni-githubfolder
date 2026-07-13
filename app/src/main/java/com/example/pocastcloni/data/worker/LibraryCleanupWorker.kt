@@ -35,7 +35,7 @@ constructor(
             throw e
         } catch (e: Exception) {
             Timber.e(e, "Library cleanup failed")
-            Result.retry()
+            if (WorkerRetryPolicy.canRetry(runAttemptCount)) Result.retry() else Result.failure()
         }
     }
 }

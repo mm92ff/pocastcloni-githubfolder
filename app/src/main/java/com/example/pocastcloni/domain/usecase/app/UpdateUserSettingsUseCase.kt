@@ -3,7 +3,6 @@ package com.example.pocastcloni.domain.usecase.app
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction.*
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -11,7 +10,6 @@ class UpdateUserSettingsUseCase
 @Inject
 constructor(
     private val repository: UserPreferencesRepository,
-    private val updateBackgroundWorker: UpdateBackgroundWorkerUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) {
     suspend operator fun invoke(action: UpdateUserSettingAction) {
@@ -64,26 +62,6 @@ constructor(
                 is SetCleanupKeepLimit -> repository.updateCleanupKeepLimit(action.limit)
                 is SetCleanupIntervalHours -> repository.updateCleanupIntervalHours(action.hours)
             }
-
-            // 2. Side-effects: sync the worker if needed
-            if (action is ToggleBackgroundCheck || action is SetBackgroundCheckInterval) {
-                syncBackgroundWorker()
-            }
-            if (action is ToggleAutoCleanup || action is SetCleanupIntervalHours) {
-                syncCleanupWorker()
-            }
         }
-    }
-
-    private suspend fun syncBackgroundWorker() {
-        // Read the source of truth: fetch the current state from Preferences
-        // to ensure we always work with consistent data (interval + enabled flag)
-        val settings = repository.userSettingsFlow.first()
-        updateBackgroundWorker(settings.backgroundCheckEnabled, settings.backgroundCheckInterval)
-    }
-
-    private suspend fun syncCleanupWorker() {
-        // AppInitializer's reactive collector will pick up the change automatically
-        // because it observes userSettingsFlow; no explicit re-schedule needed here.
     }
 }

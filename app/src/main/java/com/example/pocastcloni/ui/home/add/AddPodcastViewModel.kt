@@ -11,6 +11,7 @@ import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
 import com.example.pocastcloni.domain.usecase.podcast.RemovePodcastSubscriptionUseCase
 import com.example.pocastcloni.domain.usecase.podcast.SearchPodcastsUseCase
 import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,6 +56,7 @@ constructor(
         repository.getSubscribedUrlsFlow()
             .map { it.toImmutableSet() }
             .distinctUntilChanged()
+            .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
 
     val uiState: StateFlow<AddPodcastScreenUiState> =
         combine(
@@ -62,10 +64,12 @@ constructor(
             userPreferencesRepository.userSettingsFlow,
             subscribedUrlsFlow,
             isPlayerVisibleFlow
-        ) { state, settings, subscribedSet, isVisible ->
+        ) { state, settings, contentLoad, isVisible ->
             state.copy(
+                contentLoad = contentLoad,
                 oneHandedMode = settings.oneHandedMode,
-                subscribedUrls = subscribedSet,
+                subscribedUrls = contentLoad.lastValue ?: kotlinx.collections.immutable.persistentHashSetOf(),
+                searchError = state.searchError ?: contentLoad.error,
                 progressBarHeight = settings.progressBarHeight,
                 navBarHeight = settings.navBarHeight,
                 isPlayerVisible = isVisible,

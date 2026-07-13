@@ -10,6 +10,9 @@ import com.example.pocastcloni.domain.usecase.episode.StartPlaybackUseCase
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
 import com.example.pocastcloni.ui.home.detail.EpisodeUiModel
 import com.example.pocastcloni.ui.home.detail.toEpisodeUiModel
+import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,6 +55,7 @@ constructor(
                 }.toImmutableList()
             }
             .distinctUntilChanged()
+            .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
 
     private val playerBitsFlow =
         playerController.playerState
@@ -70,9 +74,11 @@ constructor(
             userPreferencesRepository.userSettingsFlow,
             playerBitsFlow,
             _episodeToDelete
-        ) { downloadedEpisodes, settings, playerBits, episodeToDelete ->
+        ) { contentLoad, settings, playerBits, episodeToDelete ->
+            val downloadedEpisodes = contentLoad.lastValue ?: kotlinx.collections.immutable.persistentListOf()
             DownloadsUiState(
-                isLoading = false,
+                contentLoad = contentLoad,
+                isLoading = contentLoad.loading,
                 episodes = downloadedEpisodes,
                 oneHandedMode = settings.oneHandedMode,
                 confirmDelete = settings.confirmDelete,

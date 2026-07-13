@@ -61,6 +61,5 @@ constructor(
         streamingRecorder.resetStatistics {
             dataStore.resetStatistics()
         }
-        podcastDao.clearHistory()
     }
 }

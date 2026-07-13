@@ -18,16 +18,18 @@ import com.example.pocastcloni.data.remote.ItunesSearchApi
 import com.example.pocastcloni.data.worker.downloadStagingFiles
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.FeedUpdateFailure
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.model.PodcastUpdateSummary
+import com.example.pocastcloni.domain.model.classifyFeedFailure
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
+import com.example.pocastcloni.util.RetryingDataFlow
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -54,23 +56,24 @@ constructor(
 ) : PodcastRepository {
     private val updateSemaphore = Semaphore(MAX_FEED_UPDATE_FANOUT)
 
-    // --- FLOWS --- (unchanged)
+    // --- FLOWS ---
     override fun getAllPodcastsFlow(): Flow<List<Podcast>> {
-        return podcastDao.getAllPodcastsFlow()
-            .map { list ->
-                list.map { entity ->
-                    entity.toDomain().copy(
-                        hasNewEpisodes = entity.hasNewEpisodes,
-                        isLatestEpisodePlayed = entity.isLatestEpisodePlayed
-                    )
+        return RetryingDataFlow.bounded(
+            podcastDao.getAllPodcastsFlow()
+                .map { list ->
+                    list.map { entity ->
+                        entity.toDomain().copy(
+                            hasNewEpisodes = entity.hasNewEpisodes,
+                            isLatestEpisodePlayed = entity.isLatestEpisodePlayed
+                        )
+                    }
                 }
-            }
-            .catch { emit(emptyList()) }
+        )
             .flowOn(dispatcherProvider.io)
     }
 
     override fun getEpisodesFlow(rssUrl: String): Flow<List<EpisodeEntity>> =
-        podcastDao.getEpisodesFlow(rssUrl).catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(podcastDao.getEpisodesFlow(rssUrl)).flowOn(dispatcherProvider.io)
 
     override fun getEpisodesPagedFlow(rssUrl: String): Flow<PagingData<EpisodeEntity>> =
         Pager(
@@ -79,80 +82,92 @@ constructor(
         ).flow.flowOn(dispatcherProvider.io)
 
     override fun getPodcastFlow(rssUrl: String): Flow<Podcast?> =
-        podcastDao.getPodcastFlow(rssUrl).map { it?.toDomain() }.catch { emit(null) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(podcastDao.getPodcastFlow(rssUrl).map { it?.toDomain() })
+            .flowOn(dispatcherProvider.io)
 
     override fun getSubscribedUrlsFlow(): Flow<List<String>> =
-        podcastDao.getSubscribedUrlsFlow().catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(podcastDao.getSubscribedUrlsFlow()).flowOn(dispatcherProvider.io)
 
     override fun getDownloadedEpisodes(): Flow<List<EpisodeEntity>> =
-        podcastDao.getDownloadedEpisodes(listOf(DownloadStatus.DOWNLOADED, DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED))
-            .catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(
+            podcastDao.getDownloadedEpisodes(
+                listOf(DownloadStatus.DOWNLOADED, DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED)
+            )
+        ).flowOn(dispatcherProvider.io)
 
     override fun getDownloadedEpisodesWithPodcastLiteFlow(): Flow<List<EpisodeWithPodcastLite>> =
-        podcastDao.getDownloadedEpisodesWithPodcastLiteFlow(
-            listOf(DownloadStatus.DOWNLOADED, DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED)
-        )
-            .catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(
+            podcastDao.getDownloadedEpisodesWithPodcastLiteFlow(
+                listOf(DownloadStatus.DOWNLOADED, DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED)
+            )
+        ).flowOn(dispatcherProvider.io)
 
     override fun getFavoriteEpisodes(): Flow<List<EpisodeEntity>> =
-        podcastDao.getFavoriteEpisodes().catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(podcastDao.getFavoriteEpisodes()).flowOn(dispatcherProvider.io)
 
     override fun getFavoriteEpisodesWithPodcastInfoFlow(): Flow<Map<EpisodeEntity, Podcast?>> =
-        podcastDao.getFavoriteEpisodesWithPodcastLiteFlow()
-            .map { list -> list.associate { row -> row.episode to row.toPodcastDomain() } }
-            .catch { emit(emptyMap()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(
+            podcastDao.getFavoriteEpisodesWithPodcastLiteFlow()
+                .map { list -> list.associate { row -> row.episode to row.toPodcastDomain() } }
+        ).flowOn(dispatcherProvider.io)
 
     override fun isFavorite(episodeId: Long): Flow<Boolean> =
-        podcastDao.isFavorite(
-            episodeId
-        ).catch { emit(false) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(podcastDao.isFavorite(episodeId)).flowOn(dispatcherProvider.io)
 
     override fun getPlaybackHistory(): Flow<List<EpisodeEntity>> =
-        podcastDao.getPlaybackHistory().catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(podcastDao.getPlaybackHistory()).flowOn(dispatcherProvider.io)
 
     override fun getPlaybackHistoryWithPodcastInfoFlow(): Flow<Map<EpisodeEntity, Podcast?>> =
-        podcastDao.getPlaybackHistoryWithPodcastLiteFlow()
-            .map { list -> list.associate { row -> row.episode to row.toPodcastDomain() } }
-            .catch { emit(emptyMap()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(
+            podcastDao.getPlaybackHistoryWithPodcastLiteFlow()
+                .map { list -> list.associate { row -> row.episode to row.toPodcastDomain() } }
+        ).flowOn(dispatcherProvider.io)
 
     override fun getEpisodesInProgress(): Flow<List<EpisodeWithPodcastLite>> =
-        podcastDao.getEpisodesInProgressWithPodcastLiteFlow().catch { emit(emptyList()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(podcastDao.getEpisodesInProgressWithPodcastLiteFlow())
+            .flowOn(dispatcherProvider.io)
 
     override fun getUnplayedCounts(): Flow<Map<String, Int>> =
-        podcastDao.getUnplayedCountsFlow().map { list -> list.associate { it.rssUrl to it.count } }
-            .catch { emit(emptyMap()) }.flowOn(dispatcherProvider.io)
+        RetryingDataFlow.bounded(
+            podcastDao.getUnplayedCountsFlow().map { list -> list.associate { it.rssUrl to it.count } }
+        ).flowOn(dispatcherProvider.io)
 
     // --- PODCAST MANAGEMENT --- (unchanged)
     override suspend fun updateAllPodcasts(
         downloadLimit: Int,
         mode: FeedUpdateMode,
-        forceFull: Boolean
+        forceFull: Boolean,
+        feedUrls: Set<String>?
     ): PodcastUpdateSummary {
         return withContext(dispatcherProvider.io) {
-            val urls = podcastDao.getAllPodcastUrls()
-            var successfulCount = 0
-            urls.chunked(MAX_FEED_UPDATE_FANOUT).forEach { batch ->
-                successfulCount +=
+            val urls =
+                podcastDao.getAllPodcastUrls().let { subscribedUrls ->
+                    if (feedUrls == null) subscribedUrls else subscribedUrls.filter(feedUrls::contains)
+                }
+            val outcomes =
+                urls.chunked(MAX_FEED_UPDATE_FANOUT).flatMap { batch ->
                     batch.map { url ->
                         async {
                             updateSemaphore.withPermit {
                                 try {
                                     syncFeedUseCase.get().invoke(url, downloadLimit, mode, null, forceFull)
-                                    true
+                                    null
                                 } catch (error: CancellationException) {
                                     throw error
                                 } catch (error: Exception) {
-                                    Timber.w(error, "Failed to update feed %s", url)
-                                    false
+                                    Timber.w(error, "Failed to update a podcast feed")
+                                    FeedUpdateFailure(url, classifyFeedFailure(error))
                                 }
                             }
                         }
-                    }.awaitAll().count { it }
-            }
+                    }.awaitAll()
+                }
+            val failures = outcomes.filterNotNull()
             PodcastUpdateSummary(
                 totalCount = urls.size,
-                successfulCount = successfulCount,
-                failureCount = urls.size - successfulCount
+                successfulCount = urls.size - failures.size,
+                failureCount = failures.size,
+                failures = failures
             )
         }
     }
@@ -349,10 +364,7 @@ constructor(
     override fun searchEpisodesFlow(query: String): Flow<List<EpisodeEntity>> {
         if (query.isBlank()) return flowOf(emptyList())
         val dbQuery = "*$query*"
-        return podcastDao.searchEpisodes(dbQuery).catch { e ->
-            Timber.e(e, "FTS Search failed")
-            emit(emptyList())
-        }.flowOn(dispatcherProvider.io)
+        return RetryingDataFlow.bounded(podcastDao.searchEpisodes(dbQuery)).flowOn(dispatcherProvider.io)
     }
 
     // --- FAVORITES & HISTORY & SYNC (unchanged) ---

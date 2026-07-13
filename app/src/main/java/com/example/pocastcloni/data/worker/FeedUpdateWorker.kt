@@ -12,6 +12,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.example.pocastcloni.R
+import com.example.pocastcloni.domain.model.FeedFailureKind
+import com.example.pocastcloni.domain.model.classifyFeedFailure
 import com.example.pocastcloni.domain.usecase.podcast.FeedRefreshSource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -24,54 +26,51 @@ class FeedUpdateWorker
 constructor(
     @Assisted private val context: Context,
     @Assisted params: WorkerParameters,
-    private val feedUpdateRunner: FeedUpdateRunner
+    private val feedUpdateRunner: FeedUpdateRunner,
+    private val feedRetryScheduler: FeedRetryScheduler
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         return try {
-            // 1. Promote to Foreground Service
-            // This is required for operations that might take > 10 minutes or use network heavily.
             setForeground(createForegroundInfo())
-
             Timber.d("Starting feed update...")
-
-            // 2. Perform Update
-            try {
-                val source = inputData.getString(KEY_REFRESH_SOURCE)
+            val source =
+                inputData.getString(KEY_REFRESH_SOURCE)
                     ?.let { storedSource ->
                         runCatching { FeedRefreshSource.valueOf(storedSource) }.getOrNull()
                     }
                     ?: FeedRefreshSource.BACKGROUND
-                val summary = feedUpdateRunner(source)
-                if (summary.allFailed) {
-                    Timber.w("Feed update failed for all %d podcasts.", summary.totalCount)
-                } else if (summary.hasFailures) {
-                    Timber.w(
-                        "Feed update partially failed: %d succeeded, %d failed.",
-                        summary.successfulCount,
-                        summary.failureCount
-                    )
-                } else {
-                    Timber.d("Update finished: %d podcasts refreshed.", summary.successfulCount)
-                }
+            val targetFeedUrl = inputData.getString(KEY_FEED_URL)?.trim()?.takeIf(String::isNotEmpty)
+            val summary = feedUpdateRunner(source, targetFeedUrl?.let(::setOf))
 
-                if (summary.allFailed) {
-                    return if (runAttemptCount < 3) Result.retry() else Result.failure()
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Timber.e(e, "Error updating podcasts.")
-                return if (runAttemptCount < 3) Result.retry() else Result.failure()
+            if (summary.hasFailures) {
+                Timber.w(
+                    "Feed update completed with %d successes and %d failures.",
+                    summary.successfulCount,
+                    summary.failureCount
+                )
             }
 
-            Result.success()
+            if (targetFeedUrl == null) {
+                feedRetryScheduler.schedule(summary.retryableFailedUrls)
+                return Result.success()
+            }
+
+            when {
+                !summary.hasFailures || summary.isEmpty -> Result.success()
+                summary.retryableFailedUrls.contains(targetFeedUrl) || summary.failures.isEmpty() ->
+                    retryOrFail()
+                else -> Result.failure()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Timber.e(e, "Fatal error in FeedUpdateWorker")
-            Result.failure()
+            if (classifyFeedFailure(e) == FeedFailureKind.RETRYABLE) retryOrFail() else Result.failure()
         }
     }
+
+    private fun retryOrFail(): Result =
+        if (WorkerRetryPolicy.canRetry(runAttemptCount)) Result.retry() else Result.failure()
 
     private fun createForegroundInfo(): ForegroundInfo {
         val channelId = "sync_channel"
@@ -116,6 +115,7 @@ constructor(
 
     companion object {
         const val KEY_REFRESH_SOURCE = "refresh_source"
+        const val KEY_FEED_URL = "feed_url"
         private const val NOTIFICATION_ID = 1001
     }
 }

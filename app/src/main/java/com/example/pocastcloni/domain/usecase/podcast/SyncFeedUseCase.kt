@@ -24,6 +24,7 @@ import com.example.pocastcloni.util.stripHtml
 import com.example.pocastcloni.util.requireApprovedNetworkUrl
 import com.example.pocastcloni.util.isAllowedPodcastResource
 import com.example.pocastcloni.util.SizeLimitedInputStream
+import com.example.pocastcloni.util.SizeLimitExceededException
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.net.HttpURLConnection
@@ -125,7 +126,7 @@ constructor(
             }
             return
         }
-        if (!response.isSuccessful || response.body() == null) throw Exception("Smart Sync Fail: ${response.code()}")
+        if (!response.isSuccessful) throw retrofit2.HttpException(response)
 
         val body = response.body() ?: throw java.io.IOException("Empty response body from $url")
         rejectOversizedFeed(body.contentLength())
@@ -185,7 +186,7 @@ constructor(
             }
             return
         }
-        if (!response.isSuccessful || response.body() == null) throw Exception("Full Sync Fail: ${response.code()}")
+        if (!response.isSuccessful) throw retrofit2.HttpException(response)
 
         val body = response.body() ?: throw java.io.IOException("Empty response body from $url")
         rejectOversizedFeed(body.contentLength())
@@ -341,7 +342,7 @@ constructor(
 
 internal fun rejectOversizedFeed(contentLength: Long) {
     if (contentLength > Constants.SecurityLimits.MAX_FEED_BYTES) {
-        throw java.io.IOException("Feed response is too large")
+        throw SizeLimitExceededException(Constants.SecurityLimits.MAX_FEED_BYTES)
     }
 }
 

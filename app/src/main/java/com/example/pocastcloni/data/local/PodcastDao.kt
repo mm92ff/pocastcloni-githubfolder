@@ -185,6 +185,9 @@ interface PodcastDao {
         enabled: Boolean
     )
 
+    @Query("SELECT rssUrl FROM podcasts WHERE allowLocalNetwork = 1 ORDER BY rssUrl ASC")
+    fun getApprovedLocalFeedUrlsFlow(): Flow<List<String>>
+
     @Transaction
     @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC, rssUrl ASC")
     fun getPodcastsWithEpisodesFlow(): Flow<List<PodcastWithEpisodes>>

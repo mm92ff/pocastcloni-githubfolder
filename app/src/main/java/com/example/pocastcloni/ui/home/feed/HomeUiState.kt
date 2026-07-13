@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.RetainedLoad
 import com.example.pocastcloni.util.Constants
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
@@ -12,6 +13,7 @@ import kotlinx.collections.immutable.persistentSetOf
 
 @Immutable
 data class HomeUiState(
+    val contentLoad: RetainedLoad<ImmutableList<Podcast>> = RetainedLoad(),
     val podcasts: ImmutableList<Podcast> = persistentListOf(),
     val isLoading: Boolean = true,
     val layoutMode: LayoutMode = LayoutMode.GRID,

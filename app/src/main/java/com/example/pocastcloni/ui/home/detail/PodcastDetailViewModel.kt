@@ -15,6 +15,7 @@ import com.example.pocastcloni.domain.usecase.episode.ToggleEpisodePlayedStatusU
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
 import com.example.pocastcloni.domain.usecase.podcast.UpdatePodcastAutoDownloadUseCase
 import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.ui.player.PlayerScreenEvent
@@ -22,14 +23,11 @@ import com.example.pocastcloni.ui.settings.ThemeUiModel
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.stripHtml
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
@@ -38,7 +36,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import javax.inject.Inject
@@ -87,15 +84,6 @@ constructor(
 
     private val _isPodcastDescriptionDialogVisible = MutableStateFlow(false)
 
-    private data class PodcastDetails(
-        val title: String = "",
-        val description: String = "",
-        val imageUrl: String? = null,
-        val autoDownloadEnabled: Boolean = false,
-        val episodes: ImmutableList<EpisodeUiModel> = persistentListOf(),
-        val error: UiText? = null
-    )
-
     private val podcastDetailsFlow =
         combine(
             repository.getPodcastFlow(podcastUrl),
@@ -103,7 +91,7 @@ constructor(
             downloader.downloadProgressFlow
         ) { podcast, episodes, progressMap ->
             if (podcast == null) {
-                PodcastDetails(error = UiText.StringResource(R.string.detail_not_found))
+                PodcastDetailContent(error = UiText.StringResource(R.string.detail_not_found))
             } else {
                 val podcastTitle = podcast.title.stripHtml()
                 val podcastImageUrl = podcast.imageUrl
@@ -120,7 +108,7 @@ constructor(
                         )
                     }.toImmutableList()
 
-                PodcastDetails(
+                PodcastDetailContent(
                     title = podcastTitle,
                     description = podcast.description.stripHtml(),
                     imageUrl = podcastImageUrl,
@@ -129,10 +117,8 @@ constructor(
                     error = null
                 )
             }
-        }.catch { throwable ->
-            Timber.e(throwable, "podcastDetailsFlow failed")
-            emit(PodcastDetails(error = UiText.StringResource(R.string.error_unknown)))
         }.flowOn(dispatcherProvider.default)
+            .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
 
     private val settingsUiModelFlow =
         userPreferencesRepository.userSettingsFlow
@@ -170,22 +156,21 @@ constructor(
             settingsUiModelFlow,
             playerStatusFlow,
             _isPodcastDescriptionDialogVisible
-        ) { details, settingsUiModel, playerStatus, isDialogVisible ->
+        ) { contentLoad, settingsUiModel, playerStatus, isDialogVisible ->
+            val details = contentLoad.lastValue ?: PodcastDetailContent()
             PodcastDetailUiState(
+                contentLoad = contentLoad,
                 podcastTitle = details.title,
                 podcastDescription = details.description,
                 podcastImageUrl = details.imageUrl,
                 isAutoDownloadEnabled = details.autoDownloadEnabled,
                 episodes = details.episodes,
-                isLoading = false,
-                error = details.error,
+                isLoading = contentLoad.loading,
+                error = details.error ?: contentLoad.error?.takeIf { contentLoad.lastValue == null },
                 isPodcastDescriptionDialogVisible = isDialogVisible,
                 playerState = playerStatus,
                 appSettings = settingsUiModel
             )
-        }.catch { throwable ->
-            Timber.e(throwable, "Error creating UI state")
-            emit(PodcastDetailUiState(error = UiText.StringResource(R.string.error_unknown)))
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),

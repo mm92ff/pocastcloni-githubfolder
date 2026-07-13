@@ -2,9 +2,11 @@ package com.example.pocastcloni.data.worker
 
 import androidx.work.BackoffPolicy
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.Operation
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
+import com.example.pocastcloni.util.Constants
 import com.google.common.util.concurrent.Futures
 import io.mockk.every
 import io.mockk.mockk
@@ -16,10 +18,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
-class LibraryCleanupSchedulerTest {
+class BackgroundSyncSchedulerTest {
     private val workManager = mockk<WorkManager>()
     private val operation = mockk<Operation>()
-    private val scheduler = LibraryCleanupScheduler(workManager)
+    private val scheduler = BackgroundSyncScheduler(workManager)
 
     init {
         every { operation.result } returns Futures.immediateFuture(Operation.SUCCESS)
@@ -28,31 +30,32 @@ class LibraryCleanupSchedulerTest {
     }
 
     @Test
-    fun `disabled cleanup cancels unique work and schedules nothing`() = runTest {
-        scheduler.applySettings(enabled = false, intervalHours = 24)
+    fun `disabled sync cancels the single unique owner`() = runTest {
+        scheduler.applySettings(enabled = false, intervalHours = 6)
 
-        verify(exactly = 1) { workManager.cancelUniqueWork(LibraryCleanupWorker.WORK_NAME) }
+        verify(exactly = 1) { workManager.cancelUniqueWork(Constants.FEED_UPDATE_WORK_NAME) }
         verify(exactly = 0) { workManager.enqueueUniquePeriodicWork(any(), any(), any()) }
     }
 
     @Test
-    fun `enabled cleanup schedules one constrained unique worker`() = runTest {
+    fun `enabled sync normalizes interval constraints and backoff`() = runTest {
         val request = slot<PeriodicWorkRequest>()
 
-        scheduler.applySettings(enabled = true, intervalHours = 48)
+        scheduler.applySettings(enabled = true, intervalHours = Int.MAX_VALUE)
 
         verify(exactly = 1) {
             workManager.enqueueUniquePeriodicWork(
-                LibraryCleanupWorker.WORK_NAME,
+                Constants.FEED_UPDATE_WORK_NAME,
                 ExistingPeriodicWorkPolicy.UPDATE,
                 capture(request)
             )
         }
-        verify(exactly = 0) { workManager.cancelUniqueWork(any()) }
-        assertEquals(TimeUnit.HOURS.toMillis(48), request.captured.workSpec.intervalDuration)
-        val schedule = libraryCleanupSchedule(48)
-        assertTrue(schedule.requiresDeviceIdle)
-        assertTrue(schedule.requiresBatteryNotLow)
+        assertEquals(
+            TimeUnit.HOURS.toMillis(Constants.SettingsDefaults.MAX_BACKGROUND_CHECK_INTERVAL_HOURS.toLong()),
+            request.captured.workSpec.intervalDuration
+        )
+        assertEquals(NetworkType.CONNECTED, request.captured.workSpec.constraints.requiredNetworkType)
+        assertTrue(request.captured.workSpec.constraints.requiresBatteryNotLow())
         assertEquals(BackoffPolicy.EXPONENTIAL, request.captured.workSpec.backoffPolicy)
         assertEquals(TimeUnit.SECONDS.toMillis(30L), request.captured.workSpec.backoffDelayDuration)
     }

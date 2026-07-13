@@ -14,6 +14,8 @@ import com.example.pocastcloni.domain.usecase.podcast.MarkAllPodcastsSeenUseCase
 import com.example.pocastcloni.domain.usecase.podcast.RefreshPodcastsUseCase
 import com.example.pocastcloni.domain.usecase.podcast.ReorderPodcastsUseCase
 import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.RetainedLoad
+import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,6 +46,7 @@ import javax.inject.Inject
 // Internal state representation (clean & type-safe)
 private data class IntermediateHomeState(
     val podcasts: ImmutableList<Podcast>,
+    val contentLoad: RetainedLoad<ImmutableList<Podcast>>,
     val settings: UserSettings,
     val editState: EditState,
     val isRefreshing: Boolean,
@@ -108,6 +111,7 @@ constructor(
         getAllPodcasts()
             .map { it.toImmutableList() }
             .distinctUntilChanged()
+            .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
 
     // Stage 1: combine data into an intermediate state
     private val intermediateStateFlow: Flow<IntermediateHomeState> =
@@ -122,7 +126,8 @@ constructor(
             _screenError
         ) { args ->
             @Suppress("UNCHECKED_CAST")
-            val dbPodcasts = args[0] as ImmutableList<Podcast>
+            val podcastLoad = args[0] as RetainedLoad<ImmutableList<Podcast>>
+            val dbPodcasts = podcastLoad.lastValue ?: emptyList<Podcast>().toImmutableList()
 
             @Suppress("UNCHECKED_CAST")
             val optimisticPodcasts = args[1] as List<Podcast>?
@@ -143,6 +148,11 @@ constructor(
 
             IntermediateHomeState(
                 podcasts = finalPodcasts,
+                contentLoad = if (podcastLoad.lastValue == null) {
+                    podcastLoad
+                } else {
+                    podcastLoad.copy(lastValue = finalPodcasts)
+                },
                 settings = settings,
                 editState = editState,
                 isRefreshing = isRefreshing,
@@ -165,8 +175,9 @@ constructor(
                     }
 
                 HomeUiState(
+                    contentLoad = state.contentLoad,
                     podcasts = state.podcasts,
-                    isLoading = false,
+                    isLoading = state.contentLoad.loading,
                     layoutMode = state.settings.layoutMode,
                     gridSize = state.settings.gridSize,
                     showGridTitles = state.settings.showGridTitles,

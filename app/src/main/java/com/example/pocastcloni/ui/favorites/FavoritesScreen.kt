@@ -22,6 +22,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -33,11 +35,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +61,15 @@ fun FavoritesScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(uiState.contentLoad.error, uiState.contentLoad.lastValue) {
+        val retainedError = uiState.contentLoad.error
+        if (retainedError != null && uiState.contentLoad.lastValue != null) {
+            snackbarHostState.showSnackbar(retainedError.asString(context))
+        }
+    }
 
     uiState.episodeForDetails?.let { item ->
         EpisodeDetailsDialog(
@@ -69,6 +82,7 @@ fun FavoritesScreen(
 
     Scaffold(
         containerColor = Color.Transparent,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(id = R.string.favorites)) },
@@ -101,8 +115,14 @@ fun FavoritesScreen(
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ) {
-            if (uiState.isLoading) {
+            val initialLoadError = uiState.contentLoad.error?.takeIf { uiState.contentLoad.lastValue == null }
+            if (uiState.contentLoad.loading && uiState.contentLoad.lastValue == null) {
                 CircularProgressIndicator()
+            } else if (initialLoadError != null) {
+                Text(
+                    text = initialLoadError.asString(context),
+                    color = MaterialTheme.colorScheme.error
+                )
             } else if (uiState.favorites.isEmpty()) {
                 Text(
                     text = stringResource(id = R.string.favorites_empty),

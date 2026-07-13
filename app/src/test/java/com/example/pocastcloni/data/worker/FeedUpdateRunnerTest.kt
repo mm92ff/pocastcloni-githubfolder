@@ -42,4 +42,18 @@ class FeedUpdateRunnerTest {
 
         coVerify(exactly = 1) { coordinator.refresh(FeedRefreshSource.BACKUP_RESTORE) }
     }
+
+    @Test
+    fun `targeted retry forwards only the failed feed URL`() = runTest {
+        val feedUrls = setOf("https://example.com/retry.xml")
+        coEvery {
+            coordinator.refresh(FeedRefreshSource.BACKGROUND, feedUrls = feedUrls)
+        } returns PodcastUpdateSummary(totalCount = 1, successfulCount = 1, failureCount = 0)
+
+        runner(FeedRefreshSource.BACKGROUND, feedUrls)
+
+        coVerify(exactly = 1) {
+            coordinator.refresh(FeedRefreshSource.BACKGROUND, feedUrls = feedUrls)
+        }
+    }
 }

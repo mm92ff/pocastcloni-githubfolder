@@ -11,6 +11,7 @@ constructor(
     private val refreshCoordinator: FeedRefreshCoordinator
 ) {
     suspend operator fun invoke(
-        source: FeedRefreshSource = FeedRefreshSource.BACKGROUND
-    ): PodcastUpdateSummary = refreshCoordinator.refresh(source)
+        source: FeedRefreshSource = FeedRefreshSource.BACKGROUND,
+        feedUrls: Set<String>? = null
+    ): PodcastUpdateSummary = refreshCoordinator.refresh(source, feedUrls = feedUrls)
 }

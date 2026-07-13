@@ -1,30 +1,28 @@
 package com.example.pocastcloni
 
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.example.pocastcloni.data.worker.FeedUpdateWorker
-import com.example.pocastcloni.data.repository.BackupImportRecovery
+import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
-import com.example.pocastcloni.data.worker.LibraryCleanupScheduler
+import com.example.pocastcloni.data.repository.BackupImportRecovery
+import com.example.pocastcloni.data.worker.AppSchedulingCoordinator
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
+import com.example.pocastcloni.domain.usecase.app.ResetAppUseCase
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.RetryingDataFlow
 import com.example.pocastcloni.util.activeEpisodeIdsFromDownloadWork
 import com.example.pocastcloni.util.downloadWorkName
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.guava.await
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,132 +32,90 @@ class AppInitializer
 constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val podcastRepository: PodcastRepository,
+    private val podcastDao: PodcastDao,
     @ApplicationScope private val scope: CoroutineScope,
     private val workManager: WorkManager,
     private val dispatcherProvider: DispatcherProvider,
     private val backupImportRecovery: BackupImportRecovery,
+    private val resetAppUseCase: ResetAppUseCase,
     private val localNetworkAccessRegistry: LocalNetworkAccessRegistry,
-    private val libraryCleanupScheduler: LibraryCleanupScheduler
+    private val schedulingCoordinator: AppSchedulingCoordinator
 ) {
+    private val startupScope =
+        CoroutineScope(
+            scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job])
+        )
+
     fun initialize() {
-        observeApprovedLocalFeeds()
-        scope.launch(dispatcherProvider.io) {
-            try {
-                backupImportRecovery.recoverInterruptedImport()
-            } catch (error: Exception) {
-                Timber.e(error, "Failed to recover interrupted backup import")
-                return@launch
-            }
+        launchStartupChild("recover interrupted backup import") {
+            backupImportRecovery.recoverInterruptedImport()
+        }
+        launchStartupChild("resume pending app reset") {
+            resetAppUseCase.resumeIfPending()
+        }
+        launchStartupChild("reconcile local episode storage state") {
             reconcileEpisodeStorage()
+        }
+        launchStartupChild("observe approved local feeds") {
+            observeApprovedLocalFeeds()
+        }
+        launchStartupChild("observe cleanup settings") {
             observeCleanupSettings()
+        }
+        launchStartupChild("observe background sync settings") {
             observeBackgroundSyncSettings()
         }
     }
 
-    private fun observeApprovedLocalFeeds() {
-        scope.launch(dispatcherProvider.io) {
-            podcastRepository.getAllPodcastsFlow()
-                .catch { error -> Timber.e(error, "Failed to load approved local feeds") }
-                .collect { podcasts ->
-                    localNetworkAccessRegistry.replaceApprovedFeeds(
-                        podcasts.filter { it.allowLocalNetwork }.map { it.rssUrl }
-                    )
-                }
+    private fun launchStartupChild(
+        description: String,
+        block: suspend () -> Unit
+    ) {
+        startupScope.launch(dispatcherProvider.io) {
+            try {
+                block()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.e(error, "Failed to %s.", description)
+            }
         }
     }
 
-    private fun observeBackgroundSyncSettings() {
-        scope.launch(dispatcherProvider.io) {
-            try {
-                userPreferencesRepository.userSettingsFlow
-                    .map { it.backgroundCheckEnabled to it.backgroundCheckInterval }
-                    .distinctUntilChanged()
-                    .catch { e ->
-                        Timber.e(e, "Error collecting user settings for background sync.")
-                    }
-                    .collect { (isEnabled, hours) ->
-                        try {
-                            if (isEnabled) {
-                                setupBackgroundSync(hours)
-                            } else {
-                                Timber.d("Background sync disabled by user. Cancelling work.")
-                                workManager.cancelUniqueWork(Constants.FEED_UPDATE_WORK_NAME)
-                            }
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to apply background sync settings change.")
-                        }
-                    }
-            } catch (e: Exception) {
-                Timber.e(e, "Fatal error during AppInitializer execution. Background sync might not be configured.")
+    private suspend fun observeApprovedLocalFeeds() {
+        RetryingDataFlow.bounded(podcastDao.getApprovedLocalFeedUrlsFlow())
+            .distinctUntilChanged()
+            .collect(localNetworkAccessRegistry::replaceApprovedFeeds)
+    }
+
+    private suspend fun observeBackgroundSyncSettings() {
+        userPreferencesRepository.userSettingsFlow
+            .map { it.backgroundCheckEnabled to it.backgroundCheckInterval }
+            .distinctUntilChanged()
+            .collect { (isEnabled, hours) ->
+                schedulingCoordinator.applyObservedBackgroundSettings(isEnabled, hours)
             }
-        }
     }
 
     private suspend fun reconcileEpisodeStorage() {
-        try {
-            val workInfos = workManager.getWorkInfosByTag(Constants.DOWNLOAD_WORKER_TAG).await()
-            val activeEpisodeIds = activeEpisodeIdsFromDownloadWork(workInfos)
-            val correctedEntries =
-                podcastRepository.reconcileEpisodeStorage(activeEpisodeIds) { episodeId ->
-                    val currentWork = workManager.getWorkInfosByTag(downloadWorkName(episodeId)).await()
-                    episodeId in activeEpisodeIdsFromDownloadWork(currentWork)
-                }
-            if (correctedEntries > 0) {
-                Timber.i("Reconciled %d stale episode storage states on startup.", correctedEntries)
+        val workInfos = workManager.getWorkInfosByTag(Constants.DOWNLOAD_WORKER_TAG).await()
+        val activeEpisodeIds = activeEpisodeIdsFromDownloadWork(workInfos)
+        val correctedEntries =
+            podcastRepository.reconcileEpisodeStorage(activeEpisodeIds) { episodeId ->
+                val currentWork = workManager.getWorkInfosByTag(downloadWorkName(episodeId)).await()
+                episodeId in activeEpisodeIdsFromDownloadWork(currentWork)
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            Timber.e(error, "Failed to reconcile local episode storage state.")
+        if (correctedEntries > 0) {
+            Timber.i("Reconciled %d stale episode storage states on startup.", correctedEntries)
         }
     }
 
-    private fun observeCleanupSettings() {
-        scope.launch(dispatcherProvider.io) {
-            try {
-                userPreferencesRepository.userSettingsFlow
-                    .map { it.autoCleanupEnabled to it.cleanupIntervalHours }
-                    .distinctUntilChanged()
-                    .catch { e ->
-                        Timber.e(e, "Error collecting cleanup settings.")
-                    }
-                    .collect { (isEnabled, hours) ->
-                        try {
-                            libraryCleanupScheduler.applySettings(isEnabled, hours)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to apply cleanup settings change.")
-                        }
-                    }
-            } catch (e: Exception) {
-                Timber.e(e, "Fatal error in cleanup settings observer.")
+    private suspend fun observeCleanupSettings() {
+        userPreferencesRepository.userSettingsFlow
+            .map { it.autoCleanupEnabled to it.cleanupIntervalHours }
+            .distinctUntilChanged()
+            .collect { (isEnabled, hours) ->
+                schedulingCoordinator.applyObservedCleanupSettings(isEnabled, hours)
             }
-        }
-    }
-
-    private fun setupBackgroundSync(intervalHours: Int) {
-        val constraints =
-            Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
-                .build()
-
-        val safeHours =
-            intervalHours
-                .coerceAtLeast(Constants.MIN_BACKGROUND_SYNC_INTERVAL_HOURS)
-                .toLong()
-
-        val updateRequest =
-            PeriodicWorkRequestBuilder<FeedUpdateWorker>(safeHours, TimeUnit.HOURS)
-                .setConstraints(constraints)
-                .addTag(Constants.FEED_UPDATE_WORK_TAG)
-                .build()
-
-        workManager.enqueueUniquePeriodicWork(
-            Constants.FEED_UPDATE_WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            updateRequest
-        )
-
-        Timber.i("Background sync scheduled every $safeHours hours with network constraints.")
     }
 }

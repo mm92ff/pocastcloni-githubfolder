@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
@@ -15,9 +14,9 @@ import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.RetryingDataFlow
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -43,19 +42,13 @@ constructor(
     @Volatile private var migrationComplete = false
 
     override val userSettingsFlow: Flow<UserSettings> =
-        flow {
-            ensureDefaultsMigrated()
-            emitAll(context.dataStore.data)
-        }
-            .catch { exception ->
-                if (exception is IOException) {
-                    Timber.e(exception, "Error reading preferences.")
-                    emit(emptyPreferences())
-                } else {
-                    throw exception
-                }
-            }
-            .map { prefs -> prefs.toUserSettings() }
+        RetryingDataFlow.bounded(
+            upstream = flow {
+                ensureDefaultsMigrated()
+                emitAll(context.dataStore.data)
+            },
+            shouldRetry = { it is IOException }
+        ).map { prefs -> prefs.toUserSettings() }
 
     private suspend fun ensureDefaultsMigrated() {
         if (migrationComplete) return
@@ -446,17 +439,13 @@ constructor(
     }
 
     override suspend fun clearSettings() {
-        try {
-            context.dataStore.edit { preferences ->
-                preferences.clear()
-                SettingsDefaultsMigration.apply(
-                    preferences = preferences,
-                    installationState = InstallationState.FRESH
-                )
-            }
-            migrationComplete = true
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to clear settings from DataStore")
+        context.dataStore.edit { preferences ->
+            preferences.clear()
+            SettingsDefaultsMigration.apply(
+                preferences = preferences,
+                installationState = InstallationState.FRESH
+            )
         }
+        migrationComplete = true
     }
 }

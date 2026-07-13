@@ -2,6 +2,7 @@ package com.example.pocastcloni.ui.home.add
 
 import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.RetainedLoad
 import com.example.pocastcloni.util.Constants
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
@@ -10,6 +11,7 @@ import kotlinx.collections.immutable.persistentListOf
 
 @Immutable
 data class AddPodcastScreenUiState(
+    val contentLoad: RetainedLoad<ImmutableSet<String>> = RetainedLoad(),
     val addSuccess: Boolean = false,
     val searchQuery: String = Constants.EMPTY_STRING,
     val isSearching: Boolean = false,

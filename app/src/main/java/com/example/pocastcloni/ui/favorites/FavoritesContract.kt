@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.ui.common.DateBucket
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
+import com.example.pocastcloni.ui.common.RetainedLoad
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -44,6 +45,7 @@ sealed interface FavoriteListRow {
 
 @Immutable
 data class FavoritesUiState(
+    val contentLoad: RetainedLoad<ImmutableList<FavoriteUiItem>> = RetainedLoad(),
     val isLoading: Boolean = true,
     // FIX: ImmutableList enforces stability and enables skipping in the UI
     val favorites: ImmutableList<FavoriteUiItem> = persistentListOf(),

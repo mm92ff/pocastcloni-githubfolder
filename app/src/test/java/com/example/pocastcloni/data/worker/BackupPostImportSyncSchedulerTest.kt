@@ -1,6 +1,7 @@
 package com.example.pocastcloni.data.worker
 
 import androidx.work.ExistingWorkPolicy
+import androidx.work.BackoffPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.Operation
@@ -15,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.TimeUnit
 
 class BackupPostImportSyncSchedulerTest {
     private val workManager = mockk<WorkManager>()
@@ -51,6 +53,8 @@ class BackupPostImportSyncSchedulerTest {
             request.captured.workSpec.constraints.requiredNetworkType
         )
         assertTrue(request.captured.workSpec.constraints.requiresBatteryNotLow())
+        assertEquals(BackoffPolicy.EXPONENTIAL, request.captured.workSpec.backoffPolicy)
+        assertEquals(TimeUnit.SECONDS.toMillis(30L), request.captured.workSpec.backoffDelayDuration)
         assertTrue(request.captured.tags.contains(BackupPostImportSyncScheduler.POST_IMPORT_WORK_TAG))
     }
 }

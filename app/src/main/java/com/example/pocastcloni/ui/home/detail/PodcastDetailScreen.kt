@@ -62,6 +62,13 @@ fun PodcastDetailScreen(
         }
     }
 
+    LaunchedEffect(uiState.contentLoad.error, uiState.contentLoad.lastValue) {
+        val retainedError = uiState.contentLoad.error
+        if (retainedError != null && uiState.contentLoad.lastValue != null) {
+            snackbarHostState.showSnackbar(retainedError.asString(context))
+        }
+    }
+
     Scaffold(
         containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -89,7 +96,7 @@ fun PodcastDetailScreen(
         val state = uiState
 
         when {
-            state.isLoading -> {
+            state.contentLoad.loading && state.contentLoad.lastValue == null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }

@@ -239,6 +239,27 @@ class FeedRefreshCoordinatorTest {
         }
     }
 
+    @Test
+    fun `targeted refresh preserves the URL filter through the coordinator`() = runTest(dispatcher) {
+        givenSmartSettings()
+        val feedUrls = setOf("https://example.com/retry.xml")
+        val expected = PodcastUpdateSummary(1, 1, 0)
+        coEvery {
+            repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, false, feedUrls)
+        } returns expected
+
+        val result =
+            coordinator().refresh(
+                source = FeedRefreshSource.BACKGROUND,
+                feedUrls = feedUrls
+            )
+
+        assertEquals(expected, result)
+        coVerify(exactly = 1) {
+            repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, false, feedUrls)
+        }
+    }
+
     private fun givenSmartSettings() {
         every { preferences.userSettingsFlow } returns
             flowOf(UserSettings(autoDownloadLimit = 3, feedUpdateMode = FeedUpdateMode.SMART_STREAM))

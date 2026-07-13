@@ -2,6 +2,7 @@ package com.example.pocastcloni.ui.home.detail
 
 import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.RetainedLoad
 import com.example.pocastcloni.ui.settings.ThemeUiModel
 import com.example.pocastcloni.util.Constants
 import kotlinx.collections.immutable.ImmutableList
@@ -25,7 +26,18 @@ data class SettingsUiModel(
 )
 
 @Immutable
+data class PodcastDetailContent(
+    val title: String = "",
+    val description: String = "",
+    val imageUrl: String? = null,
+    val autoDownloadEnabled: Boolean = false,
+    val episodes: ImmutableList<EpisodeUiModel> = persistentListOf(),
+    val error: UiText? = null
+)
+
+@Immutable
 data class PodcastDetailUiState(
+    val contentLoad: RetainedLoad<PodcastDetailContent> = RetainedLoad(),
     val podcastTitle: String = "",
     val podcastDescription: String = "",
     val podcastImageUrl: String? = null,

@@ -105,6 +105,13 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(uiState.contentLoad.error, uiState.contentLoad.lastValue) {
+        val retainedError = uiState.contentLoad.error
+        if (retainedError != null && uiState.contentLoad.lastValue != null) {
+            snackBarHostState.showSnackbar(retainedError.asString(context))
+        }
+    }
+
     val currentOnPodcastClicked by rememberUpdatedState(onPodcastClicked)
 
     // Click logic: select in edit mode, navigate otherwise
@@ -205,13 +212,25 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .nestedScroll(pullToRefreshState.nestedScrollConnection)
         ) {
-            if (uiState.isLoading && !uiState.isRefreshing) {
+            if (uiState.contentLoad.loading && uiState.contentLoad.lastValue == null && !uiState.isRefreshing) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
+                val initialLoadError = uiState.contentLoad.error?.takeIf { uiState.contentLoad.lastValue == null }
                 val screenError = uiState.screenError
-                if (screenError != null) {
+                if (initialLoadError != null) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = Dimens.PaddingLarge),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = initialLoadError.asString(context),
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else if (screenError != null) {
                     Box(
                         modifier =
                         Modifier

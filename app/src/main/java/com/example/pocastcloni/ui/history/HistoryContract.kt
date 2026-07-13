@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.common.DateBucket
+import com.example.pocastcloni.ui.common.RetainedLoad
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -35,6 +36,7 @@ sealed interface HistoryListRow {
 
 @Immutable
 data class HistoryUiState(
+    val contentLoad: RetainedLoad<ImmutableList<HistoryUiItem>> = RetainedLoad(),
     val isLoading: Boolean = true,
     // ImmutableList enforces stability and enables skipping in the UI
     val historyItems: ImmutableList<HistoryUiItem> = persistentListOf(),

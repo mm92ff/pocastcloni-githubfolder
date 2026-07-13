@@ -2,11 +2,14 @@ package com.example.pocastcloni.ui.favorites
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.episode.GetFavoriteEpisodesWithPodcastInfoUseCase
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
 import com.example.pocastcloni.domain.usecase.favorite.ReorderFavoritesUseCase
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
+import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -51,6 +54,8 @@ constructor(
                 }
             }
             .distinctUntilChanged()
+            .map { it.toImmutableList() }
+            .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
 
     private val isPlayerVisibleFlow =
         audioPlayerController.playerState
@@ -63,8 +68,8 @@ constructor(
             dbFavoritesFlow,
             userPreferencesRepository.userSettingsFlow,
             isPlayerVisibleFlow
-        ) { dbFavorites, settings, isPlayerVisible ->
-            Triple(dbFavorites, settings, isPlayerVisible)
+        ) { contentLoad, settings, isPlayerVisible ->
+            Triple(contentLoad, settings, isPlayerVisible)
         }
 
     // STAGE 2: Final Assembly
@@ -75,7 +80,9 @@ constructor(
             _isEditMode,
             _episodeForDetails,
             _sortMode
-        ) { (dbFavorites, settings, isPlayerVisible), optimisticFavorites, isEditMode, episodeForDetails, sortMode ->
+        ) { (contentLoad, settings, isPlayerVisible), optimisticFavorites, isEditMode, episodeForDetails, sortMode ->
+
+            val dbFavorites = contentLoad.lastValue ?: kotlinx.collections.immutable.persistentListOf()
 
             val currentFavorites =
                 if (optimisticFavorites != null && optimisticFavorites.size == dbFavorites.size) {
@@ -85,7 +92,12 @@ constructor(
                 }
 
             FavoritesUiState(
-                isLoading = false,
+                contentLoad = if (contentLoad.lastValue == null) {
+                    contentLoad
+                } else {
+                    contentLoad.copy(lastValue = currentFavorites.toImmutableList())
+                },
+                isLoading = contentLoad.loading,
                 favorites = currentFavorites.toImmutableList(),
                 dateGroupedRows = buildFavoriteDateRows(
                     items = dbFavorites,

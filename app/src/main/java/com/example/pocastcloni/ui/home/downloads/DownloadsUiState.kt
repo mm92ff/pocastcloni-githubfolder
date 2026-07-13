@@ -2,12 +2,14 @@ package com.example.pocastcloni.ui.home.downloads
 
 import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.ui.home.detail.EpisodeUiModel
+import com.example.pocastcloni.ui.common.RetainedLoad
 import com.example.pocastcloni.util.Constants
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
 @Immutable
 data class DownloadsUiState(
+    val contentLoad: RetainedLoad<ImmutableList<EpisodeUiModel>> = RetainedLoad(),
     val isLoading: Boolean = true,
     val episodes: ImmutableList<EpisodeUiModel> = persistentListOf(),
     val confirmDelete: Boolean = false,

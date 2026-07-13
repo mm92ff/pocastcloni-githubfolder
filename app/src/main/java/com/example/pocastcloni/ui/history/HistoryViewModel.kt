@@ -2,10 +2,13 @@ package com.example.pocastcloni.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.episode.GetPlaybackHistoryWithPodcastInfoUseCase
 import com.example.pocastcloni.domain.usecase.history.ClearHistoryUseCase
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
+import com.example.pocastcloni.ui.UiText
+import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,6 +47,8 @@ constructor(
                 }.sortedByDescending { it.episode.datePlayedMs ?: 0L }
             }
             .distinctUntilChanged()
+            .map { it.toImmutableList() }
+            .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
 
     private val isPlayerVisibleFlow =
         audioPlayerController.playerState
@@ -56,10 +61,12 @@ constructor(
             userPreferencesRepository.userSettingsFlow,
             isPlayerVisibleFlow,
             _showConfirmClearDialog
-        ) { historyItems, settings, isPlayerVisible, showConfirmClearDialog ->
+        ) { contentLoad, settings, isPlayerVisible, showConfirmClearDialog ->
+            val historyItems = contentLoad.lastValue ?: kotlinx.collections.immutable.persistentListOf()
             HistoryUiState(
-                isLoading = false,
-                historyItems = historyItems.toImmutableList(),
+                contentLoad = contentLoad,
+                isLoading = contentLoad.loading,
+                historyItems = historyItems,
                 historyRows = buildHistoryRows(
                     items = if (settings.oneHandedMode) {
                         historyItems.asReversed()

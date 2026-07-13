@@ -29,7 +29,8 @@ enum class FeedRefreshSource {
 private data class FeedRefreshRequest(
     val downloadLimit: Int,
     val mode: FeedUpdateMode,
-    val forceFull: Boolean
+    val forceFull: Boolean,
+    val feedUrls: Set<String>?
 )
 
 private class RefreshFlight(
@@ -56,7 +57,8 @@ constructor(
     suspend fun refresh(
         source: FeedRefreshSource,
         forceFull: Boolean = false,
-        downloadLimitOverride: Int? = null
+        downloadLimitOverride: Int? = null,
+        feedUrls: Set<String>? = null
     ): PodcastUpdateSummary {
         val settings = preferences.userSettingsFlow.first()
         val request =
@@ -65,7 +67,8 @@ constructor(
                 mode = settings.feedUpdateMode,
                 forceFull = forceFull || source == FeedRefreshSource.MANUAL ||
                     source == FeedRefreshSource.BACKUP_RESTORE ||
-                    settings.feedUpdateMode.requiresForceFullRefresh()
+                    settings.feedUpdateMode.requiresForceFullRefresh(),
+                feedUrls = feedUrls?.toSet()
             )
 
         val flight = registerWaiter(request)
@@ -107,7 +110,8 @@ constructor(
                 repository.updateAllPodcasts(
                     downloadLimit = flight.request.downloadLimit,
                     mode = flight.request.mode,
-                    forceFull = flight.request.forceFull
+                    forceFull = flight.request.forceFull,
+                    feedUrls = flight.request.feedUrls
                 )
             withContext(NonCancellable) { finishFlight(flight) }
             flight.result.complete(summary)
@@ -156,7 +160,9 @@ constructor(
 
     private fun RefreshFlight.canSatisfy(request: FeedRefreshRequest): Boolean {
         val hasMatchingConfiguration =
-            this.request.downloadLimit == request.downloadLimit && this.request.mode == request.mode
+            this.request.downloadLimit == request.downloadLimit &&
+                this.request.mode == request.mode &&
+                this.request.feedUrls == request.feedUrls
         return when {
             !acceptingWaiters -> false
             !hasMatchingConfiguration -> false

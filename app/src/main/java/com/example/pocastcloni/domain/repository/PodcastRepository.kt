@@ -47,7 +47,8 @@ interface PodcastRepository {
     suspend fun updateAllPodcasts(
         downloadLimit: Int,
         mode: FeedUpdateMode,
-        forceFull: Boolean
+        forceFull: Boolean,
+        feedUrls: Set<String>? = null
     ): PodcastUpdateSummary
 
     suspend fun addPodcast(
