@@ -12,11 +12,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.example.pocastcloni.R
-import com.example.pocastcloni.domain.repository.PodcastRepository
-import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 
 @HiltWorker
@@ -25,8 +23,7 @@ class FeedUpdateWorker
 constructor(
     @Assisted private val context: Context,
     @Assisted params: WorkerParameters,
-    private val repository: PodcastRepository,
-    private val prefs: UserPreferencesRepository
+    private val feedUpdateRunner: FeedUpdateRunner
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         return try {
@@ -36,16 +33,9 @@ constructor(
 
             Timber.d("Starting feed update...")
 
-            val settings = prefs.userSettingsFlow.first()
-
             // 2. Perform Update
             try {
-                val summary =
-                    repository.updateAllPodcasts(
-                        downloadLimit = settings.autoDownloadLimit,
-                        mode = settings.feedUpdateMode,
-                        forceFull = settings.feedUpdateMode.requiresForceFullRefresh()
-                    )
+                val summary = feedUpdateRunner()
                 if (summary.allFailed) {
                     Timber.w("Feed update failed for all %d podcasts.", summary.totalCount)
                 } else if (summary.hasFailures) {
@@ -58,17 +48,19 @@ constructor(
                     Timber.d("Update finished: %d podcasts refreshed.", summary.successfulCount)
                 }
 
-                repository.cleanupPlayedEpisodes()
-
                 if (summary.allFailed) {
                     return if (runAttemptCount < 3) Result.retry() else Result.failure()
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.e(e, "Error updating podcasts.")
                 return if (runAttemptCount < 3) Result.retry() else Result.failure()
             }
 
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Fatal error in FeedUpdateWorker")
             Result.failure()

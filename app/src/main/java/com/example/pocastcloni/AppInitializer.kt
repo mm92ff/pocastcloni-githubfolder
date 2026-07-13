@@ -6,9 +6,9 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.pocastcloni.data.worker.FeedUpdateWorker
-import com.example.pocastcloni.data.worker.LibraryCleanupWorker // Add import
 import com.example.pocastcloni.data.repository.BackupImportRecovery
 import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
+import com.example.pocastcloni.data.worker.LibraryCleanupScheduler
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
@@ -34,7 +34,8 @@ constructor(
     private val workManager: WorkManager,
     private val dispatcherProvider: DispatcherProvider,
     private val backupImportRecovery: BackupImportRecovery,
-    private val localNetworkAccessRegistry: LocalNetworkAccessRegistry
+    private val localNetworkAccessRegistry: LocalNetworkAccessRegistry,
+    private val libraryCleanupScheduler: LibraryCleanupScheduler
 ) {
     fun initialize() {
         observeApprovedLocalFeeds()
@@ -114,12 +115,7 @@ constructor(
                     }
                     .collect { (isEnabled, hours) ->
                         try {
-                            if (isEnabled) {
-                                setupLibraryCleanup(hours)
-                            } else {
-                                Timber.d("Library cleanup disabled by user. Cancelling work.")
-                                workManager.cancelUniqueWork(LibraryCleanupWorker.WORK_NAME)
-                            }
+                            libraryCleanupScheduler.applySettings(isEnabled, hours)
                         } catch (e: Exception) {
                             Timber.e(e, "Failed to apply cleanup settings change.")
                         }
@@ -128,28 +124,6 @@ constructor(
                 Timber.e(e, "Fatal error in cleanup settings observer.")
             }
         }
-    }
-
-    private fun setupLibraryCleanup(intervalHours: Int) {
-        val safeHours = intervalHours.coerceAtLeast(1).toLong()
-
-        val constraints =
-            Constraints.Builder()
-                .setRequiresDeviceIdle(true)
-                .setRequiresBatteryNotLow(true)
-                .build()
-
-        val cleanupRequest =
-            PeriodicWorkRequestBuilder<LibraryCleanupWorker>(safeHours, TimeUnit.HOURS)
-                .setConstraints(constraints)
-                .build()
-
-        workManager.enqueueUniquePeriodicWork(
-            LibraryCleanupWorker.WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            cleanupRequest
-        )
-        Timber.i("Library cleanup scheduled every $safeHours hours (Idle, Battery OK).")
     }
 
     private fun setupBackgroundSync(intervalHours: Int) {

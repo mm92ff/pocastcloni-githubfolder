@@ -4,11 +4,9 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.pocastcloni.domain.repository.PodcastRepository
-import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 
 @HiltWorker
@@ -17,8 +15,7 @@ class LibraryCleanupWorker
 constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val podcastRepository: PodcastRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val cleanupRunner: LibraryCleanupRunner
 ) : CoroutineWorker(appContext, workerParams) {
     companion object {
         const val WORK_NAME = "LibraryCleanupWork"
@@ -28,13 +25,14 @@ constructor(
         return try {
             Timber.d("Starting library cleanup job...")
 
-            val settings = userPreferencesRepository.userSettingsFlow.first()
-            val limit = settings.cleanupKeepLimit
-
-            podcastRepository.pruneLibrary(limit)
-
-            Timber.d("Library cleanup finished successfully.")
+            if (cleanupRunner()) {
+                Timber.d("Library cleanup finished successfully.")
+            } else {
+                Timber.d("Library cleanup skipped because auto cleanup is disabled.")
+            }
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Library cleanup failed")
             Result.retry()
