@@ -32,4 +32,14 @@ class FeedUpdateRunnerTest {
 
         coVerify(exactly = 1) { coordinator.refresh(FeedRefreshSource.BACKGROUND) }
     }
+
+    @Test
+    fun `backup worker routes restore refresh source`() = runTest {
+        coEvery { coordinator.refresh(FeedRefreshSource.BACKUP_RESTORE) } returns
+            PodcastUpdateSummary(totalCount = 1, successfulCount = 1, failureCount = 0)
+
+        runner(FeedRefreshSource.BACKUP_RESTORE)
+
+        coVerify(exactly = 1) { coordinator.refresh(FeedRefreshSource.BACKUP_RESTORE) }
+    }
 }

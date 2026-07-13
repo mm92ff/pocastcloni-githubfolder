@@ -39,14 +39,7 @@ constructor(
                     BackupResult.ExportSuccess
                 }
                 is BackupAction.Import -> {
-                    val settings = userPreferencesRepository.userSettingsFlow.first()
-                    // Aufruf geht an das BackupRepository
-                    val result =
-                        backupRepository.importFullBackup(
-                            Uri.parse(action.path),
-                            settings.autoDownloadLimit,
-                            settings.feedUpdateMode
-                        )
+                    val result = backupRepository.importFullBackup(Uri.parse(action.path))
                     BackupResult.ImportSuccess(result)
                 }
             }

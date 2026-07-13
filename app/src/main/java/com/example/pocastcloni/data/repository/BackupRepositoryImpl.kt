@@ -6,23 +6,23 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.data.local.BackupData
 import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupFavorite
-import com.example.pocastcloni.data.local.BackupPodcast
-import com.example.pocastcloni.data.local.PodcastDao
-import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.BackupImportJournalDao
 import com.example.pocastcloni.data.local.BackupImportJournalEntity
+import com.example.pocastcloni.data.local.BackupPodcast
+import com.example.pocastcloni.data.local.EpisodeEntity
+import com.example.pocastcloni.data.local.PodcastDao
+import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.FavoriteOrderUpdate
 import com.example.pocastcloni.data.local.PodcastSortUpdate
 import com.example.pocastcloni.data.local.settingsForRestore
 import com.example.pocastcloni.data.manager.PodcastBackupHelper
 import com.example.pocastcloni.data.manager.validateBackupData
+import com.example.pocastcloni.data.worker.BackupPostImportSyncScheduler
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.repository.BackupRepository
 import com.example.pocastcloni.domain.repository.ImportResult
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
-import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
 import com.example.pocastcloni.util.isAllowedRemoteResource
 import com.fasterxml.jackson.databind.ObjectMapper
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,12 +30,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import java.util.Date
 import javax.inject.Inject
-import javax.inject.Provider
 import javax.inject.Singleton
 
 @Singleton
@@ -45,16 +42,15 @@ constructor(
     private val podcastDao: PodcastDao,
     private val backupHelper: PodcastBackupHelper,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val syncFeedUseCase: Provider<SyncFeedUseCase>,
     private val dispatcherProvider: DispatcherProvider,
     private val transactionRunner: BackupImportTransactionRunner,
     private val backupImportJournalDao: BackupImportJournalDao,
     private val objectMapper: ObjectMapper,
     private val backupImportRecovery: BackupImportRecovery,
+    private val importCoordinator: BackupImportCoordinator,
+    private val postImportSyncScheduler: BackupPostImportSyncScheduler,
     @ApplicationContext private val context: Context
 ) : BackupRepository {
-    private val importMutex = Mutex()
-
     override suspend fun exportFullBackup(
         uri: Uri,
         settings: UserSettings
@@ -75,25 +71,17 @@ constructor(
         }
     }
 
-    override suspend fun importFullBackup(
-        uri: Uri,
-        downloadLimit: Int,
-        mode: FeedUpdateMode
-    ): ImportResult {
+    override suspend fun importFullBackup(uri: Uri): ImportResult {
         return withContext(dispatcherProvider.io) {
-            importMutex.withLock {
-                importFullBackupLocked(uri, downloadLimit, mode)
+            importCoordinator.runExclusive {
+                importFullBackupLocked(uri)
             }
         }
     }
 
-    private suspend fun importFullBackupLocked(
-        uri: Uri,
-        downloadLimit: Int,
-        mode: FeedUpdateMode
-    ): ImportResult {
+    private suspend fun importFullBackupLocked(uri: Uri): ImportResult {
         val backupData = validateBackupData(backupHelper.importBackup(uri, context.contentResolver))
-        backupImportRecovery.recoverInterruptedImport()
+        backupImportRecovery.recoverInterruptedImportLocked()
         val total = backupData.podcasts.size
         val importedPodcasts = backupData.podcasts.normalizedForImport()
         val previousSettings = userPreferencesRepository.userSettingsFlow.first()
@@ -103,7 +91,7 @@ constructor(
         )
         backupImportJournalDao.savePendingImport(pendingImport)
 
-        val syncTargets = mutableListOf<PodcastEntity>()
+        var restoreResult = EpisodeRestoreResult()
         try {
             settingsToRestore?.let { settings ->
                 userPreferencesRepository.restoreSettingsOrThrow(settings)
@@ -133,7 +121,7 @@ constructor(
                         eTagHeader = backupPodcast.eTagHeader,
                         lastRefreshed = Date(0)
                     )
-                    insertPodcastStubPreservingExisting(podcastDao, stub)?.let(syncTargets::add)
+                    insertPodcastStubPreservingExisting(podcastDao, stub)
                     if (backupData.version >= 2) {
                         podcastDao.updateAutoDownloadEnabled(
                             backupPodcast.url,
@@ -144,7 +132,7 @@ constructor(
                 podcastDao.updatePodcastSortOrders(
                     mergedPodcastSortUpdates(importedPodcasts, existingPodcasts)
                 )
-                restoreAvailableEpisodeStates(
+                restoreResult = restoreAvailableEpisodeStates(
                     podcastDao = podcastDao,
                     backupData = backupData,
                     restoreDuration = true
@@ -163,39 +151,14 @@ constructor(
             throw error
         }
 
-        syncTargets.forEach { storedPodcast ->
-            if (
-                maySyncImportedFeed(
-                    storedPodcast.rssUrl,
-                    storedPodcast.allowInsecureHttp,
-                    storedPodcast.allowLocalNetwork
-                )
-            ) {
-                try {
-                    syncFeedUseCase.get().invoke(
-                        storedPodcast.rssUrl,
-                        downloadLimit,
-                        mode,
-                        sortOrder = null,
-                        forceFull = false,
-                        allowInsecureHttp = storedPodcast.allowInsecureHttp,
-                        allowLocalNetwork = storedPodcast.allowLocalNetwork
-                    )
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Exception) {
-                    Timber.w(error, "Post-import sync failed for ${storedPodcast.rssUrl}")
-                }
+        if (importedPodcasts.isNotEmpty()) {
+            try {
+                postImportSyncScheduler.schedule()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "Could not schedule post-import feed refresh")
             }
-        }
-
-        var restoreResult = EpisodeRestoreResult()
-        transactionRunner.run {
-            restoreResult = restoreAvailableEpisodeStates(
-                podcastDao = podcastDao,
-                backupData = backupData,
-                restoreDuration = false
-            )
         }
         return ImportResult(
             success = total,
@@ -252,6 +215,7 @@ internal suspend fun restoreAvailableEpisodeStates(
 
     backupData.episodeStates.forEach { state ->
         val episode = podcastDao.getEpisodeByFeedAndGuid(state.podcastUrl, state.episodeGuid)
+            ?: insertEpisodePlaceholderIfParentExists(podcastDao, state.toPlaceholder())
             ?: return@forEach
         check(
             podcastDao.updatePortableEpisodeState(
@@ -283,6 +247,7 @@ internal suspend fun restoreAvailableEpisodeStates(
     backupData.favorites.forEach { favorite ->
         if (favorite.backupKey() in stateKeys) return@forEach
         val episode = podcastDao.getEpisodeByFeedAndGuid(favorite.podcastUrl, favorite.episodeGuid)
+            ?: insertEpisodePlaceholderIfParentExists(podcastDao, favorite.toPlaceholder())
             ?: return@forEach
         podcastDao.setFavoriteStatus(
             episodeId = episode.episodeId,
@@ -327,6 +292,38 @@ internal suspend fun restoreAvailableEpisodeStates(
 private fun BackupEpisodeState.backupKey() = EpisodeBackupKey(podcastUrl, episodeGuid)
 
 private fun BackupFavorite.backupKey() = EpisodeBackupKey(podcastUrl, episodeGuid)
+
+private fun BackupEpisodeState.toPlaceholder() =
+    EpisodeEntity(
+        guid = episodeGuid,
+        podcastRssUrl = podcastUrl,
+        title = title.ifBlank { episodeGuid },
+        description = description,
+        pubDate = publishedAt?.let(::Date),
+        link = "",
+        enclosureUrl = "",
+        duration = duration
+    )
+
+private fun BackupFavorite.toPlaceholder() =
+    EpisodeEntity(
+        guid = episodeGuid,
+        podcastRssUrl = podcastUrl,
+        title = episodeGuid,
+        description = "",
+        pubDate = null,
+        link = "",
+        enclosureUrl = ""
+    )
+
+private suspend fun insertEpisodePlaceholderIfParentExists(
+    podcastDao: PodcastDao,
+    placeholder: EpisodeEntity
+): EpisodeEntity? {
+    if (podcastDao.getPodcastByUrl(placeholder.podcastRssUrl) == null) return null
+    podcastDao.insertEpisodesIgnore(listOf(placeholder))
+    return podcastDao.getEpisodeByFeedAndGuid(placeholder.podcastRssUrl, placeholder.guid)
+}
 
 internal suspend fun insertPodcastStubPreservingExisting(
     podcastDao: PodcastDao,

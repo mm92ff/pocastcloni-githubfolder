@@ -22,7 +22,8 @@ import javax.inject.Singleton
 enum class FeedRefreshSource {
     STARTUP,
     BACKGROUND,
-    MANUAL
+    MANUAL,
+    BACKUP_RESTORE
 }
 
 private data class FeedRefreshRequest(
@@ -63,6 +64,7 @@ constructor(
                 downloadLimit = downloadLimitOverride ?: settings.autoDownloadLimit,
                 mode = settings.feedUpdateMode,
                 forceFull = forceFull || source == FeedRefreshSource.MANUAL ||
+                    source == FeedRefreshSource.BACKUP_RESTORE ||
                     settings.feedUpdateMode.requiresForceFullRefresh()
             )
 

@@ -15,21 +15,22 @@ import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.BackupImportJournalDao
 import com.example.pocastcloni.data.manager.PodcastBackupHelper
 import com.example.pocastcloni.data.manager.parseBackupJson
+import com.example.pocastcloni.data.worker.BackupPostImportSyncScheduler
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.model.AppTheme
-import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -42,7 +43,6 @@ import org.junit.Assert.assertTrue
 import java.io.IOException
 import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
-import javax.inject.Provider
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BackupRepositorySecurityTest {
@@ -50,10 +50,11 @@ class BackupRepositorySecurityTest {
     private val dao = mockk<PodcastDao>(relaxed = true)
     private val backupHelper = mockk<PodcastBackupHelper>()
     private val preferences = mockk<UserPreferencesRepository>(relaxed = true)
-    private val syncFeed = mockk<SyncFeedUseCase>(relaxed = true)
     private val transactionRunner = mockk<BackupImportTransactionRunner>()
     private val journalDao = mockk<BackupImportJournalDao>(relaxed = true)
     private val recovery = mockk<BackupImportRecovery>(relaxed = true)
+    private val importCoordinator = BackupImportCoordinator()
+    private val postImportSyncScheduler = mockk<BackupPostImportSyncScheduler>(relaxed = true)
     private val objectMapper = jacksonObjectMapper()
     private val dispatcherProvider = mockk<DispatcherProvider>().also {
         every { it.io } returns dispatcher
@@ -65,12 +66,13 @@ class BackupRepositorySecurityTest {
         podcastDao = dao,
         backupHelper = backupHelper,
         userPreferencesRepository = preferences,
-        syncFeedUseCase = Provider { syncFeed },
         dispatcherProvider = dispatcherProvider,
         transactionRunner = transactionRunner,
         backupImportJournalDao = journalDao,
         objectMapper = objectMapper,
         backupImportRecovery = recovery,
+        importCoordinator = importCoordinator,
+        postImportSyncScheduler = postImportSyncScheduler,
         context = context
     )
 
@@ -152,13 +154,13 @@ class BackupRepositorySecurityTest {
         )
 
         try {
-            repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+            repository.importFullBackup(mockk())
             fail("Expected validation failure")
         } catch (_: IllegalArgumentException) {
             // Expected.
         }
 
-        coVerify(exactly = 0) { recovery.recoverInterruptedImport() }
+        coVerify(exactly = 0) { recovery.recoverInterruptedImportLocked() }
         coVerify(exactly = 0) { journalDao.savePendingImport(any()) }
         coVerify(exactly = 0) { preferences.restoreSettingsOrThrow(any()) }
         coVerify(exactly = 0) { transactionRunner.run(any()) }
@@ -193,7 +195,7 @@ class BackupRepositorySecurityTest {
         coEvery { dao.getAllPodcastsForExport() } returns listOf(existing)
         coEvery { dao.getPodcastByUrl(url) } returns existing
 
-        repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+        repository.importFullBackup(mockk())
 
         coVerify(exactly = 0) { dao.updateAutoDownloadEnabled(url, any()) }
     }
@@ -264,7 +266,7 @@ class BackupRepositorySecurityTest {
             dao.updatePortableEpisodeState(any(), any(), any(), any(), any(), any(), any(), any())
         } returns 1
 
-        val result = repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+        val result = repository.importFullBackup(mockk())
 
         assertEquals(0, result.skippedFavorites)
         coVerify(exactly = 1) {
@@ -281,18 +283,6 @@ class BackupRepositorySecurityTest {
         }
         coVerify(exactly = 1) {
             dao.updatePortableEpisodeState(
-                episodeId = 11,
-                isFavorite = true,
-                favoriteAddedAt = 100,
-                isPlayed = true,
-                datePlayed = Date(300),
-                playbackPositionMs = 50_000,
-                duration = 60_000,
-                restoreDuration = false
-            )
-        }
-        coVerify(exactly = 1) {
-            dao.updatePortableEpisodeState(
                 episodeId = 22,
                 isFavorite = true,
                 favoriteAddedAt = 200,
@@ -301,18 +291,6 @@ class BackupRepositorySecurityTest {
                 playbackPositionMs = 40_000,
                 duration = 90_000,
                 restoreDuration = true
-            )
-        }
-        coVerify(exactly = 1) {
-            dao.updatePortableEpisodeState(
-                episodeId = 22,
-                isFavorite = true,
-                favoriteAddedAt = 200,
-                isPlayed = false,
-                datePlayed = null,
-                playbackPositionMs = 40_000,
-                duration = 90_000,
-                restoreDuration = false
             )
         }
         coVerify {
@@ -359,18 +337,14 @@ class BackupRepositorySecurityTest {
         )
         coEvery { dao.getPodcastByUrl(url) } returnsMany listOf(null, null, storedStub, storedStub)
 
-        repository.importFullBackup(
-            uri = mockk<Uri>(),
-            downloadLimit = 3,
-            mode = FeedUpdateMode.SMART_STREAM
-        )
+        repository.importFullBackup(mockk<Uri>())
 
         coVerify {
             dao.insertPodcasts(match { podcasts ->
                 podcasts.single().let { !it.allowInsecureHttp && it.imageUrl.isEmpty() }
             })
         }
-        coVerify(exactly = 0) { syncFeed.invoke(any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 1) { postImportSyncScheduler.schedule() }
     }
 
     @Test
@@ -395,20 +369,14 @@ class BackupRepositorySecurityTest {
         )
         coEvery { dao.getPodcastByUrl(url) } returnsMany listOf(null, null, storedStub, storedStub)
 
-        repository.importFullBackup(
-            uri = mockk<Uri>(),
-            downloadLimit = 3,
-            mode = FeedUpdateMode.SMART_STREAM
-        )
+        repository.importFullBackup(mockk<Uri>())
 
         coVerify {
             dao.insertPodcasts(match { podcasts ->
                 podcasts.single().let { !it.allowLocalNetwork && it.imageUrl.isEmpty() }
             })
         }
-        coVerify(exactly = 0) {
-            syncFeed.invoke(any(), any(), any(), any(), any(), any(), any())
-        }
+        coVerify(exactly = 1) { postImportSyncScheduler.schedule() }
     }
 
     @Test
@@ -420,7 +388,7 @@ class BackupRepositorySecurityTest {
         coEvery { transactionRunner.run(any()) } throws CancellationException("cancelled")
 
         try {
-            repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+            repository.importFullBackup(mockk())
             fail("Expected cancellation")
         } catch (_: CancellationException) {
             // Expected.
@@ -428,28 +396,92 @@ class BackupRepositorySecurityTest {
 
         coVerify { preferences.restoreSettingsOrThrow(previous) }
         coVerify { journalDao.clearPendingImport() }
-        coVerify(exactly = 0) { syncFeed.invoke(any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { postImportSyncScheduler.schedule() }
     }
 
     @Test
-    fun `post-commit sync cancellation propagates without rolling committed settings back`() = runTest(dispatcher) {
+    fun `post-commit scheduling cancellation propagates without rolling committed settings back`() = runTest(dispatcher) {
         val url = "https://example.com/feed.xml"
         val stored = PodcastEntity(url, "Imported", "", "")
         coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
             podcasts = listOf(BackupPodcast(url = url, title = "Imported"))
         )
         coEvery { dao.getPodcastByUrl(url) } returnsMany listOf(null, null, stored)
-        coEvery { syncFeed.invoke(any(), any(), any(), any(), any(), any()) } throws
-            CancellationException("cancelled")
+        coEvery { postImportSyncScheduler.schedule() } throws CancellationException("cancelled")
 
         try {
-            repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+            repository.importFullBackup(mockk())
             fail("Expected cancellation")
         } catch (_: CancellationException) {
             // Expected.
         }
 
         coVerify(exactly = 0) { preferences.restoreSettingsOrThrow(any()) }
+    }
+
+    @Test
+    fun `post-commit scheduling failure does not fail committed import`() = runTest(dispatcher) {
+        val url = "https://example.com/feed.xml"
+        val stored = PodcastEntity(url, "Imported", "", "")
+        coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
+            podcasts = listOf(BackupPodcast(url = url, title = "Imported"))
+        )
+        coEvery { dao.getPodcastByUrl(url) } returnsMany listOf(null, null, stored)
+        coEvery { postImportSyncScheduler.schedule() } throws IOException("work manager unavailable")
+
+        val result = repository.importFullBackup(mockk())
+
+        assertEquals(1, result.success)
+        assertEquals(1, result.total)
+        coVerify(exactly = 0) { preferences.restoreSettingsOrThrow(any()) }
+    }
+
+    @Test
+    fun `startup recovery and active import share one coordinator`() = runTest(dispatcher) {
+        val sharedCoordinator = BackupImportCoordinator()
+        val recoveryEntered = CompletableDeferred<Unit>()
+        val releaseRecovery = CompletableDeferred<Unit>()
+        var recoveryReads = 0
+        coEvery { journalDao.getPendingImport() } coAnswers {
+            recoveryReads += 1
+            if (recoveryReads == 1) {
+                recoveryEntered.complete(Unit)
+                releaseRecovery.await()
+            }
+            null
+        }
+        val sharedRecovery = BackupImportRecovery(
+            journalDao,
+            preferences,
+            objectMapper,
+            sharedCoordinator
+        )
+        val sharedRepository = BackupRepositoryImpl(
+            podcastDao = dao,
+            backupHelper = backupHelper,
+            userPreferencesRepository = preferences,
+            dispatcherProvider = dispatcherProvider,
+            transactionRunner = transactionRunner,
+            backupImportJournalDao = journalDao,
+            objectMapper = objectMapper,
+            backupImportRecovery = sharedRecovery,
+            importCoordinator = sharedCoordinator,
+            postImportSyncScheduler = postImportSyncScheduler,
+            context = context
+        )
+        coEvery { backupHelper.importBackup(any(), any()) } returns
+            BackupData(settings = UserSettings())
+
+        val recovery = async { sharedRecovery.recoverInterruptedImport() }
+        recoveryEntered.await()
+        val import = async { sharedRepository.importFullBackup(mockk()) }
+        runCurrent()
+
+        coVerify(exactly = 0) { backupHelper.importBackup(any(), any()) }
+        releaseRecovery.complete(Unit)
+        recovery.await()
+        import.await()
+        coVerify(exactly = 1) { backupHelper.importBackup(any(), any()) }
     }
 
     @Test
@@ -465,8 +497,8 @@ class BackupRepositorySecurityTest {
         }
 
         listOf(
-            async { repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL) },
-            async { repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL) }
+            async { repository.importFullBackup(mockk()) },
+            async { repository.importFullBackup(mockk()) }
         ).awaitAll()
 
         assertEquals(1, maximum.get())
@@ -509,7 +541,7 @@ class BackupRepositorySecurityTest {
                     )
             )
 
-        repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+        repository.importFullBackup(mockk())
 
         coVerify { preferences.restoreSettingsOrThrow(expected) }
         coVerify {
@@ -533,7 +565,7 @@ class BackupRepositorySecurityTest {
         coEvery { transactionRunner.run(any()) } throws IOException("database failed")
 
         try {
-            repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+            repository.importFullBackup(mockk())
             fail("Expected import failure")
         } catch (_: IOException) {
             // Expected.
@@ -543,6 +575,6 @@ class BackupRepositorySecurityTest {
         coVerify { preferences.restoreSettingsOrThrow(imported) }
         coVerify { preferences.restoreSettingsOrThrow(previous) }
         coVerify { journalDao.clearPendingImport() }
-        coVerify(exactly = 0) { syncFeed.invoke(any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { postImportSyncScheduler.schedule() }
     }
 }

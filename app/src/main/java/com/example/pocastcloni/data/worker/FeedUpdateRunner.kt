@@ -10,6 +10,7 @@ class FeedUpdateRunner
 constructor(
     private val refreshCoordinator: FeedRefreshCoordinator
 ) {
-    suspend operator fun invoke(): PodcastUpdateSummary =
-        refreshCoordinator.refresh(FeedRefreshSource.BACKGROUND)
+    suspend operator fun invoke(
+        source: FeedRefreshSource = FeedRefreshSource.BACKGROUND
+    ): PodcastUpdateSummary = refreshCoordinator.refresh(source)
 }

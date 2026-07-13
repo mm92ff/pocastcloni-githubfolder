@@ -96,7 +96,7 @@
 
     <string name="add_podcast_success">Podcast added successfully</string>
     <string name="add_podcast_failure">Error: %1$s</string>
-    <string name="import_success_message">Import successful: %1$d of %2$d podcasts imported.</string>
+    <string name="import_success_message">Import successful: %1$d of %2$d podcasts imported. Favorites skipped: %3$d.</string>
     <string name="import_error_message">Import failed: %1$s</string>
     <string name="export_success_message">Export successful.</string>
     <string name="export_error_message">Export failed: %1$s</string>

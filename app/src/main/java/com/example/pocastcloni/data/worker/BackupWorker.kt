@@ -10,6 +10,7 @@ import com.example.pocastcloni.domain.usecase.app.BackupResult
 import com.example.pocastcloni.domain.usecase.app.ManageBackupUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 
 @HiltWorker
@@ -42,6 +43,8 @@ constructor(
 
             val result = manageBackupUseCase(action)
             createOutputData(result)
+        } catch (error: CancellationException) {
+            throw error
         } catch (e: Exception) {
             Timber.e(e, "Backup operation failed")
             Result.failure(
@@ -60,6 +63,7 @@ constructor(
                     Data.Builder()
                         .putInt(KEY_IMPORT_SUCCESS_COUNT, result.result.success)
                         .putInt(KEY_IMPORT_TOTAL_COUNT, result.result.total)
+                        .putInt(KEY_IMPORT_SKIPPED_FAVORITES, result.result.skippedFavorites)
                         .build()
                 )
             }
@@ -72,6 +76,7 @@ constructor(
         const val KEY_ERROR_MESSAGE = "error_message"
         const val KEY_IMPORT_SUCCESS_COUNT = "import_success_count"
         const val KEY_IMPORT_TOTAL_COUNT = "import_total_count"
+        const val KEY_IMPORT_SKIPPED_FAVORITES = "import_skipped_favorites"
 
         const val ACTION_EXPORT = "EXPORT"
         const val ACTION_IMPORT = "IMPORT"

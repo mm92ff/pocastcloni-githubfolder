@@ -225,6 +225,20 @@ class FeedRefreshCoordinatorTest {
         assertEquals(expected, second.await())
     }
 
+    @Test
+    fun `backup restore always forces a full refresh`() = runTest(dispatcher) {
+        givenSmartSettings()
+        val expected = PodcastUpdateSummary(1, 1, 0)
+        coEvery { repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, true) } returns expected
+
+        val result = coordinator().refresh(FeedRefreshSource.BACKUP_RESTORE)
+
+        assertEquals(expected, result)
+        coVerify(exactly = 1) {
+            repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, true)
+        }
+    }
+
     private fun givenSmartSettings() {
         every { preferences.userSettingsFlow } returns
             flowOf(UserSettings(autoDownloadLimit = 3, feedUpdateMode = FeedUpdateMode.SMART_STREAM))

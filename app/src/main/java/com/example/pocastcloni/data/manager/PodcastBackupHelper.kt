@@ -16,10 +16,11 @@ import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.BufferedOutputStream
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
-import java.io.OutputStreamWriter
+import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,21 +50,26 @@ constructor(
                         )
                     )
 
-                val json = objectMapper.writeValueAsString(backupData)
-
                 val outputStream =
                     contentResolver.openOutputStream(uri, "wt")
                         ?: throw IOException("Could not open the backup destination.")
 
-                outputStream.use {
-                    OutputStreamWriter(outputStream).use { writer ->
-                        writer.write(json)
-                    }
-                }
+                writeBackupToStream(backupData, outputStream)
                 Timber.d("Backup exported successfully to $uri")
             } catch (e: Exception) {
                 Timber.e(e, "Failed to export backup")
                 throw e
+            }
+        }
+    }
+
+    internal fun writeBackupToStream(
+        backupData: BackupData,
+        outputStream: OutputStream
+    ) {
+        BufferedOutputStream(outputStream, BACKUP_EXPORT_BUFFER_BYTES).use { bufferedOutput ->
+            objectMapper.factory.createGenerator(bufferedOutput).use { generator ->
+                objectMapper.writeValue(generator, backupData)
             }
         }
     }
@@ -100,6 +106,8 @@ constructor(
         }
     }
 }
+
+internal const val BACKUP_EXPORT_BUFFER_BYTES = 16 * 1024
 
 internal fun parseBackupJson(
     jsonString: String,
@@ -233,15 +241,18 @@ private fun enforceBackupStringLimit(
     length: Int,
     isLegacyUrl: Boolean
 ) {
-    val limit = if (isLegacyUrl) {
-        Constants.SecurityLimits.MAX_URL_CHARS
-    } else when (fieldName) {
-        "url", "image_url", "podcast_url", "podcastUrl" -> Constants.SecurityLimits.MAX_URL_CHARS
-        "title" -> Constants.SecurityLimits.MAX_TITLE_CHARS
-        "episode_guid", "episodeGuid" -> Constants.SecurityLimits.MAX_GUID_CHARS
-        "last_modified", "etag" -> Constants.SecurityLimits.MAX_HEADER_CHARS
-        else -> Constants.SecurityLimits.MAX_DESCRIPTION_CHARS
-    }
+    val limit =
+        if (isLegacyUrl) {
+            Constants.SecurityLimits.MAX_URL_CHARS
+        } else {
+            when (fieldName) {
+                "url", "image_url", "podcast_url", "podcastUrl" -> Constants.SecurityLimits.MAX_URL_CHARS
+                "title" -> Constants.SecurityLimits.MAX_TITLE_CHARS
+                "episode_guid", "episodeGuid" -> Constants.SecurityLimits.MAX_GUID_CHARS
+                "last_modified", "etag" -> Constants.SecurityLimits.MAX_HEADER_CHARS
+                else -> Constants.SecurityLimits.MAX_DESCRIPTION_CHARS
+            }
+        }
     require(length <= limit) { "Backup string field is too long." }
 }
 
@@ -295,7 +306,8 @@ internal fun validateBackupData(backupData: BackupData): BackupData {
             backupData.favorites.size
     ) { "Backup contains duplicate legacy favorites." }
     validateEpisodeStates(backupData)
-    if (backupData.podcasts.any { podcast ->
+    if (
+        backupData.podcasts.any { podcast ->
             !podcast.imageUrl.isNullOrBlank() &&
                 parseNetworkUrl(podcast.imageUrl, allowLocalNetwork = true) == null
         }

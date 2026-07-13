@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.pocastcloni.data.local.AppDatabase
 import com.example.pocastcloni.data.local.BackupData
 import com.example.pocastcloni.data.local.BackupEpisodeState
+import com.example.pocastcloni.data.local.BackupFavorite
 import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.data.local.BackupRoomSnapshot
 import com.example.pocastcloni.data.local.DownloadStatus
@@ -14,6 +15,9 @@ import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.EpisodeFeedUpdate
 import com.example.pocastcloni.data.local.PodcastSortUpdate
 import com.example.pocastcloni.data.local.PodcastEntity
+import com.example.pocastcloni.data.local.settingsForRestore
+import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.domain.repository.UserSettings
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -29,6 +33,156 @@ import java.util.Date
 
 @RunWith(AndroidJUnit4::class)
 class BackupImportPreservesDataAndroidTest {
+    @Test
+    fun emptyDatabaseOfflineRestoreCreatesPortableEpisodePlaceholders() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val dao = database.podcastDao()
+            val transactionRunner = BackupImportTransactionRunner(database)
+            val feedUrl = "https://example.com/offline.xml"
+            val backupData =
+                BackupData(
+                    podcasts = listOf(
+                        BackupPodcast(
+                            url = feedUrl,
+                            title = "Offline podcast",
+                            autoDownloadEnabled = true
+                        )
+                    ),
+                    settings = UserSettings(theme = AppTheme.DARK, autoDownloadLimit = 7),
+                    favorites = listOf(
+                        BackupFavorite(
+                            podcastUrl = feedUrl,
+                            episodeGuid = "legacy-favorite",
+                            timestamp = 50
+                        )
+                    ),
+                    episodeStates = listOf(
+                        BackupEpisodeState(
+                            podcastUrl = feedUrl,
+                            episodeGuid = "portable-state",
+                            title = "Offline episode",
+                            description = "Backup description",
+                            publishedAt = 100,
+                            duration = 90_000,
+                            isFavorite = true,
+                            favoriteAddedAt = 200,
+                            favoriteOrder = 0,
+                            isPlayed = true,
+                            datePlayed = 300,
+                            playbackPositionMs = 45_000
+                        )
+                    )
+                )
+
+            val restoredSettings = requireNotNull(backupData.settingsForRestore(UserSettings()))
+            assertEquals(AppTheme.DARK, restoredSettings.theme)
+            assertEquals(7, restoredSettings.autoDownloadLimit)
+
+            val restoreResult = transactionRunner.runForResult {
+                insertPodcastStubPreservingExisting(
+                    dao,
+                    PodcastEntity(
+                        rssUrl = feedUrl,
+                        title = "Offline podcast",
+                        description = "",
+                        imageUrl = "",
+                        autoDownloadEnabled = true
+                    )
+                )
+                restoreAvailableEpisodeStates(dao, backupData, restoreDuration = true)
+            }
+
+            assertEquals(EpisodeRestoreResult(2, 2), restoreResult)
+            assertNotNull(dao.getPodcastByUrl(feedUrl))
+            val restored = requireNotNull(dao.getEpisodeByFeedAndGuid(feedUrl, "portable-state"))
+            assertEquals("Offline episode", restored.title)
+            assertTrue(restored.isFavorite)
+            assertTrue(restored.isPlayed)
+            assertEquals(Date(300), restored.datePlayed)
+            assertEquals(45_000L, restored.playbackPositionMs)
+            assertEquals(90_000L, restored.duration)
+            assertEquals(DownloadStatus.NOT_DOWNLOADED, restored.downloadStatus)
+            assertEquals(null, restored.downloadPath)
+
+            val legacy = requireNotNull(dao.getEpisodeByFeedAndGuid(feedUrl, "legacy-favorite"))
+            assertTrue(legacy.isFavorite)
+            assertEquals(DownloadStatus.NOT_DOWNLOADED, legacy.downloadStatus)
+            assertEquals(null, legacy.downloadPath)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun normalFeedUpsertEnrichesPlaceholderAndPreservesPortableState() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val dao = database.podcastDao()
+            val feedUrl = "https://example.com/enrich.xml"
+            val guid = "placeholder-guid"
+            dao.insertPodcast(PodcastEntity(feedUrl, "Backup podcast", "", ""))
+            val backupData =
+                BackupData(
+                    podcasts = listOf(BackupPodcast(url = feedUrl)),
+                    episodeStates = listOf(
+                        BackupEpisodeState(
+                            podcastUrl = feedUrl,
+                            episodeGuid = guid,
+                            title = "Backup title",
+                            description = "Backup description",
+                            duration = 100,
+                            isFavorite = true,
+                            favoriteAddedAt = 10,
+                            favoriteOrder = 0,
+                            isPlayed = true,
+                            datePlayed = 20,
+                            playbackPositionMs = 30
+                        )
+                    )
+                )
+            restoreAvailableEpisodeStates(dao, backupData, restoreDuration = true)
+            val placeholder = requireNotNull(dao.getEpisodeByFeedAndGuid(feedUrl, guid))
+
+            dao.upsertEpisodesEfficient(
+                listOf(
+                    EpisodeEntity(
+                        guid = guid,
+                        podcastRssUrl = feedUrl,
+                        title = "Fresh feed title",
+                        description = "Fresh feed description",
+                        pubDate = Date(400),
+                        link = "https://example.com/episode",
+                        enclosureUrl = "https://example.com/audio.mp3",
+                        duration = 500,
+                        fileSize = 600
+                    )
+                )
+            )
+
+            val enriched = requireNotNull(dao.getEpisodeByFeedAndGuid(feedUrl, guid))
+            assertEquals(placeholder.episodeId, enriched.episodeId)
+            assertEquals("Fresh feed title", enriched.title)
+            assertEquals("Fresh feed description", enriched.description)
+            assertEquals(Date(400), enriched.pubDate)
+            assertEquals(500L, enriched.duration)
+            assertTrue(enriched.isFavorite)
+            assertTrue(enriched.isPlayed)
+            assertEquals(Date(20), enriched.datePlayed)
+            assertEquals(30L, enriched.playbackPositionMs)
+            assertEquals(DownloadStatus.NOT_DOWNLOADED, enriched.downloadStatus)
+            assertEquals(null, enriched.downloadPath)
+        } finally {
+            database.close()
+        }
+    }
+
     @Test
     fun existingPodcastStubImportPreservesEpisodeState() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()

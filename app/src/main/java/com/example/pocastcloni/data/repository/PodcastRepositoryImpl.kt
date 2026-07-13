@@ -51,7 +51,7 @@ constructor(
     private val syncFeedUseCase: Provider<SyncFeedUseCase>,
     @ApplicationContext private val context: Context
 ) : PodcastRepository {
-    private val updateSemaphore = Semaphore(4)
+    private val updateSemaphore = Semaphore(MAX_FEED_UPDATE_FANOUT)
 
     // --- FLOWS --- (unchanged)
     override fun getAllPodcastsFlow(): Flow<List<Podcast>> {
@@ -129,23 +129,25 @@ constructor(
     ): PodcastUpdateSummary {
         return withContext(dispatcherProvider.io) {
             val urls = podcastDao.getAllPodcastUrls()
-            val results =
-                urls.map { url ->
-                    async {
-                        updateSemaphore.withPermit {
-                            try {
-                                syncFeedUseCase.get().invoke(url, downloadLimit, mode, null, forceFull)
-                                true
-                            } catch (error: CancellationException) {
-                                throw error
-                            } catch (error: Exception) {
-                                Timber.w(error, "Failed to update feed %s", url)
-                                false
+            var successfulCount = 0
+            urls.chunked(MAX_FEED_UPDATE_FANOUT).forEach { batch ->
+                successfulCount +=
+                    batch.map { url ->
+                        async {
+                            updateSemaphore.withPermit {
+                                try {
+                                    syncFeedUseCase.get().invoke(url, downloadLimit, mode, null, forceFull)
+                                    true
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (error: Exception) {
+                                    Timber.w(error, "Failed to update feed %s", url)
+                                    false
+                                }
                             }
                         }
-                    }
-                }.awaitAll()
-            val successfulCount = results.count { it }
+                    }.awaitAll().count { it }
+            }
             PodcastUpdateSummary(
                 totalCount = urls.size,
                 successfulCount = successfulCount,
@@ -498,5 +500,9 @@ constructor(
 
     override suspend fun resetDatabase() {
         withContext(dispatcherProvider.io) { podcastDao.deleteAllPodcasts() }
+    }
+
+    private companion object {
+        const val MAX_FEED_UPDATE_FANOUT = 4
     }
 }

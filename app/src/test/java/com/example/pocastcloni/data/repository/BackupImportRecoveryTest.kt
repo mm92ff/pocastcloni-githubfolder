@@ -9,7 +9,9 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.fail
 import org.junit.Test
 import java.io.IOException
 
@@ -17,7 +19,12 @@ class BackupImportRecoveryTest {
     private val journalDao = mockk<BackupImportJournalDao>(relaxed = true)
     private val preferences = mockk<UserPreferencesRepository>(relaxed = true)
     private val objectMapper = jacksonObjectMapper()
-    private val recovery = BackupImportRecovery(journalDao, preferences, objectMapper)
+    private val recovery = BackupImportRecovery(
+        journalDao,
+        preferences,
+        objectMapper,
+        BackupImportCoordinator()
+    )
 
     @Test
     fun `restores previous settings and clears completed recovery journal`() = runTest {
@@ -41,6 +48,25 @@ class BackupImportRecoveryTest {
         coEvery { preferences.restoreSettingsOrThrow(any()) } throws IOException("datastore failed")
 
         runCatching { recovery.recoverInterruptedImport() }
+
+        coVerify(exactly = 0) { journalDao.clearPendingImport() }
+    }
+
+    @Test
+    fun `propagates cancellation and keeps recovery journal`() = runTest {
+        val previous = UserSettings()
+        coEvery { journalDao.getPendingImport() } returns BackupImportJournalEntity(
+            previousSettingsJson = objectMapper.writeValueAsString(previous)
+        )
+        coEvery { preferences.restoreSettingsOrThrow(any()) } throws
+            CancellationException("cancelled")
+
+        try {
+            recovery.recoverInterruptedImport()
+            fail("Expected cancellation")
+        } catch (_: CancellationException) {
+            Unit
+        }
 
         coVerify(exactly = 0) { journalDao.clearPendingImport() }
     }

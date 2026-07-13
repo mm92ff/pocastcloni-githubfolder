@@ -13,10 +13,13 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.data.worker.BackupWorker
 import com.example.pocastcloni.ui.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -25,6 +28,16 @@ class SettingsBackupViewModel
 constructor(
     private val workManager: WorkManager
 ) : ViewModel() {
+    private val dismissedWorkIds = MutableStateFlow<Set<UUID>>(emptySet())
+    private val backupWorkInfos =
+        workManager
+            .getWorkInfosByTagFlow(TAG_BACKUP_JOB)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList()
+            )
+
     @Immutable
     data class BackupUiState(
         val importState: ImportUiState = ImportUiState.Idle,
@@ -32,13 +45,12 @@ constructor(
     )
 
     val uiState: StateFlow<BackupUiState> =
-        workManager
-            .getWorkInfosByTagFlow(TAG_BACKUP_JOB)
-            .map { workInfos ->
-                // Find the most recent work info
-                val activeWork = workInfos.maxByOrNull { it.generation }
-                mapWorkInfoToState(activeWork)
-            }
+        combine(backupWorkInfos, dismissedWorkIds) { workInfos, dismissedIds ->
+            val activeWork = workInfos
+                .filterNot { it.id in dismissedIds }
+                .maxByOrNull { it.generation }
+            mapWorkInfoToState(activeWork)
+        }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
@@ -60,8 +72,11 @@ constructor(
             SettingsUiEvent.ResetImportState,
             SettingsUiEvent.ResetExportState
             -> {
-                // Clearing the state means pruning the finished work info so the UI returns to Idle
-                workManager.pruneWork()
+                dismissedWorkIds.update { dismissedIds ->
+                    dismissedIds + backupWorkInfos.value
+                        .filter { it.state.isFinished }
+                        .map { it.id }
+                }
             }
             else -> Unit
         }
@@ -109,8 +124,17 @@ constructor(
                     if (isImport) {
                         val success = workInfo.outputData.getInt(BackupWorker.KEY_IMPORT_SUCCESS_COUNT, 0)
                         val total = workInfo.outputData.getInt(BackupWorker.KEY_IMPORT_TOTAL_COUNT, 0)
+                        val skippedFavorites = workInfo.outputData.getInt(
+                            BackupWorker.KEY_IMPORT_SKIPPED_FAVORITES,
+                            0
+                        )
                         ImportUiState.Success(
-                            UiText.StringResource(R.string.import_success_message, success, total)
+                            UiText.StringResource(
+                                R.string.import_success_message,
+                                success,
+                                total,
+                                skippedFavorites
+                            )
                         )
                     } else {
                         ExportUiState.Success(UiText.StringResource(R.string.export_success_message))

@@ -12,6 +12,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.example.pocastcloni.R
+import com.example.pocastcloni.domain.usecase.podcast.FeedRefreshSource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
@@ -35,7 +36,12 @@ constructor(
 
             // 2. Perform Update
             try {
-                val summary = feedUpdateRunner()
+                val source = inputData.getString(KEY_REFRESH_SOURCE)
+                    ?.let { storedSource ->
+                        runCatching { FeedRefreshSource.valueOf(storedSource) }.getOrNull()
+                    }
+                    ?: FeedRefreshSource.BACKGROUND
+                val summary = feedUpdateRunner(source)
                 if (summary.allFailed) {
                     Timber.w("Feed update failed for all %d podcasts.", summary.totalCount)
                 } else if (summary.hasFailures) {
@@ -109,6 +115,7 @@ constructor(
     }
 
     companion object {
+        const val KEY_REFRESH_SOURCE = "refresh_source"
         private const val NOTIFICATION_ID = 1001
     }
 }
