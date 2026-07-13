@@ -7,6 +7,7 @@ import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.BackupImportJournalDao
 import com.example.pocastcloni.data.local.BackupImportJournalEntity
+import com.example.pocastcloni.data.local.settingsForRestore
 import com.example.pocastcloni.data.manager.PodcastBackupHelper
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
@@ -89,6 +90,7 @@ constructor(
             val backupData = backupHelper.importBackup(uri, context.contentResolver)
             val total = backupData.podcasts.size
             val previousSettings = userPreferencesRepository.userSettingsFlow.first()
+            val settingsToRestore = backupData.settingsForRestore(previousSettings)
             val pendingImport = BackupImportJournalEntity(
                 previousSettingsJson = objectMapper.writeValueAsString(previousSettings)
             )
@@ -96,7 +98,7 @@ constructor(
 
             val syncTargets = mutableListOf<PodcastEntity>()
             try {
-                backupData.settings?.let { settings ->
+                settingsToRestore?.let { settings ->
                     userPreferencesRepository.restoreSettingsOrThrow(settings)
                 }
                 transactionRunner.run {

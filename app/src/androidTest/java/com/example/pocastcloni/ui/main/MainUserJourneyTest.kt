@@ -20,6 +20,8 @@ import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.repository.UserPreferencesRepositoryImpl
+import com.example.pocastcloni.data.repository.InstallationStateProvider
+import com.example.pocastcloni.data.repository.InstallationState
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -116,7 +118,10 @@ class MainUserJourneyTest {
         database.podcastDao().deleteAllPodcasts()
         database.podcastDao().clearHistory()
 
-        UserPreferencesRepositoryImpl(context).restoreSettings(
+        UserPreferencesRepositoryImpl(
+            context = context,
+            installationStateProvider = InstallationStateProvider { InstallationState.FRESH }
+        ).restoreSettings(
             UserSettings(
                 layoutMode = LayoutMode.LIST,
                 autoRefreshOnStart = false,

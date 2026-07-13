@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import com.example.pocastcloni.data.local.BackupData
 import com.example.pocastcloni.data.local.BackupPodcast
+import com.example.pocastcloni.data.local.BackupSettingsFieldPresence
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.BackupImportJournalDao
@@ -12,6 +13,7 @@ import com.example.pocastcloni.data.manager.PodcastBackupHelper
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
+import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
@@ -45,6 +47,7 @@ class BackupRepositorySecurityTest {
     private val transactionRunner = mockk<BackupImportTransactionRunner>()
     private val journalDao = mockk<BackupImportJournalDao>(relaxed = true)
     private val recovery = mockk<BackupImportRecovery>(relaxed = true)
+    private val objectMapper = jacksonObjectMapper()
     private val dispatcherProvider = mockk<DispatcherProvider>().also {
         every { it.io } returns dispatcher
     }
@@ -59,7 +62,7 @@ class BackupRepositorySecurityTest {
         dispatcherProvider = dispatcherProvider,
         transactionRunner = transactionRunner,
         backupImportJournalDao = journalDao,
-        objectMapper = jacksonObjectMapper(),
+        objectMapper = objectMapper,
         backupImportRecovery = recovery,
         context = context
     )
@@ -204,6 +207,58 @@ class BackupRepositorySecurityTest {
         ).awaitAll()
 
         assertEquals(1, maximum.get())
+    }
+
+    @Test
+    fun `partial backup settings merge into current settings before restore`() = runTest(dispatcher) {
+        val previous =
+            UserSettings(
+                theme = AppTheme.DARK,
+                gridSize = 7,
+                backgroundCheckInterval = 24,
+                indicator =
+                    IndicatorSettings(
+                        colorArgb = 0xFF112233,
+                        size = 32,
+                        borderWidth = 4,
+                        xOffset = -5,
+                        yOffset = 6
+                    )
+            )
+        val imported =
+            UserSettings(
+                theme = AppTheme.LIGHT,
+                indicator = IndicatorSettings(size = 22)
+            )
+        val expected =
+            previous.copy(
+                theme = AppTheme.LIGHT,
+                indicator = previous.indicator.copy(size = 22)
+            )
+        every { preferences.userSettingsFlow } returns flowOf(previous)
+        coEvery { backupHelper.importBackup(any(), any()) } returns
+            BackupData(
+                settings = imported,
+                settingsFieldPresence =
+                    BackupSettingsFieldPresence(
+                        fields = setOf("theme", "indicator"),
+                        indicatorFields = setOf("size")
+                    )
+            )
+
+        repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+
+        coVerify { preferences.restoreSettingsOrThrow(expected) }
+        coVerify {
+            journalDao.savePendingImport(
+                match { journal ->
+                    objectMapper.readValue(
+                        journal.previousSettingsJson,
+                        UserSettings::class.java
+                    ) == previous
+                }
+            )
+        }
     }
 
     @Test

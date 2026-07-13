@@ -18,7 +18,11 @@ import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import java.io.IOException
 import javax.inject.Inject
@@ -31,10 +35,18 @@ private val Keys = UserPreferenceKeys
 class UserPreferencesRepositoryImpl
 @Inject
 constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val installationStateProvider: InstallationStateProvider
 ) : UserPreferencesRepository {
+    private val migrationMutex = Mutex()
+
+    @Volatile private var migrationComplete = false
+
     override val userSettingsFlow: Flow<UserSettings> =
-        context.dataStore.data
+        flow {
+            ensureDefaultsMigrated()
+            emitAll(context.dataStore.data)
+        }
             .catch { exception ->
                 if (exception is IOException) {
                     Timber.e(exception, "Error reading preferences.")
@@ -44,6 +56,20 @@ constructor(
                 }
             }
             .map { prefs -> prefs.toUserSettings() }
+
+    private suspend fun ensureDefaultsMigrated() {
+        if (migrationComplete) return
+        migrationMutex.withLock {
+            if (migrationComplete) return
+            context.dataStore.edit { preferences ->
+                SettingsDefaultsMigration.apply(
+                    preferences = preferences,
+                    installationState = installationStateProvider.installationState()
+                )
+            }
+            migrationComplete = true
+        }
+    }
 
     override suspend fun updateTheme(theme: AppTheme) {
         try {
@@ -414,14 +440,21 @@ constructor(
                 prefs[Keys.AUTO_CLEANUP_ENABLED] = settings.autoCleanupEnabled
                 prefs[Keys.CLEANUP_KEEP_LIMIT] = settings.cleanupKeepLimit
                 prefs[Keys.CLEANUP_INTERVAL_HOURS] = settings.cleanupIntervalHours
+                prefs[SettingsDefaultsMigration.VERSION_KEY] = SettingsDefaultsMigration.CURRENT_VERSION
         }
+        migrationComplete = true
     }
 
     override suspend fun clearSettings() {
         try {
             context.dataStore.edit { preferences ->
                 preferences.clear()
+                SettingsDefaultsMigration.apply(
+                    preferences = preferences,
+                    installationState = InstallationState.FRESH
+                )
             }
+            migrationComplete = true
         } catch (e: IOException) {
             Timber.e(e, "Failed to clear settings from DataStore")
         }

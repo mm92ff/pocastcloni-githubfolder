@@ -24,7 +24,12 @@ class UserPreferencesRepositoryAndroidTest {
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
 
-    private val repository by lazy { UserPreferencesRepositoryImpl(context) }
+    private val repository by lazy {
+        UserPreferencesRepositoryImpl(
+            context = context,
+            installationStateProvider = InstallationStateProvider { InstallationState.FRESH }
+        )
+    }
 
     @Before
     fun setUp() = runBlocking {
@@ -86,5 +91,23 @@ class UserPreferencesRepositoryAndroidTest {
         repository.restoreSettings(expected)
 
         assertEquals(expected, repository.userSettingsFlow.first())
+    }
+
+    @Test
+    fun clearSettings_appliesCurrentFreshInstallFeedDefaults() = runBlocking {
+        repository.restoreSettings(
+            UserSettings(
+                feedUpdateMode = FeedUpdateMode.ALWAYS_FULL,
+                backgroundCheckInterval = 24
+            )
+        )
+
+        repository.clearSettings()
+
+        val settings = repository.userSettingsFlow.first()
+        assertEquals(FeedUpdateMode.SMART_STREAM, settings.feedUpdateMode)
+        assertEquals(6, settings.backgroundCheckInterval)
+        assertEquals(true, settings.autoRefreshOnStart)
+        assertEquals(true, settings.backgroundCheckEnabled)
     }
 }

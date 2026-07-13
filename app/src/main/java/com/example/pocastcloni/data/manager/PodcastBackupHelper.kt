@@ -5,6 +5,7 @@ import android.net.Uri
 import com.example.pocastcloni.data.local.BackupData
 import com.example.pocastcloni.data.local.BackupFavorite
 import com.example.pocastcloni.data.local.BackupPodcast
+import com.example.pocastcloni.data.local.BackupSettingsFieldPresence
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.Constants
@@ -109,8 +110,11 @@ internal fun parseBackupJson(
     prevalidateBackupJson(jsonString, objectMapper)
 
     try {
+        val backupData = objectMapper.readValue(jsonString, BackupData::class.java)
         return validateBackupData(
-            objectMapper.readValue(jsonString, BackupData::class.java)
+            backupData.copy(
+                settingsFieldPresence = readSettingsFieldPresence(jsonString, objectMapper)
+            )
         )
     } catch (e: Exception) {
         Timber.w(e, "Standard import failed. Attempting legacy format fallback.")
@@ -130,6 +134,30 @@ internal fun parseBackupJson(
         Timber.e(e, "Critical: Failed to parse backup file in both formats.")
         throw IllegalArgumentException("Backup file format is invalid.", e)
     }
+}
+
+private fun readSettingsFieldPresence(
+    jsonString: String,
+    objectMapper: ObjectMapper
+): BackupSettingsFieldPresence? {
+    val settingsNode = objectMapper.readTree(jsonString).get(Constants.Backup.KEY_SETTINGS)
+    if (settingsNode == null || !settingsNode.isObject) return null
+
+    val fields = settingsNode.fieldNames().asSequence().toSet()
+    val indicatorFields = settingsNode.get("indicator")
+        ?.takeIf { it.isObject }
+        ?.fieldNames()
+        ?.asSequence()
+        ?.map(::canonicalIndicatorFieldName)
+        ?.toSet()
+        .orEmpty()
+    return BackupSettingsFieldPresence(fields, indicatorFields)
+}
+
+private fun canonicalIndicatorFieldName(field: String): String = when (field) {
+    "xoffset" -> "xOffset"
+    "yoffset" -> "yOffset"
+    else -> field
 }
 
 internal fun prevalidateBackupJson(

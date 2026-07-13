@@ -1,6 +1,8 @@
 package com.example.pocastcloni.data.manager
 
 import com.example.pocastcloni.data.local.BackupData
+import com.example.pocastcloni.data.local.BackupPodcast
+import com.example.pocastcloni.data.local.settingsForRestore
 import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
@@ -9,7 +11,6 @@ import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
-import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.util.Constants
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -90,6 +91,52 @@ class PodcastBackupHelperParsingTest {
 
         assertEquals(9, result.settings?.indicator?.xOffset)
         assertEquals(11, result.settings?.indicator?.yOffset)
+    }
+
+    @Test
+    fun parseBackupJson_mergesOnlyFieldsPresentInLegacySettings() {
+        val current =
+            UserSettings(
+                theme = AppTheme.DARK,
+                appColor = AppColor.RED,
+                backgroundCheckInterval = 24,
+                feedUpdateMode = FeedUpdateMode.SMART_STREAM,
+                indicator =
+                    IndicatorSettings(
+                        colorArgb = 0xFF112233,
+                        size = 32,
+                        borderWidth = 4,
+                        xOffset = -5,
+                        yOffset = 6
+                    )
+            )
+        val parsed =
+            parseBackupJson(
+                """
+                {
+                  "version": 1,
+                  "settings": {
+                    "theme": "LIGHT",
+                    "indicator": {
+                      "size": 22,
+                      "xoffset": 9,
+                      "yoffset": 11
+                    }
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        val restored = parsed.settingsForRestore(current)
+
+        assertEquals(
+            current.copy(
+                theme = AppTheme.LIGHT,
+                indicator = current.indicator.copy(size = 22, xOffset = 9, yOffset = 11)
+            ),
+            restored
+        )
     }
 
     @Test
@@ -244,9 +291,12 @@ class PodcastBackupHelperParsingTest {
             )
         val json = objectMapper.writeValueAsString(BackupData(settings = expectedSettings))
 
-        val restoredSettings = parseBackupJson(json, objectMapper).settings
+        val parsed = parseBackupJson(json, objectMapper)
+        val restoredSettings = parsed.settingsForRestore(UserSettings())
+        val reexportedJson = objectMapper.writeValueAsString(parsed)
 
         assertEquals(expectedSettings, restoredSettings)
+        assertFalse(reexportedJson.contains("settingsFieldPresence"))
     }
 
     @Test
