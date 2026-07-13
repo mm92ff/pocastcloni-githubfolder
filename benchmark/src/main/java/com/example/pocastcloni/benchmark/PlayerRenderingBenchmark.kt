@@ -84,6 +84,7 @@ class PlayerRenderingBenchmark {
                         openFixturePodcast()
                         startFixtureEpisode()
                         openFullPlayer()
+                        Thread.sleep(FULL_PLAYER_SETTLE_MS)
                     }
                 }
             ) {
@@ -119,5 +120,6 @@ class PlayerRenderingBenchmark {
         const val IDLE_BEFORE_ACTION_MS = 2_000L
         const val PAUSE_MS = 500L
         const val IDLE_AFTER_ACTION_MS = 2_500L
+        const val FULL_PLAYER_SETTLE_MS = 1_000L
     }
 }

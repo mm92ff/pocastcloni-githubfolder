@@ -71,11 +71,12 @@ if ($EnforceBudgets) {
         }
 
         if ($row.trace -like "*fullPlayerPlaybackAndPauseResume*") {
+            # Pause/resume can publish request, player-state, and playback-state transitions.
             if (
-                [int]$row.full_player_screen -gt 2 -or
-                [int]$row.full_controls -gt 2 -or
-                [int]$row.full_metadata_cover -gt 2 -or
-                [int]$row.detail_screen -gt 2 -or
+                [int]$row.full_player_screen -gt 3 -or
+                [int]$row.full_controls -gt 3 -or
+                [int]$row.full_metadata_cover -gt 3 -or
+                [int]$row.detail_screen -gt 3 -or
                 [int]$row.full_time_labels -gt 8 -or
                 [int]$row.measure_layout -gt 8
             ) {

@@ -21,6 +21,7 @@ internal data class PlaybackProgressSnapshot(
 )
 
 @Singleton
+@Suppress("TooGenericExceptionCaught")
 class PlaybackProgressWriter
 @Inject
 constructor(
@@ -47,7 +48,7 @@ constructor(
                     snapshot = requests.receive()
                 } catch (cancellation: CancellationException) {
                     throw cancellation
-                } catch (error: Throwable) {
+                } catch (error: Exception) {
                     Timber.e(error, "Failed to persist playback progress")
                     val newerSnapshot =
                         withTimeoutOrNull(retryDelayMs) {
@@ -76,6 +77,7 @@ constructor(
 }
 
 @Singleton
+@Suppress("TooGenericExceptionCaught")
 class PlaybackListeningTimeWriter
 @Inject
 constructor(
@@ -97,7 +99,7 @@ constructor(
                 } catch (cancellation: CancellationException) {
                     pendingMs.addAndGet(amount)
                     throw cancellation
-                } catch (error: Throwable) {
+                } catch (error: Exception) {
                     pendingMs.addAndGet(amount)
                     Timber.e(error, "Failed to persist listening time")
                 }

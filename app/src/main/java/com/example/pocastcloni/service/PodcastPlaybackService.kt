@@ -2,6 +2,7 @@ package com.example.pocastcloni.service
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Process
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -348,7 +349,13 @@ class PodcastPlaybackService : MediaSessionService() {
         ): MediaSession.ConnectionResult {
             val availablePlayerCommands =
                 mediaControllerCommands(
-                    isTrusted = controller.isTrusted,
+                    isTrusted = isMediaControllerAllowed(
+                        isTrusted = controller.isTrusted,
+                        controllerPackageName = controller.packageName,
+                        controllerUid = controller.uid,
+                        appPackageName = packageName,
+                        appUid = Process.myUid()
+                    ),
                     availableCommands = player.availableCommands
                 )
             if (availablePlayerCommands == null) {
@@ -361,6 +368,14 @@ class PodcastPlaybackService : MediaSessionService() {
         }
     }
 }
+
+internal fun isMediaControllerAllowed(
+    isTrusted: Boolean,
+    controllerPackageName: String,
+    controllerUid: Int,
+    appPackageName: String,
+    appUid: Int
+): Boolean = isTrusted || (controllerPackageName == appPackageName && controllerUid == appUid)
 
 internal fun mediaControllerCommands(
     isTrusted: Boolean,

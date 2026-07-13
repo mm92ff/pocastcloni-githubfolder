@@ -19,6 +19,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+@Suppress("TooGenericExceptionCaught")
 class StreamingStatisticsRecorder
 @Inject
 constructor(
@@ -83,11 +84,12 @@ constructor(
 
             try {
                 writer.addStreamBytes(batch.wifiBytes, batch.mobileBytes)
+            } catch (cancellation: CancellationException) {
+                addPending(batch)
+                currentCoroutineContext().ensureActive()
+                Timber.w(cancellation, "Streaming statistics write was cancelled; bytes retained for retry")
             } catch (error: Exception) {
                 addPending(batch)
-                if (error is CancellationException) {
-                    currentCoroutineContext().ensureActive()
-                }
                 Timber.w(error, "Streaming statistics flush failed; bytes retained for retry")
             }
         }

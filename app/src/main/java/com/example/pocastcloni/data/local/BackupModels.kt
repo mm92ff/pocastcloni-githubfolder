@@ -21,140 +21,146 @@ data class BackupSettingsFieldPresence(
     val indicatorFields: Set<String> = emptySet()
 )
 
-internal fun BackupData.settingsForRestore(current: UserSettings): UserSettings? {
-    val imported = settings ?: return null
-    val presence = settingsFieldPresence ?: return imported
-    val fields = presence.fields
+internal fun BackupData.settingsForRestore(current: UserSettings): UserSettings? =
+    when (val imported = settings) {
+        null -> null
+        else ->
+            settingsFieldPresence?.let { presence ->
+                val fields = presence.fields
+                val coreAppearance = imported.mergeCoreAppearance(current, fields)
+                val surfaces = imported.mergeSurfaceSettings(coreAppearance, fields)
+                val gradientsAndCards = imported.mergeGradientAndCardSettings(surfaces, fields)
+                val syncAndData = imported.mergeSyncAndDataSettings(gradientsAndCards, fields)
+                syncAndData.copy(
+                    indicator = imported.indicator.mergePresent(current.indicator, presence.indicatorFields)
+                )
+            } ?: imported
+    }
 
-    return current.copy(
-        theme = fields.importedValue("theme", imported.theme, current.theme),
-        appColor = fields.importedValue("appColor", imported.appColor, current.appColor),
-        colorStrength = fields.importedValue("colorStrength", imported.colorStrength, current.colorStrength),
-        bufferMode = fields.importedValue("bufferMode", imported.bufferMode, current.bufferMode),
-        layoutMode = fields.importedValue("layoutMode", imported.layoutMode, current.layoutMode),
-        gridSize = fields.importedValue("gridSize", imported.gridSize, current.gridSize),
-        showGridTitles = fields.importedValue("showGridTitles", imported.showGridTitles, current.showGridTitles),
-        confirmDelete = fields.importedValue("confirmDelete", imported.confirmDelete, current.confirmDelete),
-        progressBarHeight = fields.importedValue(
-            "progressBarHeight",
-            imported.progressBarHeight,
-            current.progressBarHeight
-        ),
-        navBarHeight = fields.importedValue("navBarHeight", imported.navBarHeight, current.navBarHeight),
-        showMiniPlayerTimeOverlay = fields.importedValue(
-            "showMiniPlayerTimeOverlay",
-            imported.showMiniPlayerTimeOverlay,
-            current.showMiniPlayerTimeOverlay
-        ),
-        transparentMiniPlayer = fields.importedValue(
-            "transparentMiniPlayer",
-            imported.transparentMiniPlayer,
-            current.transparentMiniPlayer
-        ),
-        transparentBottomBar = fields.importedValue(
-            "transparentBottomBar",
-            imported.transparentBottomBar,
-            current.transparentBottomBar
-        ),
-        oneHandedMode = fields.importedValue("oneHandedMode", imported.oneHandedMode, current.oneHandedMode),
-        bottomBarCleanModeEnabled = fields.importedValue(
-            "bottomBarCleanModeEnabled",
-            imported.bottomBarCleanModeEnabled,
-            current.bottomBarCleanModeEnabled
-        ),
-        bottomBarAutoHideEnabled = fields.importedValue(
-            "bottomBarAutoHideEnabled",
-            imported.bottomBarAutoHideEnabled,
-            current.bottomBarAutoHideEnabled
-        ),
-        bottomBarAutoHideDelaySeconds = fields.importedValue(
-            "bottomBarAutoHideDelaySeconds",
-            imported.bottomBarAutoHideDelaySeconds,
-            current.bottomBarAutoHideDelaySeconds
-        ),
-        gradientBackgroundEnabled = fields.importedValue(
-            "gradientBackgroundEnabled",
-            imported.gradientBackgroundEnabled,
-            current.gradientBackgroundEnabled
-        ),
-        gradientBackgroundStrength = fields.importedValue(
-            "gradientBackgroundStrength",
-            imported.gradientBackgroundStrength,
-            current.gradientBackgroundStrength
-        ),
-        gradientBackgroundDirection = fields.importedValue(
-            "gradientBackgroundDirection",
-            imported.gradientBackgroundDirection,
-            current.gradientBackgroundDirection
-        ),
-        transparentSearchCards = fields.importedValue(
-            "transparentSearchCards",
-            imported.transparentSearchCards,
-            current.transparentSearchCards
-        ),
-        transparentPodcastCards = fields.importedValue(
-            "transparentPodcastCards",
-            imported.transparentPodcastCards,
-            current.transparentPodcastCards
-        ),
-        transparentEpisodeRows = fields.importedValue(
-            "transparentEpisodeRows",
-            imported.transparentEpisodeRows,
-            current.transparentEpisodeRows
-        ),
-        autoDownloadLimit = fields.importedValue(
-            "autoDownloadLimit",
-            imported.autoDownloadLimit,
-            current.autoDownloadLimit
-        ),
-        autoRefreshOnStart = fields.importedValue(
-            "autoRefreshOnStart",
-            imported.autoRefreshOnStart,
-            current.autoRefreshOnStart
-        ),
-        backgroundCheckEnabled = fields.importedValue(
-            "backgroundCheckEnabled",
-            imported.backgroundCheckEnabled,
-            current.backgroundCheckEnabled
-        ),
-        backgroundCheckInterval = fields.importedValue(
-            "backgroundCheckInterval",
-            imported.backgroundCheckInterval,
-            current.backgroundCheckInterval
-        ),
-        markPlayedDurationSeconds = fields.importedValue(
-            "markPlayedDurationSeconds",
-            imported.markPlayedDurationSeconds,
-            current.markPlayedDurationSeconds
-        ),
-        feedUpdateMode = fields.importedValue(
-            "feedUpdateMode",
-            imported.feedUpdateMode,
-            current.feedUpdateMode
-        ),
-        indicator = imported.indicator.mergePresent(current.indicator, presence.indicatorFields),
-        saveToDownloadsFolder = fields.importedValue(
-            "saveToDownloadsFolder",
-            imported.saveToDownloadsFolder,
-            current.saveToDownloadsFolder
-        ),
-        autoCleanupEnabled = fields.importedValue(
-            "autoCleanupEnabled",
-            imported.autoCleanupEnabled,
-            current.autoCleanupEnabled
-        ),
-        cleanupKeepLimit = fields.importedValue(
-            "cleanupKeepLimit",
-            imported.cleanupKeepLimit,
-            current.cleanupKeepLimit
-        ),
-        cleanupIntervalHours = fields.importedValue(
-            "cleanupIntervalHours",
-            imported.cleanupIntervalHours,
-            current.cleanupIntervalHours
-        )
+private fun UserSettings.mergeCoreAppearance(
+    current: UserSettings,
+    fields: Set<String>
+): UserSettings = current.copy(
+    theme = fields.importedValue("theme", theme, current.theme),
+    appColor = fields.importedValue("appColor", appColor, current.appColor),
+    colorStrength = fields.importedValue("colorStrength", colorStrength, current.colorStrength),
+    bufferMode = fields.importedValue("bufferMode", bufferMode, current.bufferMode),
+    layoutMode = fields.importedValue("layoutMode", layoutMode, current.layoutMode),
+    gridSize = fields.importedValue("gridSize", gridSize, current.gridSize),
+    showGridTitles = fields.importedValue("showGridTitles", showGridTitles, current.showGridTitles),
+    confirmDelete = fields.importedValue("confirmDelete", confirmDelete, current.confirmDelete),
+    progressBarHeight = fields.importedValue("progressBarHeight", progressBarHeight, current.progressBarHeight),
+    navBarHeight = fields.importedValue("navBarHeight", navBarHeight, current.navBarHeight)
+)
+
+private fun UserSettings.mergeSurfaceSettings(
+    current: UserSettings,
+    fields: Set<String>
+): UserSettings = current.copy(
+    showMiniPlayerTimeOverlay = fields.importedValue(
+        "showMiniPlayerTimeOverlay",
+        showMiniPlayerTimeOverlay,
+        current.showMiniPlayerTimeOverlay
+    ),
+    transparentMiniPlayer = fields.importedValue(
+        "transparentMiniPlayer",
+        transparentMiniPlayer,
+        current.transparentMiniPlayer
+    ),
+    transparentBottomBar = fields.importedValue(
+        "transparentBottomBar",
+        transparentBottomBar,
+        current.transparentBottomBar
+    ),
+    oneHandedMode = fields.importedValue("oneHandedMode", oneHandedMode, current.oneHandedMode),
+    bottomBarCleanModeEnabled = fields.importedValue(
+        "bottomBarCleanModeEnabled",
+        bottomBarCleanModeEnabled,
+        current.bottomBarCleanModeEnabled
+    ),
+    bottomBarAutoHideEnabled = fields.importedValue(
+        "bottomBarAutoHideEnabled",
+        bottomBarAutoHideEnabled,
+        current.bottomBarAutoHideEnabled
+    ),
+    bottomBarAutoHideDelaySeconds = fields.importedValue(
+        "bottomBarAutoHideDelaySeconds",
+        bottomBarAutoHideDelaySeconds,
+        current.bottomBarAutoHideDelaySeconds
     )
-}
+)
+
+private fun UserSettings.mergeGradientAndCardSettings(
+    current: UserSettings,
+    fields: Set<String>
+): UserSettings = current.copy(
+    gradientBackgroundEnabled = fields.importedValue(
+        "gradientBackgroundEnabled",
+        gradientBackgroundEnabled,
+        current.gradientBackgroundEnabled
+    ),
+    gradientBackgroundStrength = fields.importedValue(
+        "gradientBackgroundStrength",
+        gradientBackgroundStrength,
+        current.gradientBackgroundStrength
+    ),
+    gradientBackgroundDirection = fields.importedValue(
+        "gradientBackgroundDirection",
+        gradientBackgroundDirection,
+        current.gradientBackgroundDirection
+    ),
+    transparentSearchCards = fields.importedValue(
+        "transparentSearchCards",
+        transparentSearchCards,
+        current.transparentSearchCards
+    ),
+    transparentPodcastCards = fields.importedValue(
+        "transparentPodcastCards",
+        transparentPodcastCards,
+        current.transparentPodcastCards
+    ),
+    transparentEpisodeRows = fields.importedValue(
+        "transparentEpisodeRows",
+        transparentEpisodeRows,
+        current.transparentEpisodeRows
+    )
+)
+
+private fun UserSettings.mergeSyncAndDataSettings(
+    current: UserSettings,
+    fields: Set<String>
+): UserSettings = current.copy(
+    autoDownloadLimit = fields.importedValue("autoDownloadLimit", autoDownloadLimit, current.autoDownloadLimit),
+    autoRefreshOnStart = fields.importedValue("autoRefreshOnStart", autoRefreshOnStart, current.autoRefreshOnStart),
+    backgroundCheckEnabled = fields.importedValue(
+        "backgroundCheckEnabled",
+        backgroundCheckEnabled,
+        current.backgroundCheckEnabled
+    ),
+    backgroundCheckInterval = fields.importedValue(
+        "backgroundCheckInterval",
+        backgroundCheckInterval,
+        current.backgroundCheckInterval
+    ),
+    markPlayedDurationSeconds = fields.importedValue(
+        "markPlayedDurationSeconds",
+        markPlayedDurationSeconds,
+        current.markPlayedDurationSeconds
+    ),
+    feedUpdateMode = fields.importedValue("feedUpdateMode", feedUpdateMode, current.feedUpdateMode),
+    saveToDownloadsFolder = fields.importedValue(
+        "saveToDownloadsFolder",
+        saveToDownloadsFolder,
+        current.saveToDownloadsFolder
+    ),
+    autoCleanupEnabled = fields.importedValue("autoCleanupEnabled", autoCleanupEnabled, current.autoCleanupEnabled),
+    cleanupKeepLimit = fields.importedValue("cleanupKeepLimit", cleanupKeepLimit, current.cleanupKeepLimit),
+    cleanupIntervalHours = fields.importedValue(
+        "cleanupIntervalHours",
+        cleanupIntervalHours,
+        current.cleanupIntervalHours
+    )
+)
 
 private fun IndicatorSettings.mergePresent(
     current: IndicatorSettings,

@@ -76,11 +76,6 @@ constructor(
     private var favoriteStatusJob: Job? = null
     private val tickerLifecycle = PlaybackTickerLifecycle(monotonicClock)
 
-    private companion object {
-        private const val FOREGROUND_TICK_INTERVAL_MS = 500L
-        private const val BACKGROUND_TICK_INTERVAL_MS = 5_000L
-    }
-
     init {
         ensureForegroundObservation()
     }
@@ -301,7 +296,12 @@ constructor(
             PlayerScreenEvent.TogglePlayPause -> if (playerState.value.isPlaying) pause() else resume()
             PlayerScreenEvent.Rewind ->
                 launchOnMedia {
-                    controller?.let { it.seekTo((it.currentPosition - Constants.PlayerDefaults.REWIND_INTERVAL_MS).coerceAtLeast(0L)) }
+                    controller?.let {
+                        it.seekTo(
+                            (it.currentPosition - Constants.PlayerDefaults.REWIND_INTERVAL_MS)
+                                .coerceAtLeast(0L)
+                        )
+                    }
                 }
             PlayerScreenEvent.Forward ->
                 launchOnMedia {
@@ -371,6 +371,9 @@ internal fun playbackTickIntervalMs(
 ): Long? =
     when {
         !isPlayingReady -> null
-        isForeground -> 500L
-        else -> 5_000L
+        isForeground -> FOREGROUND_TICK_INTERVAL_MS
+        else -> BACKGROUND_TICK_INTERVAL_MS
     }
+
+private const val FOREGROUND_TICK_INTERVAL_MS = 500L
+private const val BACKGROUND_TICK_INTERVAL_MS = 5_000L

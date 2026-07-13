@@ -153,8 +153,12 @@ constructor(
     }
 
     private fun RefreshFlight.canSatisfy(request: FeedRefreshRequest): Boolean {
-        if (!acceptingWaiters) return false
-        if (this.request.downloadLimit != request.downloadLimit || this.request.mode != request.mode) return false
-        return this.request.forceFull || !request.forceFull
+        val hasMatchingConfiguration =
+            this.request.downloadLimit == request.downloadLimit && this.request.mode == request.mode
+        return when {
+            !acceptingWaiters -> false
+            !hasMatchingConfiguration -> false
+            else -> this.request.forceFull || !request.forceFull
+        }
     }
 }

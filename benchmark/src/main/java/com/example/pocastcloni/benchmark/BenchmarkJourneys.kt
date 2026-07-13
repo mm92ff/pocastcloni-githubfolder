@@ -4,12 +4,12 @@ import androidx.benchmark.macro.MacrobenchmarkScope
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
-import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import java.io.File
 import java.util.regex.Pattern
+import kotlin.math.abs
 
 internal class BenchmarkJourneys(
     private val scope: MacrobenchmarkScope,
@@ -36,6 +36,8 @@ internal class BenchmarkJourneys(
         openSettingsTab("Sync")
         val input = waitFor(By.clazz("android.widget.EditText"), "RSS URL input")
         input.text = feedUrl
+        enableImportPermission("Allow legacy HTTP media")
+        enableImportPermission("Allow local network feed")
         waitForText("Add").click()
         waitForText("Podcast added successfully", timeoutMs = 20_000L)
         openMainScreen("Home")
@@ -45,11 +47,23 @@ internal class BenchmarkJourneys(
     fun openFixturePodcast() {
         waitForText(FIXTURE_PODCAST_TITLE)
         clickNodeOrAncestor(waitForDescription("Cover image"))
-        waitForText(FIXTURE_EPISODE_TITLE)
+        waitFor(By.text(Pattern.compile("Benchmark Episode \\d+")), "visible fixture episode")
     }
 
     fun startFixtureEpisode() {
-        waitForDescription("Play/Pause").click()
+        val episode = waitFor(
+            By.text(Pattern.compile("Benchmark Episode \\d+")),
+            "visible fixture episode"
+        )
+        val playButton = device.findObjects(By.desc("Play/Pause"))
+            .filter { candidate ->
+                candidate.visibleBounds.width() > 0 && candidate.visibleBounds.height() > 0
+            }
+            .minByOrNull { candidate ->
+                abs(candidate.visibleBounds.centerY() - episode.visibleBounds.centerY())
+            }
+            ?: fail("visible fixture play button")
+        clickNodeOrAncestor(playButton)
         device.wait(Until.findObject(By.text("Allow")), 1_000L)?.click()
         waitForDescription(OPEN_FULL_PLAYER, timeoutMs = 20_000L)
     }
@@ -60,8 +74,14 @@ internal class BenchmarkJourneys(
     }
 
     fun scrollDown() {
-        val scrollable = waitFor(By.scrollable(true), "scrollable content")
-        scrollable.scroll(Direction.DOWN, SCROLL_PERCENT)
+        val centerX = device.displayWidth / 2
+        device.swipe(
+            centerX,
+            device.displayHeight * SWIPE_START_PERCENT / PERCENT_BASE,
+            centerX,
+            device.displayHeight * SWIPE_END_PERCENT / PERCENT_BASE,
+            SWIPE_STEPS
+        )
         device.waitForIdle()
     }
 
@@ -88,6 +108,19 @@ internal class BenchmarkJourneys(
         (candidate ?: node).click()
     }
 
+    private fun enableImportPermission(label: String) {
+        val labelNode = waitForText(label)
+        val checkbox = device.findObjects(By.clazz("android.widget.CheckBox"))
+            .minByOrNull { candidate ->
+                abs(candidate.visibleBounds.centerY() - labelNode.visibleBounds.centerY())
+            }
+            ?: fail("checkbox for '$label'")
+        if (!checkbox.isChecked) {
+            checkbox.click()
+            device.waitForIdle()
+        }
+    }
+
     private fun waitFor(selector: BySelector, label: String, timeoutMs: Long = DEFAULT_TIMEOUT_MS): UiObject2 =
         device.findObject(selector)
             ?: device.wait(Until.findObject(selector), timeoutMs)
@@ -107,6 +140,9 @@ internal class BenchmarkJourneys(
     }
 
     private companion object {
-        const val SCROLL_PERCENT = 0.75f
+        const val SWIPE_START_PERCENT = 75
+        const val SWIPE_END_PERCENT = 25
+        const val PERCENT_BASE = 100
+        const val SWIPE_STEPS = 20
     }
 }
