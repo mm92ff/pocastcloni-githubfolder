@@ -10,18 +10,23 @@ import javax.inject.Inject
  * Kapselt die Zeit-Schleife (Progress Loop).
  * Single Responsibility: Erzeugt nur Ticks, kennt keinen Player.
  */
+interface PlaybackTickSource {
+    fun tick(intervalMs: Long): Flow<Unit>
+}
+
 class PlaybackTicker
 @Inject
-constructor() {
+constructor() : PlaybackTickSource {
     /**
      * Erzeugt einen unendlichen Flow von Ticks.
      * @param intervalMs Das Intervall zwischen den Ticks.
      */
-    fun tick(intervalMs: Long): Flow<Unit> =
+    override fun tick(intervalMs: Long): Flow<Unit> =
         flow {
+            require(intervalMs > 0L) { "Tick interval must be positive" }
             while (true) {
-                emit(Unit)
                 delay(intervalMs)
+                emit(Unit)
             }
         }
 }

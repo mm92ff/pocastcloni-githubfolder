@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import coil.Coil
 import coil.ImageLoader
+import com.example.pocastcloni.ui.player.ActivityAppForegroundMonitor
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import javax.inject.Inject
@@ -20,11 +21,15 @@ class PocastApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var imageLoader: ImageLoader
 
+    @Inject
+    lateinit var appForegroundMonitor: ActivityAppForegroundMonitor
+
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+        appForegroundMonitor.initialize()
         // Ensure Compose AsyncImage and injected use cases share one ImageLoader/cache configuration.
         Coil.setImageLoader(imageLoader)
         appInitializer.initialize()

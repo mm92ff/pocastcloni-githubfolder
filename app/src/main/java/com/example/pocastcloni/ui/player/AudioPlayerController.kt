@@ -1,7 +1,6 @@
 package com.example.pocastcloni.ui.player
 
 import android.content.Context
-import android.os.Handler
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -16,7 +15,6 @@ import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import javax.inject.Inject
@@ -33,7 +31,10 @@ constructor(
     private val mediaConnection: MediaControllerConnection,
     private val analyticsHandler: PlaybackAnalyticsHandler,
     private val mapper: MediaStateMapper,
-    private val ticker: PlaybackTicker,
+    private val ticker: PlaybackTickSource,
+    private val foregroundMonitor: AppForegroundMonitor,
+    private val monotonicClock: MonotonicClock,
+    private val mediaDispatcherFactory: MediaDispatcherFactory,
     private val preparePlaybackUseCase: PreparePlaybackUseCase
 ) : PlaybackStarter, PlayerActions, PlayerStateObserver {
     // --- Scope ---
@@ -71,14 +72,30 @@ constructor(
     @Volatile private var isUserSeeking: Boolean = false
     private var pendingSeekPositionMs: Long? = null
     private var progressJob: Job? = null
+    private var foregroundJob: Job? = null
     private var favoriteStatusJob: Job? = null
+    private val tickerLifecycle = PlaybackTickerLifecycle(monotonicClock)
 
     private companion object {
-        private const val TICK_INTERVAL_MS = 500L
+        private const val FOREGROUND_TICK_INTERVAL_MS = 500L
+        private const val BACKGROUND_TICK_INTERVAL_MS = 5_000L
+    }
+
+    init {
+        ensureForegroundObservation()
+    }
+
+    private fun ensureForegroundObservation() {
+        if (foregroundJob?.isActive == true) return
+        foregroundJob =
+            foregroundMonitor.isForeground
+                .onEach { requestTickerReconciliation() }
+                .launchIn(controllerScope)
     }
 
     private suspend fun connectInternal() {
         if (controller != null) return
+        ensureForegroundObservation()
 
         val connectedController =
             mediaConnection.connect() ?: run {
@@ -89,40 +106,89 @@ constructor(
         controller = connectedController
         ensureMediaScope(connectedController)
         attachListener(connectedController)
-        startReactiveTicker()
+        updateProgressAndAnalytics(deltaMs = 0L, updateUi = true)
+        reconcileTicker()
         syncCurrentEpisodeUi()
     }
 
-    private fun startReactiveTicker() {
-        progressJob?.cancel()
-        progressJob =
-            ticker.tick(TICK_INTERVAL_MS)
-                .onEach {
-                    updateProgressAndAnalytics()
-                }
-                .flowOn(mediaDispatcher ?: dispatcherProvider.main)
-                .launchIn(mediaScope ?: controllerScope)
+    private fun requestTickerReconciliation() {
+        if (controller == null) return
+        launchOnMedia { reconcileTicker() }
     }
 
-    private fun updateProgressAndAnalytics() {
+    private fun reconcileTicker() {
+        val player = controller
+        val transition =
+            tickerLifecycle.reconcile(
+                isPlayingReady = player?.isPlaying == true && player.playbackState == Player.STATE_READY,
+                isForeground = foregroundMonitor.isForeground.value
+            )
+        applyTickerTransition(transition)
+    }
+
+    private fun applyTickerTransition(transition: PlaybackTickerTransition) {
+        if (transition.elapsedPlayingMs > 0L || transition.syncUi) {
+            updateProgressAndAnalytics(
+                deltaMs = transition.elapsedPlayingMs,
+                updateUi = transition.syncUi,
+                countAsPlaying = transition.elapsedPlayingMs > 0L
+            )
+        }
+
+        if (transition.restartTicker || (transition.desiredIntervalMs != null && progressJob?.isActive != true)) {
+            progressJob?.cancel()
+            progressJob = null
+            transition.desiredIntervalMs?.let { intervalMs ->
+                progressJob =
+                    ticker.tick(intervalMs)
+                        .onEach {
+                            applyTickerTransition(
+                                tickerLifecycle.onTick(foregroundMonitor.isForeground.value)
+                            )
+                        }
+                        .flowOn(mediaDispatcher ?: dispatcherProvider.main)
+                        .launchIn(mediaScope ?: controllerScope)
+            }
+        }
+
+        if (transition.flushPlayback) flushCurrentPlaybackSnapshot()
+    }
+
+    private fun flushCurrentPlaybackSnapshot() {
         val player = controller ?: return
-        val settings = userSettings.replayCache.firstOrNull() ?: return // Don't run if settings aren't loaded yet
+        analyticsHandler.saveProgressBestEffort(
+            controllerScope,
+            player.currentMediaItem?.mediaId,
+            player.currentPosition
+        )
+        analyticsHandler.flushListeningTime(controllerScope)
+    }
+
+    private fun updateProgressAndAnalytics(
+        deltaMs: Long,
+        updateUi: Boolean,
+        countAsPlaying: Boolean = false
+    ) {
+        val player = controller ?: return
+        val settings = userSettings.replayCache.firstOrNull()
 
         val durationMs = player.duration.takeIf { it > 0 } ?: 0L
         val currentPositionMs = player.currentPosition.coerceAtLeast(0L)
         val isPlaying = player.isPlaying && player.playbackState == Player.STATE_READY
 
-        analyticsHandler.onTick(
-            scope = controllerScope,
-            guid = player.currentMediaItem?.mediaId,
-            currentPositionMs = currentPositionMs,
-            durationMs = durationMs,
-            deltaMs = TICK_INTERVAL_MS,
-            isPlaying = isPlaying,
-            markPlayedThresholdSeconds = settings.markPlayedDurationSeconds
-        )
+        if (settings != null && deltaMs > 0L) {
+            analyticsHandler.onTick(
+                scope = controllerScope,
+                guid = player.currentMediaItem?.mediaId,
+                currentPositionMs = currentPositionMs,
+                durationMs = durationMs,
+                deltaMs = deltaMs,
+                isPlaying = isPlaying || countAsPlaying,
+                markPlayedThresholdSeconds = settings.markPlayedDurationSeconds
+            )
+        }
 
-        if (!isUserSeeking) {
+        if (updateUi && !isUserSeeking) {
             _internalPlaybackState.update {
                 it.copy(
                     currentPositionMs = currentPositionMs,
@@ -135,7 +201,7 @@ constructor(
 
     private fun ensureMediaScope(ctrl: MediaController) {
         if (mediaDispatcher != null && mediaScope != null) return
-        val dispatcher = Handler(ctrl.applicationLooper).asCoroutineDispatcher()
+        val dispatcher = mediaDispatcherFactory.create(ctrl)
         mediaDispatcher = dispatcher
         mediaScope = CoroutineScope(dispatcher + SupervisorJob(controllerScope.coroutineContext.job))
     }
@@ -153,10 +219,12 @@ constructor(
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     _internalPlayerState.update { it.copy(isBuffering = playbackState == Player.STATE_BUFFERING) }
+                    requestTickerReconciliation()
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     _internalPlayerState.update { it.copy(isPlaying = isPlaying) }
+                    requestTickerReconciliation()
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
@@ -168,6 +236,7 @@ constructor(
                     _internalPlayerState.update {
                         it.copy(isPlaying = false, isBuffering = false, error = errorString)
                     }
+                    requestTickerReconciliation()
                 }
 
                 override fun onMediaItemTransition(
@@ -266,19 +335,19 @@ constructor(
     }
 
     override fun releaseResources() {
-        analyticsHandler.flushListeningTime(controllerScope)
-        controller?.let {
-                p ->
-            analyticsHandler.saveProgressBestEffort(controllerScope, p.currentMediaItem?.mediaId, p.currentPosition)
-        }
+        val releaseTransition = tickerLifecycle.release()
+        applyTickerTransition(releaseTransition)
+        if (!releaseTransition.flushPlayback) flushCurrentPlaybackSnapshot()
         progressJob?.cancel()
         progressJob = null
+        foregroundJob?.cancel()
+        foregroundJob = null
         favoriteStatusJob?.cancel()
         favoriteStatusJob = null
         val ctrl = controller
         val listener = controllerListener
         if (ctrl != null && listener != null) {
-            Handler(ctrl.applicationLooper).post { runCatching { ctrl.removeListener(listener) } }
+            runCatching { ctrl.removeListener(listener) }
         }
         controller = null
         controllerListener = null
@@ -288,3 +357,13 @@ constructor(
         mediaDispatcher = null
     }
 }
+
+internal fun playbackTickIntervalMs(
+    isPlayingReady: Boolean,
+    isForeground: Boolean
+): Long? =
+    when {
+        !isPlayingReady -> null
+        isForeground -> 500L
+        else -> 5_000L
+    }
