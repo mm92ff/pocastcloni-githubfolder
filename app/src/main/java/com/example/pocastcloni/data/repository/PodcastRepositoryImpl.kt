@@ -8,6 +8,7 @@ import androidx.paging.PagingData
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.EpisodeWithPodcastLite
+import com.example.pocastcloni.data.local.FavoriteOrderUpdate
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.PodcastSortUpdate
@@ -170,19 +171,21 @@ constructor(
                     (allowInsecureHttp && !existing.allowInsecureHttp) ||
                     (allowLocalNetwork && !existing.allowLocalNetwork)
                 ) {
-                    val approved = existing.copy(
-                        allowInsecureHttp = existing.allowInsecureHttp || allowInsecureHttp,
-                        allowLocalNetwork = existing.allowLocalNetwork || allowLocalNetwork
+                    val effectiveAllowInsecureHttp = existing.allowInsecureHttp || allowInsecureHttp
+                    val effectiveAllowLocalNetwork = existing.allowLocalNetwork || allowLocalNetwork
+                    podcastDao.approvePodcastNetworkAccess(
+                        rssUrl = normalizedUrl,
+                        allowInsecureHttp = allowInsecureHttp,
+                        allowLocalNetwork = allowLocalNetwork
                     )
-                    podcastDao.updatePodcast(approved)
                     syncFeedUseCase.get().invoke(
                         normalizedUrl,
                         downloadLimit,
                         mode,
                         existing.sortOrder,
                         forceFull,
-                        allowInsecureHttp = approved.allowInsecureHttp,
-                        allowLocalNetwork = approved.allowLocalNetwork
+                        allowInsecureHttp = effectiveAllowInsecureHttp,
+                        allowLocalNetwork = effectiveAllowLocalNetwork
                     )
                 }
                 return@withContext
@@ -369,8 +372,20 @@ constructor(
         withContext(dispatcherProvider.io) { podcastDao.clearHistory() }
     }
 
-    override suspend fun reorderFavorites(episodes: List<EpisodeEntity>) {
-        withContext(dispatcherProvider.io) { podcastDao.updateEpisodes(episodes) }
+    override suspend fun reorderFavorites(
+        episodeIds: List<Long>,
+        orderedAt: Long
+    ) {
+        withContext(dispatcherProvider.io) {
+            podcastDao.updateFavoriteOrder(
+                episodeIds.mapIndexed { index, episodeId ->
+                    FavoriteOrderUpdate(
+                        episodeId = episodeId,
+                        favoriteTimestamp = orderedAt - index
+                    )
+                }
+            )
+        }
     }
 
     override suspend fun updateDownloadStatus(
@@ -386,26 +401,11 @@ constructor(
             podcastDao.getPodcastByUrl(url)
         }
 
-    override suspend fun insertPodcastEntity(entity: PodcastEntity) =
-        withContext(
-            dispatcherProvider.io
-        ) { podcastDao.insertPodcast(entity) }
-
-    override suspend fun updatePodcastEntity(entity: PodcastEntity) =
-        withContext(
-            dispatcherProvider.io
-        ) { podcastDao.updatePodcast(entity) }
-
     override suspend fun getMaxSortOrder(): Long? = withContext(dispatcherProvider.io) { podcastDao.getMaxSortOrder() }
 
     override suspend fun getEpisodesForSync(rssUrl: String): List<EpisodeEntity> =
         withContext(dispatcherProvider.io) {
             podcastDao.getEpisodesForPodcastSync(rssUrl)
-        }
-
-    override suspend fun insertEpisodes(episodes: List<EpisodeEntity>) =
-        withContext(dispatcherProvider.io) {
-            podcastDao.upsertEpisodesEfficient(episodes)
         }
 
     override suspend fun isLatestEpisodePlayed(rssUrl: String): Boolean? =

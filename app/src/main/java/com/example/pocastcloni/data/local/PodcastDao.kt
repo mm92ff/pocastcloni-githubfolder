@@ -62,20 +62,100 @@ data class PodcastSortUpdate(
     @ColumnInfo(name = "sortOrder") val sortOrder: Long
 )
 
+data class PodcastFeedUpdate(
+    val rssUrl: String,
+    val title: String,
+    val description: String,
+    val imageUrl: String,
+    val lastRefreshed: Date,
+    val lastModifiedHeader: String?,
+    val eTagHeader: String?
+)
+
+data class EpisodeFeedUpdate(
+    val podcastRssUrl: String,
+    val guid: String,
+    val title: String,
+    val description: String,
+    val pubDate: Date?,
+    val duration: Long,
+    val link: String,
+    val enclosureUrl: String,
+    val fileSize: Long,
+    val type: String
+)
+
+@Entity
+data class FavoriteOrderUpdate(
+    @ColumnInfo(name = "episodeId") val episodeId: Long,
+    @ColumnInfo(name = "favoriteTimestamp") val favoriteTimestamp: Long
+)
+
 @Dao
 interface PodcastDao {
     // --- PODCASTS ---
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertPodcast(podcast: PodcastEntity)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertPodcasts(podcasts: List<PodcastEntity>)
 
-    @Update
-    suspend fun updatePodcast(podcast: PodcastEntity)
+    suspend fun updatePodcastFromFeed(update: PodcastFeedUpdate): Int =
+        updatePodcastFromFeedFields(
+            rssUrl = update.rssUrl,
+            title = update.title,
+            description = update.description,
+            imageUrl = update.imageUrl,
+            lastRefreshed = update.lastRefreshed,
+            lastModifiedHeader = update.lastModifiedHeader,
+            eTagHeader = update.eTagHeader
+        )
 
-    @Update
-    suspend fun updatePodcasts(podcasts: List<PodcastEntity>)
+    @Suppress("LongParameterList")
+    @Query(
+        """
+        UPDATE podcasts
+        SET title = :title,
+            description = :description,
+            imageUrl = :imageUrl,
+            lastRefreshed = :lastRefreshed,
+            lastModifiedHeader = :lastModifiedHeader,
+            eTagHeader = :eTagHeader
+        WHERE rssUrl = :rssUrl
+        """
+    )
+    suspend fun updatePodcastFromFeedFields(
+        rssUrl: String,
+        title: String,
+        description: String,
+        imageUrl: String,
+        lastRefreshed: Date,
+        lastModifiedHeader: String?,
+        eTagHeader: String?
+    ): Int
+
+    @Query("UPDATE podcasts SET lastRefreshed = :lastRefreshed WHERE rssUrl = :rssUrl")
+    suspend fun updatePodcastLastRefreshed(
+        rssUrl: String,
+        lastRefreshed: Date
+    ): Int
+
+    @Query("SELECT autoDownloadEnabled FROM podcasts WHERE rssUrl = :rssUrl")
+    suspend fun getPodcastAutoDownloadEnabled(rssUrl: String): Boolean?
+
+    @Query(
+        """
+        UPDATE podcasts
+        SET allowInsecureHttp = allowInsecureHttp OR :allowInsecureHttp,
+            allowLocalNetwork = allowLocalNetwork OR :allowLocalNetwork
+        WHERE rssUrl = :rssUrl
+        """
+    )
+    suspend fun approvePodcastNetworkAccess(
+        rssUrl: String,
+        allowInsecureHttp: Boolean,
+        allowLocalNetwork: Boolean
+    ): Int
 
     // NEW: Update method for efficient, partial reordering without data loss
     @Update(entity = PodcastEntity::class)
@@ -142,6 +222,9 @@ interface PodcastDao {
         hasNew: Boolean
     )
 
+    @Query("UPDATE podcasts SET hasNewEpisodes = 1 WHERE rssUrl = :url")
+    suspend fun markPodcastHasNewEpisodes(url: String): Int
+
     @Query("UPDATE podcasts SET isLatestEpisodePlayed = :isPlayed WHERE rssUrl = :url")
     suspend fun updateLatestEpisodePlayedFlag(url: String, isPlayed: Boolean)
 
@@ -177,11 +260,23 @@ interface PodcastDao {
     suspend fun insertEpisodes(episodes: List<EpisodeEntity>)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertEpisodesIgnore(episodes: List<EpisodeEntity>)
+    suspend fun insertEpisodesIgnore(episodes: List<EpisodeEntity>): List<Long>
 
-    @Update
-    suspend fun updateEpisodes(episodes: List<EpisodeEntity>)
+    suspend fun updateEpisodeMetadataByFeedKey(update: EpisodeFeedUpdate) =
+        updateEpisodeMetadataByFeedKeyFields(
+            podcastRssUrl = update.podcastRssUrl,
+            guid = update.guid,
+            title = update.title,
+            description = update.description,
+            pubDate = update.pubDate,
+            duration = update.duration,
+            link = update.link,
+            enclosureUrl = update.enclosureUrl,
+            fileSize = update.fileSize,
+            type = update.type
+        )
 
+    @Suppress("LongParameterList")
     @Query(
         """
         UPDATE episodes
@@ -189,19 +284,21 @@ interface PodcastDao {
             description = :description,
             pubDate = :pubDate,
             duration = :duration,
+            link = :link,
             enclosureUrl = :enclosureUrl,
             fileSize = :fileSize,
             type = :type
         WHERE podcastRssUrl = :podcastRssUrl AND guid = :guid
         """
     )
-    suspend fun updateEpisodeMetadataByFeedKey(
+    suspend fun updateEpisodeMetadataByFeedKeyFields(
         podcastRssUrl: String,
         guid: String,
         title: String,
         description: String,
         pubDate: Date?,
         duration: Long,
+        link: String,
         enclosureUrl: String,
         fileSize: Long,
         type: String
@@ -211,27 +308,31 @@ interface PodcastDao {
      * Efficient upsert: insert new ones, update ONLY metadata for existing ones.
      */
     @Transaction
-    suspend fun upsertEpisodesEfficient(episodes: List<EpisodeEntity>) {
-        if (episodes.isEmpty()) return
+    suspend fun upsertEpisodesEfficient(episodes: List<EpisodeEntity>): List<Long> {
+        if (episodes.isEmpty()) return emptyList()
 
         // 1. Insert new episodes (existing ones are ignored)
-        insertEpisodesIgnore(episodes)
+        val insertResults = insertEpisodesIgnore(episodes)
 
         // 2. Metadata update for ALL episodes (including existing ones)
         // Accesses the fields in EpisodeEntity
         episodes.forEach { episode ->
             updateEpisodeMetadataByFeedKey(
-                podcastRssUrl = episode.podcastRssUrl,
-                guid = episode.guid,
-                title = episode.title,
-                description = episode.description,
-                pubDate = episode.pubDate,
-                duration = episode.duration,
-                enclosureUrl = episode.enclosureUrl,
-                fileSize = episode.fileSize,
-                type = episode.type
+                EpisodeFeedUpdate(
+                    podcastRssUrl = episode.podcastRssUrl,
+                    guid = episode.guid,
+                    title = episode.title,
+                    description = episode.description,
+                    pubDate = episode.pubDate,
+                    duration = episode.duration,
+                    link = episode.link,
+                    enclosureUrl = episode.enclosureUrl,
+                    fileSize = episode.fileSize,
+                    type = episode.type
+                )
             )
         }
+        return insertResults
     }
 
     @Delete
@@ -364,6 +465,16 @@ interface PodcastDao {
 
     @Query("SELECT * FROM episodes WHERE isFavorite = 1 ORDER BY favoriteTimestamp DESC")
     suspend fun getFavoriteEpisodesSync(): List<EpisodeEntity>
+
+    @Update(entity = EpisodeEntity::class)
+    suspend fun updateFavoriteOrderRows(updates: List<FavoriteOrderUpdate>): Int
+
+    @Transaction
+    suspend fun updateFavoriteOrder(updates: List<FavoriteOrderUpdate>) {
+        check(updateFavoriteOrderRows(updates) == updates.size) {
+            "Favorite reorder referenced a missing episode"
+        }
+    }
 
     @Query("SELECT isFavorite FROM episodes WHERE episodeId = :episodeId")
     fun isFavorite(episodeId: Long): Flow<Boolean>

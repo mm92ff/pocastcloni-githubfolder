@@ -110,7 +110,10 @@ interface PodcastRepository {
 
     suspend fun clearHistory()
 
-    suspend fun reorderFavorites(episodes: List<EpisodeEntity>)
+    suspend fun reorderFavorites(
+        episodeIds: List<Long>,
+        orderedAt: Long
+    )
 
     // --- DOWNLOAD STATUS ---
     suspend fun updateDownloadStatus(
@@ -122,15 +125,9 @@ interface PodcastRepository {
     // --- SYNC SUPPORT ---
     suspend fun getPodcastEntityByUrl(url: String): PodcastEntity?
 
-    suspend fun insertPodcastEntity(entity: PodcastEntity)
-
-    suspend fun updatePodcastEntity(entity: PodcastEntity)
-
     suspend fun getMaxSortOrder(): Long?
 
     suspend fun getEpisodesForSync(rssUrl: String): List<EpisodeEntity>
-
-    suspend fun insertEpisodes(episodes: List<EpisodeEntity>)
 
     suspend fun isLatestEpisodePlayed(rssUrl: String): Boolean?
 

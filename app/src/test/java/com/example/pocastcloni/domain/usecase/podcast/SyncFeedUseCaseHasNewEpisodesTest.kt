@@ -8,18 +8,23 @@ import com.example.pocastcloni.data.remote.PodcastService
 import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.repository.FeedSyncPersistence
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.usecase.episode.DownloadEpisodeUseCase
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,6 +41,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.xmlpull.v1.XmlPullParserFactory
 import retrofit2.Response
+import java.net.HttpURLConnection
 import java.util.Date
 import javax.inject.Provider
 
@@ -53,6 +59,7 @@ class SyncFeedUseCaseHasNewEpisodesTest {
     private lateinit var podcastService: PodcastService
     private lateinit var localPodcastService: PodcastService
     private lateinit var repository: PodcastRepository
+    private lateinit var feedSyncPersistence: FeedSyncPersistence
     private lateinit var downloadEpisodeUseCase: DownloadEpisodeUseCase
     private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var useCase: SyncFeedUseCase
@@ -73,6 +80,7 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         podcastService = mockk()
         localPodcastService = mockk()
         repository = mockk(relaxed = true)
+        feedSyncPersistence = mockk(relaxed = true)
         downloadEpisodeUseCase = mockk(relaxed = true)
         dispatcherProvider = mockk()
         io.mockk.every { dispatcherProvider.io } returns testDispatcher
@@ -81,6 +89,7 @@ class SyncFeedUseCaseHasNewEpisodesTest {
             podcastService = podcastService,
             localPodcastService = localPodcastService,
             podcastRepositoryProvider = Provider { repository },
+            feedSyncPersistence = feedSyncPersistence,
             downloadEpisodeUseCase = downloadEpisodeUseCase,
             dispatcherProvider = dispatcherProvider,
             localNetworkAccessRegistry = LocalNetworkAccessRegistry()
@@ -108,9 +117,12 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         return xml.toResponseBody("application/rss+xml".toMediaType())
     }
 
-    private fun mockSuccessResponse(guid: String): Response<okhttp3.ResponseBody> {
+    private fun mockSuccessResponse(
+        guid: String,
+        headers: Headers = Headers.headersOf()
+    ): Response<okhttp3.ResponseBody> {
         val body = makeRssBody(guid)
-        return Response.success(body, Headers.headersOf())
+        return Response.success(body, headers)
     }
 
     private fun existingPodcast(hasNew: Boolean = false) = PodcastEntity(
@@ -132,51 +144,45 @@ class SyncFeedUseCaseHasNewEpisodesTest {
     )
 
     @Test
-    fun `full sync does not set hasNewEpisodes when all feed episodes already in DB`() = runTest(testDispatcher) {
+    fun `full sync delegates duplicate episode without pre-reading badge state`() = runTest(testDispatcher) {
         val guid = "episode-guid-1"
         coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns mockSuccessResponse(guid)
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns existingPodcast(hasNew = false)
         coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns guid
-        coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(existingEpisode(guid))
-        coEvery { repository.getMaxSortOrder() } returns 0L
 
         useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
 
-        val slot = slot<PodcastEntity>()
-        coVerify { repository.updatePodcastEntity(capture(slot)) }
-        assertFalse("hasNewEpisodes should stay false when no new episodes", slot.captured.hasNewEpisodes)
+        val slot = slot<List<EpisodeEntity>>()
+        coVerify { feedSyncPersistence.persistFeedUpdate(any(), null, capture(slot)) }
+        assertTrue(slot.captured.single().guid == guid)
+        coVerify(exactly = 0) { repository.getEpisodesForSync(any()) }
     }
 
     @Test
-    fun `full sync sets hasNewEpisodes when feed contains episode not in DB`() = runTest(testDispatcher) {
+    fun `full sync delegates new episode to transactional persistence`() = runTest(testDispatcher) {
         val newGuid = "new-episode-guid"
         coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns mockSuccessResponse(newGuid)
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns existingPodcast(hasNew = false)
         coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns null
-        coEvery { repository.getEpisodesForSync(feedUrl) } returns emptyList() // No existing episodes
-        coEvery { repository.getMaxSortOrder() } returns 0L
 
         useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
 
-        val slot = slot<PodcastEntity>()
-        coVerify { repository.updatePodcastEntity(capture(slot)) }
-        assertTrue("hasNewEpisodes should be true when new episode arrives", slot.captured.hasNewEpisodes)
+        val slot = slot<List<EpisodeEntity>>()
+        coVerify { feedSyncPersistence.persistFeedUpdate(any(), null, capture(slot)) }
+        assertTrue(slot.captured.single().guid == newGuid)
     }
 
     @Test
-    fun `full sync preserves existing hasNewEpisodes=true when no new episodes`() = runTest(testDispatcher) {
+    fun `full sync never copies existing badge state into feed update`() = runTest(testDispatcher) {
         val guid = "episode-guid-1"
         coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns mockSuccessResponse(guid)
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns existingPodcast(hasNew = true)
         coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns guid
-        coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(existingEpisode(guid))
-        coEvery { repository.getMaxSortOrder() } returns 0L
 
         useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
 
-        val slot = slot<PodcastEntity>()
-        coVerify { repository.updatePodcastEntity(capture(slot)) }
-        assertTrue("existing hasNewEpisodes=true should be preserved", slot.captured.hasNewEpisodes)
+        coVerify { feedSyncPersistence.persistFeedUpdate(any(), null, any()) }
+        coVerify(exactly = 0) { repository.getEpisodesForSync(any()) }
     }
 
     @Test
@@ -185,14 +191,13 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns mockSuccessResponse(guid)
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns null
         coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns null
-        coEvery { repository.getEpisodesForSync(feedUrl) } returns emptyList()
         coEvery { repository.getMaxSortOrder() } returns 5L
 
         useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
 
         val slot = slot<PodcastEntity>()
-        coVerify { repository.insertPodcastEntity(capture(slot)) }
-        assertTrue("New podcast should have hasNewEpisodes=true", slot.captured.hasNewEpisodes)
+        coVerify { feedSyncPersistence.persistFeedUpdate(any(), capture(slot), any()) }
+        assertFalse("Room must derive the new badge from insert results", slot.captured.hasNewEpisodes)
     }
 
     @Test
@@ -211,9 +216,8 @@ class SyncFeedUseCaseHasNewEpisodesTest {
                 useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
             }.isFailure
         )
-        coVerify(exactly = 0) { repository.insertPodcastEntity(any()) }
-        coVerify(exactly = 0) { repository.updatePodcastEntity(any()) }
-        coVerify(exactly = 0) { repository.insertEpisodes(any()) }
+        coVerify(exactly = 0) { feedSyncPersistence.persistFeedUpdate(any(), any(), any()) }
+        coVerify(exactly = 0) { feedSyncPersistence.touchLastRefreshed(any(), any()) }
         coVerify(exactly = 0) { downloadEpisodeUseCase(any()) }
     }
 
@@ -231,9 +235,8 @@ class SyncFeedUseCaseHasNewEpisodesTest {
                 useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
             }.isFailure
         )
-        coVerify(exactly = 0) { repository.insertPodcastEntity(any()) }
-        coVerify(exactly = 0) { repository.updatePodcastEntity(any()) }
-        coVerify(exactly = 0) { repository.insertEpisodes(any()) }
+        coVerify(exactly = 0) { feedSyncPersistence.persistFeedUpdate(any(), any(), any()) }
+        coVerify(exactly = 0) { feedSyncPersistence.touchLastRefreshed(any(), any()) }
         coVerify(exactly = 0) { downloadEpisodeUseCase(any()) }
     }
 
@@ -264,7 +267,9 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         coVerify(exactly = 1) { localPodcastService.fetchRawFeed(localUrl, any(), any()) }
         coVerify(exactly = 0) { podcastService.fetchRawFeed(localUrl, any(), any()) }
         coVerify {
-            repository.insertEpisodes(
+            feedSyncPersistence.persistFeedUpdate(
+                any(),
+                null,
                 match { episodes -> episodes.single().enclosureUrl == "http://10.0.2.2/local-guid.mp3" }
             )
         }
@@ -294,6 +299,145 @@ class SyncFeedUseCaseHasNewEpisodesTest {
 
         useCase(localUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
 
-        coVerify(exactly = 0) { repository.insertEpisodes(any()) }
+        coVerify {
+            feedSyncPersistence.persistFeedUpdate(any(), null, match { episodes -> episodes.isEmpty() })
+        }
+    }
+
+    @Test
+    fun `not modified response updates only last refreshed`() = runTest(testDispatcher) {
+        val response = mockk<Response<ResponseBody>>()
+        val downloadable = existingEpisode("known-guid").copy(episodeId = 44L)
+        every { response.code() } returns HttpURLConnection.HTTP_NOT_MODIFIED
+        coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns response
+        coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns
+            existingPodcast().copy(autoDownloadEnabled = false)
+        coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns "known-guid"
+        coEvery { feedSyncPersistence.touchLastRefreshed(feedUrl, any()) } returns true
+        coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(downloadable)
+
+        useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+
+        coVerifyOrder {
+            feedSyncPersistence.touchLastRefreshed(feedUrl, any())
+            downloadEpisodeUseCase(downloadable.episodeId)
+        }
+        coVerify(exactly = 0) { feedSyncPersistence.persistFeedUpdate(any(), any(), any()) }
+    }
+
+    @Test
+    fun `failed persistence does not approve feed or start downloads`() = runTest(testDispatcher) {
+        val localUrl = "http://10.0.2.2/feed.rss"
+        val registry = LocalNetworkAccessRegistry()
+        val localUseCase = SyncFeedUseCase(
+            podcastService = podcastService,
+            localPodcastService = localPodcastService,
+            podcastRepositoryProvider = Provider { repository },
+            feedSyncPersistence = feedSyncPersistence,
+            downloadEpisodeUseCase = downloadEpisodeUseCase,
+            dispatcherProvider = dispatcherProvider,
+            localNetworkAccessRegistry = registry
+        )
+        val existing = existingPodcast().copy(
+            rssUrl = localUrl,
+            allowInsecureHttp = true,
+            allowLocalNetwork = true,
+            autoDownloadEnabled = true
+        )
+        coEvery {
+            localPodcastService.fetchRawFeed(localUrl, any(), any())
+        } returns Response.success(
+            makeRssBody(
+                guid = "local-guid",
+                imageUrl = "http://10.0.2.2/cover.jpg",
+                enclosureUrl = "http://10.0.2.2/local-guid.mp3"
+            ),
+            Headers.headersOf()
+        )
+        coEvery { repository.getPodcastEntityByUrl(localUrl) } returns existing
+        coEvery { repository.getLatestEpisodeGuid(localUrl) } returns null
+        coEvery { repository.getEpisodesForSync(localUrl) } returns emptyList()
+        coEvery { feedSyncPersistence.persistFeedUpdate(any(), any(), any()) } throws
+            IllegalStateException("injected failure")
+
+        assertTrue(
+            runCatching {
+                localUseCase(localUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+            }.isFailure
+        )
+
+        assertFalse(registry.isApproved(localUrl))
+        coVerify(exactly = 0) { downloadEpisodeUseCase(any()) }
+    }
+
+    @Test
+    fun `concurrent auto download enablement returned by commit starts downloads`() = runTest(testDispatcher) {
+        val guid = "new-guid"
+        val downloadable = existingEpisode(guid).copy(episodeId = 55L)
+        val persistenceEntered = CompletableDeferred<Unit>()
+        val releasePersistence = CompletableDeferred<Boolean>()
+        coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns mockSuccessResponse(guid)
+        coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns
+            existingPodcast().copy(autoDownloadEnabled = false)
+        coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns "old-guid"
+        coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(downloadable)
+        coEvery { feedSyncPersistence.persistFeedUpdate(any(), any(), any()) } coAnswers {
+            persistenceEntered.complete(Unit)
+            releasePersistence.await()
+        }
+
+        val sync = async {
+            useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+        }
+        runCurrent()
+        persistenceEntered.await()
+        releasePersistence.complete(true)
+        runCurrent()
+        sync.await()
+
+        coVerifyOrder {
+            feedSyncPersistence.persistFeedUpdate(any(), null, any())
+            downloadEpisodeUseCase(downloadable.episodeId)
+        }
+    }
+
+    @Test
+    fun `rolled back headers are reused by the next request`() = runTest(testDispatcher) {
+        val existing = existingPodcast().copy(
+            lastModifiedHeader = "old-last-modified",
+            eTagHeader = "old-etag"
+        )
+        val notModified = mockk<Response<ResponseBody>>()
+        every { notModified.code() } returns HttpURLConnection.HTTP_NOT_MODIFIED
+        coEvery {
+            podcastService.fetchRawFeed(feedUrl, "old-last-modified", "old-etag")
+        } returnsMany listOf(
+            mockSuccessResponse(
+                guid = "new-guid",
+                headers = Headers.headersOf(
+                    Constants.Network.HEADER_LAST_MODIFIED,
+                    "new-last-modified",
+                    Constants.Network.HEADER_ETAG,
+                    "new-etag"
+                )
+            ),
+            notModified
+        )
+        coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns existing
+        coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns "known-guid"
+        coEvery { feedSyncPersistence.persistFeedUpdate(any(), any(), any()) } throws
+            IllegalStateException("injected transaction failure")
+
+        assertTrue(
+            runCatching {
+                useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+            }.isFailure
+        )
+        useCase(feedUrl, downloadLimit = 3, mode = FeedUpdateMode.ALWAYS_FULL)
+
+        coVerify(exactly = 2) {
+            podcastService.fetchRawFeed(feedUrl, "old-last-modified", "old-etag")
+        }
+        coVerify(exactly = 1) { feedSyncPersistence.touchLastRefreshed(feedUrl, any()) }
     }
 }

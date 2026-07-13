@@ -2,9 +2,11 @@ package com.example.pocastcloni.di
 
 import com.example.pocastcloni.data.repository.BackupRepositoryImpl
 import com.example.pocastcloni.data.repository.PodcastRepositoryImpl
+import com.example.pocastcloni.data.repository.RoomFeedSyncPersistence
 import com.example.pocastcloni.data.repository.StatisticsRepositoryImpl
 import com.example.pocastcloni.data.repository.UserPreferencesRepositoryImpl
 import com.example.pocastcloni.domain.repository.BackupRepository
+import com.example.pocastcloni.domain.repository.FeedSyncPersistence
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.StatisticsRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
@@ -20,6 +22,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindPodcastRepository(podcastRepositoryImpl: PodcastRepositoryImpl): PodcastRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFeedSyncPersistence(implementation: RoomFeedSyncPersistence): FeedSyncPersistence
 
     @Binds
     @Singleton

@@ -54,7 +54,13 @@ class PodcastRepositoryHttpApprovalTest {
             allowInsecureHttp = true
         )
 
-        coVerify { dao.updatePodcast(match { it.rssUrl == url && it.allowInsecureHttp }) }
+        coVerify {
+            dao.approvePodcastNetworkAccess(
+                rssUrl = url,
+                allowInsecureHttp = true,
+                allowLocalNetwork = false
+            )
+        }
         coVerify {
             syncFeed.invoke(
                 url,
@@ -102,7 +108,13 @@ class PodcastRepositoryHttpApprovalTest {
             allowLocalNetwork = true
         )
 
-        coVerify { dao.updatePodcast(match { it.rssUrl == url && it.allowLocalNetwork }) }
+        coVerify {
+            dao.approvePodcastNetworkAccess(
+                rssUrl = url,
+                allowInsecureHttp = false,
+                allowLocalNetwork = true
+            )
+        }
         coVerify {
             syncFeed.invoke(
                 url,
