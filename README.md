@@ -22,8 +22,9 @@ synchronisation.
   optional gradient background; transparent cards and episode rows; one-handed
   layout; bottom bar clean mode with swipe reveal and auto-hide delay.
 - **Settings** - Tabbed Settings screen for Design, Playback, Sync, and Data.
-- **Backup & Restore** - Export and import podcasts, favorites, history, and
-  user settings.
+- **Backup & Restore** - Export and import podcast order and auto-download
+  choices, favorites and their manual order, playback history and progress, and
+  all current user settings.
 - **Statistics** - Listening and download statistics with reset actions.
 
 ## Screenshots
@@ -171,7 +172,12 @@ app/src/main/java/com/example/pocastcloni/
 - Downloaded episodes fall back to streaming when the local file is missing.
 - The bottom navigation can be hidden in Clean Mode and revealed with an upward
   swipe.
-- Backups are JSON-based and include restorable library and settings data.
+- Backups are JSON-based. Version 2 stores portable library state: podcast
+  ordering and per-podcast auto-download, feed-scoped favorite/history/progress
+  state, favorite added time and manual order, and all current user settings.
+- Local download paths and download status are device-specific and are never
+  exported or overwritten during restore. Version 1 object backups and legacy
+  JSON arrays of podcast URLs remain importable.
 
 ## Contributing
 

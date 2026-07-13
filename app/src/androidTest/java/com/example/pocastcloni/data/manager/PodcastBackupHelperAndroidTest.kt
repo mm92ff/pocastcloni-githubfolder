@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.core.net.toUri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.pocastcloni.data.local.BackupFavorite
+import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.di.DefaultDispatcherProvider
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -63,12 +63,15 @@ class PodcastBackupHelperAndroidTest {
                         eTagHeader = "etag-1"
                     )
                 ),
-                favorites =
+                episodeStates =
                 listOf(
-                    BackupFavorite(
+                    BackupEpisodeState(
                         podcastUrl = "https://example.com/feed.xml",
                         episodeGuid = "episode-1",
-                        timestamp = 123L
+                        title = "Episode 1",
+                        isFavorite = true,
+                        favoriteAddedAt = 123L,
+                        favoriteOrder = 0
                     )
                 ),
                 settings = UserSettings(autoDownloadLimit = 4),
@@ -80,8 +83,8 @@ class PodcastBackupHelperAndroidTest {
 
             assertEquals(1, restored.podcasts.size)
             assertEquals("https://example.com/feed.xml", restored.podcasts.first().url)
-            assertEquals(1, restored.favorites.size)
-            assertEquals("episode-1", restored.favorites.first().episodeGuid)
+            assertEquals(1, restored.episodeStates.size)
+            assertEquals("episode-1", restored.episodeStates.first().episodeGuid)
             assertEquals(4, restored.settings?.autoDownloadLimit)
         }
 

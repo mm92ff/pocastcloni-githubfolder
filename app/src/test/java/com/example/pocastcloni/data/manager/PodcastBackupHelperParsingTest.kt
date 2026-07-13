@@ -1,6 +1,7 @@
 package com.example.pocastcloni.data.manager
 
 import com.example.pocastcloni.data.local.BackupData
+import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.data.local.settingsForRestore
 import com.example.pocastcloni.domain.model.AppColor
@@ -51,6 +52,25 @@ class PodcastBackupHelperParsingTest {
     }
 
     @Test
+    fun parseBackupJson_treatsMissingVersionAsVersionOne() {
+        val result = parseBackupJson(
+            """
+            {
+              "podcasts": [
+                {
+                  "url": "https://example.com/versionless.xml",
+                  "sortOrder": 0
+                }
+              ]
+            }
+            """.trimIndent(),
+            objectMapper
+        )
+
+        assertEquals(1, result.version)
+    }
+
+    @Test
     fun parseBackupJson_acceptsLegacyUrlList() {
         val result =
             parseBackupJson(
@@ -66,6 +86,120 @@ class PodcastBackupHelperParsingTest {
         assertEquals(2, result.podcasts.size)
         assertEquals(0L, result.podcasts[0].sortOrder)
         assertEquals(1L, result.podcasts[1].sortOrder)
+        assertEquals(1, result.version)
+    }
+
+    @Test
+    fun parseBackupJson_acceptsVersionOneFixture() {
+        val fixture = requireNotNull(javaClass.getResource("/audit/legacy-backup-v1.json")).readText()
+
+        val result = parseBackupJson(fixture, objectMapper)
+
+        assertEquals(1, result.version)
+        assertEquals(2, result.podcasts.size)
+        assertEquals("shared-guid-across-feeds", result.favorites.single().episodeGuid)
+        assertTrue(result.episodeStates.isEmpty())
+    }
+
+    @Test
+    fun parseBackupJson_keepsDuplicateGuidsSeparatedByFeedAndIgnoresDownloadFields() {
+        val parsed = parseBackupJson(
+            """
+            {
+              "version": 2,
+              "podcasts": [
+                {"url":"https://feed-a.example/rss","sortOrder":0,"autoDownloadEnabled":true},
+                {"url":"https://feed-b.example/rss","sortOrder":1,"autoDownloadEnabled":false}
+              ],
+              "episodeStates": [
+                {
+                  "podcastUrl":"https://feed-a.example/rss",
+                  "episodeGuid":"shared-guid",
+                  "title":"Episode A",
+                  "duration":120000,
+                  "isFavorite":true,
+                  "favoriteAddedAt":1000,
+                  "favoriteOrder":0,
+                  "isPlayed":true,
+                  "datePlayed":2000,
+                  "playbackPositionMs":90000,
+                  "downloadPath":"/tampered/a.mp3",
+                  "downloadStatus":"DOWNLOADED"
+                },
+                {
+                  "podcastUrl":"https://feed-b.example/rss",
+                  "episodeGuid":"shared-guid",
+                  "title":"Episode B",
+                  "duration":180000,
+                  "isFavorite":false,
+                  "isPlayed":false,
+                  "playbackPositionMs":30000,
+                  "download_path":"content://tampered/b",
+                  "download_status":"DOWNLOADED"
+                }
+              ]
+            }
+            """.trimIndent(),
+            objectMapper
+        )
+
+        assertEquals(2, parsed.episodeStates.size)
+        assertEquals(
+            setOf("https://feed-a.example/rss", "https://feed-b.example/rss"),
+            parsed.episodeStates.map { it.podcastUrl }.toSet()
+        )
+        val reexported = objectMapper.writeValueAsString(parsed)
+        assertFalse(reexported.contains("downloadPath"))
+        assertFalse(reexported.contains("downloadStatus"))
+        assertFalse(reexported.contains("download_path"))
+        assertFalse(reexported.contains("download_status"))
+    }
+
+    @Test
+    fun versionTwoEpisodeStateRoundTripPreservesPortableFieldsAndOrder() {
+        val expected = listOf(
+            BackupEpisodeState(
+                podcastUrl = "https://feed-a.example/rss",
+                episodeGuid = "episode-a",
+                title = "Episode A",
+                description = "Description A",
+                publishedAt = 500L,
+                duration = 10_000L,
+                isFavorite = true,
+                favoriteAddedAt = 1_000L,
+                favoriteOrder = 0,
+                isPlayed = true,
+                datePlayed = 2_000L,
+                playbackPositionMs = 9_000L
+            ),
+            BackupEpisodeState(
+                podcastUrl = "https://feed-a.example/rss",
+                episodeGuid = "episode-b",
+                title = "Episode B",
+                duration = 20_000L,
+                isFavorite = true,
+                favoriteAddedAt = 3_000L,
+                favoriteOrder = 1,
+                playbackPositionMs = 4_000L
+            )
+        )
+        val source = BackupData(
+            podcasts = listOf(
+                BackupPodcast(
+                    url = "https://feed-a.example/rss",
+                    autoDownloadEnabled = true
+                )
+            ),
+            settings = UserSettings(),
+            episodeStates = expected
+        )
+
+        val parsed = parseBackupJson(objectMapper.writeValueAsString(source), objectMapper)
+
+        assertEquals(Constants.Backup.BACKUP_VERSION, parsed.version)
+        assertEquals(true, parsed.podcasts.single().autoDownloadEnabled)
+        assertEquals(expected, parsed.episodeStates)
+        assertEquals(listOf(0L, 1L), parsed.episodeStates.map { it.favoriteOrder })
     }
 
     @Test

@@ -186,19 +186,19 @@ interface PodcastDao {
     )
 
     @Transaction
-    @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC, rssUrl ASC")
     fun getPodcastsWithEpisodesFlow(): Flow<List<PodcastWithEpisodes>>
 
-    @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC, rssUrl ASC")
     fun getAllPodcastsFlow(): Flow<List<PodcastEntity>>
 
     @Query("SELECT rssUrl FROM podcasts")
     suspend fun getAllPodcastUrls(): List<String>
 
-    @Query("SELECT rssUrl, autoDownloadEnabled FROM podcasts ORDER BY sortOrder ASC")
+    @Query("SELECT rssUrl, autoDownloadEnabled FROM podcasts ORDER BY sortOrder ASC, rssUrl ASC")
     suspend fun getAllPodcastsSyncInfo(): List<PodcastSyncInfo>
 
-    @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC, rssUrl ASC")
     suspend fun getAllPodcastsForExport(): List<PodcastEntity>
 
     @Query("SELECT MAX(sortOrder) FROM podcasts")
@@ -445,7 +445,13 @@ interface PodcastDao {
         favoriteAddedAt: Long?
     )
 
-    @Query("SELECT * FROM episodes WHERE isFavorite = 1 ORDER BY favoriteTimestamp DESC")
+    @Query(
+        """
+        SELECT * FROM episodes
+        WHERE isFavorite = 1
+        ORDER BY favoriteTimestamp DESC, favoriteAddedAt DESC, podcastRssUrl ASC, guid ASC
+        """
+    )
     fun getFavoriteEpisodes(): Flow<List<EpisodeEntity>>
 
     @Query(
@@ -458,13 +464,33 @@ interface PodcastDao {
         FROM episodes e
         LEFT JOIN podcasts p ON p.rssUrl = e.podcastRssUrl
         WHERE e.isFavorite = 1
-        ORDER BY e.favoriteTimestamp DESC
+        ORDER BY e.favoriteTimestamp DESC, e.favoriteAddedAt DESC, e.podcastRssUrl ASC, e.guid ASC
         """
     )
     fun getFavoriteEpisodesWithPodcastLiteFlow(): Flow<List<EpisodeWithPodcastLite>>
 
-    @Query("SELECT * FROM episodes WHERE isFavorite = 1 ORDER BY favoriteTimestamp DESC")
+    @Query(
+        """
+        SELECT * FROM episodes
+        WHERE isFavorite = 1
+        ORDER BY favoriteTimestamp DESC, favoriteAddedAt DESC, podcastRssUrl ASC, guid ASC
+        """
+    )
     suspend fun getFavoriteEpisodesSync(): List<EpisodeEntity>
+
+    @Query(
+        """
+        SELECT * FROM episodes
+        WHERE isFavorite = 1 OR isPlayed = 1 OR playbackPositionMs > 0
+        ORDER BY
+            CASE WHEN isFavorite = 1 THEN 0 ELSE 1 END ASC,
+            favoriteTimestamp DESC,
+            favoriteAddedAt DESC,
+            podcastRssUrl ASC,
+            guid ASC
+        """
+    )
+    suspend fun getPortableEpisodeStatesForExport(): List<EpisodeEntity>
 
     @Update(entity = EpisodeEntity::class)
     suspend fun updateFavoriteOrderRows(updates: List<FavoriteOrderUpdate>): Int
@@ -493,6 +519,31 @@ interface PodcastDao {
         isPlayed: Boolean,
         datePlayed: Date?
     )
+
+    @Suppress("LongParameterList")
+    @Query(
+        """
+        UPDATE episodes
+        SET isFavorite = :isFavorite,
+            favoriteAddedAt = :favoriteAddedAt,
+            favoriteTimestamp = CASE WHEN :isFavorite THEN favoriteTimestamp ELSE NULL END,
+            isPlayed = :isPlayed,
+            datePlayed = :datePlayed,
+            playbackPositionMs = :playbackPositionMs,
+            duration = CASE WHEN :restoreDuration = 1 THEN :duration ELSE duration END
+        WHERE episodeId = :episodeId
+        """
+    )
+    suspend fun updatePortableEpisodeState(
+        episodeId: Long,
+        isFavorite: Boolean,
+        favoriteAddedAt: Long?,
+        isPlayed: Boolean,
+        datePlayed: Date?,
+        playbackPositionMs: Long,
+        duration: Long,
+        restoreDuration: Boolean
+    ): Int
 
     @Query("UPDATE episodes SET isPlayed = 1, datePlayed = :datePlayed WHERE episodeId = :episodeId AND isPlayed = 0")
     suspend fun markEpisodePlayedIfNeeded(

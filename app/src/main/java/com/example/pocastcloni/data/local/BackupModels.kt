@@ -3,6 +3,7 @@ package com.example.pocastcloni.data.local
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.Constants
+import com.fasterxml.jackson.annotation.JsonAlias
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
 
@@ -13,7 +14,15 @@ data class BackupData(
     @JsonProperty(Constants.Backup.KEY_SETTINGS) val settings: UserSettings? = null,
     @get:JsonIgnore
     val settingsFieldPresence: BackupSettingsFieldPresence? = null,
-    @JsonProperty("favorites") val favorites: List<BackupFavorite> = emptyList()
+    @JsonProperty("favorites") val favorites: List<BackupFavorite> = emptyList(),
+    @param:JsonAlias("episode_states")
+    @JsonProperty(Constants.Backup.KEY_EPISODE_STATES)
+    val episodeStates: List<BackupEpisodeState> = emptyList()
+)
+
+data class BackupRoomSnapshot(
+    val podcasts: List<PodcastEntity>,
+    val episodeStates: List<EpisodeEntity>
 )
 
 data class BackupSettingsFieldPresence(
@@ -182,6 +191,8 @@ private fun <T> Set<String>.importedValue(
 data class BackupPodcast(
     @JsonProperty(Constants.Backup.KEY_URL) val url: String = "",
     @JsonProperty(Constants.Backup.KEY_SORT_ORDER) val sortOrder: Long = 0,
+    @param:JsonAlias("auto_download_enabled")
+    @JsonProperty("autoDownloadEnabled") val autoDownloadEnabled: Boolean = false,
     @JsonProperty("allow_insecure_http") val allowInsecureHttp: Boolean = false,
     @JsonProperty("allow_local_network") val allowLocalNetwork: Boolean = false,
     // Metadata for offline import resilience
@@ -191,6 +202,31 @@ data class BackupPodcast(
     // NEW: Caching headers for smart updates (important for traffic savings after restore)
     @JsonProperty("last_modified") val lastModifiedHeader: String? = null,
     @JsonProperty("etag") val eTagHeader: String? = null
+)
+
+data class BackupEpisodeState(
+    @param:JsonAlias("podcast_url")
+    @JsonProperty("podcastUrl") val podcastUrl: String = "",
+    @param:JsonAlias("episode_guid")
+    @JsonProperty("episodeGuid") val episodeGuid: String = "",
+    @JsonProperty("title") val title: String = "",
+    @JsonProperty("description") val description: String = "",
+    @param:JsonAlias("published_at")
+    @JsonProperty("publishedAt") val publishedAt: Long? = null,
+    @param:JsonAlias("duration_ms")
+    @JsonProperty("duration") val duration: Long = 0,
+    @param:JsonAlias("is_favorite")
+    @JsonProperty("isFavorite") val isFavorite: Boolean = false,
+    @param:JsonAlias("favorite_added_at")
+    @JsonProperty("favoriteAddedAt") val favoriteAddedAt: Long? = null,
+    @param:JsonAlias("favorite_order")
+    @JsonProperty("favoriteOrder") val favoriteOrder: Long? = null,
+    @param:JsonAlias("is_played")
+    @JsonProperty("isPlayed") val isPlayed: Boolean = false,
+    @param:JsonAlias("date_played")
+    @JsonProperty("datePlayed") val datePlayed: Long? = null,
+    @param:JsonAlias("playback_position_ms")
+    @JsonProperty("playbackPositionMs") val playbackPositionMs: Long = 0
 )
 
 // Structure for a favorited entry in the backup

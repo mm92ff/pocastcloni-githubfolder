@@ -3,12 +3,19 @@ package com.example.pocastcloni.data.repository
 import android.content.Context
 import android.net.Uri
 import com.example.pocastcloni.R
+import com.example.pocastcloni.data.local.BackupData
+import com.example.pocastcloni.data.local.BackupEpisodeState
+import com.example.pocastcloni.data.local.BackupFavorite
+import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.BackupImportJournalDao
 import com.example.pocastcloni.data.local.BackupImportJournalEntity
+import com.example.pocastcloni.data.local.FavoriteOrderUpdate
+import com.example.pocastcloni.data.local.PodcastSortUpdate
 import com.example.pocastcloni.data.local.settingsForRestore
 import com.example.pocastcloni.data.manager.PodcastBackupHelper
+import com.example.pocastcloni.data.manager.validateBackupData
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.repository.BackupRepository
@@ -53,15 +60,14 @@ constructor(
         settings: UserSettings
     ) {
         withContext(dispatcherProvider.io) {
-            val podcasts = podcastDao.getAllPodcastsForExport()
-            val favorites = podcastDao.getFavoriteEpisodesSync()
+            val snapshot = transactionRunner.captureBackupSnapshot()
 
-            val backupPodcasts = podcasts.map { it.toBackupPodcast() }
-            val backupFavorites = favorites.map { it.toBackupFavorite() }
+            val backupPodcasts = snapshot.podcasts.map { it.toBackupPodcast() }
+            val backupEpisodeStates = snapshot.episodeStates.toBackupEpisodeStates()
 
             backupHelper.exportBackup(
                 podcasts = backupPodcasts,
-                favorites = backupFavorites,
+                episodeStates = backupEpisodeStates,
                 settings = settings,
                 uri = uri,
                 contentResolver = context.contentResolver
@@ -86,9 +92,10 @@ constructor(
         downloadLimit: Int,
         mode: FeedUpdateMode
     ): ImportResult {
+        val backupData = validateBackupData(backupHelper.importBackup(uri, context.contentResolver))
         backupImportRecovery.recoverInterruptedImport()
-        val backupData = backupHelper.importBackup(uri, context.contentResolver)
         val total = backupData.podcasts.size
+        val importedPodcasts = backupData.podcasts.normalizedForImport()
         val previousSettings = userPreferencesRepository.userSettingsFlow.first()
         val settingsToRestore = backupData.settingsForRestore(previousSettings)
         val pendingImport = BackupImportJournalEntity(
@@ -102,8 +109,8 @@ constructor(
                 userPreferencesRepository.restoreSettingsOrThrow(settings)
             }
             transactionRunner.run {
-                var currentMaxSortOrder = podcastDao.getMaxSortOrder() ?: 0L
-                backupData.podcasts.forEach { backupPodcast ->
+                val existingPodcasts = podcastDao.getAllPodcastsForExport()
+                importedPodcasts.forEach { backupPodcast ->
                     val existing = podcastDao.getPodcastByUrl(backupPodcast.url)
                     val safeImageUrl = backupPodcast.imageUrl.orEmpty().takeIf { imageUrl ->
                         isAllowedRemoteResource(
@@ -112,27 +119,36 @@ constructor(
                             allowLocalNetwork = existing?.allowLocalNetwork == true
                         )
                     }.orEmpty()
-                    val orderToUse = if (backupPodcast.sortOrder > 0) {
-                        backupPodcast.sortOrder
-                    } else {
-                        ++currentMaxSortOrder
-                    }
                     val stub = PodcastEntity(
                         rssUrl = backupPodcast.url,
                         title = backupPodcast.title ?: context.getString(R.string.import_fallback_title),
                         description = backupPodcast.description
                             ?: context.getString(R.string.import_fallback_description),
                         imageUrl = safeImageUrl,
+                        autoDownloadEnabled = backupPodcast.autoDownloadEnabled,
                         allowInsecureHttp = false,
                         allowLocalNetwork = false,
-                        sortOrder = orderToUse,
+                        sortOrder = 0,
                         lastModifiedHeader = backupPodcast.lastModifiedHeader,
                         eTagHeader = backupPodcast.eTagHeader,
                         lastRefreshed = Date(0)
                     )
                     insertPodcastStubPreservingExisting(podcastDao, stub)?.let(syncTargets::add)
+                    if (backupData.version >= 2) {
+                        podcastDao.updateAutoDownloadEnabled(
+                            backupPodcast.url,
+                            backupPodcast.autoDownloadEnabled
+                        )
+                    }
                 }
-                restoreAvailableFavorites(backupData.favorites)
+                podcastDao.updatePodcastSortOrders(
+                    mergedPodcastSortUpdates(importedPodcasts, existingPodcasts)
+                )
+                restoreAvailableEpisodeStates(
+                    podcastDao = podcastDao,
+                    backupData = backupData,
+                    restoreDuration = true
+                )
                 backupImportJournalDao.clearPendingImport()
             }
         } catch (error: CancellationException) {
@@ -173,34 +189,19 @@ constructor(
             }
         }
 
-        var skippedFavorites = 0
+        var restoreResult = EpisodeRestoreResult()
         transactionRunner.run {
-            skippedFavorites = restoreAvailableFavorites(backupData.favorites)
+            restoreResult = restoreAvailableEpisodeStates(
+                podcastDao = podcastDao,
+                backupData = backupData,
+                restoreDuration = false
+            )
         }
-        return ImportResult(total, total, skippedFavorites)
-    }
-
-    private suspend fun restoreAvailableFavorites(
-        favorites: List<com.example.pocastcloni.data.local.BackupFavorite>
-    ): Int {
-        var restored = 0
-        favorites.forEach { favorite ->
-            val episode = podcastDao.getEpisodeByFeedAndGuid(favorite.podcastUrl, favorite.episodeGuid)
-            if (episode != null) {
-                podcastDao.setFavoriteStatus(
-                    episodeId = episode.episodeId,
-                    isFavorite = true,
-                    timestamp = favorite.timestamp,
-                    favoriteAddedAt = favorite.timestamp
-                )
-                restored++
-            }
-        }
-        val skipped = favorites.size - restored
-        if (skipped > 0) {
-            Timber.w("Skipped restoring %d favorites because episodes are unavailable.", skipped)
-        }
-        return skipped
+        return ImportResult(
+            success = total,
+            total = total,
+            skippedFavorites = restoreResult.requestedFavorites - restoreResult.restoredFavorites
+        )
     }
 
     private suspend fun rollbackInterruptedImport(
@@ -215,6 +216,117 @@ constructor(
         }
     }
 }
+
+internal data class EpisodeRestoreResult(
+    val requestedFavorites: Int = 0,
+    val restoredFavorites: Int = 0
+)
+
+private data class EpisodeBackupKey(
+    val podcastUrl: String,
+    val episodeGuid: String
+)
+
+internal fun List<BackupPodcast>.normalizedForImport() =
+    sortedWith(compareBy<BackupPodcast> { it.sortOrder }.thenBy { it.url })
+
+internal fun mergedPodcastSortUpdates(
+    imported: List<BackupPodcast>,
+    existing: List<PodcastEntity>
+): List<PodcastSortUpdate> {
+    val importedUrls = imported.map { it.url }
+    val importedSet = importedUrls.toSet()
+    val mergedUrls = importedUrls + existing.map { it.rssUrl }.filterNot(importedSet::contains)
+    return mergedUrls.mapIndexed { index, rssUrl ->
+        PodcastSortUpdate(rssUrl = rssUrl, sortOrder = index.toLong())
+    }
+}
+
+internal suspend fun restoreAvailableEpisodeStates(
+    podcastDao: PodcastDao,
+    backupData: BackupData,
+    restoreDuration: Boolean
+): EpisodeRestoreResult {
+    val stateKeys = backupData.episodeStates.mapTo(mutableSetOf()) { it.backupKey() }
+    val orderedImportedFavoriteIds = mutableListOf<Long>()
+
+    backupData.episodeStates.forEach { state ->
+        val episode = podcastDao.getEpisodeByFeedAndGuid(state.podcastUrl, state.episodeGuid)
+            ?: return@forEach
+        check(
+            podcastDao.updatePortableEpisodeState(
+                episodeId = episode.episodeId,
+                isFavorite = state.isFavorite,
+                favoriteAddedAt = state.favoriteAddedAt,
+                isPlayed = state.isPlayed,
+                datePlayed = state.datePlayed?.let(::Date),
+                playbackPositionMs = state.playbackPositionMs,
+                duration = state.duration,
+                restoreDuration = restoreDuration
+            ) == 1
+        ) { "Backup episode state referenced a missing episode" }
+    }
+
+    val orderedV2Favorites = backupData.episodeStates
+        .filter { it.isFavorite }
+        .sortedWith(
+            compareBy<BackupEpisodeState> { it.favoriteOrder }
+                .thenBy { it.podcastUrl }
+                .thenBy { it.episodeGuid }
+        )
+    orderedV2Favorites.forEach { state ->
+        podcastDao.getEpisodeByFeedAndGuid(state.podcastUrl, state.episodeGuid)
+            ?.episodeId
+            ?.let(orderedImportedFavoriteIds::add)
+    }
+
+    backupData.favorites.forEach { favorite ->
+        if (favorite.backupKey() in stateKeys) return@forEach
+        val episode = podcastDao.getEpisodeByFeedAndGuid(favorite.podcastUrl, favorite.episodeGuid)
+            ?: return@forEach
+        podcastDao.setFavoriteStatus(
+            episodeId = episode.episodeId,
+            isFavorite = true,
+            timestamp = favorite.timestamp,
+            favoriteAddedAt = favorite.timestamp
+        )
+        orderedImportedFavoriteIds += episode.episodeId
+    }
+
+    val currentFavorites = podcastDao.getFavoriteEpisodesSync()
+    val importedFavoriteSet = orderedImportedFavoriteIds.toSet()
+    val mergedFavoriteIds = orderedImportedFavoriteIds.distinct() +
+        currentFavorites.map { it.episodeId }.filterNot(importedFavoriteSet::contains)
+    if (mergedFavoriteIds.isNotEmpty()) {
+        podcastDao.updateFavoriteOrder(
+            mergedFavoriteIds.mapIndexed { index, episodeId ->
+                FavoriteOrderUpdate(
+                    episodeId = episodeId,
+                    favoriteTimestamp = (mergedFavoriteIds.lastIndex - index).toLong()
+                )
+            }
+        )
+    }
+
+    val requestedFavoriteKeys = orderedV2Favorites.mapTo(mutableSetOf()) { it.backupKey() }
+    backupData.favorites
+        .map { it.backupKey() }
+        .filterNot(stateKeys::contains)
+        .forEach(requestedFavoriteKeys::add)
+    val result = EpisodeRestoreResult(
+        requestedFavorites = requestedFavoriteKeys.size,
+        restoredFavorites = orderedImportedFavoriteIds.distinct().size
+    )
+    val skipped = result.requestedFavorites - result.restoredFavorites
+    if (skipped > 0) {
+        Timber.w("Skipped restoring %d favorites because episodes are unavailable.", skipped)
+    }
+    return result
+}
+
+private fun BackupEpisodeState.backupKey() = EpisodeBackupKey(podcastUrl, episodeGuid)
+
+private fun BackupFavorite.backupKey() = EpisodeBackupKey(podcastUrl, episodeGuid)
 
 internal suspend fun insertPodcastStubPreservingExisting(
     podcastDao: PodcastDao,

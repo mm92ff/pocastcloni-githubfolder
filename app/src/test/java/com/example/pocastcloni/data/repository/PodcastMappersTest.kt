@@ -1,6 +1,7 @@
 package com.example.pocastcloni.data.repository
 
 import com.example.pocastcloni.data.local.DownloadStatus
+import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.remote.RssEnclosure
 import com.example.pocastcloni.data.remote.RssItem
@@ -42,6 +43,43 @@ class PodcastMappersTest {
     fun `toDomain preserves hasNewEpisodes`() {
         val entity = podcastEntity(hasNewEpisodes = true)
         assertTrue(entity.toDomain().hasNewEpisodes)
+    }
+
+    @Test
+    fun `toBackupPodcast preserves sort order and auto download`() {
+        val backup = podcastEntity().copy(sortOrder = 7, autoDownloadEnabled = true).toBackupPodcast()
+
+        assertEquals(7L, backup.sortOrder)
+        assertTrue(backup.autoDownloadEnabled)
+    }
+
+    @Test
+    fun `portable state mapping keeps duplicate guids feed scoped and assigns contiguous favorite order`() {
+        val sharedGuid = "shared-guid"
+        val states = listOf(
+            episodeEntity(
+                feedUrl = "https://feed-a.example/rss",
+                guid = sharedGuid,
+                favoriteAddedAt = 100L,
+                isPlayed = true,
+                playbackPositionMs = 9_000L
+            ),
+            episodeEntity(
+                feedUrl = "https://feed-b.example/rss",
+                guid = sharedGuid,
+                favoriteAddedAt = 200L,
+                isPlayed = false,
+                playbackPositionMs = 4_000L
+            )
+        ).toBackupEpisodeStates()
+
+        assertEquals(listOf(0L, 1L), states.map { it.favoriteOrder })
+        assertEquals(sharedGuid, states[0].episodeGuid)
+        assertEquals(sharedGuid, states[1].episodeGuid)
+        assertNotEquals(states[0].podcastUrl, states[1].podcastUrl)
+        assertEquals(100L, states[0].favoriteAddedAt)
+        assertEquals(9_000L, states[0].playbackPositionMs)
+        assertTrue(states[0].isPlayed)
     }
 
     // ---- RssItem.toEpisodeEntity() ----
@@ -152,6 +190,29 @@ class PodcastMappersTest {
         imageUrl = "https://img.jpg",
         hasNewEpisodes = hasNewEpisodes,
         isLatestEpisodePlayed = isLatestEpisodePlayed
+    )
+
+    private fun episodeEntity(
+        feedUrl: String,
+        guid: String,
+        favoriteAddedAt: Long,
+        isPlayed: Boolean,
+        playbackPositionMs: Long
+    ) = EpisodeEntity(
+        guid = guid,
+        podcastRssUrl = feedUrl,
+        title = "Episode $feedUrl",
+        description = "Description",
+        pubDate = Date(500L),
+        link = "$feedUrl/episode",
+        enclosureUrl = "$feedUrl/audio.mp3",
+        isFavorite = true,
+        favoriteTimestamp = favoriteAddedAt,
+        favoriteAddedAt = favoriteAddedAt,
+        isPlayed = isPlayed,
+        datePlayed = if (isPlayed) Date(1_000L) else null,
+        playbackPositionMs = playbackPositionMs,
+        duration = 10_000L
     )
 
     private fun rssItem(

@@ -83,13 +83,14 @@ object Constants {
     }
 
     object Backup {
-        const val BACKUP_VERSION = 1
+        const val BACKUP_VERSION = 2
         const val BACKUP_FILE_NAME = "pocast_backup.json"
         const val MIME_TYPE_JSON = "application/json"
         const val MIME_TYPE_ALL = "*/*"
         const val KEY_VERSION = "version"
         const val KEY_PODCASTS = "podcasts"
         const val KEY_SETTINGS = "settings"
+        const val KEY_EPISODE_STATES = "episodeStates"
         const val KEY_URL = "url"
         const val KEY_SORT_ORDER = "sortOrder"
     }
@@ -239,6 +240,7 @@ object Constants {
         const val MAX_BACKUP_BYTES = 25L * 1024L * 1024L
         const val MAX_BACKUP_PODCASTS = 5_000
         const val MAX_BACKUP_FAVORITES = 100_000
+        const val MAX_BACKUP_EPISODE_STATES = 100_000
         const val MAX_URL_CHARS = 8_192
         const val MAX_TITLE_CHARS = 2_000
         const val MAX_DESCRIPTION_CHARS = 500_000

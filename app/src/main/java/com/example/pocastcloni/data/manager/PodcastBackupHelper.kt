@@ -3,7 +3,7 @@ package com.example.pocastcloni.data.manager
 import android.content.ContentResolver
 import android.net.Uri
 import com.example.pocastcloni.data.local.BackupData
-import com.example.pocastcloni.data.local.BackupFavorite
+import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.data.local.BackupSettingsFieldPresence
 import com.example.pocastcloni.di.DispatcherProvider
@@ -32,20 +32,21 @@ constructor(
 ) {
     suspend fun exportBackup(
         podcasts: List<BackupPodcast>,
-        favorites: List<BackupFavorite>,
+        episodeStates: List<BackupEpisodeState>,
         settings: UserSettings,
         uri: Uri,
         contentResolver: ContentResolver
     ) {
         withContext(dispatcherProvider.io) {
             try {
-                validateBackupSettings(settings)
                 val backupData =
-                    BackupData(
-                        version = Constants.Backup.BACKUP_VERSION,
-                        podcasts = podcasts,
-                        settings = settings,
-                        favorites = favorites
+                    validateBackupData(
+                        BackupData(
+                            version = Constants.Backup.BACKUP_VERSION,
+                            podcasts = podcasts,
+                            settings = settings,
+                            episodeStates = episodeStates
+                        )
                     )
 
                 val json = objectMapper.writeValueAsString(backupData)
@@ -110,7 +111,14 @@ internal fun parseBackupJson(
     prevalidateBackupJson(jsonString, objectMapper)
 
     try {
-        val backupData = objectMapper.readValue(jsonString, BackupData::class.java)
+        val parsedBackupData = objectMapper.readValue(jsonString, BackupData::class.java)
+        val backupData = if (
+            objectMapper.readTree(jsonString).has(Constants.Backup.KEY_VERSION)
+        ) {
+            parsedBackupData
+        } else {
+            parsedBackupData.copy(version = 1)
+        }
         return validateBackupData(
             backupData.copy(
                 settingsFieldPresence = readSettingsFieldPresence(jsonString, objectMapper)
@@ -129,7 +137,7 @@ internal fun parseBackupJson(
                 BackupPodcast(url = url, sortOrder = index.toLong())
             }
         Timber.i("Legacy backup restored with ${backupPodcasts.size} podcasts.")
-        return validateBackupData(BackupData(podcasts = backupPodcasts))
+        return validateBackupData(BackupData(version = 1, podcasts = backupPodcasts))
     } catch (e: Exception) {
         Timber.e(e, "Critical: Failed to parse backup file in both formats.")
         throw IllegalArgumentException("Backup file format is invalid.", e)
@@ -212,6 +220,8 @@ private data class BackupArrayFrame(
 private fun enforceBackupArrayCount(frame: BackupArrayFrame) {
     val limit = when (frame.name) {
         "favorites" -> Constants.SecurityLimits.MAX_BACKUP_FAVORITES
+        Constants.Backup.KEY_EPISODE_STATES,
+        "episode_states" -> Constants.SecurityLimits.MAX_BACKUP_EPISODE_STATES
         "podcasts", null -> Constants.SecurityLimits.MAX_BACKUP_PODCASTS
         else -> Constants.SecurityLimits.MAX_BACKUP_FAVORITES
     }
@@ -226,9 +236,9 @@ private fun enforceBackupStringLimit(
     val limit = if (isLegacyUrl) {
         Constants.SecurityLimits.MAX_URL_CHARS
     } else when (fieldName) {
-        "url", "image_url", "podcast_url" -> Constants.SecurityLimits.MAX_URL_CHARS
+        "url", "image_url", "podcast_url", "podcastUrl" -> Constants.SecurityLimits.MAX_URL_CHARS
         "title" -> Constants.SecurityLimits.MAX_TITLE_CHARS
-        "episode_guid" -> Constants.SecurityLimits.MAX_GUID_CHARS
+        "episode_guid", "episodeGuid" -> Constants.SecurityLimits.MAX_GUID_CHARS
         "last_modified", "etag" -> Constants.SecurityLimits.MAX_HEADER_CHARS
         else -> Constants.SecurityLimits.MAX_DESCRIPTION_CHARS
     }
@@ -236,17 +246,28 @@ private fun enforceBackupStringLimit(
 }
 
 internal fun validateBackupData(backupData: BackupData): BackupData {
-    if (backupData.podcasts.isEmpty() && backupData.favorites.isEmpty() && backupData.settings == null) {
+    if (
+        backupData.podcasts.isEmpty() &&
+        backupData.favorites.isEmpty() &&
+        backupData.episodeStates.isEmpty() &&
+        backupData.settings == null
+    ) {
         throw IllegalArgumentException("Backup file does not contain any restorable data.")
     }
     require(backupData.version in 1..Constants.Backup.BACKUP_VERSION) {
         "Backup version is not supported."
+    }
+    require(backupData.version >= 2 || backupData.episodeStates.isEmpty()) {
+        "Backup version 1 cannot contain episode state entries."
     }
     require(backupData.podcasts.size <= Constants.SecurityLimits.MAX_BACKUP_PODCASTS) {
         "Backup contains too many podcasts."
     }
     require(backupData.favorites.size <= Constants.SecurityLimits.MAX_BACKUP_FAVORITES) {
         "Backup contains too many favorites."
+    }
+    require(backupData.episodeStates.size <= Constants.SecurityLimits.MAX_BACKUP_EPISODE_STATES) {
+        "Backup contains too many episode states."
     }
     backupData.settings?.let(::validateBackupSettings)
     if (backupData.podcasts.any { parseNetworkUrl(it.url, allowLocalNetwork = true) == null }) {
@@ -260,10 +281,20 @@ internal fun validateBackupData(backupData: BackupData): BackupData {
         require(podcast.lastModifiedHeader.orEmpty().length <= Constants.SecurityLimits.MAX_HEADER_CHARS)
         require(podcast.eTagHeader.orEmpty().length <= Constants.SecurityLimits.MAX_HEADER_CHARS)
     }
+    require(backupData.podcasts.map { it.url }.toSet().size == backupData.podcasts.size) {
+        "Backup contains duplicate podcasts."
+    }
     backupData.favorites.forEach { favorite ->
         require(favorite.podcastUrl.length <= Constants.SecurityLimits.MAX_URL_CHARS)
         require(favorite.episodeGuid.length <= Constants.SecurityLimits.MAX_GUID_CHARS)
+        require(favorite.episodeGuid.isNotBlank())
+        require(parseNetworkUrl(favorite.podcastUrl, allowLocalNetwork = true) != null)
     }
+    require(
+        backupData.favorites.map { it.podcastUrl to it.episodeGuid }.toSet().size ==
+            backupData.favorites.size
+    ) { "Backup contains duplicate legacy favorites." }
+    validateEpisodeStates(backupData)
     if (backupData.podcasts.any { podcast ->
             !podcast.imageUrl.isNullOrBlank() &&
                 parseNetworkUrl(podcast.imageUrl, allowLocalNetwork = true) == null
@@ -272,6 +303,43 @@ internal fun validateBackupData(backupData: BackupData): BackupData {
         throw IllegalArgumentException("Backup contains an invalid image URL.")
     }
     return backupData
+}
+
+private fun validateEpisodeStates(backupData: BackupData) {
+    val podcastUrls = backupData.podcasts.mapTo(mutableSetOf()) { it.url }
+    val keys = mutableSetOf<Pair<String, String>>()
+    backupData.episodeStates.forEach { state ->
+        require(parseNetworkUrl(state.podcastUrl, allowLocalNetwork = true) != null) {
+            "Backup contains an invalid episode podcast URL."
+        }
+        require(state.episodeGuid.isNotBlank()) { "Backup contains an empty episode GUID." }
+        require(state.podcastUrl.length <= Constants.SecurityLimits.MAX_URL_CHARS)
+        require(state.episodeGuid.length <= Constants.SecurityLimits.MAX_GUID_CHARS)
+        require(state.title.length <= Constants.SecurityLimits.MAX_TITLE_CHARS)
+        require(state.description.length <= Constants.SecurityLimits.MAX_DESCRIPTION_CHARS)
+        require(state.duration >= 0) { "Backup contains a negative episode duration." }
+        require(state.playbackPositionMs >= 0) { "Backup contains a negative playback position." }
+        require(state.favoriteAddedAt == null || state.favoriteAddedAt >= 0)
+        require(state.favoriteOrder == null || state.favoriteOrder >= 0)
+        require(state.datePlayed == null || state.datePlayed >= 0)
+        require(keys.add(state.podcastUrl to state.episodeGuid)) {
+            "Backup contains duplicate episode states."
+        }
+        if (backupData.version >= 2) {
+            require(state.podcastUrl in podcastUrls) {
+                "Backup episode state references a podcast outside the backup."
+            }
+            if (state.isFavorite) {
+                require(state.favoriteAddedAt != null && state.favoriteOrder != null) {
+                    "Backup favorite state is incomplete."
+                }
+            } else {
+                require(state.favoriteAddedAt == null && state.favoriteOrder == null) {
+                    "Backup non-favorite state contains favorite metadata."
+                }
+            }
+        }
+    }
 }
 
 internal fun validateBackupSettings(settings: UserSettings) {

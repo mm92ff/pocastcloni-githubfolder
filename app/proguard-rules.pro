@@ -57,6 +57,7 @@
 -keep class com.example.pocastcloni.data.remote.ItunesPodcastDto { *; }
 -keep class com.example.pocastcloni.data.local.BackupData { *; }
 -keep class com.example.pocastcloni.data.local.BackupPodcast { *; }
+-keep class com.example.pocastcloni.data.local.BackupEpisodeState { *; }
 -keep class com.example.pocastcloni.data.local.BackupFavorite { *; }
 -keep class com.example.pocastcloni.domain.repository.UserSettings { *; }
 -keep class com.example.pocastcloni.domain.repository.IndicatorSettings { *; }

@@ -1,6 +1,7 @@
 package com.example.pocastcloni.data.repository
 
 import com.example.pocastcloni.data.local.BackupFavorite
+import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
@@ -73,6 +74,7 @@ fun PodcastEntity.toBackupPodcast(): BackupPodcast {
     return BackupPodcast(
         url = this.rssUrl,
         sortOrder = this.sortOrder,
+        autoDownloadEnabled = this.autoDownloadEnabled,
         allowInsecureHttp = this.allowInsecureHttp,
         allowLocalNetwork = this.allowLocalNetwork,
         title = this.title,
@@ -87,9 +89,34 @@ fun EpisodeEntity.toBackupFavorite(): BackupFavorite {
     return BackupFavorite(
         podcastUrl = this.podcastRssUrl,
         episodeGuid = this.guid,
-        timestamp = this.favoriteAddedAt ?: this.favoriteTimestamp ?: System.currentTimeMillis()
+        timestamp = this.favoriteAddedAt ?: this.favoriteTimestamp ?: 0L
     )
 }
+
+fun List<EpisodeEntity>.toBackupEpisodeStates(): List<BackupEpisodeState> {
+    var nextFavoriteOrder = 0L
+    return map { episode ->
+        episode.toBackupEpisodeState(
+            favoriteOrder = if (episode.isFavorite) nextFavoriteOrder++ else null
+        )
+    }
+}
+
+fun EpisodeEntity.toBackupEpisodeState(favoriteOrder: Long?): BackupEpisodeState =
+    BackupEpisodeState(
+        podcastUrl = podcastRssUrl,
+        episodeGuid = guid,
+        title = title,
+        description = description,
+        publishedAt = pubDate?.time,
+        duration = duration,
+        isFavorite = isFavorite,
+        favoriteAddedAt = if (isFavorite) favoriteAddedAt ?: favoriteTimestamp ?: 0L else null,
+        favoriteOrder = favoriteOrder,
+        isPlayed = isPlayed,
+        datePlayed = datePlayed?.time,
+        playbackPositionMs = playbackPositionMs
+    )
 
 // --- NEW LOGIC FOR EPISODES & DATE PROTECTION ---
 

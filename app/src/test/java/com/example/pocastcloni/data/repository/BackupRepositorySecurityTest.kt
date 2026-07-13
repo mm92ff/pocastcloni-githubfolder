@@ -4,12 +4,17 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import com.example.pocastcloni.data.local.BackupData
+import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupPodcast
+import com.example.pocastcloni.data.local.BackupRoomSnapshot
 import com.example.pocastcloni.data.local.BackupSettingsFieldPresence
+import com.example.pocastcloni.data.local.DownloadStatus
+import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.BackupImportJournalDao
 import com.example.pocastcloni.data.manager.PodcastBackupHelper
+import com.example.pocastcloni.data.manager.parseBackupJson
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
@@ -33,7 +38,9 @@ import kotlinx.coroutines.CancellationException
 import org.junit.Test
 import org.junit.Assert.fail
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import java.io.IOException
+import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Provider
 
@@ -72,6 +79,262 @@ class BackupRepositorySecurityTest {
         coEvery { transactionRunner.run(any()) } coAnswers {
             firstArg<suspend () -> Unit>().invoke()
         }
+    }
+
+    @Test
+    fun `export maps one transactional Room snapshot with feed scoped episode state`() = runTest(dispatcher) {
+        val uri = mockk<Uri>()
+        val settings = UserSettings(autoDownloadLimit = 7)
+        val feedA = "https://feed-a.example/rss"
+        val feedB = "https://feed-b.example/rss"
+        val sharedGuid = "shared-guid"
+        coEvery { transactionRunner.captureBackupSnapshot() } returns BackupRoomSnapshot(
+            podcasts = listOf(
+                PodcastEntity(feedA, "Feed A", "", "", autoDownloadEnabled = true, sortOrder = 0),
+                PodcastEntity(feedB, "Feed B", "", "", autoDownloadEnabled = false, sortOrder = 1)
+            ),
+            episodeStates = listOf(
+                EpisodeEntity(
+                    guid = sharedGuid,
+                    podcastRssUrl = feedA,
+                    title = "Episode A",
+                    description = "",
+                    pubDate = null,
+                    link = "",
+                    enclosureUrl = "",
+                    isFavorite = true,
+                    favoriteTimestamp = 10,
+                    favoriteAddedAt = 100,
+                    isPlayed = true,
+                    playbackPositionMs = 5_000
+                ),
+                EpisodeEntity(
+                    guid = sharedGuid,
+                    podcastRssUrl = feedB,
+                    title = "Episode B",
+                    description = "",
+                    pubDate = null,
+                    link = "",
+                    enclosureUrl = "",
+                    playbackPositionMs = 2_000
+                )
+            )
+        )
+        coEvery { backupHelper.exportBackup(any(), any(), any(), any(), any()) } returns Unit
+
+        repository.exportFullBackup(uri, settings)
+
+        coVerify(exactly = 1) { transactionRunner.captureBackupSnapshot() }
+        coVerify {
+            backupHelper.exportBackup(
+                podcasts = match { podcasts ->
+                    podcasts.map { it.autoDownloadEnabled } == listOf(true, false)
+                },
+                episodeStates = match { states ->
+                    states.map { it.podcastUrl to it.episodeGuid } ==
+                        listOf(feedA to sharedGuid, feedB to sharedGuid) &&
+                        states.first().favoriteOrder == 0L
+                },
+                settings = settings,
+                uri = uri,
+                contentResolver = any()
+            )
+        }
+        coVerify(exactly = 0) { dao.getAllPodcastsForExport() }
+        coVerify(exactly = 0) { dao.getFavoriteEpisodesSync() }
+    }
+
+    @Test
+    fun `invalid backup is rejected before recovery journal settings or database mutation`() = runTest(dispatcher) {
+        val duplicated = BackupPodcast(url = "https://example.com/feed.xml")
+        coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
+            podcasts = listOf(duplicated, duplicated)
+        )
+
+        try {
+            repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+            fail("Expected validation failure")
+        } catch (_: IllegalArgumentException) {
+            // Expected.
+        }
+
+        coVerify(exactly = 0) { recovery.recoverInterruptedImport() }
+        coVerify(exactly = 0) { journalDao.savePendingImport(any()) }
+        coVerify(exactly = 0) { preferences.restoreSettingsOrThrow(any()) }
+        coVerify(exactly = 0) { transactionRunner.run(any()) }
+    }
+
+    @Test
+    fun `versionless v1 object preserves existing podcast auto download`() = runTest(dispatcher) {
+        val url = "https://example.com/versionless.xml"
+        val existing = PodcastEntity(
+            rssUrl = url,
+            title = "Existing",
+            description = "",
+            imageUrl = "",
+            autoDownloadEnabled = true
+        )
+        val parsed = parseBackupJson(
+            """
+            {
+              "podcasts": [
+                {
+                  "url": "$url",
+                  "sortOrder": 0,
+                  "title": "Legacy"
+                }
+              ]
+            }
+            """.trimIndent(),
+            objectMapper
+        )
+        assertEquals(1, parsed.version)
+        coEvery { backupHelper.importBackup(any(), any()) } returns parsed
+        coEvery { dao.getAllPodcastsForExport() } returns listOf(existing)
+        coEvery { dao.getPodcastByUrl(url) } returns existing
+
+        repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+
+        coVerify(exactly = 0) { dao.updateAutoDownloadEnabled(url, any()) }
+    }
+
+    @Test
+    fun `v2 restore scopes duplicate guids and only writes portable state`() = runTest(dispatcher) {
+        val feedA = "https://feed-a.example/rss"
+        val feedB = "https://feed-b.example/rss"
+        val localFeed = "https://local.example/rss"
+        val sharedGuid = "shared-guid"
+        val podcastA = PodcastEntity(feedA, "Feed A", "", "", sortOrder = 9)
+        val podcastB = PodcastEntity(feedB, "Feed B", "", "", sortOrder = 9)
+        val localPodcast = PodcastEntity(localFeed, "Local", "", "", sortOrder = 0)
+        val episodeA = EpisodeEntity(
+            guid = sharedGuid,
+            podcastRssUrl = feedA,
+            title = "Episode A",
+            description = "",
+            pubDate = null,
+            link = "",
+            enclosureUrl = "",
+            downloadStatus = DownloadStatus.DOWNLOADED,
+            downloadPath = "/local/a.mp3",
+            episodeId = 11
+        )
+        val episodeB = episodeA.copy(
+            podcastRssUrl = feedB,
+            title = "Episode B",
+            downloadPath = "/local/b.mp3",
+            episodeId = 22
+        )
+        coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
+            podcasts = listOf(
+                BackupPodcast(feedB, sortOrder = 4, autoDownloadEnabled = false),
+                BackupPodcast(feedA, sortOrder = 4, autoDownloadEnabled = true)
+            ),
+            episodeStates = listOf(
+                BackupEpisodeState(
+                    podcastUrl = feedA,
+                    episodeGuid = sharedGuid,
+                    title = "Episode A",
+                    duration = 60_000,
+                    isFavorite = true,
+                    favoriteAddedAt = 100,
+                    favoriteOrder = 1,
+                    isPlayed = true,
+                    datePlayed = 300,
+                    playbackPositionMs = 50_000
+                ),
+                BackupEpisodeState(
+                    podcastUrl = feedB,
+                    episodeGuid = sharedGuid,
+                    title = "Episode B",
+                    duration = 90_000,
+                    isFavorite = true,
+                    favoriteAddedAt = 200,
+                    favoriteOrder = 0,
+                    playbackPositionMs = 40_000
+                )
+            )
+        )
+        coEvery { dao.getAllPodcastsForExport() } returns listOf(localPodcast, podcastA, podcastB)
+        coEvery { dao.getPodcastByUrl(feedA) } returns podcastA
+        coEvery { dao.getPodcastByUrl(feedB) } returns podcastB
+        coEvery { dao.getEpisodeByFeedAndGuid(feedA, sharedGuid) } returns episodeA
+        coEvery { dao.getEpisodeByFeedAndGuid(feedB, sharedGuid) } returns episodeB
+        coEvery {
+            dao.updatePortableEpisodeState(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns 1
+
+        val result = repository.importFullBackup(mockk(), 3, FeedUpdateMode.ALWAYS_FULL)
+
+        assertEquals(0, result.skippedFavorites)
+        coVerify(exactly = 1) {
+            dao.updatePortableEpisodeState(
+                episodeId = 11,
+                isFavorite = true,
+                favoriteAddedAt = 100,
+                isPlayed = true,
+                datePlayed = Date(300),
+                playbackPositionMs = 50_000,
+                duration = 60_000,
+                restoreDuration = true
+            )
+        }
+        coVerify(exactly = 1) {
+            dao.updatePortableEpisodeState(
+                episodeId = 11,
+                isFavorite = true,
+                favoriteAddedAt = 100,
+                isPlayed = true,
+                datePlayed = Date(300),
+                playbackPositionMs = 50_000,
+                duration = 60_000,
+                restoreDuration = false
+            )
+        }
+        coVerify(exactly = 1) {
+            dao.updatePortableEpisodeState(
+                episodeId = 22,
+                isFavorite = true,
+                favoriteAddedAt = 200,
+                isPlayed = false,
+                datePlayed = null,
+                playbackPositionMs = 40_000,
+                duration = 90_000,
+                restoreDuration = true
+            )
+        }
+        coVerify(exactly = 1) {
+            dao.updatePortableEpisodeState(
+                episodeId = 22,
+                isFavorite = true,
+                favoriteAddedAt = 200,
+                isPlayed = false,
+                datePlayed = null,
+                playbackPositionMs = 40_000,
+                duration = 90_000,
+                restoreDuration = false
+            )
+        }
+        coVerify {
+            dao.updatePodcastSortOrders(
+                match { updates ->
+                    updates.map { it.rssUrl to it.sortOrder } ==
+                        listOf(feedA to 0L, feedB to 1L, localFeed to 2L)
+                }
+            )
+        }
+        coVerify {
+            dao.updateFavoriteOrder(
+                match { updates ->
+                    updates.map { it.episodeId to it.favoriteTimestamp } ==
+                        listOf(22L to 1L, 11L to 0L)
+                }
+            )
+        }
+        coVerify { dao.updateAutoDownloadEnabled(feedA, true) }
+        coVerify { dao.updateAutoDownloadEnabled(feedB, false) }
+        coVerify(exactly = 0) { dao.updateDownloadStatus(any(), any(), any()) }
+        assertTrue(episodeA.downloadPath == "/local/a.mp3" && episodeB.downloadPath == "/local/b.mp3")
     }
 
     @Test
