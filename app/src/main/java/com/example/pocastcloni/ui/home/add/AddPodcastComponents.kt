@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
@@ -62,6 +64,7 @@ fun SearchArea(
     transparentSearchBar: Boolean,
     keyboardController: SoftwareKeyboardController?
 ) {
+    val searchContentDescription = stringResource(R.string.nav_search)
     val fieldContainerColor by TransparentSurfaceDefaults.animatedContainerColor(
         transparent = transparentSearchBar,
         filledColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -131,7 +134,8 @@ fun SearchArea(
                 modifier =
                 Modifier
                     .size(Dimens.SearchFieldMinHeight)
-                    .align(Alignment.CenterVertically),
+                    .align(Alignment.CenterVertically)
+                    .semantics { contentDescription = searchContentDescription },
                 shape = CircleShape,
                 enabled = !isSearching,
                 contentPadding = PaddingValues(Dimens.Zero)

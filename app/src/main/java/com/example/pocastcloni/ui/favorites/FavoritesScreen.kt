@@ -149,6 +149,7 @@ fun FavoritesScreen(
                         ReorderableLazyColumn(
                             items = uiState.favorites, // Now accepts ImmutableList
                             key = { item -> item.id },
+                            itemLabel = { item -> item.episode.title },
                             onReorder = { from, to -> viewModel.onAction(FavoritesAction.OnReorder(from, to)) },
                             modifier = Modifier.fillMaxSize(),
                             contentPadding =

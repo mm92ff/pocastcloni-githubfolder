@@ -25,6 +25,9 @@
     <string name="error_network">Network error. Please check your internet connection.</string>
     <string name="error_unknown">An unknown error occurred.</string>
     <string name="error_timeout">The operation timed out.</string>
+    <string name="retry">Retry</string>
+    <string name="move_item_up">Move %1$s up</string>
+    <string name="move_item_down">Move %1$s down</string>
 
     <string name="home_title">My Podcasts</string>
     <string name="home_empty">No podcasts yet. Press +</string>
@@ -39,6 +42,8 @@
     <string name="desc_play">Play</string>
     <string name="desc_pause">Pause</string>
     <string name="desc_cover">Cover image</string>
+    <string name="desc_reveal_bottom_bar">Show bottom navigation</string>
+    <string name="progress_position_description">Playback position %1$s of %2$s</string>
 
     <string name="detail_not_found">Podcast not found.</string>
     <string name="detail_unknown_author">Author unknown</string>
@@ -140,6 +145,15 @@
     <string name="settings_tab_data">Data</string>
     <string name="settings_section_design">Design</string>
     <string name="settings_app_color">App Color</string>
+    <string name="color_green">Green</string>
+    <string name="color_red">Red</string>
+    <string name="color_blue">Blue</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_purple">Purple</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_turquoise">Turquoise</string>
+    <string name="color_amber">Amber</string>
+    <string name="color_slate">Slate</string>
     <string name="settings_gradient_background">Gradient Background</string>
     <string name="settings_gradient_background_subtitle">Fade from white or black to the selected app color</string>
     <string name="settings_gradient_strength">Gradient Strength</string>
@@ -251,11 +265,11 @@
         <item>TB</item>
     </string-array>
     <string name="duration_placeholder">-- min</string>
-    <string name="duration_hours_minutes">%1$dh %2$dmin</string>
+    <string name="duration_hours_minutes">%1$sh %2$smin</string>
     <string name="duration_less_than_a_minute">&lt; 1 min</string>
     <plurals name="duration_minutes">
-        <item quantity="one">%d min</item>
-        <item quantity="other">%d min</item>
+        <item quantity="one">%s min</item>
+        <item quantity="other">%s min</item>
     </plurals>
     <string name="desc_podcast_cover">Podcast cover</string>
     <string name="title_auto_download">Auto download episodes</string>
@@ -267,6 +281,8 @@
 
     <string name="duration_format_long">%1$dh %2$02dm</string>
     <string name="duration_format_short">%1$dm</string>
+    <string name="episode_duration_hours_minutes">%1$sh %2$smin</string>
+    <string name="episode_duration_minutes">%1$s min</string>
     <string name="desc_delete_episode">Delete episode</string>
     <string name="cancel">Cancel</string>
     <string name="favorites">Favorites</string>

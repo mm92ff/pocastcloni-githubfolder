@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -99,30 +101,56 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
             )
         }
     ) { innerPadding ->
-        val initialLoadError = uiState.contentLoad.error?.takeIf { uiState.contentLoad.lastValue == null }
-        if (uiState.contentLoad.loading && uiState.contentLoad.lastValue == null) {
+        DownloadsContent(
+            uiState = uiState,
+            innerPadding = innerPadding,
+            onRetry = viewModel::retryDownloads,
+            onPlayEpisode = viewModel::playEpisode,
+            onFavoriteToggle = viewModel::onFavoriteToggle,
+            onDeleteEpisode = viewModel::deleteEpisode
+        )
+    }
+}
+
+@Composable
+internal fun DownloadsContent(
+    uiState: DownloadsUiState,
+    innerPadding: PaddingValues,
+    onRetry: () -> Unit,
+    onPlayEpisode: (EpisodeUiModel) -> Unit,
+    onFavoriteToggle: (EpisodeUiModel) -> Unit,
+    onDeleteEpisode: (EpisodeUiModel) -> Unit
+) {
+    val context = LocalContext.current
+    val initialLoadError = uiState.contentLoad.error?.takeIf { uiState.contentLoad.lastValue == null }
+
+    when {
+        uiState.contentLoad.loading && uiState.contentLoad.lastValue == null -> {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
-        } else if (initialLoadError != null) {
-            Box(
+        }
+        initialLoadError != null -> {
+            Column(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
             ) {
                 Text(
                     text = initialLoadError.asString(context),
                     color = MaterialTheme.colorScheme.error
                 )
+                TextButton(onClick = onRetry) {
+                    Text(stringResource(R.string.retry))
+                }
             }
-        } else if (uiState.episodes.isEmpty()) {
+        }
+        uiState.episodes.isEmpty() -> {
             Box(
-                modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -130,7 +158,8 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
-        } else {
+        }
+        else -> {
             val bottomPadding =
                 remember(uiState.isPlayerVisible, uiState.progressBarHeight) {
                     MiniPlayerLayoutDefaults.reservedBottomPadding(
@@ -141,15 +170,8 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
                 }
 
             LazyColumn(
-                modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                contentPadding =
-                PaddingValues(
-                    top = Dimens.PaddingLarge,
-                    bottom = bottomPadding
-                ),
+                modifier = Modifier.padding(innerPadding).fillMaxSize(),
+                contentPadding = PaddingValues(top = Dimens.PaddingLarge, bottom = bottomPadding),
                 reverseLayout = uiState.oneHandedMode
             ) {
                 items(
@@ -157,19 +179,17 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
                     key = { it.episodeId },
                     contentType = { "download-episode" }
                 ) { episode ->
-                    val isPlaying = (episode.episodeId == uiState.currentPlayingEpisodeId) && uiState.isPlayerPlaying
+                    val isPlaying = episode.episodeId == uiState.currentPlayingEpisodeId && uiState.isPlayerPlaying
+                    val onPlayClick = remember(episode, onPlayEpisode) { { onPlayEpisode(episode) } }
+                    val onFavoriteClick = remember(episode, onFavoriteToggle) { { onFavoriteToggle(episode) } }
 
-                    // PERFORMANCE FIX: stabilise lambdas
-                    val onPlayClick = remember(episode) { { viewModel.playEpisode(episode) } }
-                    val onFavoriteClick = remember(episode) { { viewModel.onFavoriteToggle(episode) } }
-
-                    SwipeToDeleteBox(episode, viewModel) {
+                    SwipeToDeleteBox(episode = episode, onDelete = onDeleteEpisode) {
                         EpisodeListItem(
                             episode = episode,
                             isPlaying = isPlaying,
                             onPlayClick = onPlayClick,
-                            onDownloadClick = { }, // No action needed in the Downloads screen
-                            onTogglePlayed = { },
+                            onDownloadClick = {},
+                            onTogglePlayed = {},
                             onToggleFavorite = onFavoriteClick
                         )
                     }
@@ -183,14 +203,14 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
 @Composable
 private fun SwipeToDeleteBox(
     episode: EpisodeUiModel,
-    viewModel: DownloadsViewModel,
+    onDelete: (EpisodeUiModel) -> Unit,
     content: @Composable () -> Unit
 ) {
     val dismissState =
         rememberSwipeToDismissBoxState(
             confirmValueChange = { value ->
                 if (value == SwipeToDismissBoxValue.EndToStart) {
-                    viewModel.deleteEpisode(episode)
+                    onDelete(episode)
                 }
                 false
             }

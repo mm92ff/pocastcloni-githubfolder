@@ -22,15 +22,16 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.R
@@ -44,6 +45,7 @@ import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
+import kotlinx.coroutines.launch
 
 private enum class SettingsTab(@StringRes val labelRes: Int) {
     DESIGN(R.string.settings_tab_design),
@@ -70,11 +72,19 @@ fun SettingsListContent(
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(SettingsTab.DESIGN) }
     val tabs = SettingsTab.entries
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(selectedTab) {
-        listState.scrollToItem(0)
-    }
+    val designListState = rememberLazyListState()
+    val playbackListState = rememberLazyListState()
+    val syncListState = rememberLazyListState()
+    val dataListState = rememberLazyListState()
+    val listStates =
+        mapOf(
+            SettingsTab.DESIGN to designListState,
+            SettingsTab.PLAYBACK to playbackListState,
+            SettingsTab.SYNC_STORAGE to syncListState,
+            SettingsTab.DATA to dataListState
+        )
+    val listState = listStates.getValue(selectedTab)
+    val coroutineScope = rememberCoroutineScope()
     val bottomPadding =
         MiniPlayerLayoutDefaults.reservedBottomPadding(
             isPlayerVisible = isPlayerVisible,
@@ -93,7 +103,14 @@ fun SettingsListContent(
             tabs.forEach { tab ->
                 Tab(
                     selected = selectedTab == tab,
-                    onClick = { selectedTab = tab },
+                    onClick = {
+                        if (selectedTab != tab) {
+                            selectedTab = tab
+                            coroutineScope.launch {
+                                listStates.getValue(tab).scrollToItem(0)
+                            }
+                        }
+                    },
                     text = { Text(stringResource(tab.labelRes)) }
                 )
             }
@@ -101,7 +118,7 @@ fun SettingsListContent(
 
         CompositionLocalProvider(LocalTransparentSettingsCards provides settings.transparentSearchCards) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().testTag("settings-list-${selectedTab.name.lowercase()}"),
                 state = listState,
                 contentPadding =
                 PaddingValues(

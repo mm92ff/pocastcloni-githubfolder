@@ -5,20 +5,32 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.Locale
 
 class EpisodeDateFormatterTest {
 
     private val zoneId = ZoneId.of("Europe/Zurich")
 
     @Test
-    fun `formatEpisodePublishDate formats compact calendar date`() {
+    fun `formatEpisodePublishDate uses German format locale`() {
         val epochMs =
             LocalDateTime.of(2026, 6, 25, 10, 30)
                 .atZone(zoneId)
                 .toInstant()
                 .toEpochMilli()
 
-        assertEquals("25.06.2026", formatEpisodePublishDate(epochMs, zoneId))
+        assertEquals("25.06.2026", formatEpisodePublishDate(epochMs, zoneId, Locale.GERMANY))
+    }
+
+    @Test
+    fun `formatEpisodePublishDate uses US format locale`() {
+        val epochMs =
+            LocalDateTime.of(2026, 6, 25, 10, 30)
+                .atZone(zoneId)
+                .toInstant()
+                .toEpochMilli()
+
+        assertEquals("Jun 25, 2026", formatEpisodePublishDate(epochMs, zoneId, Locale.US))
     }
 
     @Test

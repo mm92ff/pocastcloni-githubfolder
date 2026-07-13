@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,18 +33,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.theme.Motion
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
-private val BottomBarHandleHeight = 18.dp
+private val BottomBarHandleHeight = 48.dp
 private val BottomBarHandleWidth = 44.dp
 private val BottomBarHandleThickness = 4.dp
 private val BottomBarSwipeThreshold = 48.dp
@@ -119,6 +126,10 @@ internal fun CleanModeBottomBarHost(
             fadeOut(animationSpec = Motion.exitSpec())
     ) {
         BottomBarRevealHandle(
+            onReveal = {
+                bottomBarRevealed = true
+                autoHideTimerKey++
+            },
             modifier =
             Modifier
                 .height(BottomBarHandleHeight)
@@ -135,9 +146,29 @@ internal fun CleanModeBottomBarHost(
 }
 
 @Composable
-private fun BottomBarRevealHandle(modifier: Modifier = Modifier) {
+internal fun BottomBarRevealHandle(
+    onReveal: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val label = stringResource(R.string.desc_reveal_bottom_bar)
     Box(
-        modifier = modifier.fillMaxWidth(),
+        modifier =
+        modifier
+            .fillMaxWidth()
+            .height(BottomBarHandleHeight)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = label,
+                onClick = onReveal
+            )
+            .clearAndSetSemantics {
+                contentDescription = label
+                role = Role.Button
+                onClick(label = label) {
+                    onReveal()
+                    true
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -233,24 +264,8 @@ private fun AppBottomNavigation(
                 },
                 onClick = {
                     if (item.screen == Screen.Home) {
-                        when (currentDestination?.route) {
-                            Screen.Favorites.route,
-                            Screen.History.route,
-                            Screen.PodcastDetail.route
-                            -> {
-                                navController.popBackStack()
-                            }
-                            else -> {
-                                if (!isSelected) {
-                                    navController.navigate(item.screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                            }
+                        if (!isSelected) {
+                            navController.navigateMainScreen(Screen.Home)
                         }
                         onNavigationItemClicked(item.screen)
                     } else {

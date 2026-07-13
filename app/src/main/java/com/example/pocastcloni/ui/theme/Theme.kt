@@ -12,7 +12,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.graphics.ColorUtils
@@ -42,7 +41,7 @@ private fun Color.lighten(factor: Float): Color {
 }
 
 private fun Color.contrastColor(): Color {
-    return if (this.luminance() > 0.5f) Color.Black else Color.White
+    return bestContrastingColor(this)
 }
 
 fun gradientBackgroundBottomColor(
@@ -247,19 +246,8 @@ fun PocastCloniTheme(
                 }
 
                 WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = !darkTheme
-                    isAppearanceLightNavigationBars =
-                        if (gradientBackgroundEnabled) {
-                            gradientBackgroundSystemBarColor(
-                                appColor = appColor,
-                                darkTheme = darkTheme,
-                                strength = gradientBackgroundStrength,
-                                direction = gradientBackgroundDirection,
-                                topEdge = false
-                            ).luminance() > 0.5f
-                        } else {
-                            !darkTheme
-                        }
+                    isAppearanceLightStatusBars = bestContrastingColor(Color(statusBarColor)) == Color.Black
+                    isAppearanceLightNavigationBars = bestContrastingColor(Color(navigationBarColor)) == Color.Black
                 }
             }
         }

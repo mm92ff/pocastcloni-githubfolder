@@ -7,6 +7,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.pocastcloni.R
@@ -46,6 +51,7 @@ import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.ui.theme.Motion
+import com.example.pocastcloni.ui.theme.bestContrastingColor
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.Constants.SettingsDefaults
 
@@ -62,6 +68,30 @@ private val GradientDirection.labelRes: Int
             GradientDirection.TOP_RIGHT_TO_BOTTOM_LEFT -> R.string.settings_gradient_direction_top_right_to_bottom_left
             GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT -> R.string.settings_gradient_direction_bottom_left_to_top_right
         }
+
+private val AppColor.labelRes: Int
+    @StringRes
+    get() =
+        when (this) {
+            AppColor.GREEN -> R.string.color_green
+            AppColor.RED -> R.string.color_red
+            AppColor.BLUE -> R.string.color_blue
+            AppColor.YELLOW -> R.string.color_yellow
+            AppColor.PURPLE -> R.string.color_purple
+            AppColor.ORANGE -> R.string.color_orange
+            AppColor.TURQUOISE -> R.string.color_turquoise
+        }
+
+@StringRes
+private fun indicatorColorLabelRes(colorArgb: Long): Int =
+    when (colorArgb) {
+        0xFF4CAF50 -> R.string.color_green
+        0xFF2196F3 -> R.string.color_blue
+        0xFFFFC107 -> R.string.color_amber
+        0xFFF44336 -> R.string.color_red
+        0xFF9C27B0 -> R.string.color_purple
+        else -> R.string.color_slate
+    }
 
 private val GradientDirection.rotationDegrees: Float
     get() =
@@ -122,12 +152,17 @@ fun SectionAppearance(
         Spacer(modifier = Modifier.height(Dimens.PaddingSmall))
 
         FlowRow(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium),
             verticalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium)
         ) {
             AppColor.entries.forEach { color ->
-                ColorCircle(color.hexValue, appColor == color) { onSetAppColor(color) }
+                ColorCircle(
+                    colorHex = color.hexValue,
+                    colorName = stringResource(color.labelRes),
+                    isSelected = appColor == color,
+                    onClick = { onSetAppColor(color) }
+                )
             }
         }
     }
@@ -393,13 +428,14 @@ fun SectionIndicator(
         Spacer(modifier = Modifier.height(Dimens.PaddingSmall))
 
         FlowRow(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium),
             verticalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium)
         ) {
             Constants.UI.INDICATOR_COLORS.forEach { colorArg ->
                 IndicatorColorCircle(
                     colorArgb = colorArg,
+                    colorName = stringResource(indicatorColorLabelRes(colorArg)),
                     isSelected = indicatorState.colorArgb == colorArg,
                     onClick = { onColorClick(colorArg) }
                 )
@@ -458,12 +494,12 @@ fun SectionIndicator(
 @Composable
 fun IndicatorColorCircle(
     colorArgb: Long,
+    colorName: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent
     val color = Color(colorArgb)
-    val luminance = (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue)
 
     Box(
         modifier =
@@ -472,13 +508,18 @@ fun IndicatorColorCircle(
             .clip(CircleShape)
             .background(color)
             .border(2.dp, borderColor, CircleShape)
-            .clickable(onClick = onClick)
+            .semantics { contentDescription = colorName }
+            .selectable(
+                selected = isSelected,
+                onClick = onClick,
+                role = Role.RadioButton
+            )
     ) {
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = if (luminance > 0.5) Color.Black else Color.White,
+                tint = bestContrastingColor(color),
                 modifier =
                 Modifier
                     .size(Dimens.CheckIconSize)

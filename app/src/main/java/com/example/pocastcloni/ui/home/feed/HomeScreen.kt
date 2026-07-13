@@ -380,6 +380,7 @@ fun PodcastListContent(
     ReorderableLazyVerticalGrid(
         items = podcasts,
         key = { it.rssUrl },
+        itemLabel = { it.title },
         columns = columns,
         onReorder = onReorder,
         modifier = commonModifier,

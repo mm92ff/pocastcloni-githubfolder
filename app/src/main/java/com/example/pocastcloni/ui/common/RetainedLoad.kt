@@ -5,6 +5,7 @@ import com.example.pocastcloni.ui.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -34,4 +35,13 @@ fun <T> Flow<T>.asRetainedLoad(errorMessage: UiText): Flow<RetainedLoad<T>> =
                 )
             }
         )
+    }
+
+fun <T> Flow<RetainedLoad<T>>.retainLatestValue(): Flow<RetainedLoad<T>> =
+    flow {
+        var retainedValue: T? = null
+        this@retainLatestValue.collect { load ->
+            retainedValue = load.lastValue ?: retainedValue
+            emit(load.copy(lastValue = retainedValue))
+        }
     }

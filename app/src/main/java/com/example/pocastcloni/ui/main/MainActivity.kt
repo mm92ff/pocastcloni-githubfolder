@@ -4,11 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -19,7 +27,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -68,16 +75,7 @@ class MainActivity : ComponentActivity() {
                             if (decodedUrl != url) {
                                 navController.navigate(Screen.PodcastDetail.createRoute(url))
                             } else {
-                                val returnedHome = navController.popBackStack(Screen.Home.route, false)
-                                if (!returnedHome) {
-                                    navController.navigate(Screen.Home.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
+                                navController.navigateMainScreen(Screen.Home)
                             }
                         }
                     }
@@ -101,20 +99,12 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    uiState.error != null -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = uiState.error ?: stringResource(R.string.error_unknown))
-                        }
-                    }
-
                     else -> {
-                        AppGradientBackground(
-                            userSettings = uiState.userSettings,
-                            darkTheme = isPocastCloniDarkTheme(uiState.userSettings.theme)
-                        ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AppGradientBackground(
+                                userSettings = uiState.userSettings,
+                                darkTheme = isPocastCloniDarkTheme(uiState.userSettings.theme)
+                            ) {
                             Scaffold(
                                 containerColor = Color.Transparent,
                                 bottomBar = {
@@ -196,15 +186,52 @@ class MainActivity : ComponentActivity() {
                                         navBarHeight = uiState.userSettings.navBarHeight.dp,
                                         showMiniPlayerTimeOverlay = uiState.userSettings.showMiniPlayerTimeOverlay,
                                         transparentMiniPlayer = uiState.userSettings.transparentMiniPlayer,
+                                        isExpanded = uiState.isPlayerExpanded,
+                                        onExpandedChange = viewModel::onPlayerExpanded,
                                         modifier = Modifier.align(Alignment.BottomCenter),
                                         onNavigateToPodcastDetail = onNavigateToPodcastDetail,
                                         suppress = suppressMiniPlayer
                                     )
                                 }
                             }
+                            }
+                            uiState.error?.let { error ->
+                                MainSettingsErrorBanner(
+                                    message = error.asString(),
+                                    onRetry = viewModel::retrySettings,
+                                    modifier =
+                                    Modifier
+                                        .align(Alignment.TopCenter)
+                                        .systemBarsPadding()
+                                )
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun MainSettingsErrorBanner(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = message, modifier = Modifier.weight(1f))
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+            TextButton(onClick = onRetry) {
+                Text(stringResource(R.string.retry))
             }
         }
     }

@@ -31,7 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -260,8 +260,9 @@ fun SectionStatistics(
         when (statsState) {
             is StatisticsScreenUiState.Success -> {
                 if (statsState.statisticsStartedAt > 0L) {
-                    val dateFormat = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
-                    val startDate = remember(statsState.statisticsStartedAt) {
+                    val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
+                    val dateFormat = remember(formatLocale) { DateFormat.getDateInstance(DateFormat.MEDIUM, formatLocale) }
+                    val startDate = remember(statsState.statisticsStartedAt, formatLocale) {
                         dateFormat.format(Date(statsState.statisticsStartedAt))
                     }
                     val daysActive = remember(statsState.statisticsStartedAt) {

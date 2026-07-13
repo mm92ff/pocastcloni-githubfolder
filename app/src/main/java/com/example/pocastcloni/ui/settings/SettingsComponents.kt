@@ -3,6 +3,7 @@ package com.example.pocastcloni.ui.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,9 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
+import com.example.pocastcloni.ui.theme.bestContrastingColor
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 import kotlin.math.roundToInt
@@ -187,16 +191,20 @@ fun SettingsSliderCard(
 @Composable
 fun ColorCircle(
     colorHex: Long,
+    colorName: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val color = Color(colorHex)
     Box(
         modifier =
         Modifier
             .size(Dimens.ColorCircleSize)
             .clip(CircleShape)
-            .background(Color(colorHex))
-            .clickable(
+            .background(color)
+            .semantics { contentDescription = colorName }
+            .selectable(
+                selected = isSelected,
                 onClick = onClick,
                 role = Role.RadioButton
             )
@@ -211,7 +219,7 @@ fun ColorCircle(
             Icon(
                 Icons.Default.Check,
                 contentDescription = null,
-                tint = Color(Constants.UI.CHECK_ICON_COLOR_WHITE),
+                tint = bestContrastingColor(color),
                 modifier = Modifier.size(Dimens.CheckIconSize)
             )
         }

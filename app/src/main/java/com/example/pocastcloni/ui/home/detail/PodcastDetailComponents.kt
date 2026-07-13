@@ -26,17 +26,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.common.formatEpisodeDuration
+import com.example.pocastcloni.ui.common.formatEpisodePublishDate
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
+import java.util.Locale
 
 @Composable
 fun PodcastHeader(
@@ -121,6 +127,25 @@ fun EpisodeListItem(
     onTogglePlayed: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
+    val displayDate =
+        remember(episode.pubDateEpochMs, episode.date, configuration, formatLocale) {
+            if (episode.pubDateEpochMs > 0L) {
+                formatEpisodePublishDate(episode.pubDateEpochMs, locale = formatLocale)
+            } else {
+                episode.date
+            }
+        }
+    val displayDuration =
+        remember(episode.durationSeconds, episode.duration, configuration, formatLocale) {
+            if (episode.durationSeconds > 0L) {
+                formatEpisodeDuration(context, episode.durationSeconds, formatLocale)
+            } else {
+                episode.duration
+            }
+        }
     val titleColor = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     val metadataColor = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -149,7 +174,7 @@ fun EpisodeListItem(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = episode.date,
+                    text = displayDate,
                     style = MaterialTheme.typography.bodySmall,
                     color = metadataColor
                 )
@@ -157,7 +182,7 @@ fun EpisodeListItem(
                 Text(text = "·", style = MaterialTheme.typography.bodySmall, color = metadataColor)
                 Spacer(modifier = Modifier.width(Dimens.PaddingTiny))
                 Text(
-                    text = episode.duration,
+                    text = displayDuration,
                     style = MaterialTheme.typography.bodySmall,
                     color = metadataColor
                 )

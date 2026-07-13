@@ -54,7 +54,7 @@ internal fun NavHostController.navigateMainScreen(screen: Screen) {
             saveState = true
         }
         launchSingleTop = true
-        restoreState = true
+        restoreState = screen != Screen.Home
     }
 }
 

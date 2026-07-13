@@ -27,8 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.theme.Motion
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.Job
@@ -41,6 +46,7 @@ import kotlin.math.abs
 fun <T> ReorderableLazyVerticalGrid(
     items: ImmutableList<T>,
     key: (T) -> Any,
+    itemLabel: (T) -> String,
     columns: GridCells,
     onReorder: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -243,10 +249,35 @@ fun <T> ReorderableLazyVerticalGrid(
                 animationSpec = Motion.stateSpec(),
                 label = "gridElevation"
             )
+            val upTarget = if (reverseLayout) index + 1 else index - 1
+            val downTarget = if (reverseLayout) index - 1 else index + 1
+            val title = itemLabel(item)
+            val moveUpLabel = stringResource(R.string.move_item_up, title)
+            val moveDownLabel = stringResource(R.string.move_item_down, title)
+            val reorderActions =
+                buildList {
+                    if (upTarget in items.indices) {
+                        add(
+                            CustomAccessibilityAction(moveUpLabel) {
+                                onReorderUpdated(index, upTarget)
+                                true
+                            }
+                        )
+                    }
+                    if (downTarget in items.indices) {
+                        add(
+                            CustomAccessibilityAction(moveDownLabel) {
+                                onReorderUpdated(index, downTarget)
+                                true
+                            }
+                        )
+                    }
+                }
 
             Box(
                 modifier =
                 Modifier
+                    .semantics { customActions = reorderActions }
                     .zIndex(if (isDragging) 1f else 0f)
                     .graphicsLayer {
                         if (isDragging) {

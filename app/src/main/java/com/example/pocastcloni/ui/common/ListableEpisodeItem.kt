@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -28,6 +29,7 @@ import coil.compose.AsyncImage
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.ui.theme.Dimens
+import java.util.Locale
 
 @Composable
 fun ListableEpisodeItem(
@@ -39,10 +41,12 @@ fun ListableEpisodeItem(
     transparentBackground: Boolean = false,
     onImageClick: (() -> Unit)? = null // Optional callback for image click
 ) {
+    val configuration = LocalConfiguration.current
+    val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
     val publishDate =
-        remember(showPublishDate, episode.pubDateMs) {
+        remember(showPublishDate, episode.pubDateMs, configuration, formatLocale) {
             if (showPublishDate) {
-                formatEpisodePublishDateOrNull(episode.pubDateMs)
+                formatEpisodePublishDateOrNull(episode.pubDateMs, locale = formatLocale)
             } else {
                 null
             }

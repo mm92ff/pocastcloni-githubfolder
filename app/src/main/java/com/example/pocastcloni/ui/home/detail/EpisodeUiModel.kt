@@ -10,8 +10,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.concurrent.TimeUnit
 
-private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-
 @Immutable
 enum class DownloadStatusUiModel {
     NOT_DOWNLOADED,
@@ -50,7 +48,9 @@ private fun formatDuration(durationMs: Long): String {
 private fun formatDate(epochMs: Long): String {
     val instant = Instant.ofEpochMilli(epochMs)
     val zonedDateTime = instant.atZone(ZoneId.systemDefault())
-    return dateFormatter.format(zonedDateTime)
+    return DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+        .withLocale(java.util.Locale.getDefault(java.util.Locale.Category.FORMAT))
+        .format(zonedDateTime)
 }
 
 private fun EpisodePresentation.toDownloadStatusUiModel(): DownloadStatusUiModel {

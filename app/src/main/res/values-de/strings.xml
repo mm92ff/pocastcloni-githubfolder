@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="episode_duration_hours_minutes">%1$s Std. %2$s Min.</string>
+    <string name="episode_duration_minutes">%1$s Min.</string>
+</resources>

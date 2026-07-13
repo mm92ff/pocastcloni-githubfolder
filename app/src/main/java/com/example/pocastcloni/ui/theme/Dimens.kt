@@ -22,7 +22,7 @@ object Dimens {
     val LargeIconSize = 32.dp
     val PlayPauseButtonSize = 80.dp
     val CheckIconSize = 20.dp
-    val ColorCircleSize = 40.dp
+    val ColorCircleSize = 48.dp
     val ActionButtonSize = 40.dp
     val ActionButtonIconSize = 20.dp
     val PlayPauseIconSize = 28.dp

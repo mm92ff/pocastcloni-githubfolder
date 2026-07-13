@@ -14,6 +14,19 @@ import org.junit.Test
 import java.io.IOException
 
 class RetainedLoadTest {
+    @Test
+    fun `retainLatestValue preserves content when a retry fails before emitting`() = runTest {
+        val retained = listOf("saved")
+        val values =
+            flow {
+                emit(RetainedLoad(loading = false, lastValue = retained))
+                emit(RetainedLoad<List<String>>(loading = false, error = errorMessage))
+            }.retainLatestValue().toList()
+
+        assertEquals(retained, values.last().lastValue)
+        assertEquals(errorMessage, values.last().error)
+    }
+
     private val errorMessage = UiText.DynamicString("load failed")
 
     @Test

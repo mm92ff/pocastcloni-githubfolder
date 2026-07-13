@@ -1,10 +1,8 @@
 package com.example.pocastcloni.ui.player
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -19,6 +17,8 @@ fun PlayerContainer(
     navBarHeight: Dp,
     showMiniPlayerTimeOverlay: Boolean,
     transparentMiniPlayer: Boolean,
+    isExpanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     onNavigateToPodcastDetail: (podcastUrl: String) -> Unit,
     suppress: Boolean = false
 ) {
@@ -32,14 +32,17 @@ fun PlayerContainer(
     val episodeDescription by viewModel.descriptionState.collectAsStateWithLifecycle()
     val isDescriptionVisible by viewModel.isDescriptionVisible.collectAsStateWithLifecycle()
 
-    var isExpanded by rememberSaveable { mutableStateOf(false) }
+    PlayerBackHandler(
+        isExpanded = isExpanded && !suppress && playerState.currentEpisodeId != null,
+        onCollapse = { onExpandedChange(false) }
+    )
 
     // Show the player only when an episode is loaded and this screen does not suppress it
     if (!suppress && playerState.currentEpisodeId != null) {
         ExpandablePlayer(
             modifier = modifier,
             isExpanded = isExpanded,
-            onExpandToggle = { isExpanded = !isExpanded },
+            onExpandToggle = { onExpandedChange(!isExpanded) },
             playerState = playerState,
             userSettings = userSettings,
             playbackStateFlow = playbackStateFlow,
@@ -53,4 +56,12 @@ fun PlayerContainer(
             navBarHeight = navBarHeight
         )
     }
+}
+
+@Composable
+internal fun PlayerBackHandler(
+    isExpanded: Boolean,
+    onCollapse: () -> Unit
+) {
+    BackHandler(enabled = isExpanded, onBack = onCollapse)
 }

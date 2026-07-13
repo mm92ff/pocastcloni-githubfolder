@@ -2,6 +2,7 @@ package com.example.pocastcloni.util
 
 import android.content.Context
 import com.example.pocastcloni.R
+import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -13,9 +14,7 @@ fun formatTime(ms: Long): String {
     val minutes = totalSeconds / Constants.SECONDS_IN_MINUTE
     val seconds = totalSeconds % Constants.SECONDS_IN_MINUTE
 
-    // FIX: Strictly use Locale.US for "Digital Clock" numbers.
-    // Prevents Arab/Persian numerals (١٢:٣٠) from breaking the Player UI layout.
-    return String.format(Locale.US, Constants.Format.TIME_FORMAT, minutes, seconds)
+    return String.format(Locale.getDefault(Locale.Category.FORMAT), Constants.Format.TIME_FORMAT, minutes, seconds)
 }
 
 /**
@@ -30,14 +29,26 @@ fun formatDuration(
 
     val hours = seconds / Constants.SECONDS_IN_HOUR
     val minutes = (seconds % Constants.SECONDS_IN_HOUR) / Constants.SECONDS_IN_MINUTE
+    val numberFormat =
+        NumberFormat.getIntegerInstance(Locale.getDefault(Locale.Category.FORMAT)).apply {
+            isGroupingUsed = false
+        }
 
     return if (hours > 0) {
-        context.getString(R.string.duration_hours_minutes, hours, minutes)
+        context.getString(
+            R.string.duration_hours_minutes,
+            numberFormat.format(hours),
+            numberFormat.format(minutes)
+        )
     } else {
         if (minutes == 0L) {
             context.getString(R.string.duration_less_than_a_minute)
         } else {
-            context.resources.getQuantityString(R.plurals.duration_minutes, minutes.toInt(), minutes.toInt())
+            context.resources.getQuantityString(
+                R.plurals.duration_minutes,
+                minutes.toInt(),
+                numberFormat.format(minutes)
+            )
         }
     }
 }

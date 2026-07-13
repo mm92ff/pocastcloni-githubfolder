@@ -13,6 +13,7 @@ import com.example.pocastcloni.ui.home.detail.toEpisodeUiModel
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.common.asRetainedLoad
+import com.example.pocastcloni.ui.common.retainLatestValue
 import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,9 +23,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
 
 data class PlayerBits(
@@ -34,6 +38,7 @@ data class PlayerBits(
 )
 
 @HiltViewModel
+@OptIn(ExperimentalCoroutinesApi::class)
 class DownloadsViewModel
 @Inject
 constructor(
@@ -46,16 +51,19 @@ constructor(
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
     private val _episodeToDelete = MutableStateFlow<EpisodeUiModel?>(null)
+    private val _reloadKey = MutableStateFlow(0)
 
     private val downloadedEpisodesFlow =
-        getDownloadedEpisodesWithPodcastInfo()
-            .map { episodes ->
-                episodes.map { episodeInfo ->
-                    episodeInfo.toEpisodeUiModel(downloadProgress = 1.0f)
-                }.toImmutableList()
-            }
-            .distinctUntilChanged()
-            .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
+        _reloadKey.flatMapLatest {
+            getDownloadedEpisodesWithPodcastInfo()
+                .map { episodes ->
+                    episodes.map { episodeInfo ->
+                        episodeInfo.toEpisodeUiModel(downloadProgress = 1.0f)
+                    }.toImmutableList()
+                }
+                .distinctUntilChanged()
+                .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
+        }.retainLatestValue()
 
     private val playerBitsFlow =
         playerController.playerState
@@ -99,6 +107,10 @@ constructor(
         viewModelScope.launch {
             startPlaybackUseCase(episode.episodeId)
         }
+    }
+
+    fun retryDownloads() {
+        _reloadKey.update { it + 1 }
     }
 
     fun onFavoriteToggle(episode: EpisodeUiModel) {
