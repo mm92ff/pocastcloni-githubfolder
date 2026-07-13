@@ -1,23 +1,15 @@
 package com.example.pocastcloni.data.worker
 
 import com.example.pocastcloni.domain.model.PodcastUpdateSummary
-import com.example.pocastcloni.domain.repository.PodcastRepository
-import com.example.pocastcloni.domain.repository.UserPreferencesRepository
-import kotlinx.coroutines.flow.first
+import com.example.pocastcloni.domain.usecase.podcast.FeedRefreshCoordinator
+import com.example.pocastcloni.domain.usecase.podcast.FeedRefreshSource
 import javax.inject.Inject
 
 class FeedUpdateRunner
 @Inject
 constructor(
-    private val repository: PodcastRepository,
-    private val preferences: UserPreferencesRepository
+    private val refreshCoordinator: FeedRefreshCoordinator
 ) {
-    suspend operator fun invoke(): PodcastUpdateSummary {
-        val settings = preferences.userSettingsFlow.first()
-        return repository.updateAllPodcasts(
-            downloadLimit = settings.autoDownloadLimit,
-            mode = settings.feedUpdateMode,
-            forceFull = settings.feedUpdateMode.requiresForceFullRefresh()
-        )
-    }
+    suspend operator fun invoke(): PodcastUpdateSummary =
+        refreshCoordinator.refresh(FeedRefreshSource.BACKGROUND)
 }

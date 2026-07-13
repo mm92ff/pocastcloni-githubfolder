@@ -23,6 +23,7 @@ import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOf
@@ -131,10 +132,15 @@ constructor(
                 urls.map { url ->
                     async {
                         updateSemaphore.withPermit {
-                            runCatching {
+                            try {
                                 syncFeedUseCase.get().invoke(url, downloadLimit, mode, null, forceFull)
                                 true
-                            }.getOrElse { false }
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (error: Exception) {
+                                Timber.w(error, "Failed to update feed %s", url)
+                                false
+                            }
                         }
                     }
                 }.awaitAll()

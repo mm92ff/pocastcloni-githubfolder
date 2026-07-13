@@ -20,11 +20,16 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -190,6 +195,58 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `manual refresh owns presentation while startup refresh overlaps`() = runTest(testDispatcher) {
+        val gate = CompletableDeferred<PodcastUpdateSummary>()
+        coEvery { refreshPodcasts(any()) } coAnswers { gate.await() }
+        val stateCollector =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.uiState.collect()
+            }
+
+        viewModel.autoRefreshOnStartIfEnabled()
+        runCurrent()
+        assertTrue(viewModel.isAutoRefreshing.value)
+
+        viewModel.refresh()
+        runCurrent()
+        assertFalse(viewModel.isAutoRefreshing.value)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        gate.complete(PodcastUpdateSummary(1, 1, 0))
+        advanceUntilIdle()
+        assertFalse(viewModel.isAutoRefreshing.value)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        coVerify(exactly = 1) { refreshPodcasts(forceFull = false) }
+        coVerify(exactly = 1) { refreshPodcasts(forceFull = true) }
+        stateCollector.cancel()
+    }
+
+    @Test
+    fun `coalesced manual callers emit one user message`() = runTest(testDispatcher) {
+        recreateViewModel(podcasts = listOf(testPodcast))
+        val gate = CompletableDeferred<PodcastUpdateSummary>()
+        coEvery { refreshPodcasts(forceFull = true) } coAnswers { gate.await() }
+        val stateCollector =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.uiState.collect()
+            }
+        runCurrent()
+
+        viewModel.events.test {
+            viewModel.refresh()
+            viewModel.refresh()
+            runCurrent()
+            gate.complete(PodcastUpdateSummary(totalCount = 1, successfulCount = 0, failureCount = 1))
+            advanceUntilIdle()
+
+            awaitItem()
+            expectNoEvents()
+        }
+        coVerify(exactly = 2) { refreshPodcasts(forceFull = true) }
+        stateCollector.cancel()
+    }
+
+    @Test
     fun `onDeleteSelectedRequest with confirmDelete=true shows confirmation dialog`() = runTest(testDispatcher) {
         every { getUserSettings() } returns flowOf(UserSettings(confirmDelete = true))
         viewModel = HomeViewModel(
@@ -224,5 +281,20 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.showDeleteConfirmation)
+    }
+
+    private fun recreateViewModel(podcasts: List<Podcast>) {
+        every { getAllPodcasts() } returns flowOf(podcasts)
+        viewModel =
+            HomeViewModel(
+                getAllPodcasts = getAllPodcasts,
+                getUserSettings = getUserSettings,
+                refreshPodcasts = refreshPodcasts,
+                reorderPodcasts = reorderPodcasts,
+                markAllPodcastsSeen = markAllPodcastsSeen,
+                deletePodcastUseCase = deletePodcastUseCase,
+                playerController = playerController,
+                dispatcherProvider = dispatcherProvider
+            )
     }
 }

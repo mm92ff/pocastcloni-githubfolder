@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.domain.model.PodcastUpdateSummary
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.app.GetUserSettingsUseCase
 import com.example.pocastcloni.domain.usecase.podcast.DeletePodcastUseCase
@@ -36,8 +37,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -76,8 +75,8 @@ constructor(
     playerController: AudioPlayerController,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
-    private val refreshMutex = Mutex()
     private val didRunStartRefresh = AtomicBoolean(false)
+    private val ownsManualRefreshPresentation = AtomicBoolean(false)
     private var lastStartRefreshAtMs: Long = 0L
 
     // Exposed "silent refresh" indicator for the TopBar
@@ -204,39 +203,24 @@ constructor(
     }
 
     fun refresh() {
+        val presentsResult = ownsManualRefreshPresentation.compareAndSet(false, true)
         viewModelScope.launch(dispatcherProvider.io) {
-            refreshMutex.withLock {
+            if (presentsResult) {
+                _isAutoRefreshing.value = false
                 _isRefreshing.value = true
                 _screenError.value = null
-                try {
-                    val errorText = UiText.StringResource(R.string.refresh_error)
-                    val summary = refreshPodcasts(forceFull = true)
-                    if (summary.allFailed && uiState.value.podcasts.isEmpty()) {
-                        _screenError.value = errorText
-                    } else if (summary.allFailed) {
-                        _events.send(HomeUiEvent.ShowUserMessage(errorText))
-                    } else if (summary.hasFailures) {
-                        _events.send(
-                            HomeUiEvent.ShowUserMessage(
-                                UiText.StringResource(
-                                    R.string.podcasts_partially_updated,
-                                    summary.successfulCount,
-                                    summary.totalCount
-                                )
-                            )
-                        )
-                    }
-                } catch (e: CancellationException) {
-                    throw e  // structured concurrency requires this
-                } catch (e: Exception) {
-                    val errorText = UiText.StringResource(R.string.refresh_error)
-                    if (uiState.value.podcasts.isEmpty()) {
-                        _screenError.value = errorText
-                    } else {
-                        _events.send(HomeUiEvent.ShowUserMessage(errorText))
-                    }
-                } finally {
+            }
+            try {
+                val summary = refreshPodcasts(forceFull = true)
+                if (presentsResult) presentManualRefreshResult(summary)
+            } catch (e: CancellationException) {
+                throw e  // structured concurrency requires this
+            } catch (e: Exception) {
+                if (presentsResult) presentManualRefreshError()
+            } finally {
+                if (presentsResult) {
                     _isRefreshing.value = false
+                    ownsManualRefreshPresentation.set(false)
                 }
             }
         }
@@ -249,15 +233,12 @@ constructor(
         lastStartRefreshAtMs = now
 
         viewModelScope.launch(dispatcherProvider.io) {
-            val lockAcquired = refreshMutex.tryLock()
-            if (!lockAcquired) return@launch
-
             try {
                 val settings = getUserSettings().first()
                 if (!settings.autoRefreshOnStart) return@launch
-                if (_isRefreshing.value) return@launch
 
-                _isAutoRefreshing.value = true
+                val showIndicator = !ownsManualRefreshPresentation.get()
+                if (showIndicator) _isAutoRefreshing.value = true
                 try {
                     val summary = refreshPodcasts(forceFull = false)
                     if (summary.allFailed) {
@@ -274,16 +255,42 @@ constructor(
                 } catch (e: Exception) {
                     Timber.w(e, "Auto refresh on start failed")
                 } finally {
-                    _isAutoRefreshing.value = false
+                    if (showIndicator) _isAutoRefreshing.value = false
                 }
             } catch (e: CancellationException) {
                 throw e  // structured concurrency requires this
             } catch (e: Exception) {
                 _isAutoRefreshing.value = false
                 Timber.w(e, "Auto refresh on start failed (unexpected)")
-            } finally {
-                refreshMutex.unlock()
             }
+        }
+    }
+
+    private suspend fun presentManualRefreshResult(summary: PodcastUpdateSummary) {
+        val errorText = UiText.StringResource(R.string.refresh_error)
+        if (summary.allFailed && uiState.value.podcasts.isEmpty()) {
+            _screenError.value = errorText
+        } else if (summary.allFailed) {
+            _events.send(HomeUiEvent.ShowUserMessage(errorText))
+        } else if (summary.hasFailures) {
+            _events.send(
+                HomeUiEvent.ShowUserMessage(
+                    UiText.StringResource(
+                        R.string.podcasts_partially_updated,
+                        summary.successfulCount,
+                        summary.totalCount
+                    )
+                )
+            )
+        }
+    }
+
+    private suspend fun presentManualRefreshError() {
+        val errorText = UiText.StringResource(R.string.refresh_error)
+        if (uiState.value.podcasts.isEmpty()) {
+            _screenError.value = errorText
+        } else {
+            _events.send(HomeUiEvent.ShowUserMessage(errorText))
         }
     }
 
