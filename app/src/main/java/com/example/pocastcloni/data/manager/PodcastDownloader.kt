@@ -10,6 +10,9 @@ import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.worker.DownloadWorker
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.cancelEpisodeDownloadWork
+import com.example.pocastcloni.util.cancelLegacyDownloadWork
+import com.example.pocastcloni.util.downloadWorkName
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -49,27 +52,28 @@ constructor(
             OneTimeWorkRequestBuilder<DownloadWorker>()
                 .setInputData(
                     workDataOf(
-                        Constants.DOWNLOAD_WORKER_GUID to episode.guid,
+                        Constants.DOWNLOAD_WORKER_EPISODE_ID to episode.episodeId,
                         Constants.DOWNLOAD_WORKER_URL to episode.enclosureUrl,
                         Constants.DOWNLOAD_WORKER_FILENAME to fileName
                     )
                 )
                 .build()
 
+        workManager.cancelLegacyDownloadWork(episode.guid)
         workManager.enqueueUniqueWork(
-            "${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${episode.guid}",
+            downloadWorkName(episode.episodeId),
             ExistingWorkPolicy.KEEP,
             request
         )
     }
 
     private suspend fun deleteDownload(episode: EpisodeEntity) {
-        workManager.cancelUniqueWork("${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${episode.guid}")
+        workManager.cancelEpisodeDownloadWork(episode.episodeId, episode.guid)
 
         episode.downloadPath?.let { File(it).delete() }
 
         podcastRepositoryProvider.get().updateDownloadStatus(
-            episode.guid,
+            episode.episodeId,
             DownloadStatus.NOT_DOWNLOADED,
             null
         )

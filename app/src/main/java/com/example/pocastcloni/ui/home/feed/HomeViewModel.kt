@@ -98,10 +98,10 @@ constructor(
     private val _events = Channel<HomeUiEvent>()
     val events = _events.receiveAsFlow()
 
-    // Player state flow (GUID-based, stable)
+    // Player state flow uses the database episode ID.
     private val isPlayerVisibleFlow =
         playerController.playerState
-            .map { !it.currentEpisodeGuid.isNullOrBlank() }
+            .map { it.currentEpisodeId != null }
             .distinctUntilChanged()
 
     private val podcastsFlow =

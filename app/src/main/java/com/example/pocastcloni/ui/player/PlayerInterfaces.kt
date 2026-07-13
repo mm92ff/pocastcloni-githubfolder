@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 // Interface for UI components that CONTROL the player (write)
 interface PlayerActions {
-    suspend fun play(episodeGuid: String)
+    suspend fun play(episodeId: Long)
 
     fun pause()
 

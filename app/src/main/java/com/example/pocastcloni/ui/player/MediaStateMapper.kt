@@ -32,7 +32,7 @@ constructor() {
             }
             ?.toUri()
         return MediaItem.Builder()
-            .setMediaId(episode.guid)
+            .setMediaId(episode.episodeId.toString())
             .setUri(playUri.toUri())
             .setMediaMetadata(
                 MediaMetadata.Builder()
@@ -53,7 +53,7 @@ constructor() {
         if (controller == null) return currentState
 
         val meta = controller.mediaMetadata
-        val currentGuid = controller.currentMediaItem?.mediaId
+        val currentEpisodeId = controller.currentMediaItem?.mediaId?.toLongOrNull()
 
         val title = episode?.title ?: meta.title?.toString() ?: Constants.EMPTY_STRING
         val subtitle = podcast?.title ?: meta.artist?.toString() ?: Constants.EMPTY_STRING
@@ -65,7 +65,7 @@ constructor() {
         return currentState.copy(
             isPlaying = controller.isPlaying,
             isBuffering = controller.playbackState == Player.STATE_BUFFERING,
-            currentEpisodeGuid = currentGuid,
+            currentEpisodeId = currentEpisodeId,
             currentEpisodeTitle = title,
             currentEpisodeSubtitle = subtitle,
             coverUrl = cover,

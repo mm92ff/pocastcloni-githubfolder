@@ -121,10 +121,10 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
             ) {
                 items(
                     items = uiState.episodes,
-                    key = { it.guid },
+                    key = { it.episodeId },
                     contentType = { "download-episode" }
                 ) { episode ->
-                    val isPlaying = (episode.guid == uiState.currentPlayingGuid) && uiState.isPlayerPlaying
+                    val isPlaying = (episode.episodeId == uiState.currentPlayingEpisodeId) && uiState.isPlayerPlaying
 
                     // PERFORMANCE FIX: stabilise lambdas
                     val onPlayClick = remember(episode) { { viewModel.playEpisode(episode) } }

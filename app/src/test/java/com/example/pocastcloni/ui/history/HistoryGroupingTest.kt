@@ -136,10 +136,10 @@ class HistoryGroupingTest {
 
     @Test
     fun `buildHistoryRows inserts one header per bucket and preserves item order`() {
-        val today = historyItem("today", millisDaysAgo(0))
-        val todaySecond = historyItem("today-second", millisDaysAgo(0))
-        val yesterday = historyItem("yesterday", millisDaysAgo(1))
-        val older = historyItem("older", millisDaysAgo(366))
+        val today = historyItem(101L, "today", millisDaysAgo(0))
+        val todaySecond = historyItem(102L, "today-second", millisDaysAgo(0))
+        val yesterday = historyItem(103L, "yesterday", millisDaysAgo(1))
+        val older = historyItem(104L, "older", millisDaysAgo(366))
 
         val rows = buildHistoryRows(
             items = listOf(today, todaySecond, yesterday, older),
@@ -163,12 +163,12 @@ class HistoryGroupingTest {
 
     @Test
     fun `history row keys are stable and do not collide`() {
-        val item = historyItem("TODAY", millisDaysAgo(0))
+        val item = historyItem(201L, "TODAY", millisDaysAgo(0))
         val header = HistoryListRow.SectionHeader(DateBucket.TODAY)
         val episode = HistoryListRow.EpisodeRow(item)
 
         assertEquals("section-TODAY", header.key)
-        assertEquals("episode-TODAY", episode.key)
+        assertEquals("episode-201", episode.key)
         assertNotEquals(header.key, episode.key)
     }
 
@@ -187,13 +187,18 @@ class HistoryGroupingTest {
             .toInstant()
             .toEpochMilli()
 
-    private fun historyItem(id: String, datePlayedMs: Long?): HistoryUiItem =
+    private fun historyItem(
+        episodeId: Long,
+        guid: String,
+        datePlayedMs: Long?
+    ): HistoryUiItem =
         HistoryUiItem(
-            id = id,
+            id = episodeId,
             episode =
             EpisodeDisplayModel(
-                guid = id,
-                title = "Episode $id",
+                episodeId = episodeId,
+                guid = guid,
+                title = "Episode $guid",
                 description = "",
                 podcastRssUrl = "https://example.com/feed.xml",
                 podcastTitle = null,

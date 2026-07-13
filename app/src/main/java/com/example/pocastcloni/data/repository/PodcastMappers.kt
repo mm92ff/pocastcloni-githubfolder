@@ -105,7 +105,7 @@ fun RssItem.toEpisodeEntity(podcastUrl: String): EpisodeEntity {
     val cleanDate = sanitizeDate(rawDate)
 
     return EpisodeEntity(
-        guid = this.guid ?: this.link ?: this.title ?: System.currentTimeMillis().toString(), // Fallback for GUID
+        guid = stableEpisodeGuid(podcastUrl),
         podcastRssUrl = podcastUrl,
         title = this.title ?: "No Title",
         description = this.description ?: "",
@@ -121,6 +121,25 @@ fun RssItem.toEpisodeEntity(podcastUrl: String): EpisodeEntity {
         downloadStatus = DownloadStatus.NOT_DOWNLOADED,
         isFavorite = false
     )
+}
+
+private fun RssItem.stableEpisodeGuid(podcastUrl: String): String {
+    // Keep the v14 fallback order so the first post-upgrade sync reuses rows
+    // whose legacy identity was their title instead of duplicating them.
+    guid?.let { return it }
+    link?.let { return it }
+    title?.let { return it }
+
+    val stableFields = listOf(
+        podcastUrl,
+        enclosure?.url.orEmpty(),
+        pubDate.orEmpty(),
+        itunesDuration.orEmpty()
+    )
+    val digest = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(stableFields.joinToString("\u001f").toByteArray(Charsets.UTF_8))
+        .joinToString("") { byte -> "%02x".format(byte) }
+    return "fallback:$digest"
 }
 
 /**

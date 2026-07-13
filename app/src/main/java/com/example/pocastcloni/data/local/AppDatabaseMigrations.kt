@@ -27,6 +27,92 @@ object AppDatabaseMigrations {
         }
     }
 
+    internal val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS `episodes_fts`")
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `episodes_new` (
+                    `guid` TEXT NOT NULL,
+                    `podcastRssUrl` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `description` TEXT NOT NULL,
+                    `pubDate` INTEGER,
+                    `link` TEXT NOT NULL,
+                    `enclosureUrl` TEXT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `fileSize` INTEGER NOT NULL,
+                    `isPlayed` INTEGER NOT NULL,
+                    `playbackPositionMs` INTEGER NOT NULL,
+                    `downloadStatus` TEXT NOT NULL,
+                    `downloadPath` TEXT,
+                    `isFavorite` INTEGER NOT NULL,
+                    `datePlayed` INTEGER,
+                    `favoriteTimestamp` INTEGER,
+                    `favoriteAddedAt` INTEGER,
+                    `duration` INTEGER NOT NULL,
+                    `episodeId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    FOREIGN KEY(`podcastRssUrl`) REFERENCES `podcasts`(`rssUrl`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO `episodes_new` (
+                    `guid`, `podcastRssUrl`, `title`, `description`, `pubDate`, `link`,
+                    `enclosureUrl`, `type`, `fileSize`, `isPlayed`, `playbackPositionMs`,
+                    `downloadStatus`, `downloadPath`, `isFavorite`, `datePlayed`,
+                    `favoriteTimestamp`, `favoriteAddedAt`, `duration`, `episodeId`
+                )
+                SELECT
+                    `guid`, `podcastRssUrl`, `title`, `description`, `pubDate`, `link`,
+                    `enclosureUrl`, `type`, `fileSize`, `isPlayed`, `playbackPositionMs`,
+                    `downloadStatus`, `downloadPath`, `isFavorite`, `datePlayed`,
+                    `favoriteTimestamp`, `favoriteAddedAt`, `duration`, `rowid`
+                FROM `episodes`
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE `episodes`")
+            db.execSQL("ALTER TABLE `episodes_new` RENAME TO `episodes`")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl` ON `episodes` (`podcastRssUrl`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl_pubDate` ON `episodes` (`podcastRssUrl`, `pubDate`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_downloadStatus_pubDate` ON `episodes` (`downloadStatus`, `pubDate`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteTimestamp` ON `episodes` (`isFavorite`, `favoriteTimestamp`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteAddedAt` ON `episodes` (`isFavorite`, `favoriteAddedAt`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isPlayed_datePlayed` ON `episodes` (`isPlayed`, `datePlayed`)")
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl_guid` " +
+                    "ON `episodes` (`podcastRssUrl`, `guid`)"
+            )
+            db.execSQL(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS `episodes_fts` USING FTS4(" +
+                    "`title` TEXT NOT NULL, `description` TEXT NOT NULL, content=`episodes`)"
+            )
+            db.execSQL("INSERT INTO `episodes_fts`(`episodes_fts`) VALUES ('rebuild')")
+            db.execSQL(
+                "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_episodes_fts_BEFORE_UPDATE " +
+                    "BEFORE UPDATE ON `episodes` BEGIN DELETE FROM `episodes_fts` " +
+                    "WHERE `docid`=OLD.`rowid`; END"
+            )
+            db.execSQL(
+                "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_episodes_fts_BEFORE_DELETE " +
+                    "BEFORE DELETE ON `episodes` BEGIN DELETE FROM `episodes_fts` " +
+                    "WHERE `docid`=OLD.`rowid`; END"
+            )
+            db.execSQL(
+                "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_episodes_fts_AFTER_UPDATE " +
+                    "AFTER UPDATE ON `episodes` BEGIN INSERT INTO `episodes_fts`" +
+                    "(`docid`, `title`, `description`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`description`); END"
+            )
+            db.execSQL(
+                "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_episodes_fts_AFTER_INSERT " +
+                    "AFTER INSERT ON `episodes` BEGIN INSERT INTO `episodes_fts`" +
+                    "(`docid`, `title`, `description`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`description`); END"
+            )
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Legacy migrations (v1–v9 → v10)
     // All pre-v10 databases are rebuilt in one pass to the v10 schema.
@@ -87,7 +173,8 @@ object AppDatabaseMigrations {
             }
         },
         MIGRATION_12_13,
-        MIGRATION_13_14
+        MIGRATION_13_14,
+        MIGRATION_14_15
     )
 
     val ALL_MIGRATIONS: Array<Migration> = legacyMigrations + incrementalMigrations

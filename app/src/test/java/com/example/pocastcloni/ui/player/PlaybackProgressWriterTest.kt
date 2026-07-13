@@ -25,7 +25,7 @@ class PlaybackProgressWriterTest {
         var activeSaves = 0
         var maximumActiveSaves = 0
 
-        coEvery { repository.savePlaybackProgress(GUID, any()) } coAnswers {
+        coEvery { repository.savePlaybackProgress(EPISODE_ID, any()) } coAnswers {
             activeSaves += 1
             maximumActiveSaves = maxOf(maximumActiveSaves, activeSaves)
             val position = secondArg<Long>()
@@ -40,10 +40,10 @@ class PlaybackProgressWriterTest {
                 applicationScope = backgroundScope
             )
 
-        writer.request(GUID, 100L)
+        writer.request(EPISODE_ID, 100L)
         runCurrent()
-        writer.request(GUID, 200L)
-        writer.request(GUID, 300L)
+        writer.request(EPISODE_ID, 200L)
+        writer.request(EPISODE_ID, 300L)
         firstSaveGate.complete(Unit)
         runCurrent()
 
@@ -55,7 +55,7 @@ class PlaybackProgressWriterTest {
     fun `failed position is retried by the next flush request`() = runTest {
         val repository = mockk<PodcastRepository>()
         var attempts = 0
-        coEvery { repository.savePlaybackProgress(GUID, 400L) } coAnswers {
+        coEvery { repository.savePlaybackProgress(EPISODE_ID, 400L) } coAnswers {
             attempts += 1
             if (attempts == 1) error("temporary failure")
         }
@@ -65,20 +65,20 @@ class PlaybackProgressWriterTest {
                 applicationScope = backgroundScope
             )
 
-        writer.request(GUID, 400L)
+        writer.request(EPISODE_ID, 400L)
         runCurrent()
-        writer.request(GUID, 400L)
+        writer.request(EPISODE_ID, 400L)
         runCurrent()
 
         assertEquals(2, attempts)
-        coVerify(exactly = 2) { repository.savePlaybackProgress(GUID, 400L) }
+        coVerify(exactly = 2) { repository.savePlaybackProgress(EPISODE_ID, 400L) }
     }
 
     @Test
     fun `failed final position retries even without a newer request`() = runTest {
         val repository = mockk<PodcastRepository>()
         var attempts = 0
-        coEvery { repository.savePlaybackProgress(GUID, 450L) } coAnswers {
+        coEvery { repository.savePlaybackProgress(EPISODE_ID, 450L) } coAnswers {
             attempts += 1
             if (attempts == 1) error("temporary failure")
         }
@@ -88,7 +88,7 @@ class PlaybackProgressWriterTest {
                 applicationScope = backgroundScope
             )
 
-        writer.request(GUID, 450L)
+        writer.request(EPISODE_ID, 450L)
         runCurrent()
         assertEquals(1, attempts)
 
@@ -96,7 +96,7 @@ class PlaybackProgressWriterTest {
         runCurrent()
 
         assertEquals(2, attempts)
-        coVerify(exactly = 2) { repository.savePlaybackProgress(GUID, 450L) }
+        coVerify(exactly = 2) { repository.savePlaybackProgress(EPISODE_ID, 450L) }
     }
 
     @Test
@@ -122,6 +122,6 @@ class PlaybackProgressWriterTest {
     }
 
     private companion object {
-        private const val GUID = "episode-guid"
+        private const val EPISODE_ID = 101L
     }
 }

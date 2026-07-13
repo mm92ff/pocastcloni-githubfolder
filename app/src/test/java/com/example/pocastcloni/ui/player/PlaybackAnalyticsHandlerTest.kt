@@ -20,7 +20,7 @@ class PlaybackAnalyticsHandlerTest {
         repeat(1_200) {
             nowMs += 500L
             handler.onTick(
-                guid = GUID,
+                episodeId = EPISODE_ID,
                 currentPositionMs = nowMs,
                 durationMs = 1_000_000L,
                 deltaMs = 500L,
@@ -29,7 +29,7 @@ class PlaybackAnalyticsHandlerTest {
             )
         }
 
-        verify(exactly = 20) { progressWriter.request(GUID, any()) }
+        verify(exactly = 20) { progressWriter.request(EPISODE_ID, any()) }
     }
 
     @Test
@@ -41,7 +41,7 @@ class PlaybackAnalyticsHandlerTest {
         repeat(59) {
             nowMs += 500L
             handler.onTick(
-                guid = GUID,
+                episodeId = EPISODE_ID,
                 currentPositionMs = nowMs,
                 durationMs = 60_000L,
                 deltaMs = 500L,
@@ -60,7 +60,7 @@ class PlaybackAnalyticsHandlerTest {
         val handler = createHandler(progressWriter = progressWriter, clock = MonotonicClock { nowMs })
 
         handler.onTick(
-            guid = GUID,
+            episodeId = EPISODE_ID,
             currentPositionMs = 30_000L,
             durationMs = 100_000L,
             deltaMs = 500L,
@@ -69,10 +69,10 @@ class PlaybackAnalyticsHandlerTest {
         )
         nowMs += 500L
 
-        handler.saveProgressBestEffort(GUID, 30_500L)
+        handler.saveProgressBestEffort(EPISODE_ID, 30_500L)
 
-        verify(exactly = 1) { progressWriter.request(GUID, 30_000L) }
-        verify(exactly = 1) { progressWriter.request(GUID, 30_500L) }
+        verify(exactly = 1) { progressWriter.request(EPISODE_ID, 30_000L) }
+        verify(exactly = 1) { progressWriter.request(EPISODE_ID, 30_500L) }
     }
 
     @Test
@@ -87,7 +87,7 @@ class PlaybackAnalyticsHandlerTest {
 
         repeat(5) {
             handler.onTick(
-                guid = GUID,
+                episodeId = EPISODE_ID,
                 currentPositionMs = 95_000L,
                 durationMs = 100_000L,
                 deltaMs = 500L,
@@ -98,7 +98,7 @@ class PlaybackAnalyticsHandlerTest {
         }
         runCurrent()
 
-        coVerify(exactly = 1) { markPlayed(GUID) }
+        coVerify(exactly = 1) { markPlayed(EPISODE_ID) }
     }
 
     private fun kotlinx.coroutines.test.TestScope.createHandler(
@@ -115,6 +115,6 @@ class PlaybackAnalyticsHandlerTest {
         )
 
     private companion object {
-        private const val GUID = "episode-guid"
+        private const val EPISODE_ID = 101L
     }
 }

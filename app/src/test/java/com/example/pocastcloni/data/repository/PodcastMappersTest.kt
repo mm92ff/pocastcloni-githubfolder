@@ -7,7 +7,7 @@ import com.example.pocastcloni.data.remote.RssItem
 import com.example.pocastcloni.util.Constants
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -79,10 +79,30 @@ class PodcastMappersTest {
     }
 
     @Test
-    fun `toEpisodeEntity falls back to title as guid when guid and link are null`() {
+    fun `toEpisodeEntity preserves legacy title fallback before enclosure`() {
         val item = rssItem(guid = null, link = null, title = "Episode Title")
         val entity = item.toEpisodeEntity("https://feed.url")
         assertEquals("Episode Title", entity.guid)
+    }
+
+    @Test
+    fun `missing guid fallback is deterministic and feed scoped`() {
+        val item = rssItem(
+            guid = null,
+            link = null,
+            audioUrl = null,
+            title = null,
+            pubDate = "Mon, 01 Jan 2024 10:00:00 +0000",
+            itunesDuration = "60"
+        )
+
+        val first = item.toEpisodeEntity("https://example.com/a.xml")
+        val repeated = item.toEpisodeEntity("https://example.com/a.xml")
+        val otherFeed = item.toEpisodeEntity("https://example.com/b.xml")
+
+        assertEquals(first.guid, repeated.guid)
+        assertTrue(first.guid.startsWith("fallback:"))
+        assertNotEquals(first.guid, otherFeed.guid)
     }
 
     @Test

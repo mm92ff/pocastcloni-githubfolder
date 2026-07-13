@@ -3,8 +3,10 @@ package com.example.pocastcloni.util
 object Constants {
     // Worker Tags & Keys moved to top level for better visibility
     const val DOWNLOAD_WORKER_TAG = "download_worker"
+    const val DOWNLOAD_WORKER_ID_UNIQUE_PREFIX = "download_work_id_"
     const val DOWNLOAD_WORKER_UNIQUE_PREFIX = "download_work_"
-    const val DOWNLOAD_WORKER_GUID = "episode_guid"
+    const val DOWNLOAD_WORKER_EPISODE_ID = "episode_id"
+    const val DOWNLOAD_WORKER_LEGACY_GUID = "episode_guid"
     const val DOWNLOAD_WORKER_URL = "download_url"
     const val DOWNLOAD_WORKER_FILENAME = "file_name"
     const val DOWNLOAD_WORKER_OUTPUT_PATH = "path"
@@ -74,7 +76,7 @@ object Constants {
 
     object Database {
         const val DATABASE_NAME = "pocast_cloni_db"
-        const val DATABASE_VERSION = 14
+        const val DATABASE_VERSION = 15
         const val DEFAULT_SORT_ORDER = 0L
         const val TABLE_PODCASTS = "podcasts"
         const val TABLE_EPISODES = "episodes"

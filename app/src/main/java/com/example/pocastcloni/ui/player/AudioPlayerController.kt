@@ -152,7 +152,7 @@ constructor(
     private fun flushCurrentPlaybackSnapshot() {
         val player = controller ?: return
         analyticsHandler.saveProgressBestEffort(
-            player.currentMediaItem?.mediaId,
+            player.currentMediaItem?.mediaId?.toLongOrNull(),
             player.currentPosition
         )
         analyticsHandler.flushListeningTime()
@@ -172,7 +172,7 @@ constructor(
 
         if (settings != null && deltaMs > 0L) {
             analyticsHandler.onTick(
-                guid = player.currentMediaItem?.mediaId,
+                episodeId = player.currentMediaItem?.mediaId?.toLongOrNull(),
                 currentPositionMs = currentPositionMs,
                 durationMs = durationMs,
                 deltaMs = deltaMs,
@@ -248,26 +248,26 @@ constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun startFavoriteStatusLoop() {
         favoriteStatusJob?.cancel()
-        favoriteStatusJob = playerState.map { it.currentEpisodeGuid }.distinctUntilChanged()
-            .flatMapLatest { guid -> if (guid.isNullOrBlank()) flowOf(false) else podcastRepository.isFavorite(guid) }
+        favoriteStatusJob = playerState.map { it.currentEpisodeId }.distinctUntilChanged()
+            .flatMapLatest { episodeId -> if (episodeId == null) flowOf(false) else podcastRepository.isFavorite(episodeId) }
             .onEach { isFav -> _internalPlayerState.update { it.copy(isCurrentEpisodeFavorite = isFav) } }
             .launchIn(controllerScope)
     }
 
-    override suspend fun play(episodeGuid: String) {
+    override suspend fun play(episodeId: Long) {
         connectInternal()
-        val playbackInfo = preparePlaybackUseCase(episodeGuid)
+        val playbackInfo = preparePlaybackUseCase(episodeId)
         val episode = playbackInfo.episode
         _internalPlayerState.update { it.copy(currentPodcastUrl = episode.podcastRssUrl) }
         val mediaController = controller ?: return
         withContext(mediaDispatcherOrFallback()) {
             val currentId = mediaController.currentMediaItem?.mediaId
-            if (currentId == episode.guid) {
+            if (currentId == episode.episodeId.toString()) {
                 if (!mediaController.isPlaying) mediaController.play()
                 return@withContext
             }
             if (!currentId.isNullOrBlank()) {
-                analyticsHandler.saveProgressBestEffort(currentId, mediaController.currentPosition)
+                analyticsHandler.saveProgressBestEffort(currentId.toLongOrNull(), mediaController.currentPosition)
                 analyticsHandler.flushListeningTime()
             }
             val mediaItem =
@@ -318,7 +318,7 @@ constructor(
                     launchOnMedia {
                         controller?.seekTo(positionMs)
                         analyticsHandler.saveProgressBestEffort(
-                            controller?.currentMediaItem?.mediaId,
+                            controller?.currentMediaItem?.mediaId?.toLongOrNull(),
                             positionMs
                         )
                         analyticsHandler.flushListeningTime()
@@ -333,8 +333,8 @@ constructor(
 
     private suspend fun syncCurrentEpisodeUi() {
         val ctrl = controller ?: return
-        val guid = ctrl.currentMediaItem?.mediaId
-        val episode = if (guid != null) withContext(dispatcherProvider.io) { podcastRepository.getEpisode(guid) } else null
+        val episodeId = ctrl.currentMediaItem?.mediaId?.toLongOrNull()
+        val episode = if (episodeId != null) withContext(dispatcherProvider.io) { podcastRepository.getEpisode(episodeId) } else null
         val podcast = episode?.podcastRssUrl?.let { withContext(dispatcherProvider.io) { podcastRepository.getPodcastEntityByUrl(it) } }
         _internalPlayerState.update { current ->
             mapper.mapToUiState(ctrl, episode, podcast, current)

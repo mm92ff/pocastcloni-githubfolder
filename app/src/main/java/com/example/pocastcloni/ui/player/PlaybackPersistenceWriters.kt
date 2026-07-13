@@ -16,7 +16,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 internal data class PlaybackProgressSnapshot(
-    val guid: String,
+    val episodeId: Long,
     val positionMs: Long
 )
 
@@ -42,7 +42,7 @@ constructor(
                     continue
                 }
                 try {
-                    savePlaybackProgress(snapshot.guid, snapshot.positionMs)
+                    savePlaybackProgress(snapshot.episodeId, snapshot.positionMs)
                     lastPersisted = snapshot
                     retryDelayMs = INITIAL_RETRY_DELAY_MS
                     snapshot = requests.receive()
@@ -63,11 +63,11 @@ constructor(
     }
 
     fun request(
-        guid: String,
+        episodeId: Long,
         positionMs: Long
     ) {
-        if (guid.isBlank()) return
-        requests.trySend(PlaybackProgressSnapshot(guid, positionMs.coerceAtLeast(0L)))
+        if (episodeId <= 0L) return
+        requests.trySend(PlaybackProgressSnapshot(episodeId, positionMs.coerceAtLeast(0L)))
     }
 
     internal companion object {

@@ -44,13 +44,13 @@ import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 
 sealed class PodcastDetailAction {
-    data class PlayEpisode(val guid: String) : PodcastDetailAction()
+    data class PlayEpisode(val episodeId: Long) : PodcastDetailAction()
 
-    data class ToggleDownload(val guid: String) : PodcastDetailAction()
+    data class ToggleDownload(val episodeId: Long) : PodcastDetailAction()
 
-    data class TogglePlayedStatus(val guid: String) : PodcastDetailAction()
+    data class TogglePlayedStatus(val episodeId: Long) : PodcastDetailAction()
 
-    data class ToggleFavorite(val guid: String) : PodcastDetailAction()
+    data class ToggleFavorite(val episodeId: Long) : PodcastDetailAction()
 
     data class ToggleAutoDownload(val enabled: Boolean) : PodcastDetailAction()
 
@@ -116,7 +116,7 @@ constructor(
                         presentation.toEpisodeUiModel(
                             podcastName = podcastTitle,
                             podcastImageUrl = podcastImageUrl,
-                            downloadProgress = progressMap[entity.guid] ?: 0f
+                            downloadProgress = progressMap[entity.episodeId] ?: 0f
                         )
                     }.toImmutableList()
 
@@ -156,9 +156,9 @@ constructor(
         playerController.playerState
             .map { playerState ->
                 PlayerStatusUiState(
-                    currentPlayingGuid = playerState.currentEpisodeGuid ?: "",
+                    currentPlayingEpisodeId = playerState.currentEpisodeId,
                     isPlayerPlaying = playerState.isPlaying,
-                    isPlayerVisible = !playerState.currentEpisodeGuid.isNullOrBlank()
+                    isPlayerVisible = playerState.currentEpisodeId != null
                 )
             }
             .distinctUntilChanged()
@@ -194,10 +194,10 @@ constructor(
 
     fun onAction(action: PodcastDetailAction) {
         when (action) {
-            is PodcastDetailAction.PlayEpisode -> playEpisode(action.guid)
-            is PodcastDetailAction.ToggleDownload -> toggleDownload(action.guid)
-            is PodcastDetailAction.TogglePlayedStatus -> togglePlayed(action.guid)
-            is PodcastDetailAction.ToggleFavorite -> toggleFavorite(action.guid)
+            is PodcastDetailAction.PlayEpisode -> playEpisode(action.episodeId)
+            is PodcastDetailAction.ToggleDownload -> toggleDownload(action.episodeId)
+            is PodcastDetailAction.TogglePlayedStatus -> togglePlayed(action.episodeId)
+            is PodcastDetailAction.ToggleFavorite -> toggleFavorite(action.episodeId)
             is PodcastDetailAction.ToggleAutoDownload -> toggleAutoDownload(action.enabled)
             PodcastDetailAction.ShowPodcastDescription -> _isPodcastDescriptionDialogVisible.update { true }
             PodcastDetailAction.DismissPodcastDescription -> _isPodcastDescriptionDialogVisible.update { false }
@@ -205,28 +205,28 @@ constructor(
         }
     }
 
-    private fun playEpisode(guid: String) {
+    private fun playEpisode(episodeId: Long) {
         val playerStatus = uiState.value.playerState
 
-        if (playerStatus.currentPlayingGuid == guid && playerStatus.isPlayerPlaying) {
+        if (playerStatus.currentPlayingEpisodeId == episodeId && playerStatus.isPlayerPlaying) {
             playerController.onEvent(PlayerScreenEvent.TogglePlayPause)
         } else {
             viewModelScope.launch {
-                startPlaybackUseCase(guid)
+                startPlaybackUseCase(episodeId)
             }
         }
     }
 
-    private fun togglePlayed(guid: String) {
+    private fun togglePlayed(episodeId: Long) {
         viewModelScope.launch(dispatcherProvider.io) {
-            toggleEpisodePlayedStatusUseCase(guid)
+            toggleEpisodePlayedStatusUseCase(episodeId)
         }
     }
 
-    private fun toggleFavorite(guid: String) {
+    private fun toggleFavorite(episodeId: Long) {
         viewModelScope.launch {
-            val episode = uiState.value.episodes.find { it.guid == guid } ?: return@launch
-            toggleFavoriteEpisodeUseCase(guid, episode.isFavorite)
+            val episode = uiState.value.episodes.find { it.episodeId == episodeId } ?: return@launch
+            toggleFavoriteEpisodeUseCase(episodeId, episode.isFavorite)
         }
     }
 
@@ -236,9 +236,9 @@ constructor(
         }
     }
 
-    private fun toggleDownload(guid: String) {
+    private fun toggleDownload(episodeId: Long) {
         viewModelScope.launch(dispatcherProvider.io) {
-            downloader(guid)
+            downloader(episodeId)
         }
     }
 }

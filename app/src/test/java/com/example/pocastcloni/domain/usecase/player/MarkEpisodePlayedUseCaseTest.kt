@@ -13,7 +13,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -40,7 +39,11 @@ class MarkEpisodePlayedUseCaseTest {
         useCase = MarkEpisodePlayedUseCase(repository, dispatcherProvider)
     }
 
-    private fun episode(guid: String, isPlayed: Boolean = true) = EpisodeEntity(
+    private fun episode(
+        episodeId: Long,
+        guid: String,
+        isPlayed: Boolean = true
+    ) = EpisodeEntity(
         guid = guid,
         podcastRssUrl = feedUrl,
         title = guid,
@@ -48,7 +51,8 @@ class MarkEpisodePlayedUseCaseTest {
         pubDate = Date(),
         link = "",
         enclosureUrl = "https://example.com/$guid.mp3",
-        isPlayed = isPlayed
+        isPlayed = isPlayed,
+        episodeId = episodeId
     )
 
     private fun podcast(hasNewEpisodes: Boolean) = PodcastEntity(
@@ -61,24 +65,24 @@ class MarkEpisodePlayedUseCaseTest {
 
     @Test
     fun `marks episode as played in repository`() = runTest(testDispatcher) {
-        val ep = episode("ep-1")
-        coEvery { repository.getEpisode("ep-1") } returns ep
+        val ep = episode(episodeId = 101L, guid = "ep-1")
+        coEvery { repository.getEpisode(ep.episodeId) } returns ep
         coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(ep)
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns podcast(hasNewEpisodes = false)
 
-        useCase("ep-1")
+        useCase(ep.episodeId)
 
-        coVerify { repository.markEpisodePlayed("ep-1", true, any()) }
+        coVerify { repository.markEpisodePlayed(ep.episodeId, true, any()) }
     }
 
     @Test
     fun `clears hasNewEpisodes dot when played episode is the latest`() = runTest(testDispatcher) {
-        val latestEp = episode("ep-latest", isPlayed = true)
-        coEvery { repository.getEpisode("ep-latest") } returns latestEp
+        val latestEp = episode(episodeId = 201L, guid = "ep-latest", isPlayed = true)
+        coEvery { repository.getEpisode(latestEp.episodeId) } returns latestEp
         coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(latestEp)
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns podcast(hasNewEpisodes = true)
 
-        useCase("ep-latest")
+        useCase(latestEp.episodeId)
 
         val slot = slot<PodcastEntity>()
         coVerify { repository.updatePodcastEntity(capture(slot)) }
@@ -87,14 +91,14 @@ class MarkEpisodePlayedUseCaseTest {
 
     @Test
     fun `keeps hasNewEpisodes dot when an unplayed episode still exists`() = runTest(testDispatcher) {
-        val playedEp = episode("ep-old", isPlayed = true)
-        val unplayedLatest = episode("ep-latest", isPlayed = false)
-        coEvery { repository.getEpisode("ep-old") } returns playedEp
+        val playedEp = episode(episodeId = 301L, guid = "ep-old", isPlayed = true)
+        val unplayedLatest = episode(episodeId = 302L, guid = "ep-latest", isPlayed = false)
+        coEvery { repository.getEpisode(playedEp.episodeId) } returns playedEp
         // getEpisodesForSync returns sorted by date desc: latest (unplayed) is first
         coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(unplayedLatest, playedEp)
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns podcast(hasNewEpisodes = true)
 
-        useCase("ep-old")
+        useCase(playedEp.episodeId)
 
         // The dot should remain because the latest episode is still unplayed
         coVerify(exactly = 0) { repository.updatePodcastEntity(any()) }
@@ -102,21 +106,22 @@ class MarkEpisodePlayedUseCaseTest {
 
     @Test
     fun `does not crash when episode not found after marking`() = runTest(testDispatcher) {
-        coEvery { repository.getEpisode("missing-guid") } returns null
+        val missingEpisodeId = 401L
+        coEvery { repository.getEpisode(missingEpisodeId) } returns null
 
         // Should not throw
-        useCase("missing-guid")
+        useCase(missingEpisodeId)
     }
 
     @Test
     fun `does not update podcast when hasNewEpisodes already matches desired state`() = runTest(testDispatcher) {
-        val latestEp = episode("ep-1", isPlayed = true)
-        coEvery { repository.getEpisode("ep-1") } returns latestEp
+        val latestEp = episode(episodeId = 501L, guid = "ep-1", isPlayed = true)
+        coEvery { repository.getEpisode(latestEp.episodeId) } returns latestEp
         coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(latestEp)
         // Podcast already has hasNewEpisodes=false — no change needed
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns podcast(hasNewEpisodes = false)
 
-        useCase("ep-1")
+        useCase(latestEp.episodeId)
 
         coVerify(exactly = 0) { repository.updatePodcastEntity(any()) }
     }

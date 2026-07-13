@@ -86,118 +86,117 @@ constructor(
         downloadLimit: Int,
         mode: FeedUpdateMode
     ): ImportResult {
-            backupImportRecovery.recoverInterruptedImport()
-            val backupData = backupHelper.importBackup(uri, context.contentResolver)
-            val total = backupData.podcasts.size
-            val previousSettings = userPreferencesRepository.userSettingsFlow.first()
-            val settingsToRestore = backupData.settingsForRestore(previousSettings)
-            val pendingImport = BackupImportJournalEntity(
-                previousSettingsJson = objectMapper.writeValueAsString(previousSettings)
-            )
-            backupImportJournalDao.savePendingImport(pendingImport)
+        backupImportRecovery.recoverInterruptedImport()
+        val backupData = backupHelper.importBackup(uri, context.contentResolver)
+        val total = backupData.podcasts.size
+        val previousSettings = userPreferencesRepository.userSettingsFlow.first()
+        val settingsToRestore = backupData.settingsForRestore(previousSettings)
+        val pendingImport = BackupImportJournalEntity(
+            previousSettingsJson = objectMapper.writeValueAsString(previousSettings)
+        )
+        backupImportJournalDao.savePendingImport(pendingImport)
 
-            val syncTargets = mutableListOf<PodcastEntity>()
-            try {
-                settingsToRestore?.let { settings ->
-                    userPreferencesRepository.restoreSettingsOrThrow(settings)
-                }
-                transactionRunner.run {
-                    var currentMaxSortOrder = podcastDao.getMaxSortOrder() ?: 0L
-                    backupData.podcasts.forEach { backupPodcast ->
-                        val existing = podcastDao.getPodcastByUrl(backupPodcast.url)
-                        val safeImageUrl = backupPodcast.imageUrl.orEmpty().takeIf { imageUrl ->
-                            isAllowedRemoteResource(
-                                imageUrl,
-                                allowInsecureHttp = existing?.allowInsecureHttp == true,
-                                allowLocalNetwork = existing?.allowLocalNetwork == true
-                            )
-                        }.orEmpty()
-                        val orderToUse = if (backupPodcast.sortOrder > 0) {
-                            backupPodcast.sortOrder
-                        } else {
-                            ++currentMaxSortOrder
-                        }
-                        val stub = PodcastEntity(
-                            rssUrl = backupPodcast.url,
-                            title = backupPodcast.title ?: context.getString(R.string.import_fallback_title),
-                            description = backupPodcast.description
-                                ?: context.getString(R.string.import_fallback_description),
-                            imageUrl = safeImageUrl,
-                            allowInsecureHttp = false,
-                            allowLocalNetwork = false,
-                            sortOrder = orderToUse,
-                            lastModifiedHeader = backupPodcast.lastModifiedHeader,
-                            eTagHeader = backupPodcast.eTagHeader,
-                            lastRefreshed = Date(0)
-                        )
-                        insertPodcastStubPreservingExisting(podcastDao, stub)?.let(syncTargets::add)
-                    }
-                    restoreAvailableFavorites(backupData.favorites)
-                    backupImportJournalDao.clearPendingImport()
-                }
-            } catch (error: CancellationException) {
-                withContext(NonCancellable) {
-                    rollbackInterruptedImport(previousSettings, error)
-                }
-                throw error
-            } catch (error: Exception) {
-                withContext(NonCancellable) {
-                    rollbackInterruptedImport(previousSettings, error)
-                }
-                throw error
+        val syncTargets = mutableListOf<PodcastEntity>()
+        try {
+            settingsToRestore?.let { settings ->
+                userPreferencesRepository.restoreSettingsOrThrow(settings)
             }
-
-            syncTargets.forEach { storedPodcast ->
-                if (
-                    maySyncImportedFeed(
-                        storedPodcast.rssUrl,
-                        storedPodcast.allowInsecureHttp,
-                        storedPodcast.allowLocalNetwork
-                    )
-                ) {
-                    try {
-                        syncFeedUseCase.get().invoke(
-                            storedPodcast.rssUrl,
-                            downloadLimit,
-                            mode,
-                            sortOrder = null,
-                            forceFull = false,
-                            allowInsecureHttp = storedPodcast.allowInsecureHttp,
-                            allowLocalNetwork = storedPodcast.allowLocalNetwork
-                        )
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (error: Exception) {
-                        Timber.w(error, "Post-import sync failed for ${storedPodcast.rssUrl}")
-                    }
-                }
-            }
-
-            var skippedFavorites = 0
             transactionRunner.run {
-                skippedFavorites = restoreAvailableFavorites(backupData.favorites)
+                var currentMaxSortOrder = podcastDao.getMaxSortOrder() ?: 0L
+                backupData.podcasts.forEach { backupPodcast ->
+                    val existing = podcastDao.getPodcastByUrl(backupPodcast.url)
+                    val safeImageUrl = backupPodcast.imageUrl.orEmpty().takeIf { imageUrl ->
+                        isAllowedRemoteResource(
+                            imageUrl,
+                            allowInsecureHttp = existing?.allowInsecureHttp == true,
+                            allowLocalNetwork = existing?.allowLocalNetwork == true
+                        )
+                    }.orEmpty()
+                    val orderToUse = if (backupPodcast.sortOrder > 0) {
+                        backupPodcast.sortOrder
+                    } else {
+                        ++currentMaxSortOrder
+                    }
+                    val stub = PodcastEntity(
+                        rssUrl = backupPodcast.url,
+                        title = backupPodcast.title ?: context.getString(R.string.import_fallback_title),
+                        description = backupPodcast.description
+                            ?: context.getString(R.string.import_fallback_description),
+                        imageUrl = safeImageUrl,
+                        allowInsecureHttp = false,
+                        allowLocalNetwork = false,
+                        sortOrder = orderToUse,
+                        lastModifiedHeader = backupPodcast.lastModifiedHeader,
+                        eTagHeader = backupPodcast.eTagHeader,
+                        lastRefreshed = Date(0)
+                    )
+                    insertPodcastStubPreservingExisting(podcastDao, stub)?.let(syncTargets::add)
+                }
+                restoreAvailableFavorites(backupData.favorites)
+                backupImportJournalDao.clearPendingImport()
             }
-            return ImportResult(total, total, skippedFavorites)
+        } catch (error: CancellationException) {
+            withContext(NonCancellable) {
+                rollbackInterruptedImport(previousSettings, error)
+            }
+            throw error
+        } catch (error: Exception) {
+            withContext(NonCancellable) {
+                rollbackInterruptedImport(previousSettings, error)
+            }
+            throw error
+        }
+
+        syncTargets.forEach { storedPodcast ->
+            if (
+                maySyncImportedFeed(
+                    storedPodcast.rssUrl,
+                    storedPodcast.allowInsecureHttp,
+                    storedPodcast.allowLocalNetwork
+                )
+            ) {
+                try {
+                    syncFeedUseCase.get().invoke(
+                        storedPodcast.rssUrl,
+                        downloadLimit,
+                        mode,
+                        sortOrder = null,
+                        forceFull = false,
+                        allowInsecureHttp = storedPodcast.allowInsecureHttp,
+                        allowLocalNetwork = storedPodcast.allowLocalNetwork
+                    )
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Timber.w(error, "Post-import sync failed for ${storedPodcast.rssUrl}")
+                }
+            }
+        }
+
+        var skippedFavorites = 0
+        transactionRunner.run {
+            skippedFavorites = restoreAvailableFavorites(backupData.favorites)
+        }
+        return ImportResult(total, total, skippedFavorites)
     }
 
     private suspend fun restoreAvailableFavorites(
         favorites: List<com.example.pocastcloni.data.local.BackupFavorite>
     ): Int {
-        val favoriteGuids = favorites.map { it.episodeGuid }.distinct()
-        val existingFavoriteGuids = if (favoriteGuids.isEmpty()) {
-            emptySet()
-        } else {
-            podcastDao.getExistingGuids(favoriteGuids).toSet()
+        var restored = 0
+        favorites.forEach { favorite ->
+            val episode = podcastDao.getEpisodeByFeedAndGuid(favorite.podcastUrl, favorite.episodeGuid)
+            if (episode != null) {
+                podcastDao.setFavoriteStatus(
+                    episodeId = episode.episodeId,
+                    isFavorite = true,
+                    timestamp = favorite.timestamp,
+                    favoriteAddedAt = favorite.timestamp
+                )
+                restored++
+            }
         }
-        favorites.filter { it.episodeGuid in existingFavoriteGuids }.forEach { favorite ->
-            podcastDao.setFavoriteStatus(
-                guid = favorite.episodeGuid,
-                isFavorite = true,
-                timestamp = favorite.timestamp,
-                favoriteAddedAt = favorite.timestamp
-            )
-        }
-        val skipped = favorites.size - existingFavoriteGuids.size
+        val skipped = favorites.size - restored
         if (skipped > 0) {
             Timber.w("Skipped restoring %d favorites because episodes are unavailable.", skipped)
         }

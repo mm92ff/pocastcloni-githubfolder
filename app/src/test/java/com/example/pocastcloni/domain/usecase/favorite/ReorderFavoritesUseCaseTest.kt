@@ -20,15 +20,15 @@ class ReorderFavoritesUseCaseTest {
 
     @Test
     fun `reorder updates manual timestamps without changing favorite added dates`() = runTest {
-        val first = episode(guid = "first", favoriteAddedAt = 100L)
-        val second = episode(guid = "second", favoriteAddedAt = 50L)
+        val first = episode(episodeId = 101L, guid = "first", favoriteAddedAt = 100L)
+        val second = episode(episodeId = 102L, guid = "second", favoriteAddedAt = 50L)
         val capturedEpisodes = slot<List<EpisodeEntity>>()
 
-        coEvery { repository.getEpisode("first") } returns first
-        coEvery { repository.getEpisode("second") } returns second
+        coEvery { repository.getEpisode(first.episodeId) } returns first
+        coEvery { repository.getEpisode(second.episodeId) } returns second
         coEvery { repository.reorderFavorites(capture(capturedEpisodes)) } just runs
 
-        useCase(listOf("second", "first"))
+        useCase(listOf(second.episodeId, first.episodeId))
 
         coVerify { repository.reorderFavorites(any()) }
         assertEquals(listOf("second", "first"), capturedEpisodes.captured.map { it.guid })
@@ -36,6 +36,7 @@ class ReorderFavoritesUseCaseTest {
     }
 
     private fun episode(
+        episodeId: Long,
         guid: String,
         favoriteAddedAt: Long
     ): EpisodeEntity =
@@ -57,6 +58,7 @@ class ReorderFavoritesUseCaseTest {
             datePlayed = null,
             favoriteTimestamp = favoriteAddedAt,
             favoriteAddedAt = favoriteAddedAt,
-            duration = 0L
+            duration = 0L,
+            episodeId = episodeId
         )
 }

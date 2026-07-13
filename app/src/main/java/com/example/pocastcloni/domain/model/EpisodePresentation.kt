@@ -6,6 +6,7 @@ import com.example.pocastcloni.data.local.EpisodeEntity
 
 @Immutable
 data class EpisodePresentation(
+    val episodeId: Long,
     val guid: String,
     val title: String,
     val link: String?,
@@ -23,6 +24,7 @@ data class EpisodePresentation(
     companion object {
         fun from(entity: EpisodeEntity): EpisodePresentation =
             EpisodePresentation(
+                episodeId = entity.episodeId,
                 guid = entity.guid,
                 title = if (entity.title.isNotBlank()) entity.title else entity.link,
                 link = entity.link,

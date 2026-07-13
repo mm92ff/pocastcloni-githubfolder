@@ -48,7 +48,7 @@ constructor(
 
     private val isPlayerVisibleFlow =
         playerController.playerState
-            .map { !it.currentEpisodeGuid.isNullOrBlank() }
+            .map { it.currentEpisodeId != null }
             .distinctUntilChanged()
 
     private val subscribedUrlsFlow =

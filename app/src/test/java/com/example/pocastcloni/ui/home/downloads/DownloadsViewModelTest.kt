@@ -1,7 +1,6 @@
 package com.example.pocastcloni.ui.home.downloads
 
 import app.cash.turbine.test
-import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -25,7 +24,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -48,6 +46,7 @@ class DownloadsViewModelTest {
     private lateinit var viewModel: DownloadsViewModel
 
     private val testEpisode = EpisodeUiModel(
+        episodeId = TEST_EPISODE_ID,
         guid = "ep-guid-1",
         podcastUrl = "https://example.com/feed.rss",
         title = "Test Episode",
@@ -75,7 +74,7 @@ class DownloadsViewModelTest {
         dispatcherProvider = mockk()
 
         every { playerController.playerState } returns MutableStateFlow(
-            PlayerUiState(currentEpisodeGuid = null, isPlaying = false)
+            PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(UserSettings(confirmDelete = false))
         every { getDownloadedEpisodes() } returns flowOf(emptyList())
@@ -99,7 +98,7 @@ class DownloadsViewModelTest {
         viewModel.deleteEpisode(testEpisode)
         advanceUntilIdle()
 
-        coVerify { downloader("ep-guid-1") }
+        coVerify { downloader(TEST_EPISODE_ID) }
     }
 
     private fun buildViewModelWithConfirmDelete(): DownloadsViewModel {
@@ -144,7 +143,7 @@ class DownloadsViewModelTest {
             viewModel.confirmDelete()
             advanceUntilIdle() // downloader coroutine runs
 
-            coVerify { downloader("ep-guid-1") }
+            coVerify { downloader(TEST_EPISODE_ID) }
             val state = expectMostRecentItem()
             assertNull(state.episodeToDelete)
             cancelAndIgnoreRemainingEvents()
@@ -172,16 +171,20 @@ class DownloadsViewModelTest {
     }
 
     @Test
-    fun `playEpisode calls startPlaybackUseCase with correct guid`() = runTest(testDispatcher) {
+    fun `playEpisode calls startPlaybackUseCase with correct episode ID`() = runTest(testDispatcher) {
         viewModel.playEpisode(testEpisode)
         advanceUntilIdle()
-        coVerify { startPlaybackUseCase("ep-guid-1") }
+        coVerify { startPlaybackUseCase(TEST_EPISODE_ID) }
     }
 
     @Test
     fun `onFavoriteToggle calls toggleFavoriteEpisodeUseCase`() = runTest(testDispatcher) {
         viewModel.onFavoriteToggle(testEpisode)
         advanceUntilIdle()
-        coVerify { toggleFavoriteEpisodeUseCase("ep-guid-1", false) }
+        coVerify { toggleFavoriteEpisodeUseCase(TEST_EPISODE_ID, false) }
+    }
+
+    private companion object {
+        const val TEST_EPISODE_ID = 101L
     }
 }

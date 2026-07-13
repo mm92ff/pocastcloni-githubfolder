@@ -21,6 +21,7 @@ enum class DownloadStatusUiModel {
 
 @Immutable
 data class EpisodeUiModel(
+    val episodeId: Long,
     val guid: String,
     val podcastUrl: String,
     val title: String,
@@ -73,6 +74,7 @@ fun EpisodePresentation.toEpisodeUiModelCached(
     val currentProgress = downloadProgress
 
     if (previous != null &&
+        previous.episodeId == this.episodeId &&
         previous.guid == this.guid &&
         previous.podcastUrl == this.podcastRssUrl &&
         previous.title == this.title &&
@@ -102,6 +104,7 @@ fun EpisodePresentation.toEpisodeUiModelCached(
     }
 
     return EpisodeUiModel(
+        episodeId = this.episodeId,
         guid = this.guid,
         podcastUrl = this.podcastRssUrl,
         title = this.title,

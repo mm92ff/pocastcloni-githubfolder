@@ -12,13 +12,13 @@ constructor(
     private val repository: PodcastRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {
-    suspend operator fun invoke(guid: String) {
+    suspend operator fun invoke(episodeId: Long) {
         withContext(dispatcherProvider.io) {
             // 1. Mark the episode as played
-            repository.markEpisodePlayed(guid, true, Date())
+            repository.markEpisodePlayed(episodeId, true, Date())
 
             // 2. Check the status of the latest episode
-            val episode = repository.getEpisode(guid) ?: return@withContext
+            val episode = repository.getEpisode(episodeId) ?: return@withContext
             updatePodcastStatusBasedOnLatest(episode.podcastRssUrl)
         }
     }

@@ -12,7 +12,7 @@ data class DownloadsUiState(
     val episodes: ImmutableList<EpisodeUiModel> = persistentListOf(),
     val confirmDelete: Boolean = false,
     val oneHandedMode: Boolean = false,
-    val currentPlayingGuid: String? = null,
+    val currentPlayingEpisodeId: Long? = null,
     val isPlayerPlaying: Boolean = false,
     val progressBarHeight: Int = Constants.ViewModel.DEFAULT_PROGRESS_BAR_HEIGHT,
     val navBarHeight: Int = Constants.ViewModel.DEFAULT_NAV_BAR_HEIGHT,

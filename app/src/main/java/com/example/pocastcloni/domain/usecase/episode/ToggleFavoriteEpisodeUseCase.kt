@@ -9,11 +9,11 @@ constructor(
     private val podcastRepository: PodcastRepository
 ) {
     suspend operator fun invoke(
-        guid: String,
+        episodeId: Long,
         isFavorite: Boolean
     ) {
         val newFavoriteState = !isFavorite
         val timestamp = if (newFavoriteState) System.currentTimeMillis() else null
-        podcastRepository.setFavoriteStatus(guid, newFavoriteState, timestamp)
+        podcastRepository.setFavoriteStatus(episodeId, newFavoriteState, timestamp)
     }
 }

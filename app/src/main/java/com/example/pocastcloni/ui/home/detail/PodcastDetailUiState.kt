@@ -11,7 +11,7 @@ import kotlinx.collections.immutable.persistentListOf
 
 @Immutable
 data class PlayerStatusUiState(
-    val currentPlayingGuid: String = "",
+    val currentPlayingEpisodeId: Long? = null,
     val isPlayerPlaying: Boolean = false,
     val isPlayerVisible: Boolean = false
 )

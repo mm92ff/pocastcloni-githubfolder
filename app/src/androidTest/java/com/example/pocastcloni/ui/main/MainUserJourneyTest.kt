@@ -7,7 +7,6 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
@@ -163,8 +162,16 @@ class MainUserJourneyTest {
     private fun markEpisodeDownloaded() = runBlocking {
         val directory = File(context.filesDir, Constants.DOWNLOADS_DIR).apply { mkdirs() }
         val audioFile = File(directory, "$TEST_EPISODE_GUID.wav").apply { writeBytes(SILENT_WAV) }
+        val episode =
+            requireNotNull(
+                AppDatabase.getDatabase(context).podcastDao().getEpisodeByFeedAndGuid(
+                    podcastRssUrl = TEST_FEED_URL,
+                    guid = TEST_EPISODE_GUID
+                )
+            )
+        require(episode.episodeId > 0L)
         AppDatabase.getDatabase(context).podcastDao().updateDownloadStatus(
-            guid = TEST_EPISODE_GUID,
+            episodeId = episode.episodeId,
             status = DownloadStatus.DOWNLOADED,
             path = audioFile.absolutePath
         )
@@ -194,7 +201,13 @@ class MainUserJourneyTest {
         predicate: (com.example.pocastcloni.data.local.EpisodeEntity) -> Boolean
     ) {
         waitUntil(timeoutMillis) {
-            val episode = runBlocking { AppDatabase.getDatabase(context).podcastDao().getEpisodeByGuid(TEST_EPISODE_GUID) }
+            val episode =
+                runBlocking {
+                    AppDatabase.getDatabase(context).podcastDao().getEpisodeByFeedAndGuid(
+                        podcastRssUrl = TEST_FEED_URL,
+                        guid = TEST_EPISODE_GUID
+                    )
+                }
             episode != null && predicate(episode)
         }
     }
@@ -205,7 +218,13 @@ class MainUserJourneyTest {
         timeoutMillis: Long = 20_000
     ) {
         waitUntil(timeoutMillis) {
-            val episode = runBlocking { AppDatabase.getDatabase(context).podcastDao().getEpisodeByGuid(guid) }
+            val episode =
+                runBlocking {
+                    AppDatabase.getDatabase(context).podcastDao().getEpisodeByFeedAndGuid(
+                        podcastRssUrl = TEST_FEED_URL,
+                        guid = guid
+                    )
+                }
             episode?.downloadStatus == expected
         }
     }

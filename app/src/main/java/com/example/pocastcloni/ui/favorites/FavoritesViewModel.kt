@@ -44,7 +44,7 @@ constructor(
             .map { list ->
                 list.map { info ->
                     FavoriteUiItem(
-                        id = info.episode.guid,
+                        id = info.episode.episodeId,
                         episode = EpisodeDisplayModel.from(info.episode, info.podcast),
                         podcast = info.podcast
                     )
@@ -54,7 +54,7 @@ constructor(
 
     private val isPlayerVisibleFlow =
         audioPlayerController.playerState
-            .map { !it.currentEpisodeGuid.isNullOrBlank() }
+            .map { it.currentEpisodeId != null }
             .distinctUntilChanged()
 
     // STAGE 1: Data Consolidation
@@ -111,7 +111,7 @@ constructor(
             is FavoritesAction.OnEpisodeClick -> {
                 if (!_isEditMode.value) {
                     viewModelScope.launch {
-                        audioPlayerController.play(action.guid)
+                        audioPlayerController.play(action.episodeId)
                     }
                 }
             }
@@ -126,7 +126,7 @@ constructor(
 
             is FavoritesAction.OnEpisodeSwiped -> {
                 viewModelScope.launch {
-                    toggleFavoriteEpisodeUseCase(action.guid, true)
+                    toggleFavoriteEpisodeUseCase(action.episodeId, true)
                 }
             }
 
@@ -167,7 +167,7 @@ constructor(
 
             viewModelScope.launch {
                 try {
-                    reorderFavoritesUseCase(currentList.map { it.episode.guid })
+                    reorderFavoritesUseCase(currentList.map { it.episode.episodeId })
                 } catch (_: Exception) {
                     _optimisticFavorites.value = null
                 }

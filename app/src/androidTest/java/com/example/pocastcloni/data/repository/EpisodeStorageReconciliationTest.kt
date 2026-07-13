@@ -77,7 +77,7 @@ class EpisodeStorageReconciliationTest {
         runBlocking {
             dao.insertPodcast(
                 PodcastEntity(
-                    rssUrl = "https://example.com/feed.xml",
+                    rssUrl = FEED_URL,
                     title = "Example Podcast",
                     description = "Description",
                     imageUrl = "https://example.com/image.png"
@@ -120,11 +120,25 @@ class EpisodeStorageReconciliationTest {
             val correctedEntries = repository.reconcileEpisodeStorage()
 
             assertEquals(3, correctedEntries)
-            assertEquals(DownloadStatus.DOWNLOADED, dao.getEpisodeByGuid("kept-downloaded")?.downloadStatus)
-            assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("missing-downloaded")?.downloadStatus)
-            assertNull(dao.getEpisodeByGuid("missing-downloaded")?.downloadPath)
-            assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("queued")?.downloadStatus)
-            assertEquals(DownloadStatus.NOT_DOWNLOADED, dao.getEpisodeByGuid("downloading")?.downloadStatus)
+            assertEquals(
+                DownloadStatus.DOWNLOADED,
+                dao.getEpisodeByFeedAndGuid(FEED_URL, "kept-downloaded")?.downloadStatus
+            )
+            assertEquals(
+                DownloadStatus.NOT_DOWNLOADED,
+                dao.getEpisodeByFeedAndGuid(FEED_URL, "missing-downloaded")?.downloadStatus
+            )
+            assertNull(
+                dao.getEpisodeByFeedAndGuid(FEED_URL, "missing-downloaded")?.downloadPath
+            )
+            assertEquals(
+                DownloadStatus.NOT_DOWNLOADED,
+                dao.getEpisodeByFeedAndGuid(FEED_URL, "queued")?.downloadStatus
+            )
+            assertEquals(
+                DownloadStatus.NOT_DOWNLOADED,
+                dao.getEpisodeByFeedAndGuid(FEED_URL, "downloading")?.downloadStatus
+            )
         }
 
     private fun episode(
@@ -134,7 +148,7 @@ class EpisodeStorageReconciliationTest {
         pubDateMs: Long
     ) = EpisodeEntity(
         guid = guid,
-        podcastRssUrl = "https://example.com/feed.xml",
+        podcastRssUrl = FEED_URL,
         title = guid,
         description = guid,
         pubDate = Date(pubDateMs),
@@ -143,4 +157,8 @@ class EpisodeStorageReconciliationTest {
         downloadStatus = downloadStatus,
         downloadPath = downloadPath
     )
+
+    private companion object {
+        const val FEED_URL = "https://example.com/feed.xml"
+    }
 }

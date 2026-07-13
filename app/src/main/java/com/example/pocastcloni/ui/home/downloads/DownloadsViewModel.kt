@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class PlayerBits(
-    val currentGuid: String?,
+    val currentEpisodeId: Long?,
     val isPlaying: Boolean,
     val isVisible: Boolean
 )
@@ -57,9 +57,9 @@ constructor(
         playerController.playerState
             .map { ps ->
                 PlayerBits(
-                    currentGuid = ps.currentEpisodeGuid,
+                    currentEpisodeId = ps.currentEpisodeId,
                     isPlaying = ps.isPlaying,
-                    isVisible = !ps.currentEpisodeGuid.isNullOrBlank()
+                    isVisible = ps.currentEpisodeId != null
                 )
             }
             .distinctUntilChanged()
@@ -77,7 +77,7 @@ constructor(
                 oneHandedMode = settings.oneHandedMode,
                 confirmDelete = settings.confirmDelete,
                 isPlayerPlaying = playerBits.isPlaying,
-                currentPlayingGuid = playerBits.currentGuid,
+                currentPlayingEpisodeId = playerBits.currentEpisodeId,
                 progressBarHeight = settings.progressBarHeight,
                 navBarHeight = settings.navBarHeight,
                 isPlayerVisible = playerBits.isVisible,
@@ -91,13 +91,13 @@ constructor(
 
     fun playEpisode(episode: EpisodeUiModel) {
         viewModelScope.launch {
-            startPlaybackUseCase(episode.guid)
+            startPlaybackUseCase(episode.episodeId)
         }
     }
 
     fun onFavoriteToggle(episode: EpisodeUiModel) {
         viewModelScope.launch {
-            toggleFavoriteEpisodeUseCase(episode.guid, episode.isFavorite)
+            toggleFavoriteEpisodeUseCase(episode.episodeId, episode.isFavorite)
         }
     }
 
@@ -120,7 +120,7 @@ constructor(
 
     private fun performDelete(episode: EpisodeUiModel) {
         viewModelScope.launch(dispatcherProvider.io) {
-            downloader(episode.guid)
+            downloader(episode.episodeId)
         }
     }
 }

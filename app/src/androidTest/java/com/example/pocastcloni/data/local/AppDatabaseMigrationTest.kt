@@ -154,7 +154,11 @@ class AppDatabaseMigrationTest {
             assertEquals("etag-1", podcast?.eTagHeader)
             assertEquals(true, podcast?.allowInsecureHttp)
 
-            val episode = db.podcastDao().getEpisodeByGuid("episode-1")
+            val episode =
+                db.podcastDao().getEpisodeByFeedAndGuid(
+                    podcastRssUrl = "https://example.com/feed.xml",
+                    guid = "episode-1"
+                )
             assertNotNull(episode)
             assertEquals(0L, episode?.duration)
             assertEquals(3210L, episode?.playbackPositionMs)

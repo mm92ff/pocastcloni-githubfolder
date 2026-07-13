@@ -38,10 +38,10 @@ constructor(
     fun handlePlayerEvent(event: PlayerScreenEvent) {
         when (event) {
             PlayerScreenEvent.ToggleFavorite -> {
-                val guid = playerController.playerState.value.currentEpisodeGuid ?: return
+                val episodeId = playerController.playerState.value.currentEpisodeId ?: return
                 val currentlyFav = playerController.playerState.value.isCurrentEpisodeFavorite
                 viewModelScope.launch(dispatcherProvider.io) {
-                    runCatching { toggleFavoriteEpisodeUseCase(guid, currentlyFav) }
+                    runCatching { toggleFavoriteEpisodeUseCase(episodeId, currentlyFav) }
                         .onFailure { Timber.e(it, "Failed to toggle favorite") }
                 }
             }
@@ -55,11 +55,11 @@ constructor(
     }
 
     private fun loadDescription() {
-        val guid = playerController.playerState.value.currentEpisodeGuid ?: return
+        val episodeId = playerController.playerState.value.currentEpisodeId ?: return
         _isDescriptionVisible.value = true
         viewModelScope.launch(dispatcherProvider.io) {
-            val rawHtml = runCatching { getEpisodeDescriptionUseCase(guid) }
-                .onFailure { Timber.e(it, "Failed to load episode description for guid: $guid") }
+            val rawHtml = runCatching { getEpisodeDescriptionUseCase(episodeId) }
+                .onFailure { Timber.e(it, "Failed to load episode description for id: $episodeId") }
                 .getOrNull()
             val spanned = rawHtml?.let { HtmlCompat.fromHtml(it, HtmlCompat.FROM_HTML_MODE_LEGACY) }
             _descriptionState.value = spanned

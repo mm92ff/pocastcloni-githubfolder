@@ -8,7 +8,7 @@ class GetEpisodeDescriptionUseCase
 constructor(
     private val repository: PodcastRepository
 ) {
-    suspend operator fun invoke(guid: String): String? {
-        return repository.getEpisode(guid)?.description
+    suspend operator fun invoke(episodeId: Long): String? {
+        return repository.getEpisode(episodeId)?.description
     }
 }

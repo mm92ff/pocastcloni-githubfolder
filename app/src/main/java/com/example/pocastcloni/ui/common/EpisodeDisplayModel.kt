@@ -6,6 +6,7 @@ import com.example.pocastcloni.domain.model.Podcast
 
 @Immutable
 data class EpisodeDisplayModel(
+    val episodeId: Long,
     val guid: String,
     val title: String,
     val description: String,
@@ -27,6 +28,7 @@ data class EpisodeDisplayModel(
             descriptionOverride: String? = null
         ): EpisodeDisplayModel =
             EpisodeDisplayModel(
+                episodeId = presentation.episodeId,
                 guid = presentation.guid,
                 title = if (presentation.title.isNotBlank()) presentation.title else presentation.link.orEmpty(),
                 description = descriptionOverride ?: presentation.description,

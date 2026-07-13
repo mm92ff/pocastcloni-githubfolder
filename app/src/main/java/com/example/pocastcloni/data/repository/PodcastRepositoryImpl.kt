@@ -100,9 +100,9 @@ constructor(
             .map { list -> list.associate { row -> row.episode to row.toPodcastDomain() } }
             .catch { emit(emptyMap()) }.flowOn(dispatcherProvider.io)
 
-    override fun isFavorite(guid: String): Flow<Boolean> =
+    override fun isFavorite(episodeId: Long): Flow<Boolean> =
         podcastDao.isFavorite(
-            guid
+            episodeId
         ).catch { emit(false) }.flowOn(dispatcherProvider.io)
 
     override fun getPlaybackHistory(): Flow<List<EpisodeEntity>> =
@@ -226,28 +226,41 @@ constructor(
     override suspend fun getPodcast(rssUrl: String): Podcast? =
         withContext(dispatcherProvider.io) { podcastDao.getPodcastByUrl(rssUrl)?.toDomain() }
 
-    override suspend fun getEpisode(guid: String): EpisodeEntity? =
+    override suspend fun getEpisode(episodeId: Long): EpisodeEntity? =
         withContext(
             dispatcherProvider.io
-        ) { podcastDao.getEpisodeByGuid(guid) }
+        ) { podcastDao.getEpisodeById(episodeId) }
+
+    override suspend fun resolveLegacyDownloadEpisode(guid: String): EpisodeEntity? =
+        withContext(dispatcherProvider.io) {
+            val resolution = resolveLegacyDownloadCandidates(podcastDao.getEpisodesByLegacyGuid(guid))
+            resolution.transientEpisodeIdsToReset.forEach { episodeId ->
+                podcastDao.updateDownloadStatus(
+                    episodeId,
+                    DownloadStatus.NOT_DOWNLOADED,
+                    null
+                )
+            }
+            resolution.episode
+        }
 
     // --- EPISODE ACTIONS ---
 
     // FIX: The notification dot is now updated as well!
     override suspend fun markEpisodePlayed(
-        guid: String,
+        episodeId: Long,
         played: Boolean,
         datePlayed: Date?
     ) {
         withContext(dispatcherProvider.io) {
             val changedRows =
                 if (played) {
-                    podcastDao.markEpisodePlayedIfNeeded(guid, datePlayed ?: Date())
+                    podcastDao.markEpisodePlayedIfNeeded(episodeId, datePlayed ?: Date())
                 } else {
-                    podcastDao.markEpisodePlayed(guid, false, null)
+                    podcastDao.markEpisodePlayed(episodeId, false, null)
                     1
                 }
-            if (changedRows > 0) updatePodcastNewFlagIfLatest(guid, played)
+            if (changedRows > 0) updatePodcastNewFlagIfLatest(episodeId, played)
         }
     }
 
@@ -256,24 +269,24 @@ constructor(
             val newPlayed = !episode.isPlayed
             val date = if (newPlayed) Date() else null
 
-            podcastDao.markEpisodePlayed(episode.guid, newPlayed, date)
-            updatePodcastNewFlagIfLatest(episode.guid, newPlayed)
+            podcastDao.markEpisodePlayed(episode.episodeId, newPlayed, date)
+            updatePodcastNewFlagIfLatest(episode.episodeId, newPlayed)
         }
     }
 
     // FIX: Helper function to avoid code duplication and ensure the dot is always updated
     private suspend fun updatePodcastNewFlagIfLatest(
-        guid: String,
+        episodeId: Long,
         isPlayed: Boolean
     ) {
         // We need the RSS URL of the episode
-        val episode = podcastDao.getEpisodeByGuid(guid) ?: return
+        val episode = podcastDao.getEpisodeById(episodeId) ?: return
         val rssUrl = episode.podcastRssUrl
 
         if (rssUrl.isNotBlank()) {
             val latestGuid = podcastDao.getLatestEpisodeGuid(rssUrl)
             // If the changed episode is the LATEST one:
-            if (latestGuid != null && latestGuid == guid) {
+            if (latestGuid != null && latestGuid == episode.guid) {
                 // If played -> no dot (hasNew = false)
                 // If unplayed -> dot on (hasNew = true)
                 podcastDao.updatePodcastNewFlag(rssUrl, hasNew = !isPlayed)
@@ -283,11 +296,11 @@ constructor(
     }
 
     override suspend fun savePlaybackProgress(
-        guid: String,
+        episodeId: Long,
         positionMs: Long
     ) {
         withContext(dispatcherProvider.io) {
-            podcastDao.updateEpisodeProgressOnly(guid, positionMs)
+            podcastDao.updateEpisodeProgressOnly(episodeId, positionMs)
         }
     }
 
@@ -337,14 +350,14 @@ constructor(
 
     // --- FAVORITES & HISTORY & SYNC (unchanged) ---
     override suspend fun setFavoriteStatus(
-        guid: String,
+        episodeId: Long,
         isFavorite: Boolean,
         timestamp: Long?
     ) {
         withContext(dispatcherProvider.io) {
             val favoriteTimestamp = if (isFavorite) timestamp ?: System.currentTimeMillis() else null
             podcastDao.setFavoriteStatus(
-                guid = guid,
+                episodeId = episodeId,
                 isFavorite = isFavorite,
                 timestamp = favoriteTimestamp,
                 favoriteAddedAt = favoriteTimestamp
@@ -361,11 +374,11 @@ constructor(
     }
 
     override suspend fun updateDownloadStatus(
-        guid: String,
+        episodeId: Long,
         status: DownloadStatus,
         path: String?
     ) {
-        withContext(dispatcherProvider.io) { podcastDao.updateDownloadStatus(guid, status, path) }
+        withContext(dispatcherProvider.io) { podcastDao.updateDownloadStatus(episodeId, status, path) }
     }
 
     override suspend fun getPodcastEntityByUrl(url: String): PodcastEntity? =
@@ -436,7 +449,7 @@ constructor(
                     }
 
             brokenDownloads.forEach { row ->
-                podcastDao.updateDownloadStatus(row.guid, DownloadStatus.NOT_DOWNLOADED, null)
+                podcastDao.updateDownloadStatus(row.episodeId, DownloadStatus.NOT_DOWNLOADED, null)
             }
 
             correctedEntries += brokenDownloads.size

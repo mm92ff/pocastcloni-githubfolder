@@ -255,7 +255,7 @@ constructor(
             emptyMap()
         }
 
-        val episodesToInsert =
+        val feedEpisodes =
             newItems.mapNotNull { item ->
                 // Use the mapper from PodcastMappers.kt which handles:
                 // 1. Sanitizing dates (year 3000 fix)
@@ -264,9 +264,6 @@ constructor(
 
                 validateRssItemLimits(item)
                 val entity = item.toEpisodeEntity(url)
-
-                // Duplicate check
-                if (existingEpisodes.containsKey(entity.guid)) return@mapNotNull null
 
                 // An episode without an audio URL is useless
                 if (!isAllowedPodcastResource(
@@ -284,7 +281,9 @@ constructor(
                     title = entity.title.stripHtml(),
                     description = entity.description.stripHtml()
                 )
-            }
+            }.distinctBy { it.guid }
+
+        val newEpisodeCount = feedEpisodes.count { it.guid !in existingEpisodes }
 
         val podcastEntity =
             existing?.copy(
@@ -296,7 +295,7 @@ constructor(
                 lastRefreshed = Date(),
                 lastModifiedHeader = lastModified,
                 eTagHeader = etag,
-                hasNewEpisodes = existing.hasNewEpisodes || episodesToInsert.isNotEmpty()
+                hasNewEpisodes = existing.hasNewEpisodes || newEpisodeCount > 0
             ) ?: PodcastEntity(
                 rssUrl = url,
                 title = title,
@@ -307,7 +306,7 @@ constructor(
                 sortOrder = sortOrder ?: (repo.getMaxSortOrder() ?: 0) + 1,
                 lastModifiedHeader = lastModified,
                 eTagHeader = etag,
-                hasNewEpisodes = episodesToInsert.isNotEmpty()
+                hasNewEpisodes = newEpisodeCount > 0
             )
 
         if (existing == null) {
@@ -320,8 +319,8 @@ constructor(
             localNetworkAccessRegistry.approveFeed(url)
         }
 
-        if (episodesToInsert.isNotEmpty()) {
-            repo.insertEpisodes(episodesToInsert)
+        if (feedEpisodes.isNotEmpty()) {
+            repo.insertEpisodes(feedEpisodes)
         }
 
         if (podcastEntity.autoDownloadEnabled) {
@@ -340,7 +339,7 @@ constructor(
             )
 
         episodesToDownload.forEach { episode ->
-            downloadEpisodeUseCase(episode.guid)
+            downloadEpisodeUseCase(episode.episodeId)
         }
     }
 }

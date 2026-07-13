@@ -9,11 +9,11 @@ constructor(
     private val repository: PodcastRepository
 ) {
     suspend operator fun invoke(
-        episodeGuid: String,
+        episodeId: Long,
         positionMs: Long
     ) {
-        if (episodeGuid.isNotBlank()) {
-            repository.savePlaybackProgress(episodeGuid, positionMs)
+        if (episodeId > 0) {
+            repository.savePlaybackProgress(episodeId, positionMs)
         }
     }
 }

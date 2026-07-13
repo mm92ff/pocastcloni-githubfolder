@@ -54,13 +54,19 @@ constructor(
     }
 
     override suspend fun doWork(): Result {
-        val guid = inputData.getString(Constants.DOWNLOAD_WORKER_GUID) ?: return Result.failure()
         val url = inputData.getString(Constants.DOWNLOAD_WORKER_URL) ?: return Result.failure()
         val fileName =
             inputData.getString(Constants.DOWNLOAD_WORKER_FILENAME)
                 ?: Constants.DOWNLOAD_WORKER_DEFAULT_FILENAME
 
-        val episode = podcastRepository.getEpisode(guid) ?: return Result.failure()
+        val requestedEpisodeId = inputData.getLong(Constants.DOWNLOAD_WORKER_EPISODE_ID, 0L)
+        val episode = if (requestedEpisodeId > 0L) {
+            podcastRepository.getEpisode(requestedEpisodeId)
+        } else {
+            inputData.getString(Constants.DOWNLOAD_WORKER_LEGACY_GUID)
+                ?.let { podcastRepository.resolveLegacyDownloadEpisode(it) }
+        } ?: return Result.failure()
+        val episodeId = episode.episodeId
         val podcast = podcastRepository.getPodcastEntityByUrl(episode.podcastRssUrl)
         runCatching {
             requireApprovedPodcastResource(
@@ -75,7 +81,7 @@ constructor(
         }
 
         return try {
-            podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADING, null)
+            podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.DOWNLOADING, null)
             setProgressAsync(workDataOf("progress" to 0f))
 
             val saveToDownloads = try {
@@ -111,19 +117,19 @@ constructor(
             }
 
             setProgressAsync(workDataOf("progress" to 1f))
-            podcastRepository.updateDownloadStatus(guid, DownloadStatus.DOWNLOADED, storagePath)
+            podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.DOWNLOADED, storagePath)
             Result.success(workDataOf(Constants.DOWNLOAD_WORKER_OUTPUT_PATH to storagePath))
         } catch (e: CancellationException) {
-            Timber.i("Download cancelled for %s", guid)
-            podcastRepository.updateDownloadStatus(guid, DownloadStatus.NOT_DOWNLOADED, null)
+            Timber.i("Download cancelled for episode %d", episodeId)
+            podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED, null)
             throw e
         } catch (e: Exception) {
-            Timber.e(e, "Download failed for $guid")
+            Timber.e(e, "Download failed for episode $episodeId")
             if (shouldRetryDownloadFailure(e, runAttemptCount, MAX_RETRY_ATTEMPTS)) {
-                podcastRepository.updateDownloadStatus(guid, DownloadStatus.QUEUED, null)
+                podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.QUEUED, null)
                 Result.retry()
             } else {
-                podcastRepository.updateDownloadStatus(guid, DownloadStatus.FAILED, null)
+                podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.FAILED, null)
                 Result.failure()
             }
         }
@@ -174,7 +180,8 @@ constructor(
             applicationContext.contentResolver.update(
                 itemUri,
                 ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
-                null, null
+                null,
+                null
             )
             Pair(itemUri.toString(), bytesCopied)
         }
@@ -295,8 +302,10 @@ constructor(
 
         // API < 29: public Downloads with WRITE_EXTERNAL_STORAGE permission
         val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-        return if (ContextCompat.checkSelfPermission(
-                applicationContext, permission
+        return if (
+            ContextCompat.checkSelfPermission(
+                applicationContext,
+                permission
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             val publicDownloads =

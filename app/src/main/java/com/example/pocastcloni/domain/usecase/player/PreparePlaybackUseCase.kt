@@ -27,11 +27,11 @@ constructor(
     private val dispatcherProvider: DispatcherProvider,
     private val localNetworkAccessRegistry: LocalNetworkAccessRegistry
 ) {
-    suspend operator fun invoke(guid: String): PlayEpisodeResult {
+    suspend operator fun invoke(episodeId: Long): PlayEpisodeResult {
         return withContext(dispatcherProvider.io) {
             val savedEpisode =
-                repository.getEpisode(guid)
-                    ?: throw IllegalStateException("Episode not available for GUID $guid")
+                repository.getEpisode(episodeId)
+                    ?: throw IllegalStateException("Episode not available for ID $episodeId")
 
             // Load podcast info
             val podcastEntity = repository.getPodcastEntityByUrl(savedEpisode.podcastRssUrl)
@@ -58,12 +58,12 @@ constructor(
                         } else {
                             // DB says Downloaded, but file is missing -> fall back to stream
                             Timber.w("File missing despite DOWNLOADED status: $localPath. Fallback to stream.")
-                            repository.updateDownloadStatus(savedEpisode.guid, DownloadStatus.NOT_DOWNLOADED, null)
+                            repository.updateDownloadStatus(savedEpisode.episodeId, DownloadStatus.NOT_DOWNLOADED, null)
                         }
                     }
                 } else {
                     Timber.w("Download path missing in DB despite DOWNLOADED status. Fallback to stream.")
-                    repository.updateDownloadStatus(savedEpisode.guid, DownloadStatus.NOT_DOWNLOADED, null)
+                    repository.updateDownloadStatus(savedEpisode.episodeId, DownloadStatus.NOT_DOWNLOADED, null)
                 }
             } else {
                 Timber.d("Episode not downloaded (Status: ${savedEpisode.downloadStatus}). Streaming: $finalUri")

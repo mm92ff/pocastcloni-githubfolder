@@ -57,13 +57,23 @@ class PlaybackPositionPersistenceIntegrationTest {
                 enclosureUrl = "https://test.invalid/$testId/audio.mp3"
             )
         )
+        val episode =
+            requireNotNull(
+                initialDatabase.podcastDao().getEpisodeByFeedAndGuid(
+                    podcastRssUrl = podcastRssUrl,
+                    guid = episodeGuid
+                )
+            )
+        require(episode.episodeId > 0L)
         initialDatabase.podcastDao().updateEpisodeProgressOnly(
-            guid = episodeGuid,
+            episodeId = episode.episodeId,
             pos = EXPECTED_PLAYBACK_POSITION_MS
         )
         assertEquals(
             EXPECTED_PLAYBACK_POSITION_MS,
-            initialDatabase.podcastDao().getEpisodeByGuid(episodeGuid)?.playbackPositionMs
+            initialDatabase.podcastDao()
+                .getEpisodeByFeedAndGuid(podcastRssUrl, episodeGuid)
+                ?.playbackPositionMs
         )
 
         initialDatabase.close()
@@ -72,7 +82,9 @@ class PlaybackPositionPersistenceIntegrationTest {
         val reopenedDatabase = openDatabase().also { database = it }
         assertEquals(
             EXPECTED_PLAYBACK_POSITION_MS,
-            reopenedDatabase.podcastDao().getEpisodeByGuid(episodeGuid)?.playbackPositionMs
+            reopenedDatabase.podcastDao()
+                .getEpisodeByFeedAndGuid(podcastRssUrl, episodeGuid)
+                ?.playbackPositionMs
         )
     }
 

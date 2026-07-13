@@ -22,6 +22,7 @@ constructor(
     private companion object {
         private const val LISTENING_FLUSH_INTERVAL_MS = 60_000L
         private const val AUTO_SAVE_INTERVAL_MS = 30_000L
+
         // Throttle debug logging to avoid flooding Logcat
         private const val DEBUG_LOG_INTERVAL_MS = 5_000L
     }
@@ -29,31 +30,31 @@ constructor(
     private var listeningAccumMs = 0L
     private var lastListeningFlushMs = 0L
     private var lastDbSaveMs = 0L
-    private var lastObservedGuid: String? = null
+    private var lastObservedEpisodeId: Long? = null
     private var lastObservedPositionMs: Long = 0L
     private var hasBeenMarkedAsPlayed: Boolean = false
 
     private var lastDebugLogMs = 0L
 
     fun onMediaItemTransition() {
-        lastObservedGuid?.let { progressWriter.request(it, lastObservedPositionMs) }
-        lastObservedGuid = null
+        lastObservedEpisodeId?.let { progressWriter.request(it, lastObservedPositionMs) }
+        lastObservedEpisodeId = null
         lastObservedPositionMs = 0L
         hasBeenMarkedAsPlayed = false
         Timber.d("Analytics: Media Item Transition -> Reset markedAsPlayed")
     }
 
     fun onTick(
-        guid: String?,
+        episodeId: Long?,
         currentPositionMs: Long,
         durationMs: Long,
         deltaMs: Long,
         isPlaying: Boolean,
         markPlayedThresholdSeconds: Int
     ) {
-        if (guid.isNullOrBlank() || !isPlaying) return
+        if (episodeId == null || episodeId <= 0L || !isPlaying) return
         val nowMs = monotonicClock.elapsedRealtimeMs()
-        lastObservedGuid = guid
+        lastObservedEpisodeId = episodeId
         lastObservedPositionMs = currentPositionMs
 
         // --- DEBUG LOGGING (every 5 seconds) ---
@@ -73,7 +74,7 @@ constructor(
         }
 
         if ((nowMs - lastDbSaveMs) >= AUTO_SAVE_INTERVAL_MS) {
-            saveProgressInternal(guid, currentPositionMs, nowMs)
+            saveProgressInternal(episodeId, currentPositionMs, nowMs)
         }
 
         if (hasBeenMarkedAsPlayed) return
@@ -106,7 +107,7 @@ constructor(
             hasBeenMarkedAsPlayed = true
             applicationScope.launch {
                 runCatching {
-                    markEpisodePlayedUseCase(guid)
+                    markEpisodePlayedUseCase(episodeId)
                 }.onFailure {
                     Timber.e(it, "Failed to mark episode as played")
                     hasBeenMarkedAsPlayed = false
@@ -122,23 +123,23 @@ constructor(
     }
 
     fun saveProgressBestEffort(
-        guid: String?,
+        episodeId: Long?,
         positionMs: Long
     ) {
-        if (guid.isNullOrBlank()) return
+        if (episodeId == null || episodeId <= 0L) return
         val now = monotonicClock.elapsedRealtimeMs()
-        lastObservedGuid = guid
+        lastObservedEpisodeId = episodeId
         lastObservedPositionMs = positionMs
-        saveProgressInternal(guid, positionMs, now)
+        saveProgressInternal(episodeId, positionMs, now)
     }
 
     private fun saveProgressInternal(
-        guid: String,
+        episodeId: Long,
         positionMs: Long,
         nowMs: Long
     ) {
         // Reserve the interval before the asynchronous write to prevent slow I/O from spawning more work.
         lastDbSaveMs = nowMs
-        progressWriter.request(guid, positionMs)
+        progressWriter.request(episodeId, positionMs)
     }
 }

@@ -6,7 +6,7 @@ import androidx.work.WorkManager
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.repository.PodcastRepository
-import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.cancelEpisodeDownloadWork
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.io.File
@@ -32,7 +32,7 @@ constructor(
                     it.downloadStatus == DownloadStatus.DOWNLOADING
             }
             .forEach { ep ->
-                workManager.cancelUniqueWork("${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${ep.guid}")
+                workManager.cancelEpisodeDownloadWork(ep.episodeId, ep.guid)
             }
 
         val pathsToDelete =

@@ -8,12 +8,12 @@ class ReorderFavoritesUseCase
 constructor(
     private val repository: PodcastRepository
 ) {
-    suspend operator fun invoke(reorderedGuids: List<String>) {
+    suspend operator fun invoke(reorderedEpisodeIds: List<Long>) {
         val timestamp = System.currentTimeMillis()
         val episodes =
-            reorderedGuids.map { guid ->
-                repository.getEpisode(guid)
-                    ?: throw IllegalStateException("Episode not found for GUID $guid")
+            reorderedEpisodeIds.map { episodeId ->
+                repository.getEpisode(episodeId)
+                    ?: throw IllegalStateException("Episode not found for ID $episodeId")
             }
         val updatedList =
             episodes.mapIndexed { index, episode ->

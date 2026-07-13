@@ -32,7 +32,7 @@ interface PodcastRepository {
 
     fun getFavoriteEpisodesWithPodcastInfoFlow(): Flow<Map<EpisodeEntity, Podcast?>>
 
-    fun isFavorite(guid: String): Flow<Boolean>
+    fun isFavorite(episodeId: Long): Flow<Boolean>
 
     fun getPlaybackHistory(): Flow<List<EpisodeEntity>>
 
@@ -68,11 +68,13 @@ interface PodcastRepository {
 
     suspend fun getPodcast(rssUrl: String): Podcast?
 
-    suspend fun getEpisode(guid: String): EpisodeEntity?
+    suspend fun getEpisode(episodeId: Long): EpisodeEntity?
+
+    suspend fun resolveLegacyDownloadEpisode(guid: String): EpisodeEntity?
 
     // --- EPISODE ACTIONS ---
     suspend fun markEpisodePlayed(
-        guid: String,
+        episodeId: Long,
         played: Boolean,
         datePlayed: Date?
     )
@@ -80,7 +82,7 @@ interface PodcastRepository {
     suspend fun toggleEpisodePlayed(episode: EpisodeEntity)
 
     suspend fun savePlaybackProgress(
-        guid: String,
+        episodeId: Long,
         positionMs: Long
     )
 
@@ -101,7 +103,7 @@ interface PodcastRepository {
 
     // --- FAVORITES & HISTORY ---
     suspend fun setFavoriteStatus(
-        guid: String,
+        episodeId: Long,
         isFavorite: Boolean,
         timestamp: Long?
     )
@@ -112,7 +114,7 @@ interface PodcastRepository {
 
     // --- DOWNLOAD STATUS ---
     suspend fun updateDownloadStatus(
-        guid: String,
+        episodeId: Long,
         status: DownloadStatus,
         path: String?
     )

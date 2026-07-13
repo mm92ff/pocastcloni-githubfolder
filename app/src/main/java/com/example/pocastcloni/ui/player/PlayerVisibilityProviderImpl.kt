@@ -15,6 +15,6 @@ constructor(
 ) : PlayerVisibilityProvider {
     override val isPlayerVisible: Flow<Boolean> =
         playerController.playerState
-            .map { !it.currentEpisodeGuid.isNullOrBlank() }
+            .map { it.currentEpisodeId != null }
             .distinctUntilChanged()
 }

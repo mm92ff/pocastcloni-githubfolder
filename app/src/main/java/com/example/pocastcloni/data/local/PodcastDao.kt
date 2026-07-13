@@ -36,12 +36,12 @@ data class EpisodeWithPodcastLite(
 )
 
 data class DownloadedPathRow(
-    val guid: String,
+    val episodeId: Long,
     val downloadPath: String?
 )
 
 data class EpisodeDownloadStateRow(
-    val guid: String,
+    val episodeId: Long,
     val downloadStatus: DownloadStatus,
     val downloadPath: String?
 )
@@ -49,23 +49,6 @@ data class EpisodeDownloadStateRow(
 data class PodcastUnplayedCount(
     @ColumnInfo(name = "podcastRssUrl") val rssUrl: String,
     @ColumnInfo(name = "count") val count: Int
-)
-
-/**
- * Partial entity for updates.
- * Contains ONLY fields that come from the RSS feed.
- * Prevents user status (isPlayed, isFavorite, downloadPath) from being overwritten during sync.
- */
-@Entity
-data class EpisodeRssUpdate(
-    @ColumnInfo(name = "guid") val guid: String,
-    @ColumnInfo(name = "title") val title: String,
-    @ColumnInfo(name = "description") val description: String,
-    @ColumnInfo(name = "pubDate") val pubDate: Date?,
-    @ColumnInfo(name = "duration") val duration: Long,
-    @ColumnInfo(name = "enclosureUrl") val enclosureUrl: String,
-    @ColumnInfo(name = "fileSize") val fileSize: Long,
-    @ColumnInfo(name = "type") val type: String
 )
 
 /**
@@ -187,10 +170,10 @@ interface PodcastDao {
 
     // --- EPISODES ---
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertEpisode(episode: EpisodeEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertEpisodes(episodes: List<EpisodeEntity>)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -199,9 +182,30 @@ interface PodcastDao {
     @Update
     suspend fun updateEpisodes(episodes: List<EpisodeEntity>)
 
-    // Helper for sync (partial update)
-    @Update(entity = EpisodeEntity::class)
-    suspend fun updateEpisodesMetadata(updates: List<EpisodeRssUpdate>)
+    @Query(
+        """
+        UPDATE episodes
+        SET title = :title,
+            description = :description,
+            pubDate = :pubDate,
+            duration = :duration,
+            enclosureUrl = :enclosureUrl,
+            fileSize = :fileSize,
+            type = :type
+        WHERE podcastRssUrl = :podcastRssUrl AND guid = :guid
+        """
+    )
+    suspend fun updateEpisodeMetadataByFeedKey(
+        podcastRssUrl: String,
+        guid: String,
+        title: String,
+        description: String,
+        pubDate: Date?,
+        duration: Long,
+        enclosureUrl: String,
+        fileSize: Long,
+        type: String
+    )
 
     /**
      * Efficient upsert: insert new ones, update ONLY metadata for existing ones.
@@ -215,20 +219,19 @@ interface PodcastDao {
 
         // 2. Metadata update for ALL episodes (including existing ones)
         // Accesses the fields in EpisodeEntity
-        val updates =
-            episodes.map {
-                EpisodeRssUpdate(
-                    guid = it.guid,
-                    title = it.title,
-                    description = it.description,
-                    pubDate = it.pubDate,
-                    duration = it.duration,
-                    enclosureUrl = it.enclosureUrl,
-                    fileSize = it.fileSize,
-                    type = it.type
-                )
-            }
-        updateEpisodesMetadata(updates)
+        episodes.forEach { episode ->
+            updateEpisodeMetadataByFeedKey(
+                podcastRssUrl = episode.podcastRssUrl,
+                guid = episode.guid,
+                title = episode.title,
+                description = episode.description,
+                pubDate = episode.pubDate,
+                duration = episode.duration,
+                enclosureUrl = episode.enclosureUrl,
+                fileSize = episode.fileSize,
+                type = episode.type
+            )
+        }
     }
 
     @Delete
@@ -247,7 +250,7 @@ interface PodcastDao {
     @Query("SELECT * FROM episodes WHERE downloadStatus IN (:statuses) ORDER BY COALESCE(pubDate, 0) DESC")
     fun getDownloadedEpisodes(statuses: List<DownloadStatus>): Flow<List<EpisodeEntity>>
 
-    @Query("SELECT guid, downloadStatus, downloadPath FROM episodes WHERE downloadStatus IN (:statuses)")
+    @Query("SELECT episodeId, downloadStatus, downloadPath FROM episodes WHERE downloadStatus IN (:statuses)")
     suspend fun getEpisodeDownloadStates(statuses: List<DownloadStatus>): List<EpisodeDownloadStateRow>
 
     @Query(
@@ -270,7 +273,7 @@ interface PodcastDao {
 
     @Query(
         """
-        SELECT guid, downloadPath
+        SELECT episodeId, downloadPath
         FROM episodes
         WHERE downloadStatus = 'DOWNLOADED'
           AND isPlayed = 1
@@ -293,11 +296,17 @@ interface PodcastDao {
         newStatus: DownloadStatus = DownloadStatus.NOT_DOWNLOADED
     )
 
-    @Query("SELECT * FROM episodes WHERE guid = :guid")
-    suspend fun getEpisodeByGuid(guid: String): EpisodeEntity?
+    @Query("SELECT * FROM episodes WHERE episodeId = :episodeId")
+    suspend fun getEpisodeById(episodeId: Long): EpisodeEntity?
 
-    @Query("SELECT guid FROM episodes WHERE guid IN (:guids)")
-    suspend fun getExistingGuids(guids: List<String>): List<String>
+    @Query("SELECT * FROM episodes WHERE podcastRssUrl = :podcastRssUrl AND guid = :guid")
+    suspend fun getEpisodeByFeedAndGuid(
+        podcastRssUrl: String,
+        guid: String
+    ): EpisodeEntity?
+
+    @Query("SELECT * FROM episodes WHERE episodes.guid = :guid")
+    suspend fun getEpisodesByLegacyGuid(guid: String): List<EpisodeEntity>
 
     @Query("SELECT guid FROM episodes WHERE podcastRssUrl = :url ORDER BY COALESCE(pubDate, 0) DESC LIMIT 1")
     suspend fun getLatestEpisodeGuid(url: String): String?
@@ -325,20 +334,14 @@ interface PodcastDao {
         SET isFavorite = :isFavorite,
             favoriteTimestamp = :timestamp,
             favoriteAddedAt = :favoriteAddedAt
-        WHERE guid = :guid
+        WHERE episodeId = :episodeId
         """
     )
     suspend fun setFavoriteStatus(
-        guid: String,
+        episodeId: Long,
         isFavorite: Boolean,
         timestamp: Long?,
         favoriteAddedAt: Long?
-    )
-
-    @Query("UPDATE episodes SET isFavorite = 1, favoriteTimestamp = :timestamp, favoriteAddedAt = :timestamp WHERE guid IN (:guids)")
-    suspend fun setFavoritesBatch(
-        guids: List<String>,
-        timestamp: Long
     )
 
     @Query("SELECT * FROM episodes WHERE isFavorite = 1 ORDER BY favoriteTimestamp DESC")
@@ -362,27 +365,27 @@ interface PodcastDao {
     @Query("SELECT * FROM episodes WHERE isFavorite = 1 ORDER BY favoriteTimestamp DESC")
     suspend fun getFavoriteEpisodesSync(): List<EpisodeEntity>
 
-    @Query("SELECT isFavorite FROM episodes WHERE guid = :guid")
-    fun isFavorite(guid: String): Flow<Boolean>
+    @Query("SELECT isFavorite FROM episodes WHERE episodeId = :episodeId")
+    fun isFavorite(episodeId: Long): Flow<Boolean>
 
     // --- STATUS UPDATES ---
 
-    @Query("UPDATE episodes SET playbackPositionMs = :pos WHERE guid = :guid")
+    @Query("UPDATE episodes SET playbackPositionMs = :pos WHERE episodeId = :episodeId")
     suspend fun updateEpisodeProgressOnly(
-        guid: String,
+        episodeId: Long,
         pos: Long
     )
 
-    @Query("UPDATE episodes SET isPlayed = :isPlayed, datePlayed = :datePlayed WHERE guid = :guid")
+    @Query("UPDATE episodes SET isPlayed = :isPlayed, datePlayed = :datePlayed WHERE episodeId = :episodeId")
     suspend fun markEpisodePlayed(
-        guid: String,
+        episodeId: Long,
         isPlayed: Boolean,
         datePlayed: Date?
     )
 
-    @Query("UPDATE episodes SET isPlayed = 1, datePlayed = :datePlayed WHERE guid = :guid AND isPlayed = 0")
+    @Query("UPDATE episodes SET isPlayed = 1, datePlayed = :datePlayed WHERE episodeId = :episodeId AND isPlayed = 0")
     suspend fun markEpisodePlayedIfNeeded(
-        guid: String,
+        episodeId: Long,
         datePlayed: Date
     ): Int
 
@@ -392,9 +395,9 @@ interface PodcastDao {
         datePlayed: Date = Date()
     )
 
-    @Query("UPDATE episodes SET downloadStatus = :status, downloadPath = :path WHERE guid = :guid")
+    @Query("UPDATE episodes SET downloadStatus = :status, downloadPath = :path WHERE episodeId = :episodeId")
     suspend fun updateDownloadStatus(
-        guid: String,
+        episodeId: Long,
         status: DownloadStatus,
         path: String?
     )
@@ -416,8 +419,8 @@ interface PodcastDao {
         """
         SELECT * FROM episodes 
         WHERE podcastRssUrl = :rssUrl 
-          AND guid NOT IN (
-              SELECT guid FROM episodes 
+          AND episodeId NOT IN (
+              SELECT episodeId FROM episodes
               WHERE podcastRssUrl = :rssUrl 
               ORDER BY COALESCE(pubDate, 0) DESC 
               LIMIT :keepCount
@@ -433,8 +436,8 @@ interface PodcastDao {
         """
         DELETE FROM episodes 
         WHERE podcastRssUrl = :rssUrl 
-          AND guid NOT IN (
-              SELECT guid FROM episodes 
+          AND episodeId NOT IN (
+              SELECT episodeId FROM episodes
               WHERE podcastRssUrl = :rssUrl 
               ORDER BY COALESCE(pubDate, 0) DESC 
               LIMIT :keepCount
@@ -494,8 +497,8 @@ interface PodcastDao {
         """
         UPDATE episodes
         SET isPlayed = 1
-        WHERE guid IN (
-            SELECT e.guid
+        WHERE episodeId IN (
+            SELECT e.episodeId
             FROM episodes e
             INNER JOIN (
                 SELECT podcastRssUrl, MAX(COALESCE(pubDate, 0)) as maxDate

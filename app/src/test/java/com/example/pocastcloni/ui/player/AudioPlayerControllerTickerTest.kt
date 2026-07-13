@@ -48,7 +48,7 @@ class AudioPlayerControllerTickerTest {
         val mapper = mockk<MediaStateMapper>(relaxed = true)
         val preparePlayback = mockk<PreparePlaybackUseCase>()
         val listeners = mutableListOf<Player.Listener>()
-        val mediaItem = MediaItem.Builder().setMediaId(GUID).build()
+        val mediaItem = MediaItem.Builder().setMediaId(EPISODE_ID.toString()).build()
         var isPlaying = true
         var positionMs = 10_000L
         var nowMs = 0L
@@ -78,9 +78,10 @@ class AudioPlayerControllerTickerTest {
                 description = "",
                 pubDate = Date(),
                 link = "",
-                enclosureUrl = "https://example.com/audio.mp3"
+                enclosureUrl = "https://example.com/audio.mp3",
+                episodeId = EPISODE_ID
             )
-        coEvery { preparePlayback(GUID) } returns
+        coEvery { preparePlayback(EPISODE_ID) } returns
             PlayEpisodeResult(episode, 0L, null, episode.enclosureUrl)
 
         val controller =
@@ -123,7 +124,7 @@ class AudioPlayerControllerTickerTest {
         assertEquals(listOf(500L, 5_000L), ticker.cancelledIntervals)
         verify {
             analytics.onTick(
-                guid = GUID,
+                episodeId = EPISODE_ID,
                 currentPositionMs = 10_000L,
                 durationMs = 40_000L,
                 deltaMs = 1_000L,
@@ -131,7 +132,7 @@ class AudioPlayerControllerTickerTest {
                 markPlayedThresholdSeconds = 0
             )
         }
-        verify { analytics.saveProgressBestEffort(GUID, 10_000L) }
+        verify { analytics.saveProgressBestEffort(EPISODE_ID, 10_000L) }
         verify { analytics.flushListeningTime() }
 
         positionMs = 12_345L
@@ -148,7 +149,7 @@ class AudioPlayerControllerTickerTest {
         runCurrent()
         verify {
             analytics.onTick(
-                guid = GUID,
+                episodeId = EPISODE_ID,
                 currentPositionMs = 12_345L,
                 durationMs = 40_000L,
                 deltaMs = 300L,
@@ -158,7 +159,7 @@ class AudioPlayerControllerTickerTest {
         }
         verify(exactly = 1) { mediaConnection.release() }
 
-        controller.play(GUID)
+        controller.play(EPISODE_ID)
         runCurrent()
         assertTrue(ticker.startedIntervals.count { it == 500L } >= 3)
         foreground.isForeground.value = false
@@ -189,6 +190,7 @@ class AudioPlayerControllerTickerTest {
     }
 
     private companion object {
+        private const val EPISODE_ID = 101L
         private const val GUID = "episode-guid"
     }
 }

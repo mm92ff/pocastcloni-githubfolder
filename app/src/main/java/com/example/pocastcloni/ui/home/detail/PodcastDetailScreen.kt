@@ -124,7 +124,7 @@ fun PodcastDetailScreen(
                     )
 
                 // Read once to avoid redundant lookups inside each item
-                val playingGuid = playerState.currentPlayingGuid
+                val playingEpisodeId = playerState.currentPlayingEpisodeId
                 val isPlayerPlaying = playerState.isPlayerPlaying
 
                 LazyColumn(
@@ -147,31 +147,31 @@ fun PodcastDetailScreen(
                         HorizontalDivider()
                     }
 
-                    items(state.episodes, key = { it.guid }) { episode ->
-                        val guid = episode.guid
+                    items(state.episodes, key = { it.episodeId }) { episode ->
+                        val episodeId = episode.episodeId
 
                         // Stable callbacks: prevent recomposition triggered solely by new lambda instances
                         val onPlayClick =
-                            remember(guid) {
-                                { viewModel.onAction(PodcastDetailAction.PlayEpisode(guid)) }
+                            remember(episodeId) {
+                                { viewModel.onAction(PodcastDetailAction.PlayEpisode(episodeId)) }
                             }
                         val onDownloadClick =
-                            remember(guid) {
-                                { viewModel.onAction(PodcastDetailAction.ToggleDownload(guid)) }
+                            remember(episodeId) {
+                                { viewModel.onAction(PodcastDetailAction.ToggleDownload(episodeId)) }
                             }
                         val onTogglePlayed =
-                            remember(guid) {
-                                { viewModel.onAction(PodcastDetailAction.TogglePlayedStatus(guid)) }
+                            remember(episodeId) {
+                                { viewModel.onAction(PodcastDetailAction.TogglePlayedStatus(episodeId)) }
                             }
                         val onToggleFavorite =
-                            remember(guid) {
-                                { viewModel.onAction(PodcastDetailAction.ToggleFavorite(guid)) }
+                            remember(episodeId) {
+                                { viewModel.onAction(PodcastDetailAction.ToggleFavorite(episodeId)) }
                             }
 
                         // isPlaying is only recomputed when the player state changes
                         val isPlaying =
-                            remember(guid, playingGuid, isPlayerPlaying) {
-                                guid == playingGuid && isPlayerPlaying
+                            remember(episodeId, playingEpisodeId, isPlayerPlaying) {
+                                episodeId == playingEpisodeId && isPlayerPlaying
                             }
 
                         EpisodeListItem(

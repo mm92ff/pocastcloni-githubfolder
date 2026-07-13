@@ -12,6 +12,10 @@ import com.example.pocastcloni.data.worker.DownloadWorker
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.cancelEpisodeDownloadWork
+import com.example.pocastcloni.util.cancelLegacyDownloadWork
+import com.example.pocastcloni.util.downloadWorkName
+import com.example.pocastcloni.util.episodeIdFromDownloadWorkTag
 import com.example.pocastcloni.util.requireApprovedPodcastResource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -34,16 +38,15 @@ constructor(
 ) {
     private val workManager = WorkManager.getInstance(context)
 
-    val downloadProgressFlow: StateFlow<Map<String, Float>> =
+    val downloadProgressFlow: StateFlow<Map<Long, Float>> =
         workManager.getWorkInfosByTagFlow(Constants.DOWNLOAD_WORKER_TAG)
             .map { workInfos ->
                 workInfos.filter { it.state == WorkInfo.State.RUNNING }
                     .associate {
-                        val guid =
-                            it.tags.firstOrNull { t -> t.startsWith(Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX) }
-                                ?.removePrefix(Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX) ?: ""
+                        val episodeId =
+                            it.tags.firstNotNullOfOrNull(::episodeIdFromDownloadWorkTag) ?: 0L
                         val progress = it.progress.getFloat("progress", 0f)
-                        guid to progress
+                        episodeId to progress
                     }
             }
             .stateIn(
@@ -52,8 +55,8 @@ constructor(
                 initialValue = emptyMap()
             )
 
-    suspend operator fun invoke(guid: String) {
-        podcastRepository.getEpisode(guid)?.let { toggleDownload(it) }
+    suspend operator fun invoke(episodeId: Long) {
+        podcastRepository.getEpisode(episodeId)?.let { toggleDownload(it) }
     }
 
     private suspend fun toggleDownload(episode: EpisodeEntity) {
@@ -75,19 +78,21 @@ constructor(
             allowInsecureHttp = podcast?.allowInsecureHttp == true,
             allowLocalNetwork = podcast?.allowLocalNetwork == true
         )
-        podcastRepository.updateDownloadStatus(episode.guid, DownloadStatus.QUEUED, null)
+        podcastRepository.updateDownloadStatus(episode.episodeId, DownloadStatus.QUEUED, null)
 
         val podcastTitle = podcastRepository.getPodcast(episode.podcastRssUrl)
             ?.title?.ifBlank { null } ?: "Unknown_Podcast"
         val episodeTitle = episode.title.ifBlank { null } ?: "Unknown_Episode"
         val fileName = "${podcastTitle}_${episodeTitle}${Constants.DOWNLOAD_FILE_EXTENSION}"
-        val uniqueWorkName = "${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${episode.guid}"
+        val uniqueWorkName = downloadWorkName(episode.episodeId)
+
+        workManager.cancelLegacyDownloadWork(episode.guid)
 
         val request =
             OneTimeWorkRequestBuilder<DownloadWorker>()
                 .setInputData(
                     workDataOf(
-                        Constants.DOWNLOAD_WORKER_GUID to episode.guid,
+                        Constants.DOWNLOAD_WORKER_EPISODE_ID to episode.episodeId,
                         Constants.DOWNLOAD_WORKER_URL to episode.enclosureUrl,
                         Constants.DOWNLOAD_WORKER_FILENAME to fileName
                     )
@@ -104,7 +109,7 @@ constructor(
     }
 
     private suspend fun deleteDownload(episode: EpisodeEntity) {
-        workManager.cancelUniqueWork("${Constants.DOWNLOAD_WORKER_UNIQUE_PREFIX}${episode.guid}")
+        workManager.cancelEpisodeDownloadWork(episode.episodeId, episode.guid)
         episode.downloadPath?.let { path ->
             runCatching {
                 if (path.startsWith("content://")) {
@@ -114,6 +119,6 @@ constructor(
                 }
             }
         }
-        podcastRepository.updateDownloadStatus(episode.guid, DownloadStatus.NOT_DOWNLOADED, null)
+        podcastRepository.updateDownloadStatus(episode.episodeId, DownloadStatus.NOT_DOWNLOADED, null)
     }
 }

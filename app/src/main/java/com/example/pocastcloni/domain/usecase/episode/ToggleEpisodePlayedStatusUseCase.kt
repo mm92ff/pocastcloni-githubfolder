@@ -11,9 +11,9 @@ constructor(
     private val repository: PodcastRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {
-    suspend operator fun invoke(guid: String) {
+    suspend operator fun invoke(episodeId: Long) {
         withContext(dispatcherProvider.io) {
-            val episode = repository.getEpisode(guid) ?: return@withContext
+            val episode = repository.getEpisode(episodeId) ?: return@withContext
 
             // 1. Toggle the played status
             repository.toggleEpisodePlayed(episode)

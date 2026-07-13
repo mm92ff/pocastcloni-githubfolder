@@ -37,7 +37,7 @@ constructor(
             .map { list ->
                 list.map { info ->
                     HistoryUiItem(
-                        id = info.episode.guid,
+                        id = info.episode.episodeId,
                         episode = EpisodeDisplayModel.from(info.episode, info.podcast),
                         podcast = info.podcast
                     )
@@ -47,7 +47,7 @@ constructor(
 
     private val isPlayerVisibleFlow =
         audioPlayerController.playerState
-            .map { !it.currentEpisodeGuid.isNullOrBlank() }
+            .map { it.currentEpisodeId != null }
             .distinctUntilChanged()
 
     val uiState =
@@ -84,7 +84,7 @@ constructor(
         when (action) {
             is HistoryAction.OnEpisodeClick -> {
                 viewModelScope.launch {
-                    audioPlayerController.play(action.guid)
+                    audioPlayerController.play(action.episodeId)
                 }
             }
 

@@ -8,7 +8,7 @@ class StartPlaybackUseCase
 constructor(
     private val playbackStarter: PlaybackStarter
 ) {
-    suspend operator fun invoke(episodeGuid: String) {
-        playbackStarter.play(episodeGuid)
+    suspend operator fun invoke(episodeId: Long) {
+        playbackStarter.play(episodeId)
     }
 }

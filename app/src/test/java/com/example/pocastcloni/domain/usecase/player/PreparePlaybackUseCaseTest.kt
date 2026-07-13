@@ -54,6 +54,7 @@ class PreparePlaybackUseCaseTest {
     }
 
     private fun episode(
+        episodeId: Long = EPISODE_ID,
         guid: String = "guid-1",
         downloadStatus: DownloadStatus = DownloadStatus.NOT_DOWNLOADED,
         downloadPath: String? = null,
@@ -68,15 +69,16 @@ class PreparePlaybackUseCaseTest {
         enclosureUrl = streamUrl,
         downloadStatus = downloadStatus,
         downloadPath = downloadPath,
-        playbackPositionMs = positionMs
+        playbackPositionMs = positionMs,
+        episodeId = episodeId
     )
 
     @Test
     fun `not downloaded episode streams via enclosureUrl`() = runTest(testDispatcher) {
         val ep = episode(downloadStatus = DownloadStatus.NOT_DOWNLOADED)
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
 
-        val result = useCase("guid-1")
+        val result = useCase(EPISODE_ID)
 
         assertEquals(streamUrl, result.playUri)
         assertEquals(ep, result.episode)
@@ -86,9 +88,9 @@ class PreparePlaybackUseCaseTest {
     fun `downloaded episode with valid local file plays from file URI`() = runTest(testDispatcher) {
         val file = tempFolder.newFile("episode.mp3")
         val ep = episode(downloadStatus = DownloadStatus.DOWNLOADED, downloadPath = file.absolutePath)
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
 
-        val result = useCase("guid-1")
+        val result = useCase(EPISODE_ID)
 
         assertTrue("Should play from local file URI", result.playUri.startsWith("file:"))
     }
@@ -97,9 +99,9 @@ class PreparePlaybackUseCaseTest {
     fun `downloaded episode with content URI plays MediaStore URI directly`() = runTest(testDispatcher) {
         val contentUri = "content://media/external/downloads/12345"
         val ep = episode(downloadStatus = DownloadStatus.DOWNLOADED, downloadPath = contentUri)
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
 
-        val result = useCase("guid-1")
+        val result = useCase(EPISODE_ID)
 
         assertEquals(contentUri, result.playUri)
     }
@@ -108,40 +110,40 @@ class PreparePlaybackUseCaseTest {
     fun `downloaded episode with missing file falls back to stream and resets status`() = runTest(testDispatcher) {
         val missingPath = "/nonexistent/path/episode.mp3"
         val ep = episode(downloadStatus = DownloadStatus.DOWNLOADED, downloadPath = missingPath)
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
 
-        val result = useCase("guid-1")
+        val result = useCase(EPISODE_ID)
 
         assertEquals("Should fall back to stream URL", streamUrl, result.playUri)
-        coVerify { repository.updateDownloadStatus("guid-1", DownloadStatus.NOT_DOWNLOADED, null) }
+        coVerify { repository.updateDownloadStatus(EPISODE_ID, DownloadStatus.NOT_DOWNLOADED, null) }
     }
 
     @Test
     fun `downloaded episode with null downloadPath falls back to stream and resets status`() = runTest(testDispatcher) {
         val ep = episode(downloadStatus = DownloadStatus.DOWNLOADED, downloadPath = null)
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
 
-        val result = useCase("guid-1")
+        val result = useCase(EPISODE_ID)
 
         assertEquals("Should fall back to stream URL", streamUrl, result.playUri)
-        coVerify { repository.updateDownloadStatus("guid-1", DownloadStatus.NOT_DOWNLOADED, null) }
+        coVerify { repository.updateDownloadStatus(EPISODE_ID, DownloadStatus.NOT_DOWNLOADED, null) }
     }
 
     @Test
     fun `playback starts from saved position`() = runTest(testDispatcher) {
         val ep = episode(positionMs = 42_000L)
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
 
-        val result = useCase("guid-1")
+        val result = useCase(EPISODE_ID)
 
         assertEquals(42_000L, result.startPosition)
     }
 
     @Test(expected = IllegalStateException::class)
     fun `throws IllegalStateException when episode not found`() = runTest(testDispatcher) {
-        coEvery { repository.getEpisode("unknown-guid") } returns null
+        coEvery { repository.getEpisode(UNKNOWN_EPISODE_ID) } returns null
 
-        useCase("unknown-guid")
+        useCase(UNKNOWN_EPISODE_ID)
     }
 
     @Test
@@ -153,10 +155,10 @@ class PreparePlaybackUseCaseTest {
             description = "",
             imageUrl = "https://img.jpg"
         )
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
         coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns podcastEntity
 
-        val result = useCase("guid-1")
+        val result = useCase(EPISODE_ID)
 
         assertEquals("My Podcast", result.podcast?.title)
     }
@@ -174,10 +176,10 @@ class PreparePlaybackUseCaseTest {
             allowInsecureHttp = true,
             allowLocalNetwork = true
         )
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
         coEvery { repository.getPodcastEntityByUrl(localFeed) } returns podcast
 
-        val result = useCase("guid-1")
+        val result = useCase(EPISODE_ID)
 
         assertEquals(localAudio, result.playUri)
         assertTrue(localNetworkAccessRegistry.isApproved(localAudio))
@@ -196,9 +198,14 @@ class PreparePlaybackUseCaseTest {
             allowInsecureHttp = true,
             allowLocalNetwork = true
         )
-        coEvery { repository.getEpisode("guid-1") } returns ep
+        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
         coEvery { repository.getPodcastEntityByUrl(localFeed) } returns podcast
 
-        assertTrue(runCatching { useCase("guid-1") }.isFailure)
+        assertTrue(runCatching { useCase(EPISODE_ID) }.isFailure)
+    }
+
+    private companion object {
+        const val EPISODE_ID = 101L
+        const val UNKNOWN_EPISODE_ID = 999L
     }
 }

@@ -50,8 +50,9 @@ class FavoritesViewModelTest {
     private lateinit var viewModel: FavoritesViewModel
 
     private val testItem = FavoriteUiItem(
-        id = "ep-guid-1",
+        id = TEST_EPISODE_ID,
         episode = EpisodeDisplayModel(
+            episodeId = TEST_EPISODE_ID,
             guid = "ep-guid-1",
             title = "Test Episode",
             description = "Desc",
@@ -79,7 +80,7 @@ class FavoritesViewModelTest {
 
         every { getFavoriteEpisodes() } returns flowOf(emptyList())
         every { audioPlayerController.playerState } returns MutableStateFlow(
-            PlayerUiState(currentEpisodeGuid = null, isPlaying = false)
+            PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(UserSettings())
 
@@ -121,14 +122,14 @@ class FavoritesViewModelTest {
     @Test
     fun `OnEpisodeClick calls audioPlayerController when not in edit mode`() = runTest {
         every { audioPlayerController.playerState } returns MutableStateFlow(
-            PlayerUiState(currentEpisodeGuid = null, isPlaying = false)
+            PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         io.mockk.coEvery { audioPlayerController.play(any()) } returns Unit
 
-        viewModel.onAction(FavoritesAction.OnEpisodeClick("ep-guid-1"))
+        viewModel.onAction(FavoritesAction.OnEpisodeClick(TEST_EPISODE_ID))
         advanceUntilIdle()
 
-        coVerify { audioPlayerController.play("ep-guid-1") }
+        coVerify { audioPlayerController.play(TEST_EPISODE_ID) }
     }
 
     @Test
@@ -136,7 +137,7 @@ class FavoritesViewModelTest {
         viewModel.onAction(FavoritesAction.ToggleEditMode)
         advanceUntilIdle()
 
-        viewModel.onAction(FavoritesAction.OnEpisodeClick("ep-guid-1"))
+        viewModel.onAction(FavoritesAction.OnEpisodeClick(TEST_EPISODE_ID))
         advanceUntilIdle()
 
         coVerify(exactly = 0) { audioPlayerController.play(any()) }
@@ -144,10 +145,10 @@ class FavoritesViewModelTest {
 
     @Test
     fun `OnEpisodeSwiped calls toggleFavoriteEpisodeUseCase with isFavorite=true`() = runTest {
-        viewModel.onAction(FavoritesAction.OnEpisodeSwiped("ep-guid-1"))
+        viewModel.onAction(FavoritesAction.OnEpisodeSwiped(TEST_EPISODE_ID))
         advanceUntilIdle()
 
-        coVerify { toggleFavoriteEpisodeUseCase("ep-guid-1", true) }
+        coVerify { toggleFavoriteEpisodeUseCase(TEST_EPISODE_ID, true) }
     }
 
     @Test
@@ -174,8 +175,8 @@ class FavoritesViewModelTest {
 
     @Test
     fun `ChangeSortMode AddedDate exits edit mode and exposes grouped rows`() = runTest {
-        val today = episodeWithPodcastInfo("today", favoriteAddedAtMs = daysAgo(0))
-        val yesterday = episodeWithPodcastInfo("yesterday", favoriteAddedAtMs = daysAgo(1))
+        val today = episodeWithPodcastInfo(201L, "today", favoriteAddedAtMs = daysAgo(0))
+        val yesterday = episodeWithPodcastInfo(202L, "yesterday", favoriteAddedAtMs = daysAgo(1))
         every { getFavoriteEpisodes() } returns flowOf(listOf(yesterday, today))
 
         viewModel = createViewModel()
@@ -192,8 +193,8 @@ class FavoritesViewModelTest {
 
             assertEquals(FavoritesSortMode.ADDED_DATE, addedState.sortMode)
             assertFalse(addedState.isEditMode)
-            val todayItem = loaded.favorites.first { it.id == "today" }
-            val yesterdayItem = loaded.favorites.first { it.id == "yesterday" }
+            val todayItem = loaded.favorites.first { it.id == today.episode.episodeId }
+            val yesterdayItem = loaded.favorites.first { it.id == yesterday.episode.episodeId }
             assertEquals(
                 listOf(
                     FavoriteListRow.SectionHeader(DateBucket.TODAY),
@@ -247,12 +248,14 @@ class FavoritesViewModelTest {
             .toEpochMilli()
 
     private fun episodeWithPodcastInfo(
+        episodeId: Long,
         guid: String,
         favoriteAddedAtMs: Long?
     ): EpisodeWithPodcastInfo =
         EpisodeWithPodcastInfo(
             episode =
             EpisodePresentation(
+                episodeId = episodeId,
                 guid = guid,
                 title = "Episode $guid",
                 link = null,
@@ -283,4 +286,8 @@ class FavoritesViewModelTest {
                 isLatestEpisodePlayed = null
             )
         )
+
+    private companion object {
+        const val TEST_EPISODE_ID = 101L
+    }
 }

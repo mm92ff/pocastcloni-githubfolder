@@ -9,7 +9,7 @@ import kotlinx.collections.immutable.persistentListOf
 
 @Immutable
 data class HistoryUiItem(
-    val id: String,
+    val id: Long,
     val episode: EpisodeDisplayModel,
     val podcast: Podcast?
 )
@@ -48,7 +48,7 @@ data class HistoryUiState(
 )
 
 sealed interface HistoryAction {
-    data class OnEpisodeClick(val guid: String) : HistoryAction
+    data class OnEpisodeClick(val episodeId: Long) : HistoryAction
 
     data object ClearHistory : HistoryAction
 

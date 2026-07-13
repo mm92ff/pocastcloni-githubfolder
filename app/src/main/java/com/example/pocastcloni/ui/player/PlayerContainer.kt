@@ -35,7 +35,7 @@ fun PlayerContainer(
     var isExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Show the player only when an episode is loaded and this screen does not suppress it
-    if (!suppress && !playerState.currentEpisodeGuid.isNullOrBlank()) {
+    if (!suppress && playerState.currentEpisodeId != null) {
         ExpandablePlayer(
             modifier = modifier,
             isExpanded = isExpanded,

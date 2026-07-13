@@ -57,7 +57,7 @@ class HistoryViewModelTest {
         // Setup default mocks
         every { getPlaybackHistoryWithPodcastInfoUseCase() } returns flowOf(emptyList())
         every { audioPlayerController.playerState } returns MutableStateFlow(
-            PlayerUiState(currentEpisodeGuid = null, isPlaying = false)
+            PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(
             UserSettings(
@@ -106,8 +106,8 @@ class HistoryViewModelTest {
 
     @Test
     fun `uiState exposes grouped history rows`() = runTest {
-        val today = episodeWithPodcastInfo("today", datePlayedMs = daysAgo(0))
-        val yesterday = episodeWithPodcastInfo("yesterday", datePlayedMs = daysAgo(1))
+        val today = episodeWithPodcastInfo(101L, "today", datePlayedMs = daysAgo(0))
+        val yesterday = episodeWithPodcastInfo(102L, "yesterday", datePlayedMs = daysAgo(1))
         every { getPlaybackHistoryWithPodcastInfoUseCase() } returns flowOf(listOf(yesterday, today))
 
         viewModel = HistoryViewModel(
@@ -121,7 +121,7 @@ class HistoryViewModelTest {
             val firstState = awaitItem()
             val loadedState = if (firstState.isLoading) awaitItem() else firstState
 
-            assertEquals(listOf("today", "yesterday"), loadedState.historyItems.map { it.id })
+            assertEquals(listOf(101L, 102L), loadedState.historyItems.map { it.id })
             assertEquals(
                 listOf(
                     HistoryListRow.SectionHeader(DateBucket.TODAY),
@@ -136,8 +136,8 @@ class HistoryViewModelTest {
 
     @Test
     fun `uiState keeps section headers before episodes in one handed mode`() = runTest {
-        val today = episodeWithPodcastInfo("today", datePlayedMs = daysAgo(0))
-        val yesterday = episodeWithPodcastInfo("yesterday", datePlayedMs = daysAgo(1))
+        val today = episodeWithPodcastInfo(201L, "today", datePlayedMs = daysAgo(0))
+        val yesterday = episodeWithPodcastInfo(202L, "yesterday", datePlayedMs = daysAgo(1))
         every { getPlaybackHistoryWithPodcastInfoUseCase() } returns flowOf(listOf(yesterday, today))
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(userSettings(oneHandedMode = true))
 
@@ -153,7 +153,7 @@ class HistoryViewModelTest {
             val loadedState = if (firstState.isLoading) awaitItem() else firstState
 
             assertTrue(loadedState.oneHandedMode)
-            assertEquals(listOf("today", "yesterday"), loadedState.historyItems.map { it.id })
+            assertEquals(listOf(201L, 202L), loadedState.historyItems.map { it.id })
             assertEquals(
                 listOf(
                     HistoryListRow.SectionHeader(DateBucket.YESTERDAY),
@@ -182,11 +182,11 @@ class HistoryViewModelTest {
         coEvery { audioPlayerController.play(any()) } returns Unit
 
         // When: episode is clicked
-        viewModel.onAction(HistoryAction.OnEpisodeClick("test-episode-guid"))
+        viewModel.onAction(HistoryAction.OnEpisodeClick(301L))
         advanceUntilIdle()
 
         // Then: audio player should be called
-        coVerify { audioPlayerController.play("test-episode-guid") }
+        coVerify { audioPlayerController.play(301L) }
     }
 
     @Test
@@ -229,12 +229,14 @@ class HistoryViewModelTest {
         )
 
     private fun episodeWithPodcastInfo(
+        episodeId: Long,
         guid: String,
         datePlayedMs: Long?
     ): EpisodeWithPodcastInfo =
         EpisodeWithPodcastInfo(
             episode =
             EpisodePresentation(
+                episodeId = episodeId,
                 guid = guid,
                 title = "Episode $guid",
                 link = null,

@@ -53,7 +53,7 @@ class BackupImportPreservesDataAndroidTest {
             )
 
             val podcast = dao.getPodcastByUrl(url)
-            val episode = dao.getEpisodeByGuid("episode-1")
+            val episode = dao.getEpisodeByFeedAndGuid(url, "episode-1")
             assertEquals("Existing", podcast?.title)
             assertNotNull(episode)
             assertEquals(true, episode?.isFavorite)

@@ -23,11 +23,12 @@ import java.util.Date
         Index(value = ["downloadStatus", "pubDate"]),
         Index(value = ["isFavorite", "favoriteTimestamp"]),
         Index(value = ["isFavorite", "favoriteAddedAt"]),
-        Index(value = ["isPlayed", "datePlayed"])
+        Index(value = ["isPlayed", "datePlayed"]),
+        Index(value = ["podcastRssUrl", "guid"], unique = true)
     ]
 )
 data class EpisodeEntity(
-    @PrimaryKey val guid: String,
+    val guid: String,
     val podcastRssUrl: String,
     val title: String,
     val description: String,
@@ -46,5 +47,6 @@ data class EpisodeEntity(
     val datePlayed: Date? = null,
     val favoriteTimestamp: Long? = null,
     val favoriteAddedAt: Long? = null,
-    val duration: Long = 0
+    val duration: Long = 0,
+    @PrimaryKey(autoGenerate = true) val episodeId: Long = 0
 )

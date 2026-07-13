@@ -2,8 +2,6 @@ package com.example.pocastcloni.ui.home.feed
 
 import app.cash.turbine.test
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.model.FeedUpdateMode
-import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.model.PodcastUpdateSummary
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -31,7 +29,6 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -86,7 +83,7 @@ class HomeViewModelTest {
         every { getAllPodcasts() } returns flowOf(emptyList())
         every { getUserSettings() } returns flowOf(UserSettings())
         every { playerController.playerState } returns MutableStateFlow(
-            PlayerUiState(currentEpisodeGuid = null, isPlaying = false)
+            PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         every { dispatcherProvider.io } returns testDispatcher
 
@@ -185,7 +182,9 @@ class HomeViewModelTest {
     @Test
     fun `refresh sets isRefreshing to false after completion`() = runTest(testDispatcher) {
         coEvery { refreshPodcasts(forceFull = true) } returns PodcastUpdateSummary(
-            totalCount = 0, successfulCount = 0, failureCount = 0
+            totalCount = 0,
+            successfulCount = 0,
+            failureCount = 0
         )
 
         viewModel.refresh()

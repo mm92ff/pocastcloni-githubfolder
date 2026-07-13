@@ -250,7 +250,7 @@ private fun FavoriteEpisodeRow(
     onAction: (FavoritesAction) -> Unit
 ) {
     SwipeToDeleteFavorite(
-        onDelete = { onAction(FavoritesAction.OnEpisodeSwiped(item.episode.guid)) },
+        onDelete = { onAction(FavoritesAction.OnEpisodeSwiped(item.episode.episodeId)) },
         enabled = swipeEnabled
     ) {
         ListableEpisodeItem(
@@ -259,7 +259,7 @@ private fun FavoriteEpisodeRow(
             showPublishDate = true,
             transparentBackground = transparentBackground,
             onClick = {
-                onAction(FavoritesAction.OnEpisodeClick(item.episode.guid))
+                onAction(FavoritesAction.OnEpisodeClick(item.episode.episodeId))
             },
             onImageClick = { onAction(FavoritesAction.OnEpisodeImageClick(item)) }
         )
