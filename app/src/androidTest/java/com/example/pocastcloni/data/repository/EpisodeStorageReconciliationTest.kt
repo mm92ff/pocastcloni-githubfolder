@@ -10,6 +10,7 @@ import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.manager.PodcastDownloader
 import com.example.pocastcloni.data.remote.ItunesResponse
 import com.example.pocastcloni.data.remote.ItunesSearchApi
+import com.example.pocastcloni.data.worker.downloadStagingFiles
 import com.example.pocastcloni.di.DefaultDispatcherProvider
 import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
 import com.example.pocastcloni.util.Constants
@@ -113,11 +114,25 @@ class EpisodeStorageReconciliationTest {
                         guid = "downloading",
                         downloadStatus = DownloadStatus.DOWNLOADING,
                         pubDateMs = 1_000
+                    ),
+                    episode(
+                        guid = "active-queued",
+                        downloadStatus = DownloadStatus.QUEUED,
+                        pubDateMs = 500
                     )
                 )
             )
 
-            val correctedEntries = repository.reconcileEpisodeStorage()
+            val orphanQueued = requireNotNull(dao.getEpisodeByFeedAndGuid(FEED_URL, "queued"))
+            val activeQueued = requireNotNull(dao.getEpisodeByFeedAndGuid(FEED_URL, "active-queued"))
+            val orphanStaging = downloadStagingFiles(context.filesDir, orphanQueued.episodeId)
+            val activeStaging = downloadStagingFiles(context.filesDir, activeQueued.episodeId)
+            orphanStaging.partFile.apply { parentFile?.mkdirs(); writeText("partial") }
+            orphanStaging.metadataFile.writeText("metadata")
+            activeStaging.partFile.apply { parentFile?.mkdirs(); writeText("partial") }
+            activeStaging.metadataFile.writeText("metadata")
+
+            val correctedEntries = repository.reconcileEpisodeStorage(setOf(activeQueued.episodeId))
 
             assertEquals(3, correctedEntries)
             assertEquals(
@@ -139,6 +154,14 @@ class EpisodeStorageReconciliationTest {
                 DownloadStatus.NOT_DOWNLOADED,
                 dao.getEpisodeByFeedAndGuid(FEED_URL, "downloading")?.downloadStatus
             )
+            assertEquals(
+                DownloadStatus.QUEUED,
+                dao.getEpisodeByFeedAndGuid(FEED_URL, "active-queued")?.downloadStatus
+            )
+            assertEquals(false, orphanStaging.partFile.exists())
+            assertEquals(false, orphanStaging.metadataFile.exists())
+            assertEquals(true, activeStaging.partFile.exists())
+            assertEquals(true, activeStaging.metadataFile.exists())
         }
 
     private fun episode(

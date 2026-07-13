@@ -1,6 +1,7 @@
 package com.example.pocastcloni.util
 
 import androidx.work.Operation
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.google.common.util.concurrent.Futures
 import io.mockk.every
@@ -9,6 +10,7 @@ import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DownloadWorkIdentityTest {
@@ -56,5 +58,28 @@ class DownloadWorkIdentityTest {
         assertEquals("download_work_", legacyDownloadWorkName(""))
         assertEquals(202L, episodeIdFromDownloadWorkTag(downloadWorkName(202L)))
         assertEquals(null, episodeIdFromDownloadWorkTag(legacyDownloadWorkName("202")))
+    }
+
+    @Test
+    fun reconciliationKeepsOnlyActiveEpisodeTaggedWork() {
+        val running = workInfo(WorkInfo.State.RUNNING, downloadWorkName(101L))
+        val blocked = workInfo(WorkInfo.State.BLOCKED, downloadWorkName(202L))
+        val completed = workInfo(WorkInfo.State.SUCCEEDED, downloadWorkName(303L))
+        val untagged = workInfo(WorkInfo.State.ENQUEUED, Constants.DOWNLOAD_WORKER_TAG)
+
+        val activeIds = activeEpisodeIdsFromDownloadWork(listOf(running, blocked, completed, untagged))
+
+        assertEquals(setOf(101L, 202L), activeIds)
+        assertTrue(303L !in activeIds)
+    }
+
+    private fun workInfo(
+        state: WorkInfo.State,
+        vararg tags: String
+    ): WorkInfo {
+        val workInfo = mockk<WorkInfo>()
+        every { workInfo.state } returns state
+        every { workInfo.tags } returns tags.toSet()
+        return workInfo
     }
 }

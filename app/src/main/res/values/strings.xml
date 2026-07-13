@@ -116,6 +116,10 @@
     <string name="add">Add</string>
     <string name="download_started">Download started</string>
     <string name="download_removed">Download removed</string>
+    <string name="download_notification_channel_name">Episode downloads</string>
+    <string name="download_notification_title">Downloading episode</string>
+    <string name="download_notification_starting">Starting</string>
+    <string name="download_notification_progress">%1$d%%</string>
     <string name="auto_download_enabled">Auto-download enabled</string>
     <string name="auto_download_disabled">Auto-download disabled</string>
     <string name="auto_download_new_episodes">Automatically download new episodes</string>

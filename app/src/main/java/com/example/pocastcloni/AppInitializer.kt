@@ -14,7 +14,11 @@ import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.activeEpisodeIdsFromDownloadWork
+import com.example.pocastcloni.util.downloadWorkName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -91,16 +95,22 @@ constructor(
         }
     }
 
-    private fun reconcileEpisodeStorage() {
-        scope.launch(dispatcherProvider.io) {
-            runCatching {
-                val correctedEntries = podcastRepository.reconcileEpisodeStorage()
-                if (correctedEntries > 0) {
-                    Timber.i("Reconciled %d stale episode storage states on startup.", correctedEntries)
+    private suspend fun reconcileEpisodeStorage() {
+        try {
+            val workInfos = workManager.getWorkInfosByTag(Constants.DOWNLOAD_WORKER_TAG).await()
+            val activeEpisodeIds = activeEpisodeIdsFromDownloadWork(workInfos)
+            val correctedEntries =
+                podcastRepository.reconcileEpisodeStorage(activeEpisodeIds) { episodeId ->
+                    val currentWork = workManager.getWorkInfosByTag(downloadWorkName(episodeId)).await()
+                    episodeId in activeEpisodeIdsFromDownloadWork(currentWork)
                 }
-            }.onFailure { error ->
-                Timber.e(error, "Failed to reconcile local episode storage state.")
+            if (correctedEntries > 0) {
+                Timber.i("Reconciled %d stale episode storage states on startup.", correctedEntries)
             }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.e(error, "Failed to reconcile local episode storage state.")
         }
     }
 

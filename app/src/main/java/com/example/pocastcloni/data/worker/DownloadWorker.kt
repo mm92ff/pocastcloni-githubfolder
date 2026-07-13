@@ -1,18 +1,20 @@
 package com.example.pocastcloni.data.worker
 
-import android.content.ContentValues
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Build
-import android.os.Environment
 import android.os.SystemClock
-import android.provider.MediaStore
-import androidx.annotation.RequiresApi
-import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.example.pocastcloni.R
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.StatisticsRepository
@@ -21,25 +23,27 @@ import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.requireApprovedPodcastResource
 import com.example.pocastcloni.util.shouldUseLocalNetworkForResource
+import com.fasterxml.jackson.databind.ObjectMapper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import javax.inject.Named
 import timber.log.Timber
-import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import javax.inject.Named
+
+private const val DOWNLOAD_NOTIFICATION_ID_BASE = 2_000
+private const val DOWNLOAD_NOTIFICATION_ID_MASK = 0x3FFF
 
 @HiltWorker
+@Suppress("LongParameterList")
 class DownloadWorker
 @AssistedInject
 constructor(
-    @Assisted context: Context,
+    @Assisted private val context: Context,
     @Assisted params: WorkerParameters,
     private val podcastRepository: PodcastRepository,
     private val statsRepo: StatisticsRepository,
@@ -47,299 +51,305 @@ constructor(
     private val okHttpClient: OkHttpClient,
     @Named("LocalNetworkClient") private val localNetworkClient: OkHttpClient,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val objectMapper: ObjectMapper,
+    private val workManager: WorkManager
 ) : CoroutineWorker(context, params) {
-    companion object {
-        private const val PROGRESS_MIN_INTERVAL_MS = 250L
-        private const val MAX_RETRY_ATTEMPTS = 3
-    }
-
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount", "TooGenericExceptionCaught")
     override suspend fun doWork(): Result {
-        val url = inputData.getString(Constants.DOWNLOAD_WORKER_URL) ?: return Result.failure()
-        val fileName =
-            inputData.getString(Constants.DOWNLOAD_WORKER_FILENAME)
-                ?: Constants.DOWNLOAD_WORKER_DEFAULT_FILENAME
-
-        val requestedEpisodeId = inputData.getLong(Constants.DOWNLOAD_WORKER_EPISODE_ID, 0L)
-        val episode = if (requestedEpisodeId > 0L) {
-            podcastRepository.getEpisode(requestedEpisodeId)
-        } else {
-            inputData.getString(Constants.DOWNLOAD_WORKER_LEGACY_GUID)
-                ?.let { podcastRepository.resolveLegacyDownloadEpisode(it) }
-        } ?: return Result.failure()
+        val episode = resolveEpisode() ?: return Result.failure()
         val episodeId = episode.episodeId
-        val podcast = podcastRepository.getPodcastEntityByUrl(episode.podcastRssUrl)
-        runCatching {
+        val stagingFiles = downloadStagingFiles(applicationContext.filesDir, episodeId)
+        var publication: PendingDownloadPublication? = null
+        var committed = false
+        var retainPartialForRetry = false
+
+        try {
+            val podcast = podcastRepository.getPodcastEntityByUrl(episode.podcastRssUrl)
+            val url = episode.enclosureUrl
             requireApprovedPodcastResource(
                 feedUrl = episode.podcastRssUrl,
                 resourceUrl = url,
                 allowInsecureHttp = podcast?.allowInsecureHttp == true,
                 allowLocalNetwork = podcast?.allowLocalNetwork == true
             )
-        }.onFailure {
-            Timber.w(it, "Rejected unsafe download URL")
-            return Result.failure()
-        }
-
-        return try {
-            podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.DOWNLOADING, null)
-            setProgressAsync(workDataOf("progress" to 0f))
-
-            val saveToDownloads = try {
-                userPreferencesRepository.userSettingsFlow.first().saveToDownloadsFolder
-            } catch (e: Exception) {
-                Timber.w(e, "Could not read download location setting, using private storage")
-                false
-            }
-
-            val downloadClient = if (
-                shouldUseLocalNetworkForResource(
-                    episode.podcastRssUrl,
-                    url,
-                    podcast?.allowLocalNetwork == true
+            val started =
+                podcastRepository.compareAndSetDownloadStatus(
+                    episodeId = episodeId,
+                    expectedStatuses = listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING),
+                    status = DownloadStatus.DOWNLOADING,
+                    path = null
                 )
-            ) {
-                localNetworkClient
-            } else {
-                okHttpClient
-            }
+            if (!started) return Result.failure()
 
-            val (storagePath, fileSize) =
-                if (saveToDownloads && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    downloadViaMediaStore(url, fileName, downloadClient)
+            val podcastTitle = podcast?.title?.ifBlank { null } ?: context.getString(R.string.unknown_podcast_title)
+            val episodeTitle = episode.title.ifBlank { context.getString(R.string.no_episode_title) }
+            val mimeType = episode.type.ifBlank { DEFAULT_MIME_TYPE }
+            val fileName =
+                createDownloadFileName(
+                    podcastTitle = podcastTitle,
+                    episodeTitle = episodeTitle,
+                    mimeType = mimeType,
+                    sourceUrl = url,
+                    episodeId = episodeId
+                )
+            val progressReporter = DownloadProgressReporter()
+            setForeground(createForegroundInfo(episodeTitle, null))
+            setProgress(workDataOf(PROGRESS_KEY to 0f))
+
+            val saveToPublicDownloads = loadPublicDownloadPreference()
+            val baseClient =
+                if (
+                    shouldUseLocalNetworkForResource(
+                        episode.podcastRssUrl,
+                        url,
+                        podcast?.allowLocalNetwork == true
+                    )
+                ) {
+                    localNetworkClient
                 } else {
-                    val file = downloadToFile(url, fileName, saveToDownloads, downloadClient)
-                    Pair(file.absolutePath, file.length())
+                    okHttpClient
                 }
-
-            if (fileSize > 0) {
-                val isWifi = connectivityProvider.wifiStatus.value
-                statsRepo.addDownloadBytes(fileSize, isWifi)
-            }
-
-            setProgressAsync(workDataOf("progress" to 1f))
-            podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.DOWNLOADED, storagePath)
-            Result.success(workDataOf(Constants.DOWNLOAD_WORKER_OUTPUT_PATH to storagePath))
-        } catch (e: CancellationException) {
-            Timber.i("Download cancelled for episode %d", episodeId)
-            podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.NOT_DOWNLOADED, null)
-            throw e
-        } catch (e: Exception) {
-            Timber.e(e, "Download failed for episode $episodeId")
-            if (shouldRetryDownloadFailure(e, runAttemptCount, MAX_RETRY_ATTEMPTS)) {
-                podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.QUEUED, null)
-                Result.retry()
-            } else {
-                podcastRepository.updateDownloadStatus(episodeId, DownloadStatus.FAILED, null)
-                Result.failure()
-            }
-        }
-    }
-
-    // API 29+: writes to the public Downloads folder via MediaStore.
-    // Stores a content:// URI string in the DB instead of a file path.
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private suspend fun downloadViaMediaStore(
-        url: String,
-        fileName: String,
-        client: OkHttpClient
-    ): Pair<String, Long> {
-        val sanitizedFileName = sanitizeFileName(fileName)
-
-        if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) {
-            throw IOException("External storage not mounted, cannot save to Downloads folder")
-        }
-
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, sanitizedFileName)
-            put(MediaStore.Downloads.MIME_TYPE, "audio/mpeg")
-            put(MediaStore.Downloads.IS_PENDING, 1) // hidden until download completes
-        }
-        val itemUri = applicationContext.contentResolver
-            .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: throw IOException("MediaStore.insert failed for $sanitizedFileName")
-
-        return runWithCleanupOnFailure(
-            cleanup = { applicationContext.contentResolver.delete(itemUri, null, null) }
-        ) {
-            val output = applicationContext.contentResolver.openOutputStream(itemUri)
-                ?: throw IOException("Cannot open OutputStream for MediaStore URI")
-            val bytesCopied = try {
-                performDownload(
+            val downloadClient =
+                baseClient.newBuilder()
+                    .callTimeout(Constants.Network.DOWNLOAD_CALL_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+                    .build()
+            val resumableDownload =
+                ResumableDownload(
+                    client = downloadClient,
+                    metadataStore = DownloadResumeMetadataStore(objectMapper),
+                    maxBytes = Constants.SecurityLimits.MAX_DOWNLOAD_BYTES,
+                    storageReserveBytes = Constants.SecurityLimits.MIN_FREE_STORAGE_RESERVE_BYTES,
+                    storageRecheckIntervalBytes = Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
+                )
+            val transfer =
+                resumableDownload.download(
                     url = url,
-                    outputStream = output,
-                    availableBytes = ::externalDownloadsAvailableBytes,
-                    client = client
-                )
-            } catch (e: Exception) {
-                // Close stream if performDownload threw before its internal .use {} could close it
-                runCatching { output.close() }
-                throw e
-            }
-
-            // Mark file as visible in the Downloads folder
-            applicationContext.contentResolver.update(
-                itemUri,
-                ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
-                null,
-                null
-            )
-            Pair(itemUri.toString(), bytesCopied)
-        }
-    }
-
-    // Private storage or API < 29 public Downloads via file path.
-    private suspend fun downloadToFile(
-        url: String,
-        fileName: String,
-        saveToDownloads: Boolean,
-        client: OkHttpClient
-    ): File {
-        val dir = resolveDownloadDirectory(saveToDownloads)
-        val file = File(dir, sanitizeFileName(fileName))
-        return runWithCleanupOnFailure(cleanup = { file.delete() }) {
-            performDownload(
-                url = url,
-                outputStream = FileOutputStream(file),
-                availableBytes = { dir.usableSpace },
-                client = client
-            )
-            file
-        }
-    }
-
-    // Core download loop shared by both storage paths.
-    private suspend fun performDownload(
-        url: String,
-        outputStream: OutputStream,
-        availableBytes: () -> Long,
-        client: OkHttpClient
-    ): Long {
-        val request = Request.Builder().url(url).build()
-        val response = client.newCall(request).execute()
-        try {
-            if (!response.isSuccessful) {
-                throw DownloadHttpException(response.code)
-            }
-            val body = response.body ?: throw IOException("Response body is null")
-            val totalBytes = body.contentLength()
-            if (exceedsDownloadLimit(totalBytes)) {
-                throw DownloadSizeLimitException()
-            }
-            if (totalBytes >= 0L) {
-                ensureAvailableStorage(availableBytes(), totalBytes)
-            } else {
-                ensureAvailableStorage(
-                    availableBytes(),
-                    Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
-                )
-            }
-
-            Timber.d("Expected size: $totalBytes Bytes")
-
-            var bytesCopied = 0L
-            var nextStorageCheckAt = Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
-            var lastWrittenPercent = 0
-            var lastWriteAtMs = 0L
-
-            outputStream.use { output ->
-                val input: InputStream = body.byteStream()
-                val buffer = ByteArray(8 * 1024)
-
-                while (true) {
-                    if (isStopped) throw CancellationException("Worker stopped")
-                    val bytesRead = input.read(buffer)
-                    if (bytesRead == -1) break
-                    ensureDownloadChunkWithinLimit(bytesCopied, bytesRead)
-                    if (bytesCopied + bytesRead >= nextStorageCheckAt) {
-                        val remainingBytes = if (totalBytes >= 0L) {
-                            (totalBytes - bytesCopied).coerceAtLeast(bytesRead.toLong())
-                        } else {
-                            Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
-                        }
-                        ensureAvailableStorage(availableBytes(), remainingBytes)
-                        nextStorageCheckAt = bytesCopied + bytesRead +
-                            Constants.SecurityLimits.STORAGE_RECHECK_INTERVAL_BYTES
-                    }
-                    output.write(buffer, 0, bytesRead)
-                    bytesCopied += bytesRead
-
-                    if (totalBytes > 0L) {
-                        val percent =
-                            ((bytesCopied * 100L) / totalBytes).toInt().coerceIn(0, 100)
-                        val now = SystemClock.elapsedRealtime()
-                        val force = percent >= 100
-                        val timeOk = (now - lastWriteAtMs) >= PROGRESS_MIN_INTERVAL_MS
-                        if ((percent > lastWrittenPercent && timeOk) || force) {
-                            setProgressAsync(workDataOf("progress" to (percent / 100f)))
-                            lastWrittenPercent = percent
-                            lastWriteAtMs = now
-                        }
+                    stagingFiles = stagingFiles,
+                    availableBytes = { stagingFiles.partFile.parentFile?.usableSpace ?: 0L }
+                ) { downloadedBytes, totalBytes ->
+                    progressReporter.report(downloadedBytes, totalBytes)?.let { percent ->
+                        setProgress(workDataOf(PROGRESS_KEY to (percent / 100f)))
+                        setForeground(createForegroundInfo(episodeTitle, percent))
                     }
                 }
-                output.flush()
-            }
 
-            if (totalBytes > 0L && bytesCopied != totalBytes) {
-                val msg = "Download incomplete! Expected: $totalBytes, Got: $bytesCopied"
-                Timber.e(msg)
-                throw IOException(msg)
+            publication =
+                DownloadPublisher(applicationContext).prepare(
+                    stagedFile = transfer.partFile,
+                    fileName = fileName,
+                    mimeType = mimeType,
+                    saveToPublicDownloads = saveToPublicDownloads,
+                    attemptId = id
+                )
+            commitDownloadPublication(
+                publication = publication,
+                commitDatabase = { path ->
+                    podcastRepository.compareAndSetDownloadStatus(
+                        episodeId = episodeId,
+                        expectedStatuses = listOf(DownloadStatus.DOWNLOADING),
+                        status = DownloadStatus.DOWNLOADED,
+                        path = path
+                    )
+                },
+                compensateDatabase = { path ->
+                    podcastRepository.compareAndSetDownloadStatusAndPath(
+                        episodeId = episodeId,
+                        expectedStatus = DownloadStatus.DOWNLOADED,
+                        expectedPath = path,
+                        status = DownloadStatus.FAILED,
+                        path = null
+                    )
+                }
+            )
+            committed = true
+            stagingFiles.delete()
+            setProgress(workDataOf(PROGRESS_KEY to 1f))
+            setForeground(createForegroundInfo(episodeTitle, 100))
+            recordStatisticsBestEffort(publication.totalBytes)
+            return Result.success(workDataOf(Constants.DOWNLOAD_WORKER_OUTPUT_PATH to publication.path))
+        } catch (error: CancellationException) {
+            Timber.i("Download cancelled for episode %d", episodeId)
+            retainPartialForRetry =
+                handleDownloadWorkerCancellation(
+                    workManager = workManager,
+                    workId = id,
+                    episodeId = episodeId,
+                    repository = podcastRepository,
+                    stagingFiles = stagingFiles,
+                    publication = publication
+                )
+            if (!retainPartialForRetry) publication = null
+            throw error
+        } catch (error: Exception) {
+            Timber.e(error, "Download failed for episode %d", episodeId)
+            val shouldRetry = shouldRetryDownloadFailure(error, runAttemptCount, MAX_RETRY_ATTEMPTS)
+            if (shouldRetry) {
+                val transitionedToQueued =
+                    podcastRepository.compareAndSetDownloadStatus(
+                        episodeId = episodeId,
+                        expectedStatuses = listOf(DownloadStatus.DOWNLOADING),
+                        status = DownloadStatus.QUEUED,
+                        path = null
+                    )
+                retainPartialForRetry =
+                    transitionedToQueued && publication == null && stagingFiles.partFile.isFile
+                return if (transitionedToQueued) Result.retry() else Result.failure()
             }
-
-            return bytesCopied
+            podcastRepository.compareAndSetDownloadStatus(
+                episodeId = episodeId,
+                expectedStatuses = listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING),
+                status = DownloadStatus.FAILED,
+                path = null
+            )
+            return Result.failure()
         } finally {
-            response.close()
+            if (!committed && !retainPartialForRetry) {
+                runCatching { publication?.cleanup() }
+                stagingFiles.delete()
+            }
         }
     }
 
-    // Resolves the target directory for private storage or API < 29 public Downloads.
-    // API 29+ public Downloads is handled separately via MediaStore.
-    private fun resolveDownloadDirectory(saveToDownloads: Boolean): File {
-        if (!saveToDownloads) {
-            val dir = File(applicationContext.filesDir, Constants.DOWNLOADS_DIR)
-            dir.mkdirs()
-            return dir
+    private suspend fun resolveEpisode() =
+        inputData.getLong(Constants.DOWNLOAD_WORKER_EPISODE_ID, 0L)
+            .takeIf { it > 0L }
+            ?.let { podcastRepository.getEpisode(it) }
+            ?: inputData.getString(Constants.DOWNLOAD_WORKER_LEGACY_GUID)
+                ?.let { podcastRepository.resolveLegacyDownloadEpisode(it) }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun loadPublicDownloadPreference(): Boolean =
+        try {
+            userPreferencesRepository.userSettingsFlow.first().saveToDownloadsFolder
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.w(error, "Could not read download location setting, using private storage")
+            false
         }
 
-        // API < 29: public Downloads with WRITE_EXTERNAL_STORAGE permission
-        val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-        return if (
-            ContextCompat.checkSelfPermission(
-                applicationContext,
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            val publicDownloads =
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val appDir = File(publicDownloads, "Pocastcloni")
-            appDir.mkdirs()
-            appDir
-        } else {
-            Timber.w("WRITE_EXTERNAL_STORAGE not granted, falling back to private storage")
-            File(applicationContext.filesDir, Constants.DOWNLOADS_DIR).also { it.mkdirs() }
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun recordStatisticsBestEffort(totalBytes: Long) {
+        if (totalBytes <= 0L) return
+        try {
+            statsRepo.addDownloadBytes(totalBytes, connectivityProvider.wifiStatus.value)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.w(error, "Could not persist committed download statistics")
         }
     }
 
-    private fun externalDownloadsAvailableBytes(): Long =
-        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).usableSpace
+    private fun createForegroundInfo(
+        episodeTitle: String,
+        progressPercent: Int?
+    ): ForegroundInfo =
+        createDownloadForegroundInfo(
+            context = context,
+            workManager = workManager,
+            workId = id,
+            episodeTitle = episodeTitle,
+            progressPercent = progressPercent
+        )
 
-    private fun sanitizeFileName(fileName: String): String =
-        fileName
-            .replace("..", "")
-            .replace("/", "")
-            .replace("\\", "")
-            .replace(" ", "_")
-            .trim()
-            .ifEmpty { "episode_download" }
+    private companion object {
+        const val PROGRESS_KEY = "progress"
+        const val MAX_RETRY_ATTEMPTS = 3
+        const val DEFAULT_MIME_TYPE = "audio/mpeg"
+    }
 }
+
+internal fun createDownloadForegroundInfo(
+    context: Context,
+    workManager: WorkManager,
+    workId: UUID,
+    episodeTitle: String,
+    progressPercent: Int?
+): ForegroundInfo {
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                Constants.DOWNLOAD_NOTIFICATION_CHANNEL_ID,
+                context.getString(R.string.download_notification_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            )
+        )
+    }
+    val progressText =
+        progressPercent?.let { context.getString(R.string.download_notification_progress, it) }
+            ?: context.getString(R.string.download_notification_starting)
+    val notification: Notification =
+        NotificationCompat.Builder(context, Constants.DOWNLOAD_NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_download)
+            .setContentTitle(context.getString(R.string.download_notification_title))
+            .setContentText("$episodeTitle - $progressText")
+            .setProgress(PROGRESS_PERCENT_MAX, progressPercent ?: 0, progressPercent == null)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                context.getString(R.string.cancel),
+                workManager.createCancelPendingIntent(workId)
+            )
+            .build()
+    val notificationId = DOWNLOAD_NOTIFICATION_ID_BASE + (workId.hashCode() and DOWNLOAD_NOTIFICATION_ID_MASK)
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        ForegroundInfo(
+            notificationId,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+    } else {
+        ForegroundInfo(notificationId, notification)
+    }
+}
+
+internal class DownloadProgressReporter(
+    private val nowMillis: () -> Long = SystemClock::elapsedRealtime
+) {
+    private var lastReportAt = nowMillis()
+    private var lastPercent = 0
+
+    fun report(
+        downloadedBytes: Long,
+        totalBytes: Long?
+    ): Int? {
+        if (totalBytes == null || totalBytes <= 0L) return null
+        val percent =
+            ((downloadedBytes * PROGRESS_PERCENT_MAX) / totalBytes)
+                .toInt()
+                .coerceIn(0, PROGRESS_PERCENT_MAX - 1)
+        val now = nowMillis()
+        val enoughTimePassed = now - lastReportAt >= PROGRESS_MIN_INTERVAL_MS
+        val enoughProgress = percent - lastPercent >= PROGRESS_MIN_PERCENTAGE_POINTS
+        return if (enoughTimePassed && enoughProgress) {
+            lastReportAt = now
+            lastPercent = percent
+            percent
+        } else {
+            null
+        }
+    }
+
+    private companion object {
+        const val PROGRESS_MIN_INTERVAL_MS = 1_000L
+        const val PROGRESS_MIN_PERCENTAGE_POINTS = 1
+    }
+}
+
+private const val PROGRESS_PERCENT_MAX = 100
 
 internal fun exceedsDownloadLimit(bytes: Long): Boolean =
     bytes > Constants.SecurityLimits.MAX_DOWNLOAD_BYTES
 
 internal fun ensureDownloadChunkWithinLimit(
     bytesCopied: Long,
-    nextChunkBytes: Int
+    nextChunkBytes: Int,
+    maxBytes: Long = Constants.SecurityLimits.MAX_DOWNLOAD_BYTES
 ) {
-    if (nextChunkBytes < 0 || bytesCopied > Constants.SecurityLimits.MAX_DOWNLOAD_BYTES - nextChunkBytes) {
+    if (nextChunkBytes < 0 || bytesCopied > maxBytes - nextChunkBytes) {
         throw DownloadSizeLimitException()
     }
 }
@@ -348,10 +358,10 @@ internal class DownloadSizeLimitException : IOException("Download exceeds the ma
 
 internal fun ensureAvailableStorage(
     availableBytes: Long,
-    requiredBytes: Long
+    requiredBytes: Long,
+    reserveBytes: Long = Constants.SecurityLimits.MIN_FREE_STORAGE_RESERVE_BYTES
 ) {
-    val reserve = Constants.SecurityLimits.MIN_FREE_STORAGE_RESERVE_BYTES
-    if (availableBytes < reserve || requiredBytes < 0L || requiredBytes > availableBytes - reserve) {
+    if (availableBytes < reserveBytes || requiredBytes < 0L || requiredBytes > availableBytes - reserveBytes) {
         throw DownloadStorageException()
     }
 }
@@ -379,7 +389,10 @@ internal fun shouldRetryDownloadFailure(
 ): Boolean {
     if (runAttemptCount >= maxRetryAttempts) return false
     return when (error) {
-        is DownloadSizeLimitException, is DownloadStorageException -> false
+        is DownloadSizeLimitException,
+        is DownloadStorageException,
+        is DownloadProtocolException,
+        is StaleDownloadWorkerException -> false
         is DownloadHttpException ->
             error.statusCode == 408 || error.statusCode == 429 || error.statusCode >= 500
         is IOException -> true

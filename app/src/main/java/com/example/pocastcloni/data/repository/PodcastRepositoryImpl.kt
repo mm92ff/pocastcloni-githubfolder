@@ -15,6 +15,7 @@ import com.example.pocastcloni.data.local.PodcastSortUpdate
 import com.example.pocastcloni.data.manager.PodcastDownloader
 import com.example.pocastcloni.data.remote.ItunesPodcastDto
 import com.example.pocastcloni.data.remote.ItunesSearchApi
+import com.example.pocastcloni.data.worker.downloadStagingFiles
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.Podcast
@@ -240,10 +241,11 @@ constructor(
         withContext(dispatcherProvider.io) {
             val resolution = resolveLegacyDownloadCandidates(podcastDao.getEpisodesByLegacyGuid(guid))
             resolution.transientEpisodeIdsToReset.forEach { episodeId ->
-                podcastDao.updateDownloadStatus(
-                    episodeId,
-                    DownloadStatus.NOT_DOWNLOADED,
-                    null
+                podcastDao.compareAndSetDownloadStatus(
+                    episodeId = episodeId,
+                    expectedStatuses = listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING),
+                    status = DownloadStatus.NOT_DOWNLOADED,
+                    path = null
                 )
             }
             resolution.episode
@@ -398,6 +400,33 @@ constructor(
         withContext(dispatcherProvider.io) { podcastDao.updateDownloadStatus(episodeId, status, path) }
     }
 
+    override suspend fun compareAndSetDownloadStatus(
+        episodeId: Long,
+        expectedStatuses: List<DownloadStatus>,
+        status: DownloadStatus,
+        path: String?
+    ): Boolean =
+        withContext(dispatcherProvider.io) {
+            podcastDao.compareAndSetDownloadStatus(episodeId, expectedStatuses, status, path) == 1
+        }
+
+    override suspend fun compareAndSetDownloadStatusAndPath(
+        episodeId: Long,
+        expectedStatus: DownloadStatus,
+        expectedPath: String?,
+        status: DownloadStatus,
+        path: String?
+    ): Boolean =
+        withContext(dispatcherProvider.io) {
+            podcastDao.compareAndSetDownloadStatusAndPath(
+                episodeId,
+                expectedStatus,
+                expectedPath,
+                status,
+                path
+            ) == 1
+        }
+
     override suspend fun getPodcastEntityByUrl(url: String): PodcastEntity? =
         withContext(dispatcherProvider.io) {
             podcastDao.getPodcastByUrl(url)
@@ -427,12 +456,34 @@ constructor(
         podcastDao.updatePodcastNewFlag(rssUrl, hasNew)
     }
 
-    override suspend fun reconcileEpisodeStorage(): Int {
+    override suspend fun reconcileEpisodeStorage(
+        activeDownloadEpisodeIds: Set<Long>,
+        isDownloadWorkActive: suspend (episodeId: Long) -> Boolean
+    ): Int {
         return withContext(dispatcherProvider.io) {
-            var correctedEntries =
-                podcastDao.bulkResetDownloadStates(
+            var correctedEntries = 0
+            val transientDownloads =
+                podcastDao.getEpisodeDownloadStates(
                     listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING)
                 )
+            transientDownloads.forEach { row ->
+                correctedEntries +=
+                    reconcileTransientDownloadState(
+                        initiallyActive = row.episodeId in activeDownloadEpisodeIds,
+                        isWorkActive = { isDownloadWorkActive(row.episodeId) },
+                        compareAndReset = {
+                            podcastDao.compareAndSetDownloadStatus(
+                                episodeId = row.episodeId,
+                                expectedStatuses = listOf(row.downloadStatus),
+                                status = DownloadStatus.NOT_DOWNLOADED,
+                                path = null
+                            ) == 1
+                        },
+                        deleteStaging = {
+                            downloadStagingFiles(context.filesDir, row.episodeId).delete()
+                        }
+                    )
+            }
 
             val brokenDownloads =
                 podcastDao
@@ -451,10 +502,15 @@ constructor(
                     }
 
             brokenDownloads.forEach { row ->
-                podcastDao.updateDownloadStatus(row.episodeId, DownloadStatus.NOT_DOWNLOADED, null)
+                correctedEntries +=
+                    podcastDao.compareAndSetDownloadStatusAndPath(
+                        episodeId = row.episodeId,
+                        expectedStatus = DownloadStatus.DOWNLOADED,
+                        expectedPath = row.downloadPath,
+                        status = DownloadStatus.NOT_DOWNLOADED,
+                        path = null
+                    )
             }
-
-            correctedEntries += brokenDownloads.size
             correctedEntries
         }
     }

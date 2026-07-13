@@ -169,6 +169,9 @@ app/src/main/java/com/example/pocastcloni/
 - RSS feed parsing supports smart stream updates and full refresh mode.
 - On Android 10 and newer, saving to the public Downloads folder uses
   MediaStore.
+- Episode download work requires a connected network. `CONNECTED` intentionally
+  allows both metered mobile data and unmetered Wi-Fi; Android may defer work for
+  other system constraints such as low storage.
 - Downloaded episodes fall back to streaming when the local file is missing.
 - The bottom navigation can be hidden in Clean Mode and revealed with an upward
   swipe.

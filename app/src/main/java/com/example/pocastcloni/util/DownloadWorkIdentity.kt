@@ -1,6 +1,7 @@
 package com.example.pocastcloni.util
 
 import androidx.work.WorkManager
+import androidx.work.WorkInfo
 import kotlinx.coroutines.guava.await
 
 fun downloadWorkName(episodeId: Long): String {
@@ -15,6 +16,19 @@ fun episodeIdFromDownloadWorkTag(tag: String): Long? =
     tag.takeIf { it.startsWith(Constants.DOWNLOAD_WORKER_ID_UNIQUE_PREFIX) }
         ?.removePrefix(Constants.DOWNLOAD_WORKER_ID_UNIQUE_PREFIX)
         ?.toLongOrNull()
+
+fun activeEpisodeIdsFromDownloadWork(workInfos: List<WorkInfo>): Set<Long> =
+    workInfos
+        .asSequence()
+        .filter {
+            it.state == WorkInfo.State.ENQUEUED ||
+                it.state == WorkInfo.State.BLOCKED ||
+                it.state == WorkInfo.State.RUNNING
+        }
+        .mapNotNull { workInfo ->
+            workInfo.tags.firstNotNullOfOrNull(::episodeIdFromDownloadWorkTag)
+        }
+        .toSet()
 
 fun episodeDownloadWorkNames(
     episodeId: Long,

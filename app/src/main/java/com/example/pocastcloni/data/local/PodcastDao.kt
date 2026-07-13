@@ -567,6 +567,43 @@ interface PodcastDao {
     @Query(
         """
         UPDATE episodes
+        SET downloadStatus = :status,
+            downloadPath = :path
+        WHERE episodeId = :episodeId
+          AND downloadStatus IN (:expectedStatuses)
+        """
+    )
+    suspend fun compareAndSetDownloadStatus(
+        episodeId: Long,
+        expectedStatuses: List<DownloadStatus>,
+        status: DownloadStatus,
+        path: String?
+    ): Int
+
+    @Query(
+        """
+        UPDATE episodes
+        SET downloadStatus = :status,
+            downloadPath = :path
+        WHERE episodeId = :episodeId
+          AND downloadStatus = :expectedStatus
+          AND (
+              (downloadPath IS NULL AND :expectedPath IS NULL)
+              OR downloadPath = :expectedPath
+          )
+        """
+    )
+    suspend fun compareAndSetDownloadStatusAndPath(
+        episodeId: Long,
+        expectedStatus: DownloadStatus,
+        expectedPath: String?,
+        status: DownloadStatus,
+        path: String?
+    ): Int
+
+    @Query(
+        """
+        UPDATE episodes
         SET downloadStatus = :newStatus,
             downloadPath = NULL
         WHERE downloadStatus IN (:oldStatuses)

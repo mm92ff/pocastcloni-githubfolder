@@ -2,6 +2,11 @@ package com.example.pocastcloni.data.repository
 
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
+import com.example.pocastcloni.data.worker.DownloadWorkStateCoordinator
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -34,6 +39,60 @@ class EpisodeMaintenanceTest {
         assertTrue(shouldResetDownloadState(DownloadStatus.DOWNLOADED, "missing.mp3") { false })
         assertFalse(shouldResetDownloadState(DownloadStatus.DOWNLOADED, "ok.mp3") { true })
         assertFalse(shouldResetDownloadState(DownloadStatus.NOT_DOWNLOADED, null) { false })
+    }
+
+    @Test
+    fun reconcileTransientDownloadState_keepsStagingWhenCasFails() = runTest {
+        var stagingDeleted = false
+
+        val corrected =
+            reconcileTransientDownloadState(
+                initiallyActive = false,
+                isWorkActive = { false },
+                compareAndReset = { false },
+                deleteStaging = { stagingDeleted = true }
+            )
+
+        assertEquals(0, corrected)
+        assertFalse(stagingDeleted)
+    }
+
+    @Test
+    fun reconcileTransientDownloadState_revalidatesWorkQueuedAfterSnapshot() = runTest {
+        var workActive = false
+        var casCalled = false
+        var stagingDeleted = false
+        val enqueueLocked = CompletableDeferred<Unit>()
+        val releaseEnqueue = CompletableDeferred<Unit>()
+        val enqueue =
+            launch {
+                DownloadWorkStateCoordinator.withLock {
+                    workActive = true
+                    enqueueLocked.complete(Unit)
+                    releaseEnqueue.await()
+                }
+            }
+        enqueueLocked.await()
+
+        val reconciliation =
+            async {
+                reconcileTransientDownloadState(
+                    initiallyActive = false,
+                    isWorkActive = { workActive },
+                    compareAndReset = {
+                        casCalled = true
+                        true
+                    },
+                    deleteStaging = { stagingDeleted = true }
+                )
+            }
+        assertFalse(reconciliation.isCompleted)
+        releaseEnqueue.complete(Unit)
+
+        assertEquals(0, reconciliation.await())
+        assertFalse(casCalled)
+        assertFalse(stagingDeleted)
+        enqueue.join()
     }
 
     private fun episode(

@@ -1,30 +1,22 @@
 package com.example.pocastcloni.domain.usecase.episode
 
 import android.content.Context
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
-import com.example.pocastcloni.data.worker.DownloadWorker
+import com.example.pocastcloni.data.worker.cancelAndDeleteEpisodeDownload
+import com.example.pocastcloni.data.worker.queueEpisodeDownload
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.util.Constants
-import com.example.pocastcloni.util.cancelEpisodeDownloadWork
-import com.example.pocastcloni.util.cancelLegacyDownloadWork
-import com.example.pocastcloni.util.downloadWorkName
 import com.example.pocastcloni.util.episodeIdFromDownloadWorkTag
-import com.example.pocastcloni.util.requireApprovedPodcastResource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import androidx.core.net.toUri
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -71,54 +63,10 @@ constructor(
     }
 
     private suspend fun startDownload(episode: EpisodeEntity) {
-        val podcast = podcastRepository.getPodcastEntityByUrl(episode.podcastRssUrl)
-        requireApprovedPodcastResource(
-            feedUrl = episode.podcastRssUrl,
-            resourceUrl = episode.enclosureUrl,
-            allowInsecureHttp = podcast?.allowInsecureHttp == true,
-            allowLocalNetwork = podcast?.allowLocalNetwork == true
-        )
-        podcastRepository.updateDownloadStatus(episode.episodeId, DownloadStatus.QUEUED, null)
-
-        val podcastTitle = podcastRepository.getPodcast(episode.podcastRssUrl)
-            ?.title?.ifBlank { null } ?: "Unknown_Podcast"
-        val episodeTitle = episode.title.ifBlank { null } ?: "Unknown_Episode"
-        val fileName = "${podcastTitle}_${episodeTitle}${Constants.DOWNLOAD_FILE_EXTENSION}"
-        val uniqueWorkName = downloadWorkName(episode.episodeId)
-
-        workManager.cancelLegacyDownloadWork(episode.guid)
-
-        val request =
-            OneTimeWorkRequestBuilder<DownloadWorker>()
-                .setInputData(
-                    workDataOf(
-                        Constants.DOWNLOAD_WORKER_EPISODE_ID to episode.episodeId,
-                        Constants.DOWNLOAD_WORKER_URL to episode.enclosureUrl,
-                        Constants.DOWNLOAD_WORKER_FILENAME to fileName
-                    )
-                )
-                .addTag(Constants.DOWNLOAD_WORKER_TAG)
-                .addTag(uniqueWorkName) // Tagging with unique name to easily find guid
-                .build()
-
-        workManager.enqueueUniqueWork(
-            uniqueWorkName,
-            ExistingWorkPolicy.KEEP,
-            request
-        )
+        queueEpisodeDownload(workManager, podcastRepository, episode)
     }
 
     private suspend fun deleteDownload(episode: EpisodeEntity) {
-        workManager.cancelEpisodeDownloadWork(episode.episodeId, episode.guid)
-        episode.downloadPath?.let { path ->
-            runCatching {
-                if (path.startsWith("content://")) {
-                    context.contentResolver.delete(path.toUri(), null, null)
-                } else {
-                    File(path).delete()
-                }
-            }
-        }
-        podcastRepository.updateDownloadStatus(episode.episodeId, DownloadStatus.NOT_DOWNLOADED, null)
+        cancelAndDeleteEpisodeDownload(context, workManager, podcastRepository, episode)
     }
 }

@@ -122,6 +122,21 @@ interface PodcastRepository {
         path: String?
     )
 
+    suspend fun compareAndSetDownloadStatus(
+        episodeId: Long,
+        expectedStatuses: List<DownloadStatus>,
+        status: DownloadStatus,
+        path: String?
+    ): Boolean
+
+    suspend fun compareAndSetDownloadStatusAndPath(
+        episodeId: Long,
+        expectedStatus: DownloadStatus,
+        expectedPath: String?,
+        status: DownloadStatus,
+        path: String?
+    ): Boolean
+
     // --- SYNC SUPPORT ---
     suspend fun getPodcastEntityByUrl(url: String): PodcastEntity?
 
@@ -139,7 +154,12 @@ interface PodcastRepository {
     )
 
     // --- MAINTENANCE ---
-    suspend fun reconcileEpisodeStorage(): Int
+    suspend fun reconcileEpisodeStorage(
+        activeDownloadEpisodeIds: Set<Long> = emptySet(),
+        isDownloadWorkActive: suspend (episodeId: Long) -> Boolean = {
+            it in activeDownloadEpisodeIds
+        }
+    ): Int
 
     suspend fun pruneLibrary(limitPerPodcast: Int)
 

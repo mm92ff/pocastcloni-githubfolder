@@ -13,6 +13,7 @@ object Constants {
     const val DOWNLOAD_WORKER_DEFAULT_FILENAME = "temp.mp3"
     const val DOWNLOADS_DIR = "downloads"
     const val DOWNLOAD_FILE_EXTENSION = ".mp3"
+    const val DOWNLOAD_NOTIFICATION_CHANNEL_ID = "episode_downloads"
 
     // Preferences Keys moved to top level
     const val KEY_FEED_UPDATE_MODE = "feed_update_mode"
@@ -238,6 +239,7 @@ object Constants {
         const val CONNECT_TIMEOUT_SECONDS = 30L
         const val READ_TIMEOUT_SECONDS = 30L
         const val WRITE_TIMEOUT_SECONDS = 30L
+        const val DOWNLOAD_CALL_TIMEOUT_MINUTES = 120L
 
         // TODO: This placeholder base URL is problematic. RSS URLs should be user-provided per podcast.
         // Consider refactoring RSS client to not require a fixed base URL.
