@@ -5,7 +5,75 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 object AppDatabaseMigrations {
 
-    internal val MIGRATION_12_13 = object : Migration(12, 13) {
+    /** Oldest schema backed by an authentic tracked release schema (v3.51-beta). */
+    internal const val SUPPORTED_SCHEMA_FLOOR = 10
+
+    private const val SCHEMA_VERSION_12 = 12
+    private const val SCHEMA_VERSION_13 = 13
+    private const val SCHEMA_VERSION_14 = 14
+    private const val SCHEMA_VERSION_15 = 15
+    private const val SCHEMA_VERSION_16 = 16
+
+    private val createEpisodesV15Sql =
+        """
+        CREATE TABLE IF NOT EXISTS `episodes_new` (
+            `guid` TEXT NOT NULL,
+            `podcastRssUrl` TEXT NOT NULL,
+            `title` TEXT NOT NULL,
+            `description` TEXT NOT NULL,
+            `pubDate` INTEGER,
+            `link` TEXT NOT NULL,
+            `enclosureUrl` TEXT NOT NULL,
+            `type` TEXT NOT NULL,
+            `fileSize` INTEGER NOT NULL,
+            `isPlayed` INTEGER NOT NULL,
+            `playbackPositionMs` INTEGER NOT NULL,
+            `downloadStatus` TEXT NOT NULL,
+            `downloadPath` TEXT,
+            `isFavorite` INTEGER NOT NULL,
+            `datePlayed` INTEGER,
+            `favoriteTimestamp` INTEGER,
+            `favoriteAddedAt` INTEGER,
+            `duration` INTEGER NOT NULL,
+            `episodeId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            FOREIGN KEY(`podcastRssUrl`) REFERENCES `podcasts`(`rssUrl`)
+                ON UPDATE NO ACTION ON DELETE CASCADE
+        )
+        """.trimIndent()
+
+    private val copyEpisodesToV15Sql =
+        """
+        INSERT INTO `episodes_new` (
+            `guid`, `podcastRssUrl`, `title`, `description`, `pubDate`, `link`,
+            `enclosureUrl`, `type`, `fileSize`, `isPlayed`, `playbackPositionMs`,
+            `downloadStatus`, `downloadPath`, `isFavorite`, `datePlayed`,
+            `favoriteTimestamp`, `favoriteAddedAt`, `duration`, `episodeId`
+        )
+        SELECT
+            `guid`, `podcastRssUrl`, `title`, `description`, `pubDate`, `link`,
+            `enclosureUrl`, `type`, `fileSize`, `isPlayed`, `playbackPositionMs`,
+            `downloadStatus`, `downloadPath`, `isFavorite`, `datePlayed`,
+            `favoriteTimestamp`, `favoriteAddedAt`, `duration`, `rowid`
+        FROM `episodes`
+        """.trimIndent()
+
+    private val episodeIndexesV15Sql =
+        listOf(
+            "CREATE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl` " +
+                "ON `episodes` (`podcastRssUrl`)",
+            "CREATE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl_pubDate` " +
+                "ON `episodes` (`podcastRssUrl`, `pubDate`)",
+            "CREATE INDEX IF NOT EXISTS `index_episodes_downloadStatus_pubDate` " +
+                "ON `episodes` (`downloadStatus`, `pubDate`)",
+            "CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteTimestamp` " +
+                "ON `episodes` (`isFavorite`, `favoriteTimestamp`)",
+            "CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteAddedAt` " +
+                "ON `episodes` (`isFavorite`, `favoriteAddedAt`)",
+            "CREATE INDEX IF NOT EXISTS `index_episodes_isPlayed_datePlayed` " +
+                "ON `episodes` (`isPlayed`, `datePlayed`)"
+        )
+
+    internal val MIGRATION_12_13 = object : Migration(SCHEMA_VERSION_12, SCHEMA_VERSION_13) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 """
@@ -19,7 +87,7 @@ object AppDatabaseMigrations {
         }
     }
 
-    internal val MIGRATION_13_14 = object : Migration(13, 14) {
+    internal val MIGRATION_13_14 = object : Migration(SCHEMA_VERSION_13, SCHEMA_VERSION_14) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 "ALTER TABLE `podcasts` ADD COLUMN `allowLocalNetwork` INTEGER NOT NULL DEFAULT 0"
@@ -27,60 +95,14 @@ object AppDatabaseMigrations {
         }
     }
 
-    internal val MIGRATION_14_15 = object : Migration(14, 15) {
+    internal val MIGRATION_14_15 = object : Migration(SCHEMA_VERSION_14, SCHEMA_VERSION_15) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("DROP TABLE IF EXISTS `episodes_fts`")
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS `episodes_new` (
-                    `guid` TEXT NOT NULL,
-                    `podcastRssUrl` TEXT NOT NULL,
-                    `title` TEXT NOT NULL,
-                    `description` TEXT NOT NULL,
-                    `pubDate` INTEGER,
-                    `link` TEXT NOT NULL,
-                    `enclosureUrl` TEXT NOT NULL,
-                    `type` TEXT NOT NULL,
-                    `fileSize` INTEGER NOT NULL,
-                    `isPlayed` INTEGER NOT NULL,
-                    `playbackPositionMs` INTEGER NOT NULL,
-                    `downloadStatus` TEXT NOT NULL,
-                    `downloadPath` TEXT,
-                    `isFavorite` INTEGER NOT NULL,
-                    `datePlayed` INTEGER,
-                    `favoriteTimestamp` INTEGER,
-                    `favoriteAddedAt` INTEGER,
-                    `duration` INTEGER NOT NULL,
-                    `episodeId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                    FOREIGN KEY(`podcastRssUrl`) REFERENCES `podcasts`(`rssUrl`)
-                        ON UPDATE NO ACTION ON DELETE CASCADE
-                )
-                """.trimIndent()
-            )
-            db.execSQL(
-                """
-                INSERT INTO `episodes_new` (
-                    `guid`, `podcastRssUrl`, `title`, `description`, `pubDate`, `link`,
-                    `enclosureUrl`, `type`, `fileSize`, `isPlayed`, `playbackPositionMs`,
-                    `downloadStatus`, `downloadPath`, `isFavorite`, `datePlayed`,
-                    `favoriteTimestamp`, `favoriteAddedAt`, `duration`, `episodeId`
-                )
-                SELECT
-                    `guid`, `podcastRssUrl`, `title`, `description`, `pubDate`, `link`,
-                    `enclosureUrl`, `type`, `fileSize`, `isPlayed`, `playbackPositionMs`,
-                    `downloadStatus`, `downloadPath`, `isFavorite`, `datePlayed`,
-                    `favoriteTimestamp`, `favoriteAddedAt`, `duration`, `rowid`
-                FROM `episodes`
-                """.trimIndent()
-            )
+            db.execSQL(createEpisodesV15Sql)
+            db.execSQL(copyEpisodesToV15Sql)
             db.execSQL("DROP TABLE `episodes`")
             db.execSQL("ALTER TABLE `episodes_new` RENAME TO `episodes`")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl` ON `episodes` (`podcastRssUrl`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl_pubDate` ON `episodes` (`podcastRssUrl`, `pubDate`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_downloadStatus_pubDate` ON `episodes` (`downloadStatus`, `pubDate`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteTimestamp` ON `episodes` (`isFavorite`, `favoriteTimestamp`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isFavorite_favoriteAddedAt` ON `episodes` (`isFavorite`, `favoriteAddedAt`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_episodes_isPlayed_datePlayed` ON `episodes` (`isPlayed`, `datePlayed`)")
+            episodeIndexesV15Sql.forEach { sql -> db.execSQL(sql) }
             db.execSQL(
                 "CREATE UNIQUE INDEX IF NOT EXISTS `index_episodes_podcastRssUrl_guid` " +
                     "ON `episodes` (`podcastRssUrl`, `guid`)"
@@ -113,7 +135,7 @@ object AppDatabaseMigrations {
         }
     }
 
-    internal val MIGRATION_15_16 = object : Migration(15, 16) {
+    internal val MIGRATION_15_16 = object : Migration(SCHEMA_VERSION_15, SCHEMA_VERSION_16) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 "UPDATE `podcasts` SET `lastModifiedHeader` = NULL, `eTagHeader` = NULL"
@@ -122,8 +144,9 @@ object AppDatabaseMigrations {
     }
 
     // -------------------------------------------------------------------------
-    // Legacy migrations (v1–v9 → v10)
-    // All pre-v10 databases are rebuilt in one pass to the v10 schema.
+    // Best-effort legacy migrations (v1–v9 → v10).
+    // Authentic schemas/DB fixtures for these versions are not tracked, so they are not
+    // part of the guaranteed release upgrade floor. Keep the paths for legacy recovery.
     // Do NOT modify these — they are the committed migration history.
     // -------------------------------------------------------------------------
     private val legacyMigrations: Array<Migration> = (1..9).map { from ->

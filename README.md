@@ -65,7 +65,7 @@ Latest release:
 | Media | Media3 ExoPlayer, MediaSession, foreground playback service |
 | Database | Room with exported migration schemas |
 | Preferences | DataStore Preferences |
-| Networking | Retrofit, OkHttp, Jackson XML |
+| Networking | Retrofit, OkHttp, streaming XmlPullParser, Jackson JSON |
 | Images | Coil Compose, Coil SVG |
 | Background Work | WorkManager with Hilt workers |
 | Dependency Injection | Hilt |
@@ -117,6 +117,51 @@ Windows:
 .\gradlew.bat testDebugUnitTest
 .\gradlew.bat detekt
 ```
+
+### Release Gates
+
+The `releaseSmoke` variant inherits the complete minified `release` configuration and
+only replaces the signing configuration with the Android debug key. It is intended for
+offline R8 and device smoke tests, never for distribution.
+
+Run the fast quality gates independently so a timeout is attributable to one tool:
+
+```powershell
+.\gradlew.bat --dependency-verification=strict :app:testDebugUnitTest
+.\gradlew.bat --dependency-verification=strict :app:detekt
+.\gradlew.bat --dependency-verification=strict :app:ktlintCheck
+.\gradlew.bat --dependency-verification=strict :app:lintRelease
+.\gradlew.bat --dependency-verification=strict :app:assembleReleaseSmoke
+```
+
+The versioned release gate verifies the merged manifest allowlist, builds the unsigned
+release APK and records APK SHA-256/size plus R8 mapping path/size:
+
+```powershell
+.\gradlew.bat --dependency-verification=strict :app:releaseGate
+Get-Content app\build\reports\release-gate\release-artifacts.properties
+```
+
+The generated APK, mapping and report stay below ignored `build/` directories. The
+unsigned `assembleRelease` output is not installable as a production update; use the
+local fail-closed signing helper for a distributable APK.
+
+The German resource catalog is intentionally partial and falls back to the complete
+English default catalog. `MissingTranslation` is therefore disabled explicitly; all
+other Lint errors remain fatal.
+
+On an emulator, run only the focused minified smoke package during normal development:
+
+```powershell
+.\gradlew.bat -PinstrumentationBuildType=releaseSmoke :app:connectedReleaseSmokeAndroidTest `
+  "-Pandroid.testInstrumentationRunnerArguments.package=com.example.pocastcloni.release"
+```
+
+It launches the minified app, opens Settings, exports and re-imports a backup through
+Android's document picker, and adds a loopback RSS feed with explicit HTTP and local-network
+consent. The journey then returns Home, opens the locally served episode, starts playback,
+and opens the full player. Historical migrations remain covered by their focused test suite;
+full instrumentation and Macrobenchmarks are final release-candidate gates.
 
 ### Performance Benchmarks
 
@@ -181,6 +226,11 @@ app/src/main/java/com/example/pocastcloni/
 - Local download paths and download status are device-specific and are never
   exported or overwritten during restore. Version 1 object backups and legacy
   JSON arrays of podcast URLs remain importable.
+- Guaranteed in-place database upgrades start at release `v3.51-beta` (Room schema
+  10). Authentic schemas 10 through 16 are tracked and migrated to the current schema
+  in parameterized tests. Recovery migrations for schemas 1 through 9 remain in the
+  app, but those versions have no authentic tracked release schema or database fixture
+  and are therefore best-effort rather than a claimed support guarantee.
 
 ## Contributing
 

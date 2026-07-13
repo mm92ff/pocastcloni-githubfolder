@@ -80,7 +80,8 @@ class RssSmartSyncParserSecurityTest {
                     <guid>episode-1</guid>
                     <enclosure url="https://example.com/episode.mp3" type="audio/mpeg" length="42"/>
                 </item>
-            </channel></rss>""".trimIndent()
+            </channel></rss>
+            """.trimIndent()
         )
 
         assertEquals("Feed <description>", result.channel.description)
@@ -112,5 +113,4 @@ class RssSmartSyncParserSecurityTest {
         maxTokens: Int = 1_000,
         maxExpandedChars: Long = 10_000
     ) = RssSmartSyncParser.Limits(maxDepth, maxTokens, maxExpandedChars)
-
 }

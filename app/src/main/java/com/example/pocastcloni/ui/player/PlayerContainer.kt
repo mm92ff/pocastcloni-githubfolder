@@ -59,6 +59,8 @@ fun PlayerContainer(
 }
 
 @Composable
+// This UI-emitting composable follows Compose's PascalCase naming convention.
+@Suppress("FunctionNaming")
 internal fun PlayerBackHandler(
     isExpanded: Boolean,
     onCollapse: () -> Unit

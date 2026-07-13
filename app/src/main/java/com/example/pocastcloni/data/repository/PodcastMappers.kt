@@ -14,6 +14,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private const val SECONDS_PER_MINUTE = 60
+private const val MILLIS_PER_SECOND = 1000
+
 // --- EXISTING MAPPERS (leave unchanged) ---
 
 fun PodcastEntity.toDomain(): Podcast {
@@ -22,7 +25,7 @@ fun PodcastEntity.toDomain(): Podcast {
         title = this.title,
         description = this.description,
         imageUrl = this.imageUrl,
-        lastRefreshed = this.lastRefreshed ?: Date(0),
+        lastRefreshed = this.lastRefreshed,
         autoDownloadEnabled = this.autoDownloadEnabled,
         sortOrder = this.sortOrder,
         hasNewEpisodes = this.hasNewEpisodes,
@@ -123,11 +126,7 @@ fun EpisodeEntity.toBackupEpisodeState(favoriteOrder: Long?): BackupEpisodeState
  * Includes protection against corrupt data (e.g. year 3000).
  */
 fun RssItem.toEpisodeEntity(podcastUrl: String): EpisodeEntity {
-    // 1. Parse date
-    val rawDate = parseRssDate(this.pubDate)
-
-    // 2. Sanitize date (protection against future dates)
-    val cleanDate = sanitizeDate(rawDate)
+    val cleanDate = sanitizeDate(this.pubDate)
 
     return EpisodeEntity(
         guid = stableEpisodeGuid(podcastUrl),
@@ -139,7 +138,7 @@ fun RssItem.toEpisodeEntity(podcastUrl: String): EpisodeEntity {
         enclosureUrl = this.enclosure?.url ?: "",
         type = this.enclosure?.type ?: "audio/mpeg",
         fileSize = this.enclosure?.length ?: 0L,
-        duration = parseDuration(this.itunesDuration),
+        duration = this.itunesDuration.durationMillis,
         // Defaults for new episodes
         isPlayed = false,
         playbackPositionMs = 0,
@@ -151,79 +150,73 @@ fun RssItem.toEpisodeEntity(podcastUrl: String): EpisodeEntity {
 private fun RssItem.stableEpisodeGuid(podcastUrl: String): String {
     // Keep the v14 fallback order so the first post-upgrade sync reuses rows
     // whose legacy identity was their title instead of duplicating them.
-    guid?.let { return it }
-    link?.let { return it }
-    title?.let { return it }
-
-    val stableFields = listOf(
-        podcastUrl,
-        enclosure?.url.orEmpty(),
-        pubDate.orEmpty(),
-        itunesDuration.orEmpty()
-    )
-    val digest = java.security.MessageDigest.getInstance("SHA-256")
-        .digest(stableFields.joinToString("\u001f").toByteArray(Charsets.UTF_8))
-        .joinToString("") { byte -> "%02x".format(byte) }
-    return "fallback:$digest"
+    return guid ?: link ?: title ?: run {
+        val stableFields = listOf(
+            podcastUrl,
+            enclosure?.url.orEmpty(),
+            pubDate.orEmpty(),
+            itunesDuration.orEmpty()
+        )
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(stableFields.joinToString("\u001f").toByteArray(Charsets.UTF_8))
+            .joinToString("") { byte -> "%02x".format(byte) }
+        "fallback:$digest"
+    }
 }
 
 /**
  * Checks whether a date is valid.
  * If the date is > (now + 7 days), it is set to "now".
  */
-private fun sanitizeDate(date: Date?): Date {
-    if (date == null) return Date() // Fallback to now if no date is present at all
-
+private fun sanitizeDate(dateString: String?): Date {
+    val parsedDate = dateString.parsedRssDate
     val now = System.currentTimeMillis()
     val threshold = now + Constants.Validation.MAX_FUTURE_DATE_THRESHOLD_MS
 
-    return if (date.time > threshold) {
+    return if (parsedDate == null || parsedDate.time > threshold) {
         // ERROR CASE: date is too far in the future (e.g. year 3000)
         // We correct it to "now" so that sorting is consistent.
         Date(now)
     } else {
         // Normal case
-        date
+        parsedDate
     }
 }
 
-/**
- * Tries to parse the date using various formats.
- */
-private fun parseRssDate(dateString: String?): Date? {
-    if (dateString.isNullOrEmpty()) return null
+private val String?.parsedRssDate: Date?
+    get() {
+        if (isNullOrEmpty()) return null
 
-    for (format in Constants.Parsing.DATE_FORMATS) {
-        try {
-            // Locale.US is important for RSS (e.g. "Mon, 21 Jan...")
-            val parser = SimpleDateFormat(format, Locale.US)
-            return parser.parse(dateString)
-        } catch (e: Exception) {
-            // Format did not match, try the next one
-        }
-    }
-    return null
-}
-
-/**
- * Helper function to convert iTunes duration (e.g. "01:20:30" or "4830") into milliseconds.
- */
-private fun parseDuration(durationStr: String?): Long {
-    if (durationStr.isNullOrEmpty()) return 0L
-
-    return try {
-        if (durationStr.contains(":")) {
-            val parts = durationStr.split(":")
-            var seconds = 0L
-            for (part in parts) {
-                seconds = seconds * 60 + part.toLong()
+        var parsedDate: Date? = null
+        for (format in Constants.Parsing.DATE_FORMATS) {
+            try {
+                parsedDate = SimpleDateFormat(format, Locale.US).parse(this)
+                if (parsedDate != null) break
+            } catch (e: Exception) {
+                // Format did not match, try the next one
             }
-            seconds * 1000
-        } else {
-            // Could be seconds as a raw value
-            durationStr.toLong() * 1000
         }
-    } catch (e: Exception) {
-        0L
+        return parsedDate
     }
-}
+
+/** Converts an iTunes duration such as "01:20:30" or "4830" into milliseconds. */
+private val String?.durationMillis: Long
+    get() {
+        if (isNullOrEmpty()) return 0L
+
+        return try {
+            if (contains(":")) {
+                val parts = split(":")
+                var seconds = 0L
+                for (part in parts) {
+                    seconds = seconds * SECONDS_PER_MINUTE + part.toLong()
+                }
+                seconds * MILLIS_PER_SECOND
+            } else {
+                // Could be seconds as a raw value
+                toLong() * MILLIS_PER_SECOND
+            }
+        } catch (e: Exception) {
+            0L
+        }
+    }

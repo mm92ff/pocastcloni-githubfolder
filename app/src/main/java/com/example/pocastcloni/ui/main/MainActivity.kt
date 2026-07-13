@@ -105,95 +105,95 @@ class MainActivity : ComponentActivity() {
                                 userSettings = uiState.userSettings,
                                 darkTheme = isPocastCloniDarkTheme(uiState.userSettings.theme)
                             ) {
-                            Scaffold(
-                                containerColor = Color.Transparent,
-                                bottomBar = {
-                                    CleanModeBottomBarHost(
-                                        navController = navController,
-                                        userSettings = uiState.userSettings,
-                                        onPlayerExpanded = { viewModel.onPlayerExpanded(it) }
-                                    )
-                                }
-                            ) { innerPadding ->
-                                Box(
-                                    modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .padding(innerPadding)
-                                ) {
-                                    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-                                    val currentRoute = currentBackStackEntry?.destination?.route
-                                    val suppressMiniPlayer = currentRoute == Screen.Search.route
-                                    val mainScreenSwipeThresholdPx =
-                                        with(LocalDensity.current) { MainScreenSwipeThreshold.toPx() }
-
-                                    NavHost(
-                                        navController = navController,
-                                        startDestination = Screen.Home.route,
-                                        enterTransition = { mainScreenEnterTransition() },
-                                        exitTransition = { mainScreenExitTransition() },
-                                        popEnterTransition = { mainScreenEnterTransition() },
-                                        popExitTransition = { mainScreenExitTransition() },
+                                Scaffold(
+                                    containerColor = Color.Transparent,
+                                    bottomBar = {
+                                        CleanModeBottomBarHost(
+                                            navController = navController,
+                                            userSettings = uiState.userSettings,
+                                            onPlayerExpanded = { viewModel.onPlayerExpanded(it) }
+                                        )
+                                    }
+                                ) { innerPadding ->
+                                    Box(
                                         modifier =
                                         Modifier
                                             .fillMaxSize()
-                                            .mainScreenSwipeNavigation(
-                                                enabled = currentRoute.isMainBottomNavRoute(),
-                                                currentRoute = currentRoute,
-                                                thresholdPx = mainScreenSwipeThresholdPx,
-                                                onNavigate = { screen ->
-                                                    navController.navigateMainScreen(screen)
-                                                }
-                                            )
+                                            .padding(innerPadding)
                                     ) {
-                                        composable(Screen.Home.route) {
-                                            HomeScreen(
-                                                onPodcastClicked = { url ->
-                                                    navController.navigate(Screen.PodcastDetail.createRoute(url))
-                                                },
-                                                onFavoritesClicked = {
-                                                    navController.navigate(Screen.Favorites.route)
-                                                },
-                                                onHistoryClicked = {
-                                                    navController.navigate(Screen.History.route)
-                                                }
-                                            )
-                                        }
-                                        composable(Screen.Search.route) {
-                                            AddPodcastScreen(
-                                                onNavigateBack = { navController.popBackStack() },
-                                                reserveSpaceForPlayer = false
-                                            )
-                                        }
-                                        composable(Screen.Downloads.route) { DownloadsScreen() }
-                                        composable(Screen.Settings.route) {
-                                            SettingsScreen(onNavigateBack = { navController.popBackStack() })
-                                        }
-                                        composable(Screen.Favorites.route) {
-                                            FavoritesScreen(onNavigateBack = { navController.popBackStack() })
-                                        }
-                                        composable(Screen.History.route) {
-                                            HistoryScreen(onNavigateBack = { navController.popBackStack() })
-                                        }
-                                        composable(Screen.PodcastDetail.route) {
-                                            PodcastDetailScreen(onNavigateBack = { navController.popBackStack() })
-                                        }
-                                    }
+                                        val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                                        val currentRoute = currentBackStackEntry?.destination?.route
+                                        val suppressMiniPlayer = currentRoute == Screen.Search.route
+                                        val mainScreenSwipeThresholdPx =
+                                            with(LocalDensity.current) { MainScreenSwipeThreshold.toPx() }
 
-                                    PlayerContainer(
-                                        userSettings = uiState.userSettings,
-                                        progressBarHeight = uiState.userSettings.progressBarHeight.dp,
-                                        navBarHeight = uiState.userSettings.navBarHeight.dp,
-                                        showMiniPlayerTimeOverlay = uiState.userSettings.showMiniPlayerTimeOverlay,
-                                        transparentMiniPlayer = uiState.userSettings.transparentMiniPlayer,
-                                        isExpanded = uiState.isPlayerExpanded,
-                                        onExpandedChange = viewModel::onPlayerExpanded,
-                                        modifier = Modifier.align(Alignment.BottomCenter),
-                                        onNavigateToPodcastDetail = onNavigateToPodcastDetail,
-                                        suppress = suppressMiniPlayer
-                                    )
+                                        NavHost(
+                                            navController = navController,
+                                            startDestination = Screen.Home.route,
+                                            enterTransition = { mainScreenEnterTransition() },
+                                            exitTransition = { mainScreenExitTransition() },
+                                            popEnterTransition = { mainScreenEnterTransition() },
+                                            popExitTransition = { mainScreenExitTransition() },
+                                            modifier =
+                                            Modifier
+                                                .fillMaxSize()
+                                                .mainScreenSwipeNavigation(
+                                                    enabled = currentRoute.isMainBottomNavRoute(),
+                                                    currentRoute = currentRoute,
+                                                    thresholdPx = mainScreenSwipeThresholdPx,
+                                                    onNavigate = { screen ->
+                                                        navController.navigateMainScreen(screen)
+                                                    }
+                                                )
+                                        ) {
+                                            composable(Screen.Home.route) {
+                                                HomeScreen(
+                                                    onPodcastClicked = { url ->
+                                                        navController.navigate(Screen.PodcastDetail.createRoute(url))
+                                                    },
+                                                    onFavoritesClicked = {
+                                                        navController.navigate(Screen.Favorites.route)
+                                                    },
+                                                    onHistoryClicked = {
+                                                        navController.navigate(Screen.History.route)
+                                                    }
+                                                )
+                                            }
+                                            composable(Screen.Search.route) {
+                                                AddPodcastScreen(
+                                                    onNavigateBack = { navController.popBackStack() },
+                                                    reserveSpaceForPlayer = false
+                                                )
+                                            }
+                                            composable(Screen.Downloads.route) { DownloadsScreen() }
+                                            composable(Screen.Settings.route) {
+                                                SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                                            }
+                                            composable(Screen.Favorites.route) {
+                                                FavoritesScreen(onNavigateBack = { navController.popBackStack() })
+                                            }
+                                            composable(Screen.History.route) {
+                                                HistoryScreen(onNavigateBack = { navController.popBackStack() })
+                                            }
+                                            composable(Screen.PodcastDetail.route) {
+                                                PodcastDetailScreen(onNavigateBack = { navController.popBackStack() })
+                                            }
+                                        }
+
+                                        PlayerContainer(
+                                            userSettings = uiState.userSettings,
+                                            progressBarHeight = uiState.userSettings.progressBarHeight.dp,
+                                            navBarHeight = uiState.userSettings.navBarHeight.dp,
+                                            showMiniPlayerTimeOverlay = uiState.userSettings.showMiniPlayerTimeOverlay,
+                                            transparentMiniPlayer = uiState.userSettings.transparentMiniPlayer,
+                                            isExpanded = uiState.isPlayerExpanded,
+                                            onExpandedChange = viewModel::onPlayerExpanded,
+                                            modifier = Modifier.align(Alignment.BottomCenter),
+                                            onNavigateToPodcastDetail = onNavigateToPodcastDetail,
+                                            suppress = suppressMiniPlayer
+                                        )
+                                    }
                                 }
-                            }
                             }
                             uiState.error?.let { error ->
                                 MainSettingsErrorBanner(
@@ -214,6 +214,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+// This UI-emitting composable follows Compose's PascalCase naming convention.
+@Suppress("FunctionNaming")
 internal fun MainSettingsErrorBanner(
     message: String,
     onRetry: () -> Unit,

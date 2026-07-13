@@ -89,7 +89,9 @@ class DownloadWorkCoordinatorTest {
         }
     }
 
-    private fun operation(result: com.google.common.util.concurrent.ListenableFuture<Operation.State.SUCCESS>): Operation {
+    private fun operation(
+        result: com.google.common.util.concurrent.ListenableFuture<Operation.State.SUCCESS>
+    ): Operation {
         val operation = mockk<Operation>()
         every { operation.result } returns result
         return operation

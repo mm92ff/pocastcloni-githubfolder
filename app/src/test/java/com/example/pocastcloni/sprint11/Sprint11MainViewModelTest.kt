@@ -69,7 +69,7 @@ class Sprint11MainViewModelTest {
         every { getSettings() } returns
             flow {
                 emit(retained)
-                throw IllegalStateException("transient")
+                error("transient")
             }
         val viewModel = createViewModel(getSettings)
 

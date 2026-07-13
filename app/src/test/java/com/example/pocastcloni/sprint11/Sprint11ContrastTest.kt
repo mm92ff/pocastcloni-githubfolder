@@ -19,4 +19,3 @@ class Sprint11ContrastTest {
         }
     }
 }
-

@@ -27,6 +27,8 @@ import javax.inject.Named
 @OptIn(ExperimentalCoilApi::class)
 class ResetAppUseCase
 @Inject
+// Hilt keeps the independently scoped reset collaborators explicit at this lifecycle boundary.
+@Suppress("LongParameterList")
 constructor(
     private val podcastRepository: PodcastRepository,
     private val userPreferencesRepository: UserPreferencesRepository,

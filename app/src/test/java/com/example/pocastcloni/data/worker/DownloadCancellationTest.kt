@@ -122,13 +122,7 @@ class DownloadCancellationTest {
         val workManager = mockk<WorkManager>()
         val staging = stagingFiles()
         val targetDirectory = temporaryFolder.newFolder("replacement-download")
-        val oldPublication =
-            prepareLegacyPublicFilePublication(
-                stagedFile = temporaryFolder.newFile("old-publication.part").apply { writeText("old") },
-                targetDirectory = targetDirectory,
-                fileName = LOGICAL_FILE_NAME,
-                attemptId = WORK_ID
-            )
+        val oldPublication = legacyPublication("old-publication.part", "old", targetDirectory, WORK_ID)
         var databasePath: String? = null
         commitDownloadPublication(oldPublication, { databasePath = it; true }, {})
         val operation = successfulOperation()
@@ -149,12 +143,7 @@ class DownloadCancellationTest {
 
         assertTrue(queueEpisodeDownload(workManager, repository, episode()))
         val newPublication =
-            prepareLegacyPublicFilePublication(
-                stagedFile = temporaryFolder.newFile("new-publication.part").apply { writeText("new") },
-                targetDirectory = targetDirectory,
-                fileName = LOGICAL_FILE_NAME,
-                attemptId = newRequest.captured.id
-            )
+            legacyPublication("new-publication.part", "new", targetDirectory, newRequest.captured.id)
         commitDownloadPublication(newPublication, { databasePath = it; true }, {})
         val retained =
             handleDownloadWorkerCancellation(
@@ -180,6 +169,19 @@ class DownloadCancellationTest {
             )
         }
     }
+
+    private suspend fun legacyPublication(
+        stagedFileName: String,
+        contents: String,
+        targetDirectory: File,
+        attemptId: UUID
+    ): PendingDownloadPublication =
+        prepareLegacyPublicFilePublication(
+            stagedFile = temporaryFolder.newFile(stagedFileName).apply { writeText(contents) },
+            targetDirectory = targetDirectory,
+            fileName = LOGICAL_FILE_NAME,
+            attemptId = attemptId
+        )
 
     private fun workManager(state: WorkInfo.State): WorkManager {
         val workInfo = workInfo(WORK_ID, state)

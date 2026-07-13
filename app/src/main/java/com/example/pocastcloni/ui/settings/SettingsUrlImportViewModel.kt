@@ -2,8 +2,8 @@ package com.example.pocastcloni.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.pocastcloni.R
 import com.example.pocastcloni.BuildConfig
+import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
 import com.example.pocastcloni.ui.UiText
@@ -200,5 +200,4 @@ constructor(
         }
         _events.tryEmit(message)
     }
-
 }

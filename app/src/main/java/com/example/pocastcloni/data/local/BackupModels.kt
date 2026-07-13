@@ -192,7 +192,8 @@ data class BackupPodcast(
     @JsonProperty(Constants.Backup.KEY_URL) val url: String = "",
     @JsonProperty(Constants.Backup.KEY_SORT_ORDER) val sortOrder: Long = 0,
     @param:JsonAlias("auto_download_enabled")
-    @JsonProperty("autoDownloadEnabled") val autoDownloadEnabled: Boolean = false,
+    @JsonProperty("autoDownloadEnabled")
+    val autoDownloadEnabled: Boolean = false,
     @JsonProperty("allow_insecure_http") val allowInsecureHttp: Boolean = false,
     @JsonProperty("allow_local_network") val allowLocalNetwork: Boolean = false,
     // Metadata for offline import resilience
@@ -210,27 +211,37 @@ data class BackupPodcast(
 
 data class BackupEpisodeState(
     @param:JsonAlias("podcast_url")
-    @JsonProperty("podcastUrl") val podcastUrl: String = "",
+    @JsonProperty("podcastUrl")
+    val podcastUrl: String = "",
     @param:JsonAlias("episode_guid")
-    @JsonProperty("episodeGuid") val episodeGuid: String = "",
+    @JsonProperty("episodeGuid")
+    val episodeGuid: String = "",
     @JsonProperty("title") val title: String = "",
     @JsonProperty("description") val description: String = "",
     @param:JsonAlias("published_at")
-    @JsonProperty("publishedAt") val publishedAt: Long? = null,
+    @JsonProperty("publishedAt")
+    val publishedAt: Long? = null,
     @param:JsonAlias("duration_ms")
-    @JsonProperty("duration") val duration: Long = 0,
+    @JsonProperty("duration")
+    val duration: Long = 0,
     @param:JsonAlias("is_favorite")
-    @JsonProperty("isFavorite") val isFavorite: Boolean = false,
+    @JsonProperty("isFavorite")
+    val isFavorite: Boolean = false,
     @param:JsonAlias("favorite_added_at")
-    @JsonProperty("favoriteAddedAt") val favoriteAddedAt: Long? = null,
+    @JsonProperty("favoriteAddedAt")
+    val favoriteAddedAt: Long? = null,
     @param:JsonAlias("favorite_order")
-    @JsonProperty("favoriteOrder") val favoriteOrder: Long? = null,
+    @JsonProperty("favoriteOrder")
+    val favoriteOrder: Long? = null,
     @param:JsonAlias("is_played")
-    @JsonProperty("isPlayed") val isPlayed: Boolean = false,
+    @JsonProperty("isPlayed")
+    val isPlayed: Boolean = false,
     @param:JsonAlias("date_played")
-    @JsonProperty("datePlayed") val datePlayed: Long? = null,
+    @JsonProperty("datePlayed")
+    val datePlayed: Long? = null,
     @param:JsonAlias("playback_position_ms")
-    @JsonProperty("playbackPositionMs") val playbackPositionMs: Long = 0
+    @JsonProperty("playbackPositionMs")
+    val playbackPositionMs: Long = 0
 )
 
 // Structure for a favorited entry in the backup

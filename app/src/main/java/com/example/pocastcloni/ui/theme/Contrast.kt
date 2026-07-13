@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 
-private const val WcagLuminanceOffset = 0.05
+private const val WCAG_LUMINANCE_OFFSET = 0.05
 
 fun contrastRatio(
     foreground: Color,
@@ -14,7 +14,7 @@ fun contrastRatio(
     val opaqueForeground = foreground.compositeOver(opaqueBackground)
     val lighter = maxOf(opaqueForeground.luminance(), opaqueBackground.luminance()).toDouble()
     val darker = minOf(opaqueForeground.luminance(), opaqueBackground.luminance()).toDouble()
-    return (lighter + WcagLuminanceOffset) / (darker + WcagLuminanceOffset)
+    return (lighter + WCAG_LUMINANCE_OFFSET) / (darker + WCAG_LUMINANCE_OFFSET)
 }
 
 fun bestContrastingColor(
@@ -27,4 +27,3 @@ fun bestContrastingColor(
     } else {
         light
     }
-

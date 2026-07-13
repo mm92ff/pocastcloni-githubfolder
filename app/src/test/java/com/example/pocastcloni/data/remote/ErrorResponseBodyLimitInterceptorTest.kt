@@ -25,7 +25,10 @@ class ErrorResponseBodyLimitInterceptorTest {
 
         client.newCall(Request.Builder().url("https://example.com/feed.xml").build()).execute().use { response ->
             assertEquals(Constants.SecurityLimits.MAX_RSS_ERROR_BODY_BYTES, response.body?.bytes()?.size?.toLong())
-            assertEquals(Constants.SecurityLimits.MAX_RSS_ERROR_BODY_BYTES.toString(), response.header("Content-Length"))
+            assertEquals(
+                Constants.SecurityLimits.MAX_RSS_ERROR_BODY_BYTES.toString(),
+                response.header("Content-Length")
+            )
         }
         assertTrue(original.closed)
     }

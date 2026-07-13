@@ -390,50 +390,50 @@ constructor(
 
     override suspend fun restoreSettingsOrThrow(settings: UserSettings) {
         context.dataStore.edit { prefs ->
-                prefs[Keys.THEME] = settings.theme.name
-                prefs[Keys.APP_COLOR] = settings.appColor.name
-                prefs[Keys.COLOR_STRENGTH] = settings.colorStrength
-                prefs[Keys.BUFFER_MODE] = settings.bufferMode.name
+            prefs[Keys.THEME] = settings.theme.name
+            prefs[Keys.APP_COLOR] = settings.appColor.name
+            prefs[Keys.COLOR_STRENGTH] = settings.colorStrength
+            prefs[Keys.BUFFER_MODE] = settings.bufferMode.name
 
-                prefs[Keys.LAYOUT_MODE] = settings.layoutMode.name
+            prefs[Keys.LAYOUT_MODE] = settings.layoutMode.name
 
-                prefs[Keys.GRID_SIZE] = settings.gridSize
-                prefs[Keys.SHOW_GRID_TITLES] = settings.showGridTitles
-                prefs[Keys.CONFIRM_DELETE] = settings.confirmDelete
-                prefs[Keys.PROGRESS_BAR_HEIGHT] = settings.progressBarHeight
-                prefs[Keys.NAV_BAR_HEIGHT] = settings.navBarHeight
-                prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = settings.showMiniPlayerTimeOverlay
-                prefs[Keys.TRANSPARENT_MINI_PLAYER] = settings.transparentMiniPlayer
-                prefs[Keys.TRANSPARENT_BOTTOM_BAR] = settings.transparentBottomBar
-                prefs[Keys.ONE_HANDED_MODE] = settings.oneHandedMode
-                prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = settings.bottomBarCleanModeEnabled
-                prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = settings.bottomBarAutoHideEnabled
-                prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = settings.bottomBarAutoHideDelaySeconds
-                prefs[Keys.GRADIENT_BACKGROUND_ENABLED] = settings.gradientBackgroundEnabled
-                prefs[Keys.GRADIENT_BACKGROUND_STRENGTH] = settings.gradientBackgroundStrength
-                prefs[Keys.GRADIENT_BACKGROUND_DIRECTION] = settings.gradientBackgroundDirection.name
-                prefs[Keys.TRANSPARENT_SEARCH_CARDS] = settings.transparentSearchCards
-                prefs[Keys.TRANSPARENT_PODCAST_CARDS] = settings.transparentPodcastCards
-                prefs[Keys.TRANSPARENT_EPISODE_ROWS] = settings.transparentEpisodeRows
+            prefs[Keys.GRID_SIZE] = settings.gridSize
+            prefs[Keys.SHOW_GRID_TITLES] = settings.showGridTitles
+            prefs[Keys.CONFIRM_DELETE] = settings.confirmDelete
+            prefs[Keys.PROGRESS_BAR_HEIGHT] = settings.progressBarHeight
+            prefs[Keys.NAV_BAR_HEIGHT] = settings.navBarHeight
+            prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = settings.showMiniPlayerTimeOverlay
+            prefs[Keys.TRANSPARENT_MINI_PLAYER] = settings.transparentMiniPlayer
+            prefs[Keys.TRANSPARENT_BOTTOM_BAR] = settings.transparentBottomBar
+            prefs[Keys.ONE_HANDED_MODE] = settings.oneHandedMode
+            prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = settings.bottomBarCleanModeEnabled
+            prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = settings.bottomBarAutoHideEnabled
+            prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = settings.bottomBarAutoHideDelaySeconds
+            prefs[Keys.GRADIENT_BACKGROUND_ENABLED] = settings.gradientBackgroundEnabled
+            prefs[Keys.GRADIENT_BACKGROUND_STRENGTH] = settings.gradientBackgroundStrength
+            prefs[Keys.GRADIENT_BACKGROUND_DIRECTION] = settings.gradientBackgroundDirection.name
+            prefs[Keys.TRANSPARENT_SEARCH_CARDS] = settings.transparentSearchCards
+            prefs[Keys.TRANSPARENT_PODCAST_CARDS] = settings.transparentPodcastCards
+            prefs[Keys.TRANSPARENT_EPISODE_ROWS] = settings.transparentEpisodeRows
 
-                prefs[Keys.AUTO_DOWNLOAD_LIMIT] = settings.autoDownloadLimit
-                prefs[Keys.AUTO_REFRESH_ON_START] = settings.autoRefreshOnStart
-                prefs[Keys.BACKGROUND_CHECK_ENABLED] = settings.backgroundCheckEnabled
-                prefs[Keys.BACKGROUND_CHECK_INTERVAL] = settings.backgroundCheckInterval
+            prefs[Keys.AUTO_DOWNLOAD_LIMIT] = settings.autoDownloadLimit
+            prefs[Keys.AUTO_REFRESH_ON_START] = settings.autoRefreshOnStart
+            prefs[Keys.BACKGROUND_CHECK_ENABLED] = settings.backgroundCheckEnabled
+            prefs[Keys.BACKGROUND_CHECK_INTERVAL] = settings.backgroundCheckInterval
 
-                prefs[Keys.MARK_PLAYED_DURATION] = settings.markPlayedDurationSeconds
-                prefs[Keys.FEED_UPDATE_MODE] = settings.feedUpdateMode.name
+            prefs[Keys.MARK_PLAYED_DURATION] = settings.markPlayedDurationSeconds
+            prefs[Keys.FEED_UPDATE_MODE] = settings.feedUpdateMode.name
 
-                prefs[Keys.INDICATOR_COLOR] = settings.indicator.colorArgb
-                prefs[Keys.INDICATOR_SIZE] = settings.indicator.size
-                prefs[Keys.INDICATOR_BORDER] = settings.indicator.borderWidth
-                prefs[Keys.INDICATOR_X_OFFSET] = settings.indicator.xOffset
-                prefs[Keys.INDICATOR_Y_OFFSET] = settings.indicator.yOffset
-                prefs[Keys.SAVE_TO_DOWNLOADS_FOLDER] = settings.saveToDownloadsFolder
-                prefs[Keys.AUTO_CLEANUP_ENABLED] = settings.autoCleanupEnabled
-                prefs[Keys.CLEANUP_KEEP_LIMIT] = settings.cleanupKeepLimit
-                prefs[Keys.CLEANUP_INTERVAL_HOURS] = settings.cleanupIntervalHours
-                prefs[SettingsDefaultsMigration.VERSION_KEY] = SettingsDefaultsMigration.CURRENT_VERSION
+            prefs[Keys.INDICATOR_COLOR] = settings.indicator.colorArgb
+            prefs[Keys.INDICATOR_SIZE] = settings.indicator.size
+            prefs[Keys.INDICATOR_BORDER] = settings.indicator.borderWidth
+            prefs[Keys.INDICATOR_X_OFFSET] = settings.indicator.xOffset
+            prefs[Keys.INDICATOR_Y_OFFSET] = settings.indicator.yOffset
+            prefs[Keys.SAVE_TO_DOWNLOADS_FOLDER] = settings.saveToDownloadsFolder
+            prefs[Keys.AUTO_CLEANUP_ENABLED] = settings.autoCleanupEnabled
+            prefs[Keys.CLEANUP_KEEP_LIMIT] = settings.cleanupKeepLimit
+            prefs[Keys.CLEANUP_INTERVAL_HOURS] = settings.cleanupIntervalHours
+            prefs[SettingsDefaultsMigration.VERSION_KEY] = SettingsDefaultsMigration.CURRENT_VERSION
         }
         migrationComplete = true
     }

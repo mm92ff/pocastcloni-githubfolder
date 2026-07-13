@@ -6,6 +6,7 @@ import com.example.pocastcloni.data.remote.ErrorResponseBodyLimitInterceptor
 import com.example.pocastcloni.data.remote.ItunesSearchApi
 import com.example.pocastcloni.data.remote.PodcastService
 import com.example.pocastcloni.data.remote.SafeRedirectInterceptor
+import com.example.pocastcloni.data.serialization.JsonMapperFactory
 import com.example.pocastcloni.data.remote.PublicNetworkDns
 import com.example.pocastcloni.data.remote.ApprovedLocalRequestInterceptor
 import com.example.pocastcloni.data.remote.ApprovedOriginDns
@@ -15,9 +16,7 @@ import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.parseNetworkUrl
 import com.example.pocastcloni.util.NetworkConnectivityProvider
-import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -44,12 +43,7 @@ abstract class NetworkModule {
     companion object {
         @Provides
         @Singleton
-        fun provideObjectMapper(): ObjectMapper {
-            return ObjectMapper().apply {
-                registerKotlinModule()
-                configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            }
-        }
+        fun provideObjectMapper(): ObjectMapper = JsonMapperFactory.create()
 
         @Provides
         @Singleton

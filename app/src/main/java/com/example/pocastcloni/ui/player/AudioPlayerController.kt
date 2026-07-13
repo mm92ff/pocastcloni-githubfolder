@@ -57,6 +57,7 @@ constructor(
     private val mediaStateRevision = AtomicLong(0L)
     private val reconnectScheduled = AtomicBoolean(false)
     private var reconnectJob: Job? = null
+
     @Volatile private var explicitlyReleased = false
 
     // --- State Management (Internal) ---
@@ -496,14 +497,14 @@ constructor(
 
     private fun finishSeek(snapshot: SeekSnapshot) {
         val currentController = controller ?: return
-        if (
-            currentController !== snapshot.controller ||
-            playRequestGeneration.get() != snapshot.requestGeneration ||
-            mediaStateRevision.get() != snapshot.mediaRevision ||
-            currentController.currentMediaItem?.mediaId?.toLongOrNull() != snapshot.episodeId
-        ) {
-            return
-        }
+        val seekContextChanged =
+            listOf(
+                currentController !== snapshot.controller,
+                playRequestGeneration.get() != snapshot.requestGeneration,
+                mediaStateRevision.get() != snapshot.mediaRevision,
+                currentController.currentMediaItem?.mediaId?.toLongOrNull() != snapshot.episodeId
+            ).any { it }
+        if (seekContextChanged) return
         currentController.seekTo(snapshot.targetPositionMs)
         markPlaybackSnapshotDirty()
         flushCurrentPlaybackSnapshot(

@@ -75,13 +75,13 @@ class UserPreferencesRepositoryAndroidTest {
                 markPlayedDurationSeconds = 45,
                 feedUpdateMode = FeedUpdateMode.SMART_STREAM,
                 indicator =
-                    IndicatorSettings(
-                        colorArgb = 0xFF123456,
-                        size = 23,
-                        borderWidth = 4,
-                        xOffset = 13,
-                        yOffset = -8
-                    ),
+                IndicatorSettings(
+                    colorArgb = 0xFF123456,
+                    size = 23,
+                    borderWidth = 4,
+                    xOffset = 13,
+                    yOffset = -8
+                ),
                 saveToDownloadsFolder = true,
                 autoCleanupEnabled = true,
                 cleanupKeepLimit = 37,

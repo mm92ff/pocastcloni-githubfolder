@@ -6,7 +6,6 @@ import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.MainDispatcherRule
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi

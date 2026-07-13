@@ -24,11 +24,11 @@ internal suspend fun handleDownloadWorkerCancellation(
                 repository.compareAndSetDownloadStatus(
                     episodeId = episodeId,
                     expectedStatuses =
-                        listOf(
-                            DownloadStatus.QUEUED,
-                            DownloadStatus.DOWNLOADING,
-                            DownloadStatus.DOWNLOADED
-                        ),
+                    listOf(
+                        DownloadStatus.QUEUED,
+                        DownloadStatus.DOWNLOADING,
+                        DownloadStatus.DOWNLOADED
+                    ),
                     status = DownloadStatus.NOT_DOWNLOADED,
                     path = null
                 )
@@ -54,26 +54,29 @@ private suspend fun resolveCancellationOwnership(
     episodeId: Long
 ): CancellationOwnership {
     val coordinatedOwner = DownloadWorkStateCoordinator.currentAttemptId(episodeId)
-    if (coordinatedOwner != null && coordinatedOwner != workId) {
-        return CancellationOwnership.SUPERSEDED
-    }
-    val currentWork =
-        runCatching { workManager.getWorkInfoById(workId).await() }.getOrNull()
-            ?: return CancellationOwnership.UNKNOWN
-    val uniqueWork =
-        runCatching { workManager.getWorkInfosForUniqueWork(downloadWorkName(episodeId)).await() }
-            .getOrNull()
-            ?: return CancellationOwnership.UNKNOWN
-    if (uniqueWork.any { it.id != workId && it.state.isActiveDownloadAttempt() }) {
-        return CancellationOwnership.SUPERSEDED
-    }
-    val matchingWork = uniqueWork.singleOrNull { it.id == workId }
-        ?: return CancellationOwnership.UNKNOWN
-    if (matchingWork.state != currentWork.state) return CancellationOwnership.UNKNOWN
-    return if (currentWork.state == WorkInfo.State.CANCELLED) {
-        CancellationOwnership.CURRENT_TERMINAL
+    return if (coordinatedOwner != null && coordinatedOwner != workId) {
+        CancellationOwnership.SUPERSEDED
     } else {
-        CancellationOwnership.CURRENT_NON_TERMINAL
+        val currentWork =
+            runCatching { workManager.getWorkInfoById(workId).await() }.getOrNull()
+        val uniqueWork =
+            currentWork?.let {
+                runCatching {
+                    workManager.getWorkInfosForUniqueWork(downloadWorkName(episodeId)).await()
+                }.getOrNull()
+            }
+        val matchingWork = uniqueWork?.singleOrNull { it.id == workId }
+
+        when {
+            currentWork == null || uniqueWork == null || matchingWork == null ->
+                CancellationOwnership.UNKNOWN
+            uniqueWork.any { it.id != workId && it.state.isActiveDownloadAttempt() } ->
+                CancellationOwnership.SUPERSEDED
+            matchingWork.state != currentWork.state -> CancellationOwnership.UNKNOWN
+            currentWork.state == WorkInfo.State.CANCELLED ->
+                CancellationOwnership.CURRENT_TERMINAL
+            else -> CancellationOwnership.CURRENT_NON_TERMINAL
+        }
     }
 }
 

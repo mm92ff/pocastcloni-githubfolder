@@ -213,23 +213,7 @@ internal suspend fun restoreAvailableEpisodeStates(
     val stateKeys = backupData.episodeStates.mapTo(mutableSetOf()) { it.backupKey() }
     val orderedImportedFavoriteIds = mutableListOf<Long>()
 
-    backupData.episodeStates.forEach { state ->
-        val episode = podcastDao.getEpisodeByFeedAndGuid(state.podcastUrl, state.episodeGuid)
-            ?: insertEpisodePlaceholderIfParentExists(podcastDao, state.toPlaceholder())
-            ?: return@forEach
-        check(
-            podcastDao.updatePortableEpisodeState(
-                episodeId = episode.episodeId,
-                isFavorite = state.isFavorite,
-                favoriteAddedAt = state.favoriteAddedAt,
-                isPlayed = state.isPlayed,
-                datePlayed = state.datePlayed?.let(::Date),
-                playbackPositionMs = state.playbackPositionMs,
-                duration = state.duration,
-                restoreDuration = restoreDuration
-            ) == 1
-        ) { "Backup episode state referenced a missing episode" }
-    }
+    PortableEpisodeStateRestorer.restore(podcastDao, backupData.episodeStates, restoreDuration)
 
     val orderedV2Favorites = backupData.episodeStates
         .filter { it.isFavorite }
@@ -287,6 +271,32 @@ internal suspend fun restoreAvailableEpisodeStates(
         Timber.w("Skipped restoring %d favorites because episodes are unavailable.", skipped)
     }
     return result
+}
+
+private object PortableEpisodeStateRestorer {
+    suspend fun restore(
+        podcastDao: PodcastDao,
+        episodeStates: List<BackupEpisodeState>,
+        restoreDuration: Boolean
+    ) {
+        episodeStates.forEach { state ->
+            val episode = podcastDao.getEpisodeByFeedAndGuid(state.podcastUrl, state.episodeGuid)
+                ?: insertEpisodePlaceholderIfParentExists(podcastDao, state.toPlaceholder())
+                ?: return@forEach
+            check(
+                podcastDao.updatePortableEpisodeState(
+                    episodeId = episode.episodeId,
+                    isFavorite = state.isFavorite,
+                    favoriteAddedAt = state.favoriteAddedAt,
+                    isPlayed = state.isPlayed,
+                    datePlayed = state.datePlayed?.let(::Date),
+                    playbackPositionMs = state.playbackPositionMs,
+                    duration = state.duration,
+                    restoreDuration = restoreDuration
+                ) == 1
+            ) { "Backup episode state referenced a missing episode" }
+        }
+    }
 }
 
 private fun BackupEpisodeState.backupKey() = EpisodeBackupKey(podcastUrl, episodeGuid)

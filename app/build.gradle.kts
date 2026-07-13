@@ -1,5 +1,8 @@
 import org.gradle.accessors.dm.LibrariesForLibs
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import java.security.MessageDigest
+import javax.xml.XMLConstants
+import javax.xml.parsers.DocumentBuilderFactory
 
 plugins {
     id("com.android.application")
@@ -18,6 +21,12 @@ val appVersionCode = providers.gradleProperty("appVersionCode").get().toInt().al
 val appVersionName = providers.gradleProperty("appVersionName").get().also {
     require(it.isNotBlank()) { "appVersionName must not be blank" }
 }
+val instrumentationBuildType =
+    providers.gradleProperty("instrumentationBuildType").orElse("debug").get().also {
+        require(it == "debug" || it == "releaseSmoke") {
+            "instrumentationBuildType must be debug or releaseSmoke"
+        }
+    }
 
 android {
     namespace = "com.example.pocastcloni"
@@ -36,6 +45,7 @@ android {
             useSupportLibrary = true
         }
     }
+    testBuildType = instrumentationBuildType
 
     buildTypes {
         release {
@@ -45,6 +55,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        create("releaseSmoke") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
         }
         create("benchmark") {
             initWith(getByName("release"))
@@ -74,6 +88,11 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+    lint {
+        // German translations are intentionally partial; untranslated entries use the
+        // complete English default catalog. All code, manifest and resource errors remain fatal.
+        disable += "MissingTranslation"
     }
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
 }
@@ -180,8 +199,116 @@ dependencies {
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     androidTestImplementation(libs.mockwebserver)
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation(libs.leakcanary)
+}
+
+val releaseManifestFile =
+    layout.buildDirectory.file(
+        "intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml"
+    )
+
+tasks.register("verifyReleaseManifest") {
+    group = "verification"
+    description = "Verifies the merged release manifest against the exported-component allowlist."
+    dependsOn("processReleaseManifest")
+    inputs.file(releaseManifestFile)
+
+    doLast {
+        val androidNamespace = "http://schemas.android.com/apk/res/android"
+        val factory = DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = true
+            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            setFeature("http://xml.org/sax/features/external-general-entities", false)
+            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
+            setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
+        }
+        val manifest = releaseManifestFile.get().asFile
+        check(manifest.isFile) { "Merged release manifest is missing: $manifest" }
+        val document = factory.newDocumentBuilder().parse(manifest)
+        val actual = linkedMapOf<String, String>()
+        val nodes = document.getElementsByTagName("*")
+        for (index in 0 until nodes.length) {
+            val element = nodes.item(index) as? org.w3c.dom.Element ?: continue
+            if (element.getAttributeNS(androidNamespace, "exported") == "true") {
+                val componentName = element.getAttributeNS(androidNamespace, "name")
+                val permission = element.getAttributeNS(androidNamespace, "permission")
+                actual["${element.tagName}:$componentName"] = permission
+            }
+        }
+
+        val expected = linkedMapOf(
+            "activity:com.example.pocastcloni.ui.main.MainActivity" to "",
+            "service:com.example.pocastcloni.service.PodcastPlaybackService" to "",
+            "receiver:androidx.media.session.MediaButtonReceiver" to "",
+            "service:androidx.work.impl.background.systemjob.SystemJobService" to
+                "android.permission.BIND_JOB_SERVICE",
+            "receiver:androidx.work.impl.diagnostics.DiagnosticsReceiver" to
+                "android.permission.DUMP",
+            "receiver:androidx.profileinstaller.ProfileInstallReceiver" to
+                "android.permission.DUMP"
+        )
+        check(actual == expected) {
+            "Unexpected exported release components. Expected=$expected, actual=$actual"
+        }
+    }
+}
+
+val releaseArtifactReport =
+    layout.buildDirectory.file("reports/release-gate/release-artifacts.properties")
+val releaseApkDirectory = layout.buildDirectory.dir("outputs/apk/release")
+val releaseMappingFile = layout.buildDirectory.file("outputs/mapping/release/mapping.txt")
+
+tasks.register("reportReleaseArtifacts") {
+    group = "verification"
+    description = "Records the release APK hash/size and R8 mapping path/size."
+    dependsOn("assembleRelease")
+    inputs.dir(releaseApkDirectory)
+    inputs.file(releaseMappingFile)
+    outputs.file(releaseArtifactReport)
+
+    doLast {
+        val apkDirectory = releaseApkDirectory.get().asFile
+        val apks = apkDirectory.listFiles { file -> file.isFile && file.extension == "apk" }.orEmpty()
+        check(apks.size == 1) { "Expected exactly one release APK in $apkDirectory, found ${apks.size}" }
+        val apk = apks.single()
+        val mapping = releaseMappingFile.get().asFile
+        check(mapping.isFile) { "R8 mapping is missing: $mapping" }
+
+        val digest = MessageDigest.getInstance("SHA-256")
+        apk.inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        val sha256 = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+        val report = releaseArtifactReport.get().asFile
+        report.parentFile.mkdirs()
+        report.writeText(
+            buildString {
+                appendLine("variant=release")
+                appendLine("versionCode=$appVersionCode")
+                appendLine("versionName=$appVersionName")
+                appendLine("apk=${apk.relativeTo(projectDir).invariantSeparatorsPath}")
+                appendLine("apkBytes=${apk.length()}")
+                appendLine("apkSha256=$sha256")
+                appendLine("mapping=${mapping.relativeTo(projectDir).invariantSeparatorsPath}")
+                appendLine("mappingBytes=${mapping.length()}")
+            }
+        )
+        logger.lifecycle("Release artifact report: $report")
+    }
+}
+
+tasks.register("releaseGate") {
+    group = "verification"
+    description = "Runs release lint, manifest verification, assembly and artifact reporting."
+    dependsOn("lintRelease", "verifyReleaseManifest", "reportReleaseArtifacts")
 }

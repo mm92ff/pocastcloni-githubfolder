@@ -205,7 +205,10 @@ class RssSmartSyncParser(
                 }
 
                 XmlPullParser.END_TAG -> return result.toString()
-                XmlPullParser.START_TAG -> throw IllegalArgumentException("Nested XML is not allowed in RSS text fields")
+                XmlPullParser.START_TAG ->
+                    throw IllegalArgumentException(
+                        "Nested XML is not allowed in RSS text fields"
+                    )
                 XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException("Unexpected end of RSS text field")
             }
         }
@@ -289,7 +292,7 @@ private class LimitedXmlEventReader(
     private fun decodeNumericEntity(entityName: String): String {
         val codePoint =
             if (entityName.startsWith("#x", ignoreCase = true)) {
-                entityName.substring(2).toIntOrNull(16)
+                entityName.substring(2).toIntOrNull(HEXADECIMAL_RADIX)
             } else {
                 entityName.substring(1).toIntOrNull()
             }
@@ -298,14 +301,25 @@ private class LimitedXmlEventReader(
     }
 
     private fun isValidXmlCodePoint(value: Int): Boolean =
-        value == 0x9 ||
-            value == 0xA ||
-            value == 0xD ||
-            value in 0x20..0xD7FF ||
-            value in 0xE000..0xFFFD ||
-            value in 0x10000..0x10FFFF
+        value == XML_TAB_CODE_POINT ||
+            value == XML_LINE_FEED_CODE_POINT ||
+            value == XML_CARRIAGE_RETURN_CODE_POINT ||
+            value in XML_BASIC_TEXT_START..XML_BASIC_TEXT_END ||
+            value in XML_PRIVATE_USE_START..XML_PRIVATE_USE_END ||
+            value in XML_SUPPLEMENTARY_START..XML_SUPPLEMENTARY_END
 
     private companion object {
+        const val HEXADECIMAL_RADIX = 16
+        const val XML_TAB_CODE_POINT = 0x9
+        const val XML_LINE_FEED_CODE_POINT = 0xA
+        const val XML_CARRIAGE_RETURN_CODE_POINT = 0xD
+        const val XML_BASIC_TEXT_START = 0x20
+        const val XML_BASIC_TEXT_END = 0xD7FF
+        const val XML_PRIVATE_USE_START = 0xE000
+        const val XML_PRIVATE_USE_END = 0xFFFD
+        const val XML_SUPPLEMENTARY_START = 0x10000
+        const val XML_SUPPLEMENTARY_END = 0x10FFFF
+
         val PREDEFINED_ENTITIES =
             mapOf(
                 "amp" to "&",

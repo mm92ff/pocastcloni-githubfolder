@@ -22,6 +22,8 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// Parsing compatibility cases intentionally share one mapper and adjacent JSON fixtures.
+@Suppress("LargeClass")
 class PodcastBackupHelperParsingTest {
     private val objectMapper =
         ObjectMapper().apply {
@@ -276,13 +278,13 @@ class PodcastBackupHelperParsingTest {
                 backgroundCheckInterval = 24,
                 feedUpdateMode = FeedUpdateMode.SMART_STREAM,
                 indicator =
-                    IndicatorSettings(
-                        colorArgb = 0xFF112233,
-                        size = 32,
-                        borderWidth = 4,
-                        xOffset = -5,
-                        yOffset = 6
-                    )
+                IndicatorSettings(
+                    colorArgb = 0xFF112233,
+                    size = 32,
+                    borderWidth = 4,
+                    xOffset = -5,
+                    yOffset = 6
+                )
             )
         val parsed =
             parseBackupJson(
@@ -451,13 +453,13 @@ class PodcastBackupHelperParsingTest {
                 markPlayedDurationSeconds = 45,
                 feedUpdateMode = FeedUpdateMode.SMART_STREAM,
                 indicator =
-                    IndicatorSettings(
-                        colorArgb = 0xFF112233,
-                        size = 24,
-                        borderWidth = 3,
-                        xOffset = 10,
-                        yOffset = -6
-                    ),
+                IndicatorSettings(
+                    colorArgb = 0xFF112233,
+                    size = 24,
+                    borderWidth = 3,
+                    xOffset = 10,
+                    yOffset = -6
+                ),
                 saveToDownloadsFolder = true,
                 autoCleanupEnabled = true,
                 cleanupKeepLimit = 42,

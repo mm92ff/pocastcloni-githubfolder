@@ -160,40 +160,57 @@ internal fun DownloadsContent(
             }
         }
         else -> {
-            val bottomPadding =
-                remember(uiState.isPlayerVisible, uiState.progressBarHeight) {
-                    MiniPlayerLayoutDefaults.reservedBottomPadding(
-                        isPlayerVisible = uiState.isPlayerVisible,
-                        progressBarHeight = uiState.progressBarHeight,
-                        extraPadding = Dimens.PaddingLarge
-                    )
-                }
+            DownloadsEpisodeList(
+                uiState = uiState,
+                innerPadding = innerPadding,
+                onPlayEpisode = onPlayEpisode,
+                onFavoriteToggle = onFavoriteToggle,
+                onDeleteEpisode = onDeleteEpisode
+            )
+        }
+    }
+}
 
-            LazyColumn(
-                modifier = Modifier.padding(innerPadding).fillMaxSize(),
-                contentPadding = PaddingValues(top = Dimens.PaddingLarge, bottom = bottomPadding),
-                reverseLayout = uiState.oneHandedMode
-            ) {
-                items(
-                    items = uiState.episodes,
-                    key = { it.episodeId },
-                    contentType = { "download-episode" }
-                ) { episode ->
-                    val isPlaying = episode.episodeId == uiState.currentPlayingEpisodeId && uiState.isPlayerPlaying
-                    val onPlayClick = remember(episode, onPlayEpisode) { { onPlayEpisode(episode) } }
-                    val onFavoriteClick = remember(episode, onFavoriteToggle) { { onFavoriteToggle(episode) } }
+@Composable
+private fun DownloadsEpisodeList(
+    uiState: DownloadsUiState,
+    innerPadding: PaddingValues,
+    onPlayEpisode: (EpisodeUiModel) -> Unit,
+    onFavoriteToggle: (EpisodeUiModel) -> Unit,
+    onDeleteEpisode: (EpisodeUiModel) -> Unit
+) {
+    val bottomPadding =
+        remember(uiState.isPlayerVisible, uiState.progressBarHeight) {
+            MiniPlayerLayoutDefaults.reservedBottomPadding(
+                isPlayerVisible = uiState.isPlayerVisible,
+                progressBarHeight = uiState.progressBarHeight,
+                extraPadding = Dimens.PaddingLarge
+            )
+        }
 
-                    SwipeToDeleteBox(episode = episode, onDelete = onDeleteEpisode) {
-                        EpisodeListItem(
-                            episode = episode,
-                            isPlaying = isPlaying,
-                            onPlayClick = onPlayClick,
-                            onDownloadClick = {},
-                            onTogglePlayed = {},
-                            onToggleFavorite = onFavoriteClick
-                        )
-                    }
-                }
+    LazyColumn(
+        modifier = Modifier.padding(innerPadding).fillMaxSize(),
+        contentPadding = PaddingValues(top = Dimens.PaddingLarge, bottom = bottomPadding),
+        reverseLayout = uiState.oneHandedMode
+    ) {
+        items(
+            items = uiState.episodes,
+            key = { it.episodeId },
+            contentType = { "download-episode" }
+        ) { episode ->
+            val isPlaying = episode.episodeId == uiState.currentPlayingEpisodeId && uiState.isPlayerPlaying
+            val onPlayClick = remember(episode, onPlayEpisode) { { onPlayEpisode(episode) } }
+            val onFavoriteClick = remember(episode, onFavoriteToggle) { { onFavoriteToggle(episode) } }
+
+            SwipeToDeleteBox(episode = episode, onDelete = onDeleteEpisode) {
+                EpisodeListItem(
+                    episode = episode,
+                    isPlaying = isPlaying,
+                    onPlayClick = onPlayClick,
+                    onDownloadClick = {},
+                    onTogglePlayed = {},
+                    onToggleFavorite = onFavoriteClick
+                )
             }
         }
     }
@@ -201,6 +218,8 @@ internal fun DownloadsContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+// This UI-emitting composable follows Compose's PascalCase naming convention.
+@Suppress("FunctionNaming")
 private fun SwipeToDeleteBox(
     episode: EpisodeUiModel,
     onDelete: (EpisodeUiModel) -> Unit,

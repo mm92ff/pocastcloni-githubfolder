@@ -9,7 +9,9 @@ class EpisodeIdentitySourceTest {
     @Test
     fun runtimeEpisodeMutationsUseInternalIds() {
         val daoSource = File("src/main/java/com/example/pocastcloni/data/local/PodcastDao.kt").readText()
-        val repositorySource = File("src/main/java/com/example/pocastcloni/domain/repository/PodcastRepository.kt").readText()
+        val repositorySource =
+            File("src/main/java/com/example/pocastcloni/domain/repository/PodcastRepository.kt")
+                .readText()
 
         assertTrue(daoSource.contains("WHERE episodeId = :episodeId"))
         assertFalse(Regex("WHERE\\s+guid\\s*=\\s*:guid", RegexOption.IGNORE_CASE).containsMatchIn(daoSource))
@@ -46,11 +48,16 @@ class EpisodeIdentitySourceTest {
         val deletionSource =
             File("src/main/java/com/example/pocastcloni/domain/usecase/podcast/DeletePodcastUseCase.kt")
                 .readText()
+        val coordinatorSource =
+            File("src/main/java/com/example/pocastcloni/data/worker/DownloadWorkCoordinator.kt")
+                .readText()
 
-        assertTrue(manualSource.contains("cancelLegacyDownloadWork(episode.guid)"))
-        assertTrue(manualSource.contains("cancelEpisodeDownloadWork(episode.episodeId, episode.guid)"))
-        assertTrue(automaticSource.contains("cancelLegacyDownloadWork(episode.guid)"))
-        assertTrue(automaticSource.contains("cancelEpisodeDownloadWork(episode.episodeId, episode.guid)"))
+        assertTrue(manualSource.contains("queueEpisodeDownload"))
+        assertTrue(manualSource.contains("cancelAndDeleteEpisodeDownload"))
+        assertTrue(automaticSource.contains("queueEpisodeDownload"))
+        assertTrue(automaticSource.contains("cancelAndDeleteEpisodeDownload"))
+        assertTrue(coordinatorSource.contains("cancelLegacyDownloadWork(episode.guid)"))
+        assertTrue(coordinatorSource.contains("cancelEpisodeDownloadWork(episode.episodeId, episode.guid)"))
         assertTrue(deletionSource.contains("cancelEpisodeDownloadWork(ep.episodeId, ep.guid)"))
     }
 }

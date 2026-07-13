@@ -1,46 +1,28 @@
 package com.example.pocastcloni.ui.settings
 
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.FeedUpdateMode
-import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.theme.Dimens
-import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.Constants.SettingsDefaults
 import com.example.pocastcloni.util.formatBytes
 import com.example.pocastcloni.util.formatDuration
@@ -179,7 +161,10 @@ fun SectionAutomation(
         SettingsSliderCard(
             title = stringResource(R.string.settings_check_interval),
             value = backgroundCheckInterval,
-            valueRange = SettingsDefaults.MIN_BACKGROUND_CHECK_INTERVAL_HOURS..SettingsDefaults.MAX_BACKGROUND_CHECK_INTERVAL_HOURS,
+            valueRange =
+            SettingsDefaults.MIN_BACKGROUND_CHECK_INTERVAL_HOURS.rangeTo(
+                SettingsDefaults.MAX_BACKGROUND_CHECK_INTERVAL_HOURS
+            ),
             steps = (SettingsDefaults.MAX_BACKGROUND_CHECK_INTERVAL_HOURS - SettingsDefaults.MIN_BACKGROUND_CHECK_INTERVAL_HOURS - 1).toInt(),
             onValueChangeFinished = onSetBackgroundCheckInterval,
             valueDisplay = { Text(stringResource(R.string.settings_unit_hours, it)) }
@@ -261,7 +246,9 @@ fun SectionStatistics(
             is StatisticsScreenUiState.Success -> {
                 if (statsState.statisticsStartedAt > 0L) {
                     val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
-                    val dateFormat = remember(formatLocale) { DateFormat.getDateInstance(DateFormat.MEDIUM, formatLocale) }
+                    val dateFormat = remember(formatLocale) {
+                        DateFormat.getDateInstance(DateFormat.MEDIUM, formatLocale)
+                    }
                     val startDate = remember(statsState.statisticsStartedAt, formatLocale) {
                         dateFormat.format(Date(statsState.statisticsStartedAt))
                     }

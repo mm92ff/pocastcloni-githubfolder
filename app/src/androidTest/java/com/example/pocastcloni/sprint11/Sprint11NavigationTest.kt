@@ -71,4 +71,3 @@ class Sprint11NavigationTest {
         }
     }
 }
-

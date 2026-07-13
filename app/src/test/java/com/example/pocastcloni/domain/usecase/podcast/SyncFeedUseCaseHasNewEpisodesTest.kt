@@ -1,7 +1,6 @@
 package com.example.pocastcloni.domain.usecase.podcast
 
 import android.util.Xml
-import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.PodcastFeedUpdate

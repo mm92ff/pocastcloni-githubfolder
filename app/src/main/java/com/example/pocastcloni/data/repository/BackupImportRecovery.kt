@@ -4,7 +4,6 @@ import com.example.pocastcloni.data.local.BackupImportJournalDao
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,16 +22,12 @@ class BackupImportRecovery @Inject constructor(
 
     internal suspend fun recoverInterruptedImportLocked() {
         val pending = journalDao.getPendingImport() ?: return
-        try {
-            val previousSettings = objectMapper.readValue(
-                pending.previousSettingsJson,
-                UserSettings::class.java
-            )
-            userPreferencesRepository.restoreSettingsOrThrow(previousSettings)
-            journalDao.clearPendingImport()
-            Timber.w("Recovered settings after interrupted backup import")
-        } catch (error: CancellationException) {
-            throw error
-        }
+        val previousSettings = objectMapper.readValue(
+            pending.previousSettingsJson,
+            UserSettings::class.java
+        )
+        userPreferencesRepository.restoreSettingsOrThrow(previousSettings)
+        journalDao.clearPendingImport()
+        Timber.w("Recovered settings after interrupted backup import")
     }
 }

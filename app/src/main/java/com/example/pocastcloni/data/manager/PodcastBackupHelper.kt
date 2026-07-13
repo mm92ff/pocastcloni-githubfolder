@@ -257,13 +257,12 @@ private fun enforceBackupStringLimit(
 }
 
 internal fun validateBackupData(backupData: BackupData): BackupData {
-    if (
-        backupData.podcasts.isEmpty() &&
-        backupData.favorites.isEmpty() &&
-        backupData.episodeStates.isEmpty() &&
-        backupData.settings == null
-    ) {
-        throw IllegalArgumentException("Backup file does not contain any restorable data.")
+    val hasRestorableEntries =
+        backupData.podcasts.isNotEmpty() ||
+            backupData.favorites.isNotEmpty() ||
+            backupData.episodeStates.isNotEmpty()
+    require(hasRestorableEntries || backupData.settings != null) {
+        "Backup file does not contain any restorable data."
     }
     require(backupData.version in 1..Constants.Backup.BACKUP_VERSION) {
         "Backup version is not supported."

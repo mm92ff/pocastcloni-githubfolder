@@ -167,7 +167,11 @@ fun HistoryScreen(
                                     podcast = item.podcast,
                                     showPublishDate = true,
                                     transparentBackground = uiState.transparentEpisodeRows,
-                                    onClick = { viewModel.onAction(HistoryAction.OnEpisodeClick(item.episode.episodeId)) }
+                                    onClick = {
+                                        viewModel.onAction(
+                                            HistoryAction.OnEpisodeClick(item.episode.episodeId)
+                                        )
+                                    }
                                 )
                             }
                         }

@@ -43,7 +43,7 @@ class Sprint11DownloadsViewModelTest {
             if (subscriptions == 1) {
                 flow<List<EpisodeWithPodcastInfo>> {
                     emit(emptyList())
-                    throw IllegalStateException("downloads unavailable")
+                    error("downloads unavailable")
                 }
             } else {
                 flowOf(emptyList())
@@ -85,4 +85,3 @@ class Sprint11DownloadsViewModelTest {
         assertEquals(2, subscriptions)
     }
 }
-

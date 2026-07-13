@@ -23,6 +23,7 @@ class MarkEpisodePlayedUseCaseTest {
     private lateinit var useCase: MarkEpisodePlayedUseCase
 
     private val testDispatcher = StandardTestDispatcher()
+
     @Before
     fun setup() {
         repository = mockk(relaxed = true)

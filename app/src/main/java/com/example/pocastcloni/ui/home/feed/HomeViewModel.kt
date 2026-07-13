@@ -225,7 +225,7 @@ constructor(
                 val summary = refreshPodcasts(forceFull = true)
                 if (presentsResult) presentManualRefreshResult(summary)
             } catch (e: CancellationException) {
-                throw e  // structured concurrency requires this
+                throw e // structured concurrency requires this
             } catch (e: Exception) {
                 if (presentsResult) presentManualRefreshError()
             } finally {
@@ -262,14 +262,14 @@ constructor(
                         )
                     }
                 } catch (e: CancellationException) {
-                    throw e  // structured concurrency requires this
+                    throw e // structured concurrency requires this
                 } catch (e: Exception) {
                     Timber.w(e, "Auto refresh on start failed")
                 } finally {
                     if (showIndicator) _isAutoRefreshing.value = false
                 }
             } catch (e: CancellationException) {
-                throw e  // structured concurrency requires this
+                throw e // structured concurrency requires this
             } catch (e: Exception) {
                 _isAutoRefreshing.value = false
                 Timber.w(e, "Auto refresh on start failed (unexpected)")
@@ -334,7 +334,7 @@ constructor(
                 try {
                     reorderPodcasts(currentList)
                 } catch (e: CancellationException) {
-                    throw e  // structured concurrency requires this
+                    throw e // structured concurrency requires this
                 } catch (e: Exception) {
                     _events.send(HomeUiEvent.ShowUserMessage(UiText.StringResource(R.string.reorder_error)))
                     _optimisticPodcasts.value = null
@@ -393,7 +393,7 @@ constructor(
                 try {
                     deletePodcastUseCase(podcast)
                 } catch (e: CancellationException) {
-                    throw e  // structured concurrency requires this
+                    throw e // structured concurrency requires this
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to delete podcast ${podcast.title}")
                 }

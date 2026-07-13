@@ -84,126 +84,176 @@ fun FavoritesScreen(
         containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(id = R.string.favorites)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(id = R.string.desc_back)
-                        )
-                    }
-                },
-                actions = {
-                    if (uiState.sortMode == FavoritesSortMode.MANUAL) {
-                        IconButton(onClick = { viewModel.onAction(FavoritesAction.ToggleEditMode) }) {
-                            Icon(
-                                imageVector = if (uiState.isEditMode) Icons.Default.Check else Icons.Default.Edit,
-                                contentDescription = stringResource(id = R.string.edit)
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            FavoritesTopAppBar(
+                sortMode = uiState.sortMode,
+                isEditMode = uiState.isEditMode,
+                onNavigateBack = onNavigateBack,
+                onAction = viewModel::onAction
             )
         }
     ) { innerPadding ->
-        Box(
-            modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentAlignment = Alignment.Center
-        ) {
-            val initialLoadError = uiState.contentLoad.error?.takeIf { uiState.contentLoad.lastValue == null }
-            if (uiState.contentLoad.loading && uiState.contentLoad.lastValue == null) {
-                CircularProgressIndicator()
-            } else if (initialLoadError != null) {
-                Text(
-                    text = initialLoadError.asString(context),
-                    color = MaterialTheme.colorScheme.error
-                )
-            } else if (uiState.favorites.isEmpty()) {
-                Text(
-                    text = stringResource(id = R.string.favorites_empty),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            } else {
-                // PERFORMANCE: cache the padding calculation
-                val bottomPadding =
-                    remember(uiState.isPlayerVisible, uiState.progressBarHeight) {
-                        MiniPlayerLayoutDefaults.reservedBottomPadding(
-                            isPlayerVisible = uiState.isPlayerVisible,
-                            progressBarHeight = uiState.progressBarHeight,
-                            extraPadding = Dimens.PaddingSmall
-                        )
-                    }
+        FavoritesContent(
+            uiState = uiState,
+            initialLoadError = uiState.contentLoad.error
+                ?.takeIf { uiState.contentLoad.lastValue == null }
+                ?.asString(context),
+            innerPadding = innerPadding,
+            onAction = viewModel::onAction
+        )
+    }
+}
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    FavoritesSortModeSelector(
-                        selectedMode = uiState.sortMode,
-                        onModeSelected = { mode -> viewModel.onAction(FavoritesAction.ChangeSortMode(mode)) }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+// This UI-emitting composable follows Compose's PascalCase naming convention.
+@Suppress("FunctionNaming")
+private fun FavoritesTopAppBar(
+    sortMode: FavoritesSortMode,
+    isEditMode: Boolean,
+    onNavigateBack: () -> Unit,
+    onAction: (FavoritesAction) -> Unit
+) {
+    TopAppBar(
+        title = { Text(stringResource(id = R.string.favorites)) },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(id = R.string.desc_back)
+                )
+            }
+        },
+        actions = {
+            if (sortMode == FavoritesSortMode.MANUAL) {
+                IconButton(onClick = { onAction(FavoritesAction.ToggleEditMode) }) {
+                    Icon(
+                        imageVector = if (isEditMode) Icons.Default.Check else Icons.Default.Edit,
+                        contentDescription = stringResource(id = R.string.edit)
                     )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+    )
+}
 
-                    if (uiState.sortMode == FavoritesSortMode.MANUAL) {
-                        ReorderableLazyColumn(
-                            items = uiState.favorites, // Now accepts ImmutableList
-                            key = { item -> item.id },
-                            itemLabel = { item -> item.episode.title },
-                            onReorder = { from, to -> viewModel.onAction(FavoritesAction.OnReorder(from, to)) },
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding =
-                            PaddingValues(
-                                top = Dimens.PaddingSmall,
-                                bottom = bottomPadding
-                            ),
-                            reverseLayout = uiState.oneHandedMode,
-                            verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
-                        ) { _, item, _ ->
-                            FavoriteEpisodeRow(
-                                item = item,
-                                swipeEnabled = !uiState.isEditMode,
-                                transparentBackground = uiState.transparentEpisodeRows,
-                                onAction = viewModel::onAction
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding =
-                            PaddingValues(
-                                top = Dimens.PaddingSmall,
-                                bottom = bottomPadding
-                            ),
-                            verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
-                        ) {
-                            items(
-                                items = uiState.dateGroupedRows,
-                                key = { row -> row.key },
-                                contentType = { row ->
-                                    when (row) {
-                                        is FavoriteListRow.SectionHeader -> "favorite-section"
-                                        is FavoriteListRow.EpisodeRow -> "favorite-episode"
-                                    }
-                                }
-                            ) { row ->
-                                when (row) {
-                                    is FavoriteListRow.SectionHeader -> {
-                                        FavoriteSectionHeader(bucket = row.bucket)
-                                    }
+@Composable
+// This UI-emitting composable follows Compose's PascalCase naming convention.
+@Suppress("FunctionNaming")
+private fun FavoritesContent(
+    uiState: FavoritesUiState,
+    initialLoadError: String?,
+    innerPadding: PaddingValues,
+    onAction: (FavoritesAction) -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        contentAlignment = Alignment.Center
+    ) {
+        if (uiState.contentLoad.loading && uiState.contentLoad.lastValue == null) {
+            CircularProgressIndicator()
+        } else if (initialLoadError != null) {
+            Text(text = initialLoadError, color = MaterialTheme.colorScheme.error)
+        } else if (uiState.favorites.isEmpty()) {
+            Text(
+                text = stringResource(id = R.string.favorites_empty),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        } else {
+            FavoritesList(uiState = uiState, onAction = onAction)
+        }
+    }
+}
 
-                                    is FavoriteListRow.EpisodeRow -> {
-                                        FavoriteEpisodeRow(
-                                            item = row.item,
-                                            swipeEnabled = true,
-                                            transparentBackground = uiState.transparentEpisodeRows,
-                                            onAction = viewModel::onAction
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+@Composable
+// This UI-emitting composable follows Compose's PascalCase naming convention.
+@Suppress("FunctionNaming")
+private fun FavoritesList(
+    uiState: FavoritesUiState,
+    onAction: (FavoritesAction) -> Unit
+) {
+    val bottomPadding =
+        remember(uiState.isPlayerVisible, uiState.progressBarHeight) {
+            MiniPlayerLayoutDefaults.reservedBottomPadding(
+                isPlayerVisible = uiState.isPlayerVisible,
+                progressBarHeight = uiState.progressBarHeight,
+                extraPadding = Dimens.PaddingSmall
+            )
+        }
+    val contentPadding = PaddingValues(top = Dimens.PaddingSmall, bottom = bottomPadding)
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        FavoritesSortModeSelector(
+            selectedMode = uiState.sortMode,
+            onModeSelected = { mode -> onAction(FavoritesAction.ChangeSortMode(mode)) }
+        )
+        if (uiState.sortMode == FavoritesSortMode.MANUAL) {
+            ManualFavoritesList(uiState, contentPadding, onAction)
+        } else {
+            DateGroupedFavoritesList(uiState, contentPadding, onAction)
+        }
+    }
+}
+
+@Composable
+// This UI-emitting composable follows Compose's PascalCase naming convention.
+@Suppress("FunctionNaming")
+private fun ManualFavoritesList(
+    uiState: FavoritesUiState,
+    contentPadding: PaddingValues,
+    onAction: (FavoritesAction) -> Unit
+) {
+    ReorderableLazyColumn(
+        items = uiState.favorites,
+        key = { item -> item.id },
+        itemLabel = { item -> item.episode.title },
+        onReorder = { from, to -> onAction(FavoritesAction.OnReorder(from, to)) },
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+        reverseLayout = uiState.oneHandedMode,
+        verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
+    ) { _, item, _ ->
+        FavoriteEpisodeRow(
+            item = item,
+            swipeEnabled = !uiState.isEditMode,
+            transparentBackground = uiState.transparentEpisodeRows,
+            onAction = onAction
+        )
+    }
+}
+
+@Composable
+// This UI-emitting composable follows Compose's PascalCase naming convention.
+@Suppress("FunctionNaming")
+private fun DateGroupedFavoritesList(
+    uiState: FavoritesUiState,
+    contentPadding: PaddingValues,
+    onAction: (FavoritesAction) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+        verticalArrangement = if (uiState.oneHandedMode) Arrangement.Bottom else Arrangement.Top
+    ) {
+        items(
+            items = uiState.dateGroupedRows,
+            key = { row -> row.key },
+            contentType = { row ->
+                when (row) {
+                    is FavoriteListRow.SectionHeader -> "favorite-section"
+                    is FavoriteListRow.EpisodeRow -> "favorite-episode"
+                }
+            }
+        ) { row ->
+            when (row) {
+                is FavoriteListRow.SectionHeader -> FavoriteSectionHeader(bucket = row.bucket)
+                is FavoriteListRow.EpisodeRow -> {
+                    FavoriteEpisodeRow(
+                        item = row.item,
+                        swipeEnabled = true,
+                        transparentBackground = uiState.transparentEpisodeRows,
+                        onAction = onAction
+                    )
                 }
             }
         }

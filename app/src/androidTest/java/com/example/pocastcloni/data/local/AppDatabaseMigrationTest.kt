@@ -24,7 +24,7 @@ class AppDatabaseMigrationTest {
     }
 
     @Test
-    fun migrateLegacyVersion9_preservesPodcastAndEpisodeData() {
+    fun migrateSyntheticLegacyVersion9_bestEffortPreservesPodcastAndEpisodeData() {
         val dbFile = context.getDatabasePath(TEST_DB)
         dbFile.parentFile?.mkdirs()
 

@@ -200,6 +200,8 @@ class BackupRepositorySecurityTest {
         coVerify(exactly = 0) { dao.updateAutoDownloadEnabled(url, any()) }
     }
 
+    // The two-feed fixture stays co-located so every duplicate-GUID assertion uses the same identities.
+    @Suppress("LongMethod")
     @Test
     fun `v2 restore scopes duplicate guids and only writes portable state`() = runTest(dispatcher) {
         val feedA = "https://feed-a.example/rss"
@@ -340,9 +342,11 @@ class BackupRepositorySecurityTest {
         repository.importFullBackup(mockk<Uri>())
 
         coVerify {
-            dao.insertPodcasts(match { podcasts ->
-                podcasts.single().let { !it.allowInsecureHttp && it.imageUrl.isEmpty() }
-            })
+            dao.insertPodcasts(
+                match { podcasts ->
+                    podcasts.single().let { !it.allowInsecureHttp && it.imageUrl.isEmpty() }
+                }
+            )
         }
         coVerify(exactly = 1) { postImportSyncScheduler.schedule() }
     }
@@ -372,9 +376,11 @@ class BackupRepositorySecurityTest {
         repository.importFullBackup(mockk<Uri>())
 
         coVerify {
-            dao.insertPodcasts(match { podcasts ->
-                podcasts.single().let { !it.allowLocalNetwork && it.imageUrl.isEmpty() }
-            })
+            dao.insertPodcasts(
+                match { podcasts ->
+                    podcasts.single().let { !it.allowLocalNetwork && it.imageUrl.isEmpty() }
+                }
+            )
         }
         coVerify(exactly = 1) { postImportSyncScheduler.schedule() }
     }
@@ -398,9 +404,11 @@ class BackupRepositorySecurityTest {
         repository.importFullBackup(mockk<Uri>())
 
         coVerify {
-            dao.insertPodcasts(match { podcasts ->
-                podcasts.single().lastModifiedHeader == null && podcasts.single().eTagHeader == null
-            })
+            dao.insertPodcasts(
+                match { podcasts ->
+                    podcasts.single().lastModifiedHeader == null && podcasts.single().eTagHeader == null
+                }
+            )
         }
     }
 
@@ -425,24 +433,25 @@ class BackupRepositorySecurityTest {
     }
 
     @Test
-    fun `post-commit scheduling cancellation propagates without rolling committed settings back`() = runTest(dispatcher) {
-        val url = "https://example.com/feed.xml"
-        val stored = PodcastEntity(url, "Imported", "", "")
-        coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
-            podcasts = listOf(BackupPodcast(url = url, title = "Imported"))
-        )
-        coEvery { dao.getPodcastByUrl(url) } returnsMany listOf(null, null, stored)
-        coEvery { postImportSyncScheduler.schedule() } throws CancellationException("cancelled")
+    fun `post-commit scheduling cancellation propagates without rolling committed settings back`() =
+        runTest(dispatcher) {
+            val url = "https://example.com/feed.xml"
+            val stored = PodcastEntity(url, "Imported", "", "")
+            coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
+                podcasts = listOf(BackupPodcast(url = url, title = "Imported"))
+            )
+            coEvery { dao.getPodcastByUrl(url) } returnsMany listOf(null, null, stored)
+            coEvery { postImportSyncScheduler.schedule() } throws CancellationException("cancelled")
 
-        try {
-            repository.importFullBackup(mockk())
-            fail("Expected cancellation")
-        } catch (_: CancellationException) {
-            // Expected.
+            try {
+                repository.importFullBackup(mockk())
+                fail("Expected cancellation")
+            } catch (_: CancellationException) {
+                // Expected.
+            }
+
+            coVerify(exactly = 0) { preferences.restoreSettingsOrThrow(any()) }
         }
-
-        coVerify(exactly = 0) { preferences.restoreSettingsOrThrow(any()) }
-    }
 
     @Test
     fun `post-commit scheduling failure does not fail committed import`() = runTest(dispatcher) {
@@ -537,13 +546,13 @@ class BackupRepositorySecurityTest {
                 gridSize = 7,
                 backgroundCheckInterval = 24,
                 indicator =
-                    IndicatorSettings(
-                        colorArgb = 0xFF112233,
-                        size = 32,
-                        borderWidth = 4,
-                        xOffset = -5,
-                        yOffset = 6
-                    )
+                IndicatorSettings(
+                    colorArgb = 0xFF112233,
+                    size = 32,
+                    borderWidth = 4,
+                    xOffset = -5,
+                    yOffset = 6
+                )
             )
         val imported =
             UserSettings(
@@ -560,10 +569,10 @@ class BackupRepositorySecurityTest {
             BackupData(
                 settings = imported,
                 settingsFieldPresence =
-                    BackupSettingsFieldPresence(
-                        fields = setOf("theme", "indicator"),
-                        indicatorFields = setOf("size")
-                    )
+                BackupSettingsFieldPresence(
+                    fields = setOf("theme", "indicator"),
+                    indicatorFields = setOf("size")
+                )
             )
 
         repository.importFullBackup(mockk())

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
@@ -28,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -260,7 +258,7 @@ private fun PreviewEpisodeSummary(
                 filledColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f)
             ),
             contentColor = TransparentSurfaceDefaults.contentColor(transparent, MaterialTheme.colorScheme.onSurface)
-            )
+        )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = Dimens.PaddingSmall, vertical = Dimens.PaddingVerySmall),

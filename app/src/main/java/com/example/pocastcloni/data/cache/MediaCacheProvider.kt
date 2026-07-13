@@ -11,6 +11,7 @@ import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,8 +42,11 @@ internal constructor(
 
         return try {
             cacheFactory().also { cache = it }
-        } catch (e: Exception) {
-            Timber.e(e, "Media cache initialization failed; continuing without cache")
+        } catch (error: IOException) {
+            Timber.e(error, "Media cache initialization failed; continuing without cache")
+            null
+        } catch (error: IllegalStateException) {
+            Timber.e(error, "Media cache initialization failed; continuing without cache")
             null
         }
     }

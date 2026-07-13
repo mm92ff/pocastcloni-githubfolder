@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.CoroutineDispatcher
@@ -63,6 +64,7 @@ internal class DownloadPublisher(
     }
 
     @Suppress("ThrowsCount", "TooGenericExceptionCaught")
+    @RequiresApi(Build.VERSION_CODES.Q)
     private suspend fun prepareMediaStore(
         stagedFile: File,
         fileName: String,
@@ -283,23 +285,31 @@ internal suspend fun copyStagedDownload(
     try {
         currentCoroutineContext().ensureActive()
         openOutput().use { output ->
-            stagedFile.inputStream().use { input ->
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-                    val bytesRead = input.read(buffer)
-                    if (bytesRead == -1) break
-                    output.write(buffer, 0, bytesRead)
-                    onChunkCopied()
-                    currentCoroutineContext().ensureActive()
-                }
-            }
-            output.flush()
+            copyStagedBytes(stagedFile, output, onChunkCopied)
         }
     } catch (error: Throwable) {
         runCatching(cleanupTarget)
         throw error
     }
+}
+
+private suspend fun copyStagedBytes(
+    stagedFile: File,
+    output: OutputStream,
+    onChunkCopied: suspend () -> Unit
+) {
+    stagedFile.inputStream().use { input ->
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val bytesRead = input.read(buffer)
+            if (bytesRead == -1) break
+            output.write(buffer, 0, bytesRead)
+            onChunkCopied()
+            currentCoroutineContext().ensureActive()
+        }
+    }
+    output.flush()
 }
 
 @Suppress("TooGenericExceptionCaught")

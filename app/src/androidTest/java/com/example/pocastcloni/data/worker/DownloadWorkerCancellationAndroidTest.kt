@@ -44,10 +44,10 @@ class DownloadWorkerCancellationAndroidTest {
         PodcastRepositoryImpl(
             podcastDao = dao,
             itunesSearchApi =
-                object : ItunesSearchApi {
-                    override suspend fun searchPodcasts(term: String) =
-                        ItunesResponse(resultCount = 0, results = emptyList())
-                },
+            object : ItunesSearchApi {
+                override suspend fun searchPodcasts(term: String) =
+                    ItunesResponse(resultCount = 0, results = emptyList())
+            },
             dispatcherProvider = DefaultDispatcherProvider(),
             downloader = PodcastDownloader(context, Provider { error("unused") }),
             syncFeedUseCase = Provider<SyncFeedUseCase> { error("unused") },

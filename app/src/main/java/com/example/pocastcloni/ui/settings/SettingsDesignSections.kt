@@ -3,7 +3,6 @@ package com.example.pocastcloni.ui.settings
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -55,6 +53,16 @@ import com.example.pocastcloni.ui.theme.bestContrastingColor
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.Constants.SettingsDefaults
 
+private const val INDICATOR_GREEN_ARGB = 0xFF4CAF50
+private const val INDICATOR_BLUE_ARGB = 0xFF2196F3
+private const val INDICATOR_AMBER_ARGB = 0xFFFFC107
+private const val INDICATOR_RED_ARGB = 0xFFF44336
+private const val INDICATOR_PURPLE_ARGB = 0xFF9C27B0
+private const val EIGHTH_TURN_DEGREES = 45f
+private const val QUARTER_TURN_DEGREES = 90f
+private const val THREE_EIGHTHS_TURN_DEGREES = 135f
+private const val HALF_TURN_DEGREES = 180f
+
 private val GradientDirection.labelRes: Int
     @StringRes
     get() =
@@ -85,11 +93,11 @@ private val AppColor.labelRes: Int
 @StringRes
 private fun indicatorColorLabelRes(colorArgb: Long): Int =
     when (colorArgb) {
-        0xFF4CAF50 -> R.string.color_green
-        0xFF2196F3 -> R.string.color_blue
-        0xFFFFC107 -> R.string.color_amber
-        0xFFF44336 -> R.string.color_red
-        0xFF9C27B0 -> R.string.color_purple
+        INDICATOR_GREEN_ARGB -> R.string.color_green
+        INDICATOR_BLUE_ARGB -> R.string.color_blue
+        INDICATOR_AMBER_ARGB -> R.string.color_amber
+        INDICATOR_RED_ARGB -> R.string.color_red
+        INDICATOR_PURPLE_ARGB -> R.string.color_purple
         else -> R.string.color_slate
     }
 
@@ -97,13 +105,13 @@ private val GradientDirection.rotationDegrees: Float
     get() =
         when (this) {
             GradientDirection.BOTTOM_TO_TOP -> 0f
-            GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT -> 45f
-            GradientDirection.LEFT_TO_RIGHT -> 90f
-            GradientDirection.TOP_LEFT_TO_BOTTOM_RIGHT -> 135f
-            GradientDirection.TOP_TO_BOTTOM -> 180f
-            GradientDirection.TOP_RIGHT_TO_BOTTOM_LEFT -> -135f
-            GradientDirection.RIGHT_TO_LEFT -> -90f
-            GradientDirection.BOTTOM_RIGHT_TO_TOP_LEFT -> -45f
+            GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT -> EIGHTH_TURN_DEGREES
+            GradientDirection.LEFT_TO_RIGHT -> QUARTER_TURN_DEGREES
+            GradientDirection.TOP_LEFT_TO_BOTTOM_RIGHT -> THREE_EIGHTHS_TURN_DEGREES
+            GradientDirection.TOP_TO_BOTTOM -> HALF_TURN_DEGREES
+            GradientDirection.TOP_RIGHT_TO_BOTTOM_LEFT -> -THREE_EIGHTHS_TURN_DEGREES
+            GradientDirection.RIGHT_TO_LEFT -> -QUARTER_TURN_DEGREES
+            GradientDirection.BOTTOM_RIGHT_TO_TOP_LEFT -> -EIGHTH_TURN_DEGREES
         }
 
 @OptIn(ExperimentalLayoutApi::class)
