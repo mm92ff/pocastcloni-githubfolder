@@ -10,15 +10,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.cache.NoOpCacheEvictor
-import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
@@ -28,6 +25,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.example.pocastcloni.R
+import com.example.pocastcloni.data.cache.MediaCacheProvider
 import com.example.pocastcloni.data.repository.StreamingStatisticsRecorder
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.BufferMode
@@ -47,7 +45,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import okhttp3.OkHttpClient
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Named
 
@@ -64,14 +61,17 @@ class PodcastPlaybackService : MediaSessionService() {
 
     @Inject lateinit var connectivityProvider: ConnectivityProvider
 
-    @Inject @Named("ApprovedMediaClient") lateinit var okHttpClient: OkHttpClient
+    @Inject
+    @Named("ApprovedMediaClient")
+    lateinit var okHttpClient: OkHttpClient
+
+    @Inject lateinit var mediaCacheProvider: MediaCacheProvider
 
     private lateinit var serviceScope: CoroutineScope
 
     private lateinit var player: ExoPlayer
     private lateinit var mediaSession: MediaSession
 
-    private var cache: Cache? = null
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private lateinit var sessionActivityPendingIntent: PendingIntent
 
@@ -111,15 +111,6 @@ class PodcastPlaybackService : MediaSessionService() {
     }
 
     private fun initializeStaticComponents() {
-        cache =
-            try {
-                val cacheFolder = File(cacheDir, "media_cache")
-                SimpleCache(cacheFolder, NoOpCacheEvictor(), StandaloneDatabaseProvider(this))
-            } catch (t: Throwable) {
-                Timber.e(t, "Cache init failed - continuing without cache")
-                null
-            }
-
         // Listener for statistics (counts streamed bytes)
         val statsListener = StreamingStatsListener()
 
@@ -132,13 +123,7 @@ class PodcastPlaybackService : MediaSessionService() {
         val upstreamFactory: DataSource.Factory = DefaultDataSource.Factory(this, httpDataSourceFactory)
 
         // Optional cache layer
-        val cacheFactory: DataSource.Factory =
-            cache?.let {
-                CacheDataSource.Factory()
-                    .setCache(it)
-                    .setUpstreamDataSourceFactory(upstreamFactory)
-                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-            } ?: upstreamFactory
+        val cacheFactory = playbackDataSourceFactory(upstreamFactory, mediaCacheProvider.getCacheOrNull())
 
         mediaSourceFactory =
             ProgressiveMediaSource.Factory(cacheFactory)
@@ -333,8 +318,11 @@ class PodcastPlaybackService : MediaSessionService() {
         if (this::player.isInitialized) {
             runCatching { player.release() }
         }
-        runCatching { cache?.release() }
-        cache = null
+        try {
+            mediaCacheProvider.close()
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to close media cache during service teardown")
+        }
         streamingStatisticsRecorder.requestFlush()
         if (this::serviceScope.isInitialized) {
             serviceScope.cancel()
@@ -384,3 +372,15 @@ internal fun mediaControllerCommands(
     if (!isTrusted) return null
     return availableCommands
 }
+
+@OptIn(UnstableApi::class)
+internal fun playbackDataSourceFactory(
+    upstreamFactory: DataSource.Factory,
+    cache: Cache?
+): DataSource.Factory =
+    cache?.let {
+        CacheDataSource.Factory()
+            .setCache(it)
+            .setUpstreamDataSourceFactory(upstreamFactory)
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+    } ?: upstreamFactory

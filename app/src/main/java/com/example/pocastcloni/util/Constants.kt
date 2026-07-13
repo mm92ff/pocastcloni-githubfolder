@@ -43,6 +43,24 @@ object Constants {
         const val FORWARD_INTERVAL_MS = 30000L
     }
 
+    object Cache {
+        const val IMAGE_CACHE_DIR = "image_cache"
+        const val HTTP_CACHE_DIR = "http_cache"
+        const val LOCAL_HTTP_CACHE_DIR = "local_http_cache"
+        const val APPROVED_MEDIA_HTTP_CACHE_DIR = "approved_media_http_cache"
+        const val MEDIA_CACHE_DIR = "media_cache"
+        const val MEDIA_CACHE_MAX_BYTES = 256L * 1024L * 1024L
+
+        val MANAGED_CACHE_DIRS =
+            setOf(
+                IMAGE_CACHE_DIR,
+                HTTP_CACHE_DIR,
+                LOCAL_HTTP_CACHE_DIR,
+                APPROVED_MEDIA_HTTP_CACHE_DIR,
+                MEDIA_CACHE_DIR
+            )
+    }
+
     object Notification {
         const val CHANNEL_PLAYBACK_ID = "playback_channel"
     }

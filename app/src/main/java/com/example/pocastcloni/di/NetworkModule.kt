@@ -30,7 +30,6 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.jackson.JacksonConverterFactory
 import timber.log.Timber
-import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import okhttp3.Dns
@@ -66,7 +65,7 @@ abstract class NetworkModule {
             @ApplicationContext context: Context,
             loggingInterceptor: HttpLoggingInterceptor
         ): OkHttpClient {
-            val cacheDir = File(context.cacheDir, "http_cache")
+            val cacheDir = context.cacheDir.resolve(Constants.Cache.HTTP_CACHE_DIR)
             val cache = Cache(cacheDir, 50 * 1024 * 1024L) // 50 MB Cache
 
             return OkHttpClient.Builder()
@@ -91,7 +90,7 @@ abstract class NetworkModule {
             @ApplicationContext context: Context,
             loggingInterceptor: HttpLoggingInterceptor
         ): OkHttpClient {
-            val cache = Cache(File(context.cacheDir, "local_http_cache"), 20 * 1024 * 1024L)
+            val cache = Cache(context.cacheDir.resolve(Constants.Cache.LOCAL_HTTP_CACHE_DIR), 20 * 1024 * 1024L)
             return OkHttpClient.Builder()
                 .cache(cache)
                 .followRedirects(false)
@@ -118,7 +117,10 @@ abstract class NetworkModule {
             loggingInterceptor: HttpLoggingInterceptor,
             registry: LocalNetworkAccessRegistry
         ): OkHttpClient {
-            val cache = Cache(File(context.cacheDir, "approved_media_http_cache"), 20 * 1024 * 1024L)
+            val cache = Cache(
+                context.cacheDir.resolve(Constants.Cache.APPROVED_MEDIA_HTTP_CACHE_DIR),
+                20 * 1024 * 1024L
+            )
             return OkHttpClient.Builder()
                 .cache(cache)
                 .followRedirects(false)

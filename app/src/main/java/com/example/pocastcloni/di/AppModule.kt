@@ -6,6 +6,7 @@ import coil.decode.SvgDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.example.pocastcloni.R
+import com.example.pocastcloni.util.Constants
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,7 +37,7 @@ object AppModule {
             }
             .diskCache {
                 DiskCache.Builder()
-                    .directory(context.cacheDir.resolve("image_cache"))
+                    .directory(context.cacheDir.resolve(Constants.Cache.IMAGE_CACHE_DIR))
                     .maxSizePercent(0.02)
                     .build()
             }

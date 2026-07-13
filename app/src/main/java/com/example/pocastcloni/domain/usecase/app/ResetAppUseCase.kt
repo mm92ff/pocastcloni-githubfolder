@@ -2,51 +2,74 @@ package com.example.pocastcloni.domain.usecase.app
 
 import android.content.Context
 import coil.ImageLoader
+import coil.annotation.ExperimentalCoilApi
+import com.example.pocastcloni.data.cache.MediaCacheProvider
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
+import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import timber.log.Timber
-import java.io.File
+import java.io.IOException
 import javax.inject.Inject
+import javax.inject.Named
 
+@OptIn(ExperimentalCoilApi::class)
 class ResetAppUseCase
 @Inject
 constructor(
     private val podcastRepository: PodcastRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val mediaCacheProvider: MediaCacheProvider,
     private val imageLoader: ImageLoader,
+    private val okHttpClient: OkHttpClient,
+    @Named("LocalNetworkClient") private val localNetworkClient: OkHttpClient,
+    @Named("ApprovedMediaClient") private val approvedMediaClient: OkHttpClient,
     private val dispatcherProvider: DispatcherProvider,
     @ApplicationContext private val context: Context
 ) {
     suspend operator fun invoke() {
         withContext(dispatcherProvider.io) {
-            // 1. Reset user settings to defaults
-            userPreferencesRepository.clearSettings()
+            val failures = mutableListOf<Exception>()
 
-            // 2. Clear database
-            podcastRepository.resetDatabase()
-
-            // 3. Clear Coil memory cache (important for the current session)
-            imageLoader.memoryCache?.clear()
-
-            // 4. Physically delete all disk caches from the device
-            // This is the most robust method to avoid race conditions.
-            try {
-                val coilCache = File(context.cacheDir, "image_cache")
-                if (coilCache.exists()) {
-                    coilCache.deleteRecursively()
-                    Timber.d("Coil disk cache deleted.")
+            suspend fun runResetStep(
+                description: String,
+                block: suspend () -> Unit
+            ) {
+                try {
+                    block()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    failures += e
+                    Timber.w(e, "Reset step failed: %s", description)
                 }
+            }
 
-                val okHttpCache = File(context.cacheDir, "http_cache")
-                if (okHttpCache.exists()) {
-                    okHttpCache.deleteRecursively()
-                    Timber.d("OkHttp disk cache deleted.")
+            runResetStep("close media cache") { mediaCacheProvider.close() }
+            runResetStep("clear user settings") { userPreferencesRepository.clearSettings() }
+            runResetStep("clear database") { podcastRepository.resetDatabase() }
+            runResetStep("clear Coil memory cache") { imageLoader.memoryCache?.clear() }
+            runResetStep("clear Coil disk cache") { imageLoader.diskCache?.clear() }
+            runResetStep("evict default HTTP cache") { okHttpClient.cache?.evictAll() }
+            runResetStep("evict local HTTP cache") { localNetworkClient.cache?.evictAll() }
+            runResetStep("evict approved media HTTP cache") { approvedMediaClient.cache?.evictAll() }
+
+            Constants.Cache.MANAGED_CACHE_DIRS.forEach { directoryName ->
+                runResetStep("delete $directoryName") {
+                    val directory = context.cacheDir.resolve(directoryName)
+                    if (directory.exists() && !directory.deleteRecursively()) {
+                        throw IOException("Failed to delete managed cache directory: $directoryName")
+                    }
                 }
-            } catch (e: Exception) {
-                Timber.w(e, "Failed to delete cache directories.")
+            }
+
+            failures.firstOrNull()?.let { primaryFailure ->
+                failures.drop(1).forEach(primaryFailure::addSuppressed)
+                throw primaryFailure
             }
         }
     }
