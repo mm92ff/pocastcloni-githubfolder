@@ -39,6 +39,15 @@ import javax.inject.Named
 private const val DOWNLOAD_NOTIFICATION_ID_BASE = 2_000
 private const val DOWNLOAD_NOTIFICATION_ID_MASK = 0x3FFF
 
+/**
+ * Owns one resumable transfer and its attempt-scoped publication.
+ *
+ * Network bytes remain in episode staging until the transfer completes. The short prepare,
+ * database compare-and-set, and visibility transition runs under [DownloadPublicationGate], which
+ * lets startup recovery observe only stable publication boundaries without serializing queue or
+ * cancellation bookkeeping. Failed and cancelled attempts retain staging only when retry ownership
+ * is confirmed; committed targets are recovered from their database path after process death.
+ */
 @HiltWorker
 @Suppress("LongParameterList")
 class DownloadWorker
@@ -135,40 +144,44 @@ constructor(
                     }
                 }
 
-            publication =
-                DownloadPublisher(applicationContext).prepare(
-                    stagedFile = transfer.partFile,
-                    fileName = fileName,
-                    mimeType = mimeType,
-                    saveToPublicDownloads = saveToPublicDownloads,
-                    attemptId = id
+            DownloadPublicationGate.withLock {
+                val preparedPublication =
+                    DownloadPublisher(applicationContext).prepare(
+                        stagedFile = transfer.partFile,
+                        fileName = fileName,
+                        mimeType = mimeType,
+                        saveToPublicDownloads = saveToPublicDownloads,
+                        attemptId = id
+                    )
+                publication = preparedPublication
+                commitDownloadPublication(
+                    publication = preparedPublication,
+                    commitDatabase = { path ->
+                        podcastCommands.compareAndSetDownloadStatus(
+                            episodeId = episodeId,
+                            expectedStatuses = listOf(DownloadStatus.DOWNLOADING),
+                            status = DownloadStatus.DOWNLOADED,
+                            path = path
+                        )
+                    },
+                    compensateDatabase = { path ->
+                        podcastCommands.compareAndSetDownloadStatusAndPath(
+                            episodeId = episodeId,
+                            expectedStatus = DownloadStatus.DOWNLOADED,
+                            expectedPath = path,
+                            status = DownloadStatus.FAILED,
+                            path = null
+                        )
+                    }
                 )
-            commitDownloadPublication(
-                publication = publication,
-                commitDatabase = { path ->
-                    podcastCommands.compareAndSetDownloadStatus(
-                        episodeId = episodeId,
-                        expectedStatuses = listOf(DownloadStatus.DOWNLOADING),
-                        status = DownloadStatus.DOWNLOADED,
-                        path = path
-                    )
-                },
-                compensateDatabase = { path ->
-                    podcastCommands.compareAndSetDownloadStatusAndPath(
-                        episodeId = episodeId,
-                        expectedStatus = DownloadStatus.DOWNLOADED,
-                        expectedPath = path,
-                        status = DownloadStatus.FAILED,
-                        path = null
-                    )
-                }
-            )
-            committed = true
+                committed = true
+            }
+            val committedPublication = requireNotNull(publication)
             stagingFiles.delete()
             setProgress(workDataOf(PROGRESS_KEY to 1f))
             setForeground(createForegroundInfo(episodeTitle, 100))
-            recordStatisticsBestEffort(publication.totalBytes)
-            return Result.success(workDataOf(Constants.DOWNLOAD_WORKER_OUTPUT_PATH to publication.path))
+            recordStatisticsBestEffort(committedPublication.totalBytes)
+            return Result.success(workDataOf(Constants.DOWNLOAD_WORKER_OUTPUT_PATH to committedPublication.path))
         } catch (error: CancellationException) {
             Timber.i("Download cancelled for episode %d", episodeId)
             retainPartialForRetry =

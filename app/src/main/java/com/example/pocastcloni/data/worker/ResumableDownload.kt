@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
@@ -23,7 +24,6 @@ import java.io.IOException
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
-import java.util.concurrent.atomic.AtomicReference
 
 internal data class DownloadResumeMetadata(
     val url: String,
@@ -61,6 +61,13 @@ internal data class ResumableDownloadResult(
     val totalBytes: Long
 )
 
+/**
+ * Owns resumable staging and each HTTP response for the duration of a transfer.
+ *
+ * [executeCall] keeps `Response.use` ownership after a successful handoff and cancels the active
+ * call when its coroutine ends. Resume metadata is committed before response bytes are appended,
+ * and cancellation leaves staging decisions to the worker's retry ownership policy.
+ */
 internal class ResumableDownload(
     private val client: OkHttpClient,
     private val metadataStore: DownloadResumeMetadataStore,
@@ -372,20 +379,23 @@ internal class ResumableDownload(
     }
 }
 
+/**
+ * Awaits one callback while transferring response ownership cancellation-safely.
+ *
+ * Cancellation always cancels the call. Once OkHttp produces a response, either the resumed caller
+ * owns it and closes it through `Response.use`, or prompt/late cancellation invokes the resume
+ * cleanup handler. Those ownership paths are mutually exclusive.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
 internal suspend fun Call.awaitResponse(): Response =
     suspendCancellableCoroutine { continuation ->
-        val deliveredResponse = AtomicReference<Response?>()
-        continuation.invokeOnCancellation {
-            cancel()
-            deliveredResponse.getAndSet(null)?.close()
-        }
+        continuation.invokeOnCancellation { cancel() }
         enqueue(
             object : Callback {
                 override fun onFailure(
                     call: Call,
                     e: IOException
                 ) {
-                    if (continuation.isCancelled) return
                     continuation.resumeWith(Result.failure(e))
                 }
 
@@ -393,13 +403,7 @@ internal suspend fun Call.awaitResponse(): Response =
                     call: Call,
                     response: Response
                 ) {
-                    if (!continuation.isActive) {
-                        response.close()
-                    } else {
-                        deliveredResponse.set(response)
-                        continuation.resumeWith(Result.success(response))
-                        deliveredResponse.compareAndSet(response, null)
-                    }
+                    continuation.resume(response) { response.close() }
                 }
             }
         )

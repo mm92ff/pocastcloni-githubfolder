@@ -13,6 +13,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
@@ -22,6 +24,17 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.UUID
 
+internal const val PRIVATE_PUBLICATION_ATTEMPT_DIRECTORY = ".published"
+internal const val LEGACY_PUBLICATION_ATTEMPT_DIRECTORY = ".staging"
+internal const val PUBLIC_DOWNLOAD_DIRECTORY = "Pocastcloni"
+
+/**
+ * Owns a prepared target until its database row and external visibility agree.
+ *
+ * A publication starts hidden or attempt-scoped. [makeVisible] is called only after the exact
+ * download row has accepted [path]. Until then, or after a failed commit, the caller owns
+ * [cleanup]. Implementations must keep cleanup scoped to the target created by this attempt.
+ */
 internal interface PendingDownloadPublication {
     val path: String
     val totalBytes: Long
@@ -31,6 +44,20 @@ internal interface PendingDownloadPublication {
     fun cleanup()
 }
 
+/**
+ * Serializes process-local publication transitions with startup recovery.
+ *
+ * The gate is intentionally independent from queue and cancellation state. Callers hold it only
+ * while preparing a completed transfer, compare-and-setting its database row, and publishing it,
+ * or while reconciling those same artifacts after startup.
+ */
+internal object DownloadPublicationGate {
+    private val mutex = Mutex()
+
+    suspend fun <T> withLock(block: suspend () -> T): T = mutex.withLock { block() }
+}
+
+/** Prepares attempt-scoped targets that startup recovery can identify after process death. */
 internal class DownloadPublisher(
     private val context: Context,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -83,7 +110,7 @@ internal class DownloadPublisher(
                 put(MediaStore.Downloads.MIME_TYPE, mimeType.ifBlank { DEFAULT_MIME_TYPE })
                 put(
                     MediaStore.Downloads.RELATIVE_PATH,
-                    "${Environment.DIRECTORY_DOWNLOADS}/$PUBLIC_DOWNLOAD_DIRECTORY"
+                    "${Environment.DIRECTORY_DOWNLOADS}/$PUBLIC_DOWNLOAD_DIRECTORY/"
                 )
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
@@ -136,7 +163,6 @@ internal class DownloadPublisher(
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).usableSpace
 
     private companion object {
-        const val PUBLIC_DOWNLOAD_DIRECTORY = "Pocastcloni"
         const val DEFAULT_MIME_TYPE = "audio/mpeg"
     }
 }
@@ -158,7 +184,7 @@ internal fun preparePrivateFilePublication(
     fileName: String,
     attemptId: UUID
 ): PendingDownloadPublication {
-    val attemptDirectory = File(targetDirectory, ".published/$attemptId")
+    val attemptDirectory = File(targetDirectory, "$PRIVATE_PUBLICATION_ATTEMPT_DIRECTORY/$attemptId")
     ensureDirectoryExists(attemptDirectory)
     val target = File(attemptDirectory, fileName)
     moveReplacing(stagedFile, target)
@@ -173,7 +199,7 @@ internal suspend fun prepareLegacyPublicFilePublication(
 ): PendingDownloadPublication {
     ensureDirectoryExists(targetDirectory)
     ensureAvailableStorage(targetDirectory.usableSpace, stagedFile.length())
-    val attemptDirectory = File(targetDirectory, ".staging/$attemptId")
+    val attemptDirectory = File(targetDirectory, "$LEGACY_PUBLICATION_ATTEMPT_DIRECTORY/$attemptId")
     ensureDirectoryExists(attemptDirectory)
     val pendingTarget = File(attemptDirectory, fileName)
     copyStagedDownload(
@@ -259,7 +285,7 @@ private fun ensureDirectoryExists(directory: File) {
     }
 }
 
-private fun moveReplacing(
+internal fun moveReplacing(
     source: File,
     target: File
 ) {
@@ -312,6 +338,12 @@ private suspend fun copyStagedBytes(
     output.flush()
 }
 
+/**
+ * Commits the database path before making the prepared target visible.
+ *
+ * If visibility fails after the compare-and-set, compensation resets only the row that still owns
+ * this exact path. Cleanup remains attempt-scoped and may be repeated by startup recovery.
+ */
 @Suppress("TooGenericExceptionCaught")
 internal suspend fun commitDownloadPublication(
     publication: PendingDownloadPublication,

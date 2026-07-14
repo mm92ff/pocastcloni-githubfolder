@@ -1,7 +1,9 @@
 package com.example.pocastcloni.data.repository
 
 import com.example.pocastcloni.data.local.DownloadStatus
+import com.example.pocastcloni.data.local.EpisodeDownloadStateRow
 import com.example.pocastcloni.data.local.EpisodeEntity
+import com.example.pocastcloni.data.worker.DownloadPublicationGate
 import com.example.pocastcloni.data.worker.DownloadWorkStateCoordinator
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -93,6 +95,58 @@ class EpisodeMaintenanceTest {
         assertFalse(casCalled)
         assertFalse(stagingDeleted)
         enqueue.join()
+    }
+
+    @Test
+    fun reconcileDownloadedReadability_waitsForLegacyPublicationMove() = runTest {
+        var databaseCommitted = false
+        var finalTargetReadable = false
+        var downloadedRowsLoaded = false
+        var resetCalled = false
+        val databaseCommitObserved = CompletableDeferred<Unit>()
+        val finishPublication = CompletableDeferred<Unit>()
+        val publication =
+            launch {
+                DownloadPublicationGate.withLock {
+                    databaseCommitted = true
+                    databaseCommitObserved.complete(Unit)
+                    finishPublication.await()
+                    finalTargetReadable = true
+                }
+            }
+        databaseCommitObserved.await()
+
+        val reconciliation =
+            async {
+                reconcileDownloadedReadability(
+                    loadDownloadedRows = {
+                        assertTrue(databaseCommitted)
+                        downloadedRowsLoaded = true
+                        listOf(
+                            EpisodeDownloadStateRow(
+                                episodeId = 1L,
+                                downloadStatus = DownloadStatus.DOWNLOADED,
+                                downloadPath = "legacy-target.mp3"
+                            )
+                        )
+                    },
+                    fileIsReadable = { finalTargetReadable },
+                    compareAndReset = {
+                        resetCalled = true
+                        true
+                    }
+                )
+            }
+        testScheduler.runCurrent()
+
+        assertFalse(downloadedRowsLoaded)
+        assertFalse(reconciliation.isCompleted)
+        finishPublication.complete(Unit)
+        publication.join()
+
+        assertEquals(0, reconciliation.await())
+        assertTrue(downloadedRowsLoaded)
+        assertFalse(resetCalled)
     }
 
     private fun episode(

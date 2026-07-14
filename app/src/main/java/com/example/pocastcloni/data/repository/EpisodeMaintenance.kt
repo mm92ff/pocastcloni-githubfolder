@@ -1,7 +1,9 @@
 package com.example.pocastcloni.data.repository
 
 import com.example.pocastcloni.data.local.DownloadStatus
+import com.example.pocastcloni.data.local.EpisodeDownloadStateRow
 import com.example.pocastcloni.data.local.EpisodeEntity
+import com.example.pocastcloni.data.worker.DownloadPublicationGate
 import com.example.pocastcloni.data.worker.DownloadWorkStateCoordinator
 
 internal fun selectEpisodesToPrune(
@@ -50,4 +52,31 @@ internal suspend fun reconcileTransientDownloadState(
     val reset = compareAndReset()
     if (reset) deleteStaging()
     if (reset) 1 else 0
+}
+
+/**
+ * Validates downloaded paths only after any in-process publication transition has completed.
+ *
+ * The snapshot, readability check, and exact-row reset share [DownloadPublicationGate] with the
+ * worker's database-commit-to-visibility phase. A legacy target therefore cannot be observed in
+ * the intentional interval after its database path is committed but before its final move.
+ */
+internal suspend fun reconcileDownloadedReadability(
+    loadDownloadedRows: suspend () -> List<EpisodeDownloadStateRow>,
+    fileIsReadable: (String) -> Boolean,
+    compareAndReset: suspend (EpisodeDownloadStateRow) -> Boolean
+): Int = DownloadPublicationGate.withLock {
+    var correctedEntries = 0
+    loadDownloadedRows()
+        .filter { row ->
+            shouldResetDownloadState(
+                status = row.downloadStatus,
+                downloadPath = row.downloadPath,
+                fileIsReadable = fileIsReadable
+            )
+        }
+        .forEach { row ->
+            if (compareAndReset(row)) correctedEntries++
+        }
+    correctedEntries
 }
