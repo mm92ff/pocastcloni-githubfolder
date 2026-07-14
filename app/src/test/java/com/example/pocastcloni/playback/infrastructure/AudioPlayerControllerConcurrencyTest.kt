@@ -23,12 +23,14 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -39,6 +41,13 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Date
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.thread
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AudioPlayerControllerConcurrencyTest {
@@ -194,6 +203,179 @@ class AudioPlayerControllerConcurrencyTest {
         runCurrent()
 
         coVerify(exactly = 2) { fixture.mediaConnection.connect() }
+    }
+
+    @Test
+    fun `accepted reconnect hands off ownership before suspended ui synchronization`() = runTest {
+        val replacement = TestMediaController()
+        val nextReplacement = TestMediaController()
+        val fixture = Fixture(this, listOf(TestMediaController(), replacement, nextReplacement))
+        fixture.subject.play(FIRST_EPISODE_ID)
+        runCurrent()
+
+        replacement.currentMediaItem =
+            MediaItem.Builder().setMediaId(SECOND_EPISODE_ID.toString()).build()
+        val synchronizationStarted = CompletableDeferred<Unit>()
+        val finishSynchronization = CompletableDeferred<Unit>()
+        coEvery { fixture.podcastQuery.getEpisode(SECOND_EPISODE_ID) } coAnswers {
+            synchronizationStarted.complete(Unit)
+            finishSynchronization.await()
+            episode(SECOND_EPISODE_ID)
+        }
+
+        fixture.disconnectListener(fixture.primary.controller)
+        runCurrent()
+        assertTrue(synchronizationStarted.isCompleted)
+
+        fixture.disconnectListener(replacement.controller)
+        runCurrent()
+
+        coVerify(exactly = 3) { fixture.mediaConnection.connect() }
+        finishSynchronization.complete(Unit)
+        runCurrent()
+        fixture.subject.releaseResources()
+    }
+
+    @Test
+    fun `stale reconnect result after release cannot activate over fresh reuse`() = runTest {
+        val stale = TestMediaController()
+        val fresh = TestMediaController()
+        val fixture = Fixture(this)
+        lateinit var resumeStaleReconnect: Continuation<MediaController?>
+        var connectCount = 0
+        coEvery { fixture.mediaConnection.connect() } coAnswers {
+            when (++connectCount) {
+                1 -> fixture.primary.controller
+                2 -> suspendCoroutine { continuation -> resumeStaleReconnect = continuation }
+                else -> fresh.controller
+            }
+        }
+        fixture.subject.play(FIRST_EPISODE_ID)
+        runCurrent()
+
+        fixture.disconnectListener(fixture.primary.controller)
+        runCurrent()
+        assertEquals(2, connectCount)
+
+        fixture.subject.releaseResources()
+        val freshPlay = async { fixture.subject.play(SECOND_EPISODE_ID) }
+        runCurrent()
+        resumeStaleReconnect.resume(stale.controller)
+        runCurrent()
+        freshPlay.await()
+
+        verify(exactly = 0) { stale.controller.addListener(any()) }
+        verify(exactly = 0) { stale.controller.setMediaItem(any(), any<Long>()) }
+        verify(exactly = 1) {
+            fresh.controller.setMediaItem(
+                match { it.mediaId == SECOND_EPISODE_ID.toString() },
+                0L
+            )
+        }
+        verify(exactly = 2) { fixture.mediaConnection.release() }
+    }
+
+    @Test
+    fun `old reconnect finally cannot clear newer reconnect ownership`() {
+        val ownership = ReconnectJobOwnership()
+        val oldOwner = Any()
+        val newOwner = Any()
+        val oldJob = mockk<Job>(relaxed = true)
+        val newJob = mockk<Job>(relaxed = true)
+
+        assertTrue(ownership.tryOwn(oldOwner, oldJob))
+        ownership.cancelCurrent()
+        assertTrue(ownership.tryOwn(newOwner, newJob))
+
+        ownership.clearIfOwned(oldOwner)
+
+        assertTrue(ownership.hasOwner)
+        assertFalse(ownership.tryOwn(Any(), mockk(relaxed = true)))
+        ownership.clearIfOwned(newOwner)
+        assertFalse(ownership.hasOwner)
+        verify(exactly = 1) { oldJob.cancel(any()) }
+        verify(exactly = 0) { newJob.cancel(any()) }
+    }
+
+    @Test
+    fun `release transition completes before concurrent user reuse can activate`() = runTest {
+        val fresh = TestMediaController()
+        val fixture = Fixture(this, listOf(TestMediaController(), fresh))
+        fixture.subject.play(FIRST_EPISODE_ID)
+        runCurrent()
+
+        val lowLevelReleaseStarted = CountDownLatch(1)
+        val allowLowLevelRelease = CountDownLatch(1)
+        val reusePrepared = CountDownLatch(1)
+        val freshConnectStarted = CountDownLatch(1)
+        val releaseFailure = AtomicReference<Throwable?>()
+        val reuseFailure = AtomicReference<Throwable?>()
+        every { fixture.mediaConnection.release() } answers {
+            lowLevelReleaseStarted.countDown()
+            if (!allowLowLevelRelease.await(THREAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                error("Timed out waiting to finish low-level release")
+            }
+        }
+        coEvery { fixture.preparePlayback(SECOND_EPISODE_ID) } answers {
+            reusePrepared.countDown()
+            playResult(SECOND_EPISODE_ID)
+        }
+        coEvery { fixture.mediaConnection.connect() } coAnswers {
+            freshConnectStarted.countDown()
+            fresh.controller
+        }
+
+        val releaseThread =
+            thread(name = "controller-release") {
+                runCatching { fixture.subject.releaseResources() }
+                    .onFailure(releaseFailure::set)
+            }
+        assertTrue(
+            "Release did not reach the low-level boundary",
+            lowLevelReleaseStarted.await(THREAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        )
+
+        val reuseThread =
+            thread(name = "controller-reuse") {
+                runCatching { runBlocking { fixture.subject.play(SECOND_EPISODE_ID) } }
+                    .onFailure(reuseFailure::set)
+            }
+        try {
+            assertTrue(
+                "Reuse did not finish preparation",
+                reusePrepared.await(THREAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            )
+            assertTrue("Reuse did not block on the release transition", awaitBlocked(reuseThread))
+            assertEquals(1L, freshConnectStarted.count)
+
+            allowLowLevelRelease.countDown()
+            releaseThread.join(THREAD_TIMEOUT_MS)
+            assertFalse("Release thread did not finish", releaseThread.isAlive)
+            assertTrue(
+                "Fresh connect did not start after release",
+                freshConnectStarted.await(THREAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            )
+
+            var completionPolls = 0
+            while (reuseThread.isAlive && completionPolls < THREAD_COMPLETION_POLLS) {
+                runCurrent()
+                if (reuseThread.isAlive) Thread.sleep(THREAD_POLL_DELAY_MS)
+                completionPolls++
+            }
+            assertFalse("Reuse thread did not finish", reuseThread.isAlive)
+            assertEquals(null, releaseFailure.get())
+            assertEquals(null, reuseFailure.get())
+            verify(exactly = 1) {
+                fresh.controller.setMediaItem(
+                    match { it.mediaId == SECOND_EPISODE_ID.toString() },
+                    0L
+                )
+            }
+        } finally {
+            allowLowLevelRelease.countDown()
+            releaseThread.join(THREAD_TIMEOUT_MS)
+            reuseThread.join(THREAD_TIMEOUT_MS)
+        }
     }
 
     @Test
@@ -367,6 +549,19 @@ class AudioPlayerControllerConcurrencyTest {
         private const val STALE_SEEK_POSITION_MS = 45_000L
         private const val PLAYBACK_UNAVAILABLE_MESSAGE = "Playback unavailable"
         private const val PLAYBACK_FAILED_MESSAGE = "Playback failed"
+        private const val THREAD_TIMEOUT_SECONDS = 5L
+        private const val THREAD_TIMEOUT_MS = 5_000L
+        private const val THREAD_COMPLETION_POLLS = 1_000
+        private const val THREAD_POLL_DELAY_MS = 1L
+
+        private fun awaitBlocked(thread: Thread): Boolean {
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(THREAD_TIMEOUT_SECONDS)
+            while (System.nanoTime() < deadline) {
+                if (thread.state == Thread.State.BLOCKED) return true
+                Thread.sleep(THREAD_POLL_DELAY_MS)
+            }
+            return false
+        }
 
         private fun playResult(episodeId: Long): PlayEpisodeResult {
             val episode = episode(episodeId)

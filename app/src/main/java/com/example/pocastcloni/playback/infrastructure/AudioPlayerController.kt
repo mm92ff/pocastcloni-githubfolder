@@ -26,11 +26,24 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Coordinates player commands, observable state, and controller-bound background work.
+ *
+ * [controllerScope] lives for this singleton, while each connected controller owns a child media
+ * scope that is cancelled on disconnect or release. Low-level construction retries belong to
+ * [MediaControllerConnection]; this class serializes activation and uses a lifecycle generation so
+ * a suspended connect or reconnect from before [releaseResources] cannot attach after later reuse.
+ *
+ * Reconnect jobs have identity-based ownership. Acceptance hands ownership off before post-connect
+ * synchronization, cancellation detaches the exact owner, and an old job's `finally` cannot clear
+ * a newer job. Coroutine cancellation is otherwise propagated by the suspended connection path.
+ * [releaseResources] serializes generation invalidation, cleanup, and low-level release against
+ * activation; it remains reusable so a later user-initiated [play] can open the current generation.
+ */
 @Singleton
 @Suppress("TooManyFunctions")
 class AudioPlayerController
@@ -59,12 +72,13 @@ constructor(
 
     @Volatile private var controller: MediaController? = null
     private var controllerListener: Player.Listener? = null
+    private val connectionLifecycleLock = Any()
     private val connectMutex = Mutex()
     private val playCommitMutex = Mutex()
     private val playRequestGeneration = AtomicLong(0L)
     private val mediaStateRevision = AtomicLong(0L)
-    private val reconnectScheduled = AtomicBoolean(false)
-    private var reconnectJob: Job? = null
+    private val connectionLifecycleGeneration = AtomicLong(0L)
+    private val reconnectOwnership = ReconnectJobOwnership()
 
     @Volatile private var explicitlyReleased = false
 
@@ -89,7 +103,7 @@ constructor(
 
     override val playbackState: StateFlow<PlaybackState> = _internalPlaybackState.asStateFlow()
 
-    // **FIX**: Use shareIn to wait for the first real value from DataStore, avoiding the default initialValue.
+    // Playback decisions wait for a persisted settings value instead of observing a synthetic default.
     private val userSettings =
         userPreferencesRepository.userSettingsFlow
             .shareIn(controllerScope, SharingStarted.Eagerly, replay = 1)
@@ -118,68 +132,133 @@ constructor(
                 .launchIn(controllerScope)
     }
 
-    private suspend fun connectInternal(userInitiated: Boolean = false) {
-        if (userInitiated) explicitlyReleased = false
-        if (!explicitlyReleased && controller == null) {
-            ensureForegroundObservation()
-            val connectedController = connectMutex.withLock { connectControllerLocked() }
-            if (connectedController != null && controller === connectedController) {
-                updateProgressAndAnalytics(deltaMs = 0L, updateUi = true)
-                reconcileTicker()
-                syncCurrentEpisodeUi()
+    private suspend fun connectInternal(
+        userInitiated: Boolean = false,
+        expectedLifecycleGeneration: Long? = null,
+        onControllerAccepted: (() -> Unit)? = null
+    ) {
+        val connectGeneration =
+            synchronized(connectionLifecycleLock) {
+                if (userInitiated) explicitlyReleased = false
+                val currentGeneration = connectionLifecycleGeneration.get()
+                currentGeneration.takeIf {
+                    !explicitlyReleased &&
+                        (expectedLifecycleGeneration == null || expectedLifecycleGeneration == currentGeneration)
+                }
+            } ?: return
+
+        ensureForegroundObservation()
+        val connectedController =
+            connectMutex.withLock {
+                connectControllerLocked(connectGeneration, onControllerAccepted)
             }
+        if (connectedController != null && isCurrentController(connectedController, connectGeneration)) {
+            updateProgressAndAnalytics(deltaMs = 0L, updateUi = true)
+            reconcileTicker()
+            syncCurrentEpisodeUi()
         }
     }
 
-    private suspend fun connectControllerLocked(): MediaController? {
+    private suspend fun connectControllerLocked(
+        connectGeneration: Long,
+        onControllerAccepted: (() -> Unit)?
+    ): MediaController? {
         var connectedController: MediaController? = null
-        if (!explicitlyReleased && controller == null) {
+        if (isCurrentLifecycle(connectGeneration) && controller == null) {
             val candidate = mediaConnection.connect()
             when {
                 candidate == null -> {
-                    _internalPlayerState.update {
-                        it.copy(error = context.getString(R.string.playback_failed_error))
+                    if (isCurrentLifecycle(connectGeneration)) {
+                        _internalPlayerState.update {
+                            it.copy(error = context.getString(R.string.playback_failed_error))
+                        }
                     }
                 }
-                explicitlyReleased -> mediaConnection.release()
                 else -> {
-                    controller = candidate
-                    ensureMediaScope(candidate)
-                    attachListener(candidate)
-                    connectedController = candidate
+                    val accepted =
+                        synchronized(connectionLifecycleLock) {
+                            if (
+                                connectionLifecycleGeneration.get() == connectGeneration &&
+                                !explicitlyReleased &&
+                                controller == null
+                            ) {
+                                controller = candidate
+                                ensureMediaScope(candidate)
+                                attachListener(candidate)
+                                onControllerAccepted?.invoke()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    if (accepted) {
+                        connectedController = candidate
+                    } else {
+                        mediaConnection.release()
+                    }
                 }
             }
         }
         return connectedController
     }
 
+    private fun isCurrentLifecycle(connectGeneration: Long): Boolean =
+        synchronized(connectionLifecycleLock) {
+            connectionLifecycleGeneration.get() == connectGeneration && !explicitlyReleased
+        }
+
+    private fun isCurrentController(
+        connectedController: MediaController,
+        connectGeneration: Long
+    ): Boolean =
+        synchronized(connectionLifecycleLock) {
+            connectionLifecycleGeneration.get() == connectGeneration &&
+                !explicitlyReleased &&
+                controller === connectedController
+        }
+
     private fun onControllerDisconnected(disconnectedController: MediaController) {
         controllerScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            val shouldReconnect =
+            val reconnectGeneration =
                 connectMutex.withLock {
-                    if (controller !== disconnectedController) return@withLock false
+                    if (controller !== disconnectedController) return@withLock null
                     val releaseTransition = tickerLifecycle.release()
                     applyTickerTransition(releaseTransition)
                     if (!releaseTransition.flushPlayback) {
                         flushCurrentPlaybackSnapshot(disconnectedController)
                     }
                     cleanupController(disconnectedController)
-                    !explicitlyReleased
+                    synchronized(connectionLifecycleLock) {
+                        connectionLifecycleGeneration.get().takeIf { !explicitlyReleased }
+                    }
                 }
-            if (shouldReconnect) scheduleReconnect()
+            reconnectGeneration?.let(::scheduleReconnect)
         }
     }
 
-    private fun scheduleReconnect() {
-        if (!reconnectScheduled.compareAndSet(false, true)) return
-        reconnectJob =
-            controllerScope.launch {
+    private fun scheduleReconnect(connectGeneration: Long) {
+        if (!isCurrentLifecycle(connectGeneration)) return
+        val owner = Any()
+        val job =
+            controllerScope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    connectInternal()
+                    connectInternal(
+                        expectedLifecycleGeneration = connectGeneration,
+                        onControllerAccepted = { reconnectOwnership.clearIfOwned(owner) }
+                    )
                 } finally {
-                    reconnectScheduled.set(false)
+                    reconnectOwnership.clearIfOwned(owner)
                 }
             }
+        if (reconnectOwnership.tryOwn(owner, job)) {
+            if (isCurrentLifecycle(connectGeneration)) {
+                job.start()
+            } else {
+                reconnectOwnership.cancelIfOwned(owner)
+            }
+        } else {
+            job.cancel()
+        }
     }
 
     private fun requestTickerReconciliation() {
@@ -613,24 +692,31 @@ constructor(
             mediaStateRevision.get() == capturedMediaRevision &&
             capturedController.currentMediaItem?.mediaId?.toLongOrNull() == capturedEpisodeId
 
+    /**
+     * Invalidates suspended connection work and releases controller-bound jobs and resources.
+     * Generation change, cleanup, and low-level release are one non-suspending transition relative
+     * to controller activation. The singleton scope remains alive for later user-initiated reuse.
+     */
     override fun releaseResources() {
-        explicitlyReleased = true
-        playRequestGeneration.incrementAndGet()
-        mediaStateRevision.incrementAndGet()
-        reconnectJob?.cancel()
-        reconnectJob = null
-        val releaseTransition = tickerLifecycle.release()
-        applyTickerTransition(releaseTransition)
-        if (!releaseTransition.flushPlayback) flushCurrentPlaybackSnapshot()
-        progressJob?.cancel()
-        progressJob = null
-        foregroundJob?.cancel()
-        foregroundJob = null
-        favoriteStatusJob?.cancel()
-        favoriteStatusJob = null
-        val ctrl = controller
-        if (ctrl != null) cleanupController(ctrl)
-        mediaConnection.release()
+        synchronized(connectionLifecycleLock) {
+            explicitlyReleased = true
+            connectionLifecycleGeneration.incrementAndGet()
+            playRequestGeneration.incrementAndGet()
+            mediaStateRevision.incrementAndGet()
+            reconnectOwnership.cancelCurrent()
+            val releaseTransition = tickerLifecycle.release()
+            applyTickerTransition(releaseTransition)
+            if (!releaseTransition.flushPlayback) flushCurrentPlaybackSnapshot()
+            progressJob?.cancel()
+            progressJob = null
+            foregroundJob?.cancel()
+            foregroundJob = null
+            favoriteStatusJob?.cancel()
+            favoriteStatusJob = null
+            val ctrl = controller
+            if (ctrl != null) cleanupController(ctrl)
+            mediaConnection.release()
+        }
     }
 
     private fun cleanupController(ctrl: MediaController) {
@@ -650,6 +736,54 @@ constructor(
         _internalPlayerState.update { it.copy(isPlaying = false, isBuffering = false) }
     }
 }
+
+internal class ReconnectJobOwnership {
+    private val lock = Any()
+    private var ownedJob: OwnedReconnectJob? = null
+
+    internal val hasOwner: Boolean
+        get() = synchronized(lock) { ownedJob != null }
+
+    fun tryOwn(
+        owner: Any,
+        job: Job
+    ): Boolean =
+        synchronized(lock) {
+            if (ownedJob != null) {
+                false
+            } else {
+                ownedJob = OwnedReconnectJob(owner, job)
+                true
+            }
+        }
+
+    fun clearIfOwned(owner: Any) {
+        synchronized(lock) {
+            if (ownedJob?.owner === owner) ownedJob = null
+        }
+    }
+
+    fun cancelIfOwned(owner: Any) {
+        val job =
+            synchronized(lock) {
+                ownedJob
+                    ?.takeIf { it.owner === owner }
+                    ?.also { ownedJob = null }
+                    ?.job
+            }
+        job?.cancel()
+    }
+
+    fun cancelCurrent() {
+        val job = synchronized(lock) { ownedJob?.job.also { ownedJob = null } }
+        job?.cancel()
+    }
+}
+
+private data class OwnedReconnectJob(
+    val owner: Any,
+    val job: Job
+)
 
 private data class PreparedPlayRequest(
     val generation: Long,

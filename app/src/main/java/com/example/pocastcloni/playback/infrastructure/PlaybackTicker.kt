@@ -6,21 +6,20 @@ import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
 /**
- * Vorschlag 1: PlaybackTicker
- * Kapselt die Zeit-Schleife (Progress Loop).
- * Single Responsibility: Erzeugt nur Ticks, kennt keinen Player.
+ * Supplies cold tick flows without owning a coroutine scope or player state.
+ *
+ * Collection owns the timing loop: the first tick arrives after the requested interval, each later
+ * tick uses the same delay, and cancelling the collector promptly cancels the suspending delay.
  */
 interface PlaybackTickSource {
     fun tick(intervalMs: Long): Flow<Unit>
 }
 
+/** Creates scope-neutral playback ticks while controller lifecycle policy stays with its caller. */
 class PlaybackTicker
 @Inject
 constructor() : PlaybackTickSource {
-    /**
-     * Erzeugt einen unendlichen Flow von Ticks.
-     * @param intervalMs Das Intervall zwischen den Ticks.
-     */
+    /** Returns a cold, cancellation-cooperative flow with no immediate tick. */
     override fun tick(intervalMs: Long): Flow<Unit> =
         flow {
             require(intervalMs > 0L) { "Tick interval must be positive" }
