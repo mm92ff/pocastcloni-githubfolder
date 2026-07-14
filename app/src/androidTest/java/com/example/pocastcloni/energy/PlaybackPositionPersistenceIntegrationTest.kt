@@ -67,7 +67,7 @@ class PlaybackPositionPersistenceIntegrationTest {
         require(episode.episodeId > 0L)
         initialDatabase.podcastDao().updateEpisodeProgressOnly(
             episodeId = episode.episodeId,
-            pos = EXPECTED_PLAYBACK_POSITION_MS
+            positionMs = EXPECTED_PLAYBACK_POSITION_MS
         )
         assertEquals(
             EXPECTED_PLAYBACK_POSITION_MS,

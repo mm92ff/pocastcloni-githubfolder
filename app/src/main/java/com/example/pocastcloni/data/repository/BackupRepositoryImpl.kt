@@ -245,7 +245,7 @@ internal suspend fun restoreAvailableEpisodeStates(
         podcastDao.setFavoriteStatus(
             episodeId = episode.episodeId,
             isFavorite = true,
-            timestamp = favorite.timestamp,
+            favoriteTimestamp = favorite.timestamp,
             favoriteAddedAt = favorite.timestamp
         )
         orderedImportedFavoriteIds += episode.episodeId

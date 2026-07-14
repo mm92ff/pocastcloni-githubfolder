@@ -16,6 +16,7 @@ import com.example.pocastcloni.domain.model.FeedPodcastUpdate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -230,6 +231,24 @@ class RoomFeedSyncPersistenceAndroidTest {
         assertEquals(700L, storedEpisode.playbackPositionMs)
         assertEquals(DownloadStatus.DOWNLOADING, storedEpisode.downloadStatus)
         assertEquals("/partial.mp3", storedEpisode.downloadPath)
+    }
+
+    @Test
+    fun markAllAsSeenDoesNotChangeEpisodePlaybackStateOrHistory() = runBlocking {
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
+        dao.insertEpisodes(
+            listOf(
+                episode(guid = "first", title = "First", episodeId = 0L, userState = false).copy(pubDate = null),
+                episode(guid = "second", title = "Second", episodeId = 0L, userState = false).copy(pubDate = null)
+            )
+        )
+
+        dao.markAllAsSeen()
+
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        val episodes = dao.getEpisodesForPodcastSync(FEED_URL)
+        assertTrue(episodes.all { !it.isPlayed && it.datePlayed == null })
+        assertTrue(dao.getPlaybackHistory().first().isEmpty())
     }
 
     private fun podcast() = PodcastEntity(

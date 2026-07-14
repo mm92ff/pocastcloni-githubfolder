@@ -94,7 +94,7 @@ internal class PodcastCommandAdapter(
     }
 
     override suspend fun markAllAsSeen() {
-        withContext(dispatcherProvider.io) { podcastDao.markAllAsSeenAtomic() }
+        withContext(dispatcherProvider.io) { podcastDao.markAllAsSeen() }
     }
 
     override suspend fun cleanupPlayedEpisodes() {
@@ -133,7 +133,7 @@ internal class PodcastCommandAdapter(
             podcastDao.setFavoriteStatus(
                 episodeId = episodeId,
                 isFavorite = isFavorite,
-                timestamp = favoriteTimestamp,
+                favoriteTimestamp = favoriteTimestamp,
                 favoriteAddedAt = favoriteTimestamp
             )
         }
