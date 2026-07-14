@@ -9,6 +9,7 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
+import com.example.pocastcloni.domain.usecase.player.PlaybackUnavailableException
 import com.example.pocastcloni.domain.usecase.player.PreparePlaybackUseCase
 import com.example.pocastcloni.playback.api.PlaybackState
 import com.example.pocastcloni.playback.api.PlaybackStarter
@@ -350,10 +351,29 @@ constructor(
             .launchIn(controllerScope)
     }
 
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun play(episodeId: Long) {
-        val request = preparePlayRequest(episodeId) ?: return
-        withContext(mediaDispatcherOrFallback()) { commitPlayRequest(request) }
-        controllerScope.launch { syncCurrentEpisodeUi() }
+        try {
+            val request = preparePlayRequest(episodeId) ?: return
+            withContext(mediaDispatcherOrFallback()) { commitPlayRequest(request) }
+            controllerScope.launch { syncCurrentEpisodeUi() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: PlaybackUnavailableException) {
+            reportPlaybackStartFailure(error, R.string.playback_unavailable_error)
+        } catch (error: Exception) {
+            reportPlaybackStartFailure(error, R.string.playback_failed_error)
+        }
+    }
+
+    private fun reportPlaybackStartFailure(
+        error: Exception,
+        messageResource: Int
+    ) {
+        Timber.w(error, "Playback could not be started")
+        _internalPlayerState.update {
+            it.copy(error = context.getString(messageResource))
+        }
     }
 
     private suspend fun preparePlayRequest(episodeId: Long): PreparedPlayRequest? {
@@ -395,7 +415,10 @@ constructor(
             if (!isCurrentPlayRequest(request)) return@withLock
             _internalPlayerState.update { current ->
                 if (isCurrentPlayRequest(request)) {
-                    current.copy(currentPodcastUrl = request.podcastRssUrl)
+                    current.copy(
+                        currentPodcastUrl = request.podcastRssUrl,
+                        error = null
+                    )
                 } else {
                     current
                 }

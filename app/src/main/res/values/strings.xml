@@ -277,6 +277,7 @@
     <string name="desc_download">Download episode</string>
     <string name="reorder_error">Could not reorder podcasts.</string>
     <string name="playback_failed_error">Playback failed. Please try again.</string>
+    <string name="playback_unavailable_error">This episode is not available for playback yet. Refresh the podcast and try again.</string>
     <string name="refresh_error">Failed to refresh podcasts.</string>
 
     <string name="duration_format_long">%1$dh %2$02dm</string>

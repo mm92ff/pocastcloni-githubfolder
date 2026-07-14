@@ -4,12 +4,14 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.Episode
 import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.player.PlayEpisodeResult
+import com.example.pocastcloni.domain.usecase.player.PlaybackUnavailableException
 import com.example.pocastcloni.domain.usecase.player.PreparePlaybackUseCase
 import com.example.pocastcloni.playback.api.PlayerScreenEvent
 import com.example.pocastcloni.playback.api.PlayerUiState
@@ -26,10 +28,13 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,6 +42,22 @@ import java.util.Date
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AudioPlayerControllerConcurrencyTest {
+    @Test
+    fun `unavailable playback updates error state instead of escaping`() = runTest {
+        val fixture = Fixture(this)
+        coEvery { fixture.preparePlayback(FIRST_EPISODE_ID) } throws
+            PlaybackUnavailableException("Episode has no playable media URL")
+
+        fixture.subject.play(FIRST_EPISODE_ID)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            fixture.subject.playerState.collect {}
+        }
+        runCurrent()
+
+        assertEquals(PLAYBACK_UNAVAILABLE_MESSAGE, fixture.subject.playerState.value.error)
+        verify(exactly = 0) { fixture.primary.controller.setMediaItem(any(), any<Long>()) }
+    }
+
     @Test
     fun `inverse preparation completion lets only the latest play request commit`() = runTest {
         val fixture = Fixture(this)
@@ -251,6 +272,7 @@ class AudioPlayerControllerConcurrencyTest {
         val mediaConnection = mockk<MediaControllerConnection>(relaxed = true)
         val podcastQuery = mockk<PodcastQueryPort>(relaxed = true)
         val preparePlayback = mockk<PreparePlaybackUseCase>()
+        val context = mockk<Context>(relaxed = true)
         val mappedEpisodeIds = mutableListOf<Long>()
         lateinit var disconnectListener: (MediaController) -> Unit
         val subject: AudioPlayerController
@@ -270,6 +292,8 @@ class AudioPlayerControllerConcurrencyTest {
             every { dispatcherProvider.io } returns dispatcher
             every { dispatcherProvider.default } returns dispatcher
             every { preferences.userSettingsFlow } returns flowOf(UserSettings())
+            every { context.getString(R.string.playback_unavailable_error) } returns PLAYBACK_UNAVAILABLE_MESSAGE
+            every { context.getString(R.string.playback_failed_error) } returns PLAYBACK_FAILED_MESSAGE
             every { mediaConnection.setOnDisconnected(any()) } answers {
                 disconnectListener = firstArg()
             }
@@ -291,7 +315,7 @@ class AudioPlayerControllerConcurrencyTest {
 
             subject =
                 AudioPlayerController(
-                    context = mockk<Context>(relaxed = true),
+                    context = context,
                     dispatcherProvider = dispatcherProvider,
                     userPreferencesRepository = preferences,
                     podcastQuery = podcastQuery,
@@ -341,6 +365,8 @@ class AudioPlayerControllerConcurrencyTest {
         private const val THIRD_EPISODE_ID = 303L
         private const val CURRENT_POSITION_MS = 1_000L
         private const val STALE_SEEK_POSITION_MS = 45_000L
+        private const val PLAYBACK_UNAVAILABLE_MESSAGE = "Playback unavailable"
+        private const val PLAYBACK_FAILED_MESSAGE = "Playback failed"
 
         private fun playResult(episodeId: Long): PlayEpisodeResult {
             val episode = episode(episodeId)

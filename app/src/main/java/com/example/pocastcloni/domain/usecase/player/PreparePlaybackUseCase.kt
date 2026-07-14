@@ -20,6 +20,11 @@ data class PlayEpisodeResult(
     val playUri: String
 )
 
+class PlaybackUnavailableException(
+    message: String,
+    cause: Throwable? = null
+) : IllegalStateException(message, cause)
+
 class PreparePlaybackUseCase
 @Inject
 constructor(
@@ -78,12 +83,7 @@ constructor(
             }
 
             if (finalUri == savedEpisode.enclosureUrl) {
-                requireApprovedPodcastResource(
-                    feedUrl = savedEpisode.podcastRssUrl,
-                    resourceUrl = finalUri,
-                    allowInsecureHttp = podcast?.allowInsecureHttp == true,
-                    allowLocalNetwork = podcast?.allowLocalNetwork == true
-                )
+                validateStreamingUri(savedEpisode, podcast, finalUri)
                 if (podcast?.allowLocalNetwork == true) {
                     localNetworkApproval.approveFeed(savedEpisode.podcastRssUrl)
                 }
@@ -95,6 +95,26 @@ constructor(
                 podcast = podcast,
                 playUri = finalUri
             )
+        }
+    }
+
+    private fun validateStreamingUri(
+        episode: Episode,
+        podcast: Podcast?,
+        streamingUri: String
+    ) {
+        if (streamingUri.isBlank()) {
+            throw PlaybackUnavailableException("Episode has no playable media URL")
+        }
+        try {
+            requireApprovedPodcastResource(
+                feedUrl = episode.podcastRssUrl,
+                resourceUrl = streamingUri,
+                allowInsecureHttp = podcast?.allowInsecureHttp == true,
+                allowLocalNetwork = podcast?.allowLocalNetwork == true
+            )
+        } catch (error: IllegalArgumentException) {
+            throw PlaybackUnavailableException("Episode network access is not approved", error)
         }
     }
 }

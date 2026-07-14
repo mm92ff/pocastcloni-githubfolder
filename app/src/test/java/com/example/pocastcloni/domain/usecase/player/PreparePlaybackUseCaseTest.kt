@@ -88,6 +88,32 @@ class PreparePlaybackUseCaseTest {
         assertEquals(ep, result.episode)
     }
 
+    @Test(expected = PlaybackUnavailableException::class)
+    fun `episode without media url is unavailable`() = runTest(testDispatcher) {
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns episode().copy(enclosureUrl = "")
+
+        useCase(EPISODE_ID)
+    }
+
+    @Test(expected = PlaybackUnavailableException::class)
+    fun `unapproved local episode is unavailable`() = runTest(testDispatcher) {
+        val localFeed = "http://127.0.0.1:8080/feed.xml"
+        val localAudio = "http://127.0.0.1:8080/audio.mp3"
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns
+            episode().copy(podcastRssUrl = localFeed, enclosureUrl = localAudio)
+        coEvery { podcastQuery.getPodcast(localFeed) } returns
+            Podcast(
+                rssUrl = localFeed,
+                title = "Imported local podcast",
+                description = "",
+                imageUrl = "",
+                allowInsecureHttp = false,
+                allowLocalNetwork = false
+            )
+
+        useCase(EPISODE_ID)
+    }
+
     @Test
     fun `downloaded episode with valid local file plays from file URI`() = runTest(testDispatcher) {
         val file = tempFolder.newFile("episode.mp3")
