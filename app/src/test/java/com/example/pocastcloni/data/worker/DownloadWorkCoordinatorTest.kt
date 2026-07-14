@@ -5,9 +5,10 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.Operation
 import androidx.work.WorkManager
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.data.local.EpisodeEntity
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.DownloadStatus
+import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.google.common.util.concurrent.Futures
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -30,20 +31,20 @@ class DownloadWorkCoordinatorTest {
 
     @Test
     fun `enqueue failure is awaited and rolls queued status back`() {
-        val repository = mockk<PodcastRepository>()
+        val commands = mockk<PodcastCommandPort>()
         val workManager = mockk<WorkManager>()
         val episode = episode(DownloadStatus.NOT_DOWNLOADED)
         val successfulCancel = operation(Futures.immediateFuture(Operation.SUCCESS))
         val failedEnqueue = operation(Futures.immediateFailedFuture(IOException("enqueue failed")))
         val request = slot<OneTimeWorkRequest>()
-        coEvery { repository.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
+        coEvery { commands.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
         every { workManager.cancelUniqueWork(any()) } returns successfulCancel
         every {
             workManager.enqueueUniqueWork(any<String>(), any<ExistingWorkPolicy>(), capture(request))
         } returns failedEnqueue
 
         assertThrows(IOException::class.java) {
-            runTest { queueEpisodeDownload(workManager, repository, episode) }
+            runTest { queueEpisodeDownload(workManager, commands, episode) }
         }
 
         assertEquals(
@@ -51,7 +52,7 @@ class DownloadWorkCoordinatorTest {
             request.captured.workSpec.input.keyValueMap
         )
         coVerify {
-            repository.compareAndSetDownloadStatus(
+            commands.compareAndSetDownloadStatus(
                 episode.episodeId,
                 listOf(DownloadStatus.QUEUED),
                 DownloadStatus.NOT_DOWNLOADED,
@@ -62,7 +63,8 @@ class DownloadWorkCoordinatorTest {
 
     @Test
     fun `cancellation rereads current path before deletion`() = runTest {
-        val repository = mockk<PodcastRepository>()
+        val query = mockk<PodcastQueryPort>()
+        val commands = mockk<PodcastCommandPort>()
         val workManager = mockk<WorkManager>()
         val context = mockk<Context>()
         val staleFile = temporaryFolder.newFile("stale.mp3").apply { writeText("stale") }
@@ -71,15 +73,15 @@ class DownloadWorkCoordinatorTest {
         val current = original.copy(downloadPath = currentFile.absolutePath)
         every { context.filesDir } returns temporaryFolder.root
         every { workManager.cancelUniqueWork(any()) } returns operation(Futures.immediateFuture(Operation.SUCCESS))
-        coEvery { repository.getEpisode(original.episodeId) } returns current
-        coEvery { repository.compareAndSetDownloadStatusAndPath(any(), any(), any(), any(), any()) } returns true
+        coEvery { query.getEpisode(original.episodeId) } returns current
+        coEvery { commands.compareAndSetDownloadStatusAndPath(any(), any(), any(), any(), any()) } returns true
 
-        cancelAndDeleteEpisodeDownload(context, workManager, repository, original)
+        cancelAndDeleteEpisodeDownload(context, workManager, query, commands, original)
 
         assertTrue(staleFile.exists())
         assertFalse(currentFile.exists())
         coVerify {
-            repository.compareAndSetDownloadStatusAndPath(
+            commands.compareAndSetDownloadStatusAndPath(
                 current.episodeId,
                 current.downloadStatus,
                 current.downloadPath,
@@ -98,7 +100,7 @@ class DownloadWorkCoordinatorTest {
     }
 
     private fun episode(status: DownloadStatus) =
-        EpisodeEntity(
+        Episode(
             guid = "guid",
             podcastRssUrl = "https://example.com/feed.xml",
             title = "Episode",

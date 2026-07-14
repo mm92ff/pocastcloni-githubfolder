@@ -1,14 +1,14 @@
 package com.example.pocastcloni.domain.usecase.podcast
 
 import com.example.pocastcloni.domain.model.Podcast
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
 import java.util.Collections
 import javax.inject.Inject
 
 class ReorderPodcastsUseCase
 @Inject
 constructor(
-    private val repository: PodcastRepository
+    private val podcastCommands: PodcastCommandPort
 ) {
     /**
      * Tauscht zwei Podcasts in der Liste und aktualisiert die Sortierreihenfolge in der Datenbank.
@@ -29,7 +29,7 @@ constructor(
                 mutableList.mapIndexed { index, podcast ->
                     podcast.copy(sortOrder = index.toLong())
                 }
-            repository.reorderPodcasts(updatedList)
+            podcastCommands.reorderPodcasts(updatedList)
         }
     }
 
@@ -42,6 +42,6 @@ constructor(
             podcasts.mapIndexed { index, podcast ->
                 podcast.copy(sortOrder = index.toLong())
             }
-        repository.reorderPodcasts(updatedList)
+        podcastCommands.reorderPodcasts(updatedList)
     }
 }

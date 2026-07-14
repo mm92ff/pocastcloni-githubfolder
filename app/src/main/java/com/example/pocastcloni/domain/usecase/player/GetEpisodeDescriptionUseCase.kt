@@ -1,14 +1,14 @@
 package com.example.pocastcloni.domain.usecase.player
 
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import javax.inject.Inject
 
 class GetEpisodeDescriptionUseCase
 @Inject
 constructor(
-    private val repository: PodcastRepository
+    private val podcastQuery: PodcastQueryPort
 ) {
     suspend operator fun invoke(episodeId: Long): String? {
-        return repository.getEpisode(episodeId)?.description
+        return podcastQuery.getEpisode(episodeId)?.description
     }
 }

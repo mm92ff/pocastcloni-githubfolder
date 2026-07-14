@@ -2,7 +2,7 @@ package com.example.pocastcloni.ui.settings
 
 import app.cash.turbine.test
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.player.PlayerVisibilityProvider
+import com.example.pocastcloni.playback.api.PlayerVisibilityProvider
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.app.AppMaintenanceUseCases

@@ -3,7 +3,7 @@ package com.example.pocastcloni.domain.usecase.podcast
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.PodcastUpdateSummary
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.FeedUpdateRunner
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import io.mockk.coEvery
@@ -27,7 +27,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedRefreshCoordinatorTest {
-    private val repository = mockk<PodcastRepository>(relaxed = true)
+    private val repository = mockk<FeedUpdateRunner>(relaxed = true)
     private val preferences = mockk<UserPreferencesRepository>()
     private val dispatcherProvider = mockk<DispatcherProvider>()
     private val dispatcher = StandardTestDispatcher()
@@ -109,18 +109,6 @@ class FeedRefreshCoordinatorTest {
         coEvery { repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, false) } returns recovered
         assertEquals(recovered, coordinator.refresh(FeedRefreshSource.STARTUP))
         coVerify(exactly = 2) { repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, false) }
-    }
-
-    @Test
-    fun `coordinator never performs episode cleanup`() = runTest(dispatcher) {
-        givenSmartSettings()
-        coEvery { repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, false) } returns
-            PodcastUpdateSummary(1, 1, 0)
-
-        coordinator().refresh(FeedRefreshSource.BACKGROUND)
-
-        coVerify(exactly = 0) { repository.cleanupPlayedEpisodes() }
-        coVerify(exactly = 0) { repository.pruneLibrary(any()) }
     }
 
     @Test

@@ -12,12 +12,10 @@ import com.example.pocastcloni.data.local.AppDatabase
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
-import com.example.pocastcloni.data.manager.PodcastDownloader
 import com.example.pocastcloni.data.remote.ItunesResponse
 import com.example.pocastcloni.data.remote.ItunesSearchApi
 import com.example.pocastcloni.data.repository.PodcastRepositoryImpl
 import com.example.pocastcloni.di.DefaultDispatcherProvider
-import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.downloadWorkName
 import kotlinx.coroutines.guava.await
@@ -31,7 +29,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.util.concurrent.TimeUnit
-import javax.inject.Provider
 
 @RunWith(AndroidJUnit4::class)
 class DownloadWorkerCancellationAndroidTest {
@@ -49,8 +46,6 @@ class DownloadWorkerCancellationAndroidTest {
                     ItunesResponse(resultCount = 0, results = emptyList())
             },
             dispatcherProvider = DefaultDispatcherProvider(),
-            downloader = PodcastDownloader(context, Provider { error("unused") }),
-            syncFeedUseCase = Provider<SyncFeedUseCase> { error("unused") },
             context = context
         )
     }
@@ -114,6 +109,7 @@ class DownloadWorkerCancellationAndroidTest {
                 workManager,
                 request.id,
                 episode.episodeId,
+                repository,
                 repository,
                 staging,
                 publication

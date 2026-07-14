@@ -1,12 +1,10 @@
 package com.example.pocastcloni.data.repository
 
-import android.content.Context
-import com.example.pocastcloni.data.local.PodcastDao
-import com.example.pocastcloni.data.manager.PodcastDownloader
-import com.example.pocastcloni.data.remote.ItunesSearchApi
+import com.example.pocastcloni.data.sync.FeedUpdateOrchestrator
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
-import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
+import com.example.pocastcloni.domain.repository.FeedSyncRunner
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -20,35 +18,31 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
 import org.junit.Test
-import javax.inject.Provider
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PodcastRepositoryCancellationTest {
     @Test
     fun `update all podcasts waits for each bounded batch before launching the next`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
-        val dao = mockk<PodcastDao>()
-        val syncFeed = mockk<SyncFeedUseCase>()
+        val podcastQuery = mockk<PodcastQueryPort>()
+        val syncFeed = mockk<FeedSyncRunner>()
         val dispatcherProvider = mockk<DispatcherProvider>()
         val urls = List(5) { "https://example.com/feed-$it.xml" }
         val gates = urls.associateWith { CompletableDeferred<Unit>() }
         var started = 0
         every { dispatcherProvider.io } returns dispatcher
-        coEvery { dao.getAllPodcastUrls() } returns urls
+        coEvery { podcastQuery.getSubscribedUrls() } returns urls
         coEvery {
-            syncFeed.invoke(any(), 3, FeedUpdateMode.SMART_STREAM, null, true, false, false)
+            syncFeed.sync(any(), 3, FeedUpdateMode.SMART_STREAM, null, true, false, false)
         } coAnswers {
             started += 1
             gates.getValue(firstArg()).await()
         }
         val repository =
-            PodcastRepositoryImpl(
-                podcastDao = dao,
-                itunesSearchApi = mockk<ItunesSearchApi>(),
-                dispatcherProvider = dispatcherProvider,
-                downloader = mockk<PodcastDownloader>(),
-                syncFeedUseCase = Provider { syncFeed },
-                context = mockk<Context>()
+            FeedUpdateOrchestrator(
+                podcastQuery = podcastQuery,
+                feedSyncRunner = syncFeed,
+                dispatcherProvider = dispatcherProvider
             )
 
         val refresh = async {
@@ -72,13 +66,13 @@ class PodcastRepositoryCancellationTest {
     @Test
     fun `update all podcasts propagates feed cancellation`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
-        val dao = mockk<PodcastDao>()
-        val syncFeed = mockk<SyncFeedUseCase>()
+        val podcastQuery = mockk<PodcastQueryPort>()
+        val syncFeed = mockk<FeedSyncRunner>()
         val dispatcherProvider = mockk<DispatcherProvider>()
         every { dispatcherProvider.io } returns dispatcher
-        coEvery { dao.getAllPodcastUrls() } returns listOf("https://example.com/feed.xml")
+        coEvery { podcastQuery.getSubscribedUrls() } returns listOf("https://example.com/feed.xml")
         coEvery {
-            syncFeed.invoke(
+            syncFeed.sync(
                 "https://example.com/feed.xml",
                 3,
                 FeedUpdateMode.SMART_STREAM,
@@ -89,13 +83,10 @@ class PodcastRepositoryCancellationTest {
             )
         } throws CancellationException("cancelled")
         val repository =
-            PodcastRepositoryImpl(
-                podcastDao = dao,
-                itunesSearchApi = mockk<ItunesSearchApi>(),
-                dispatcherProvider = dispatcherProvider,
-                downloader = mockk<PodcastDownloader>(),
-                syncFeedUseCase = Provider { syncFeed },
-                context = mockk<Context>()
+            FeedUpdateOrchestrator(
+                podcastQuery = podcastQuery,
+                feedSyncRunner = syncFeed,
+                dispatcherProvider = dispatcherProvider
             )
 
         try {

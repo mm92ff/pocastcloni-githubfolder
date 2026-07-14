@@ -3,7 +3,8 @@ package com.example.pocastcloni.data.worker
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.util.downloadWorkName
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -167,15 +168,17 @@ class ResumableDownloadTest {
     @Test
     fun `terminal cancellation after active transfer deletes resumable staging`() = runBlocking {
         val transfer = cancelActiveTransfer()
-        val repository = mockk<PodcastRepository>()
-        coEvery { repository.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
+        val query = mockk<PodcastQueryPort>(relaxed = true)
+        val commands = mockk<PodcastCommandPort>()
+        coEvery { commands.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
 
         val retained =
             handleDownloadWorkerCancellation(
                 workManager(WorkInfo.State.CANCELLED),
                 WORK_ID,
                 EPISODE_ID,
-                repository,
+                query,
+                commands,
                 transfer.stagingFiles,
                 publication = null
             )
@@ -185,7 +188,7 @@ class ResumableDownloadTest {
         assertFalse(transfer.stagingFiles.partFile.exists())
         assertFalse(transfer.stagingFiles.metadataFile.exists())
         coVerify {
-            repository.compareAndSetDownloadStatus(
+            commands.compareAndSetDownloadStatus(
                 EPISODE_ID,
                 listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING, DownloadStatus.DOWNLOADED),
                 DownloadStatus.NOT_DOWNLOADED,
@@ -197,15 +200,17 @@ class ResumableDownloadTest {
     @Test
     fun `constraint cancellation after active transfer preserves resumable staging`() = runBlocking {
         val transfer = cancelActiveTransfer()
-        val repository = mockk<PodcastRepository>()
-        coEvery { repository.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
+        val query = mockk<PodcastQueryPort>(relaxed = true)
+        val commands = mockk<PodcastCommandPort>()
+        coEvery { commands.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
 
         val retained =
             handleDownloadWorkerCancellation(
                 workManager(WorkInfo.State.ENQUEUED),
                 WORK_ID,
                 EPISODE_ID,
-                repository,
+                query,
+                commands,
                 transfer.stagingFiles,
                 publication = null
             )
@@ -215,7 +220,7 @@ class ResumableDownloadTest {
         assertTrue(transfer.stagingFiles.partFile.exists())
         assertTrue(transfer.stagingFiles.metadataFile.exists())
         coVerify {
-            repository.compareAndSetDownloadStatus(
+            commands.compareAndSetDownloadStatus(
                 EPISODE_ID,
                 listOf(DownloadStatus.DOWNLOADING),
                 DownloadStatus.QUEUED,

@@ -1,8 +1,9 @@
 package com.example.pocastcloni.domain.usecase.episode
 
-import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -21,20 +22,22 @@ class ToggleEpisodePlayedStatusUseCaseTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val testDispatcher = StandardTestDispatcher()
-    private lateinit var repository: PodcastRepository
+    private lateinit var podcastQuery: PodcastQueryPort
+    private lateinit var podcastCommands: PodcastCommandPort
     private lateinit var useCase: ToggleEpisodePlayedStatusUseCase
 
     @Before
     fun setup() {
-        repository = mockk(relaxed = true)
+        podcastQuery = mockk(relaxed = true)
+        podcastCommands = mockk(relaxed = true)
         val dispatcherProvider = mockk<DispatcherProvider>()
         every { dispatcherProvider.io } returns testDispatcher
-        useCase = ToggleEpisodePlayedStatusUseCase(repository, dispatcherProvider)
+        useCase = ToggleEpisodePlayedStatusUseCase(podcastQuery, podcastCommands, dispatcherProvider)
     }
 
     @Test
     fun `toggles episode without reading stale podcast snapshots`() = runTest(testDispatcher) {
-        val episode = EpisodeEntity(
+        val episode = Episode(
             episodeId = 101L,
             guid = "episode",
             podcastRssUrl = "https://example.com/feed.xml",
@@ -44,12 +47,10 @@ class ToggleEpisodePlayedStatusUseCaseTest {
             link = "",
             enclosureUrl = "https://example.com/episode.mp3"
         )
-        coEvery { repository.getEpisode(episode.episodeId) } returns episode
+        coEvery { podcastQuery.getEpisode(episode.episodeId) } returns episode
 
         useCase(episode.episodeId)
 
-        coVerify(exactly = 1) { repository.toggleEpisodePlayed(episode) }
-        coVerify(exactly = 0) { repository.getEpisodesForSync(any()) }
-        coVerify(exactly = 0) { repository.getPodcastEntityByUrl(any()) }
+        coVerify(exactly = 1) { podcastCommands.toggleEpisodePlayed(episode) }
     }
 }

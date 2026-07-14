@@ -1,15 +1,9 @@
 package com.example.pocastcloni.data.manager
 
-import android.content.Context
-import androidx.work.WorkManager
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.data.local.EpisodeEntity
-import com.example.pocastcloni.data.worker.cancelAndDeleteEpisodeDownload
-import com.example.pocastcloni.data.worker.queueEpisodeDownload
-import com.example.pocastcloni.domain.repository.PodcastRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.example.pocastcloni.domain.model.DownloadStatus
+import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.repository.EpisodeDownloadScheduler
 import javax.inject.Inject
-import javax.inject.Provider
 import javax.inject.Singleton
 
 /**
@@ -20,12 +14,9 @@ import javax.inject.Singleton
 class PodcastDownloader
 @Inject
 constructor(
-    @ApplicationContext private val context: Context,
-    private val podcastRepositoryProvider: Provider<PodcastRepository>
+    private val downloadScheduler: EpisodeDownloadScheduler
 ) {
-    private val workManager = WorkManager.getInstance(context)
-
-    suspend fun toggleDownload(episode: EpisodeEntity) {
+    suspend fun toggleDownload(episode: Episode) {
         if (episode.downloadStatus == DownloadStatus.DOWNLOADED ||
             episode.downloadStatus == DownloadStatus.DOWNLOADING ||
             episode.downloadStatus == DownloadStatus.QUEUED
@@ -36,16 +27,11 @@ constructor(
         }
     }
 
-    private suspend fun startDownload(episode: EpisodeEntity) {
-        queueEpisodeDownload(workManager, podcastRepositoryProvider.get(), episode)
+    private suspend fun startDownload(episode: Episode) {
+        downloadScheduler.queue(episode)
     }
 
-    private suspend fun deleteDownload(episode: EpisodeEntity) {
-        cancelAndDeleteEpisodeDownload(
-            context,
-            workManager,
-            podcastRepositoryProvider.get(),
-            episode
-        )
+    private suspend fun deleteDownload(episode: Episode) {
+        downloadScheduler.cancelAndDelete(episode)
     }
 }

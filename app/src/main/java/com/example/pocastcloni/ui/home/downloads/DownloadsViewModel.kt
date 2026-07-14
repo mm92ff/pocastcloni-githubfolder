@@ -14,7 +14,7 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.common.retainLatestValue
-import com.example.pocastcloni.ui.player.AudioPlayerController
+import com.example.pocastcloni.playback.api.PlayerStatePort
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import javax.inject.Inject
 
 data class PlayerBits(
@@ -38,11 +39,12 @@ data class PlayerBits(
 )
 
 @HiltViewModel
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class DownloadsViewModel
 @Inject
+@Suppress("LongParameterList")
 constructor(
-    playerController: AudioPlayerController,
+    playerStatePort: PlayerStatePort,
     private val downloader: DownloadEpisodeUseCase,
     userPreferencesRepository: UserPreferencesRepository,
     getDownloadedEpisodesWithPodcastInfo: GetDownloadedEpisodesWithPodcastInfoUseCase,
@@ -66,7 +68,7 @@ constructor(
         }.retainLatestValue()
 
     private val playerBitsFlow =
-        playerController.playerState
+        playerStatePort.playerState
             .map { ps ->
                 PlayerBits(
                     currentEpisodeId = ps.currentEpisodeId,

@@ -5,8 +5,9 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.pocastcloni.data.remote.RssItem
+import com.example.pocastcloni.data.repository.toDomain
 import com.example.pocastcloni.data.repository.toEpisodeEntity
-import com.example.pocastcloni.ui.player.MediaStateMapper
+import com.example.pocastcloni.playback.infrastructure.MediaStateMapper
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -92,8 +93,8 @@ class EpisodeIdentityAndroidTest {
         val first = episode(FEED_A, "A").copy(episodeId = 101L)
         val second = episode(FEED_B, "B").copy(episodeId = 202L)
 
-        val firstMediaId = mapper.mapToMediaItem(first, null, first.enclosureUrl).mediaId
-        val secondMediaId = mapper.mapToMediaItem(second, null, second.enclosureUrl).mediaId
+        val firstMediaId = mapper.mapToMediaItem(first.toDomain(), null, first.enclosureUrl).mediaId
+        val secondMediaId = mapper.mapToMediaItem(second.toDomain(), null, second.enclosureUrl).mediaId
 
         assertEquals("101", firstMediaId)
         assertEquals("202", secondMediaId)

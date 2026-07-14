@@ -10,13 +10,14 @@ import com.example.pocastcloni.domain.usecase.episode.StartPlaybackUseCase
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
 import com.example.pocastcloni.ui.home.detail.DownloadStatusUiModel
 import com.example.pocastcloni.ui.home.detail.EpisodeUiModel
-import com.example.pocastcloni.ui.player.AudioPlayerController
-import com.example.pocastcloni.ui.player.PlayerUiState
+import com.example.pocastcloni.playback.api.PlayerStatePort
+import com.example.pocastcloni.playback.api.PlayerUiState
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -28,7 +29,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class DownloadsViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
@@ -36,7 +37,7 @@ class DownloadsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule(testDispatcher)
 
-    private lateinit var playerController: AudioPlayerController
+    private lateinit var playerStatePort: PlayerStatePort
     private lateinit var downloader: DownloadEpisodeUseCase
     private lateinit var userPreferencesRepository: UserPreferencesRepository
     private lateinit var getDownloadedEpisodes: GetDownloadedEpisodesWithPodcastInfoUseCase
@@ -65,7 +66,7 @@ class DownloadsViewModelTest {
 
     @Before
     fun setup() {
-        playerController = mockk()
+        playerStatePort = mockk()
         downloader = mockk(relaxed = true)
         userPreferencesRepository = mockk()
         getDownloadedEpisodes = mockk()
@@ -73,7 +74,7 @@ class DownloadsViewModelTest {
         toggleFavoriteEpisodeUseCase = mockk(relaxed = true)
         dispatcherProvider = mockk()
 
-        every { playerController.playerState } returns MutableStateFlow(
+        every { playerStatePort.playerState } returns MutableStateFlow(
             PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(UserSettings(confirmDelete = false))
@@ -81,7 +82,7 @@ class DownloadsViewModelTest {
         every { dispatcherProvider.io } returns testDispatcher
 
         viewModel = DownloadsViewModel(
-            playerController = playerController,
+            playerStatePort = playerStatePort,
             downloader = downloader,
             userPreferencesRepository = userPreferencesRepository,
             getDownloadedEpisodesWithPodcastInfo = getDownloadedEpisodes,
@@ -104,7 +105,7 @@ class DownloadsViewModelTest {
     private fun buildViewModelWithConfirmDelete(): DownloadsViewModel {
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(UserSettings(confirmDelete = true))
         return DownloadsViewModel(
-            playerController = playerController,
+            playerStatePort = playerStatePort,
             downloader = downloader,
             userPreferencesRepository = userPreferencesRepository,
             getDownloadedEpisodesWithPodcastInfo = getDownloadedEpisodes,

@@ -2,7 +2,9 @@ package com.example.pocastcloni.domain.usecase.podcast
 
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.FeedSyncRunner
+import com.example.pocastcloni.domain.repository.FeedSyncStore
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.MainDispatcherRule
@@ -22,7 +24,9 @@ class AddPodcastFromUrlUseCaseTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private lateinit var repository: PodcastRepository
+    private lateinit var podcastQuery: PodcastQueryPort
+    private lateinit var feedSyncStore: FeedSyncStore
+    private lateinit var feedSyncRunner: FeedSyncRunner
     private lateinit var userPreferencesRepository: UserPreferencesRepository
     private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var useCase: AddPodcastFromUrlUseCase
@@ -32,11 +36,20 @@ class AddPodcastFromUrlUseCaseTest {
 
     @Before
     fun setup() {
-        repository = mockk(relaxed = true)
+        podcastQuery = mockk(relaxed = true)
+        feedSyncStore = mockk(relaxed = true)
+        feedSyncRunner = mockk(relaxed = true)
+        io.mockk.coEvery { podcastQuery.getPodcast(testUrl) } returns null
         userPreferencesRepository = mockk()
         dispatcherProvider = mockk()
         io.mockk.every { dispatcherProvider.io } returns testDispatcher
-        useCase = AddPodcastFromUrlUseCase(repository, userPreferencesRepository, dispatcherProvider)
+        useCase = AddPodcastFromUrlUseCase(
+            podcastQuery,
+            feedSyncStore,
+            feedSyncRunner,
+            userPreferencesRepository,
+            dispatcherProvider
+        )
     }
 
     @Test
@@ -47,7 +60,7 @@ class AddPodcastFromUrlUseCaseTest {
         useCase(testUrl)
 
         coVerify {
-            repository.addPodcast(
+            feedSyncRunner.sync(
                 url = testUrl,
                 downloadLimit = 5,
                 mode = FeedUpdateMode.SMART_STREAM,
@@ -63,7 +76,7 @@ class AddPodcastFromUrlUseCaseTest {
 
         useCase(testUrl)
 
-        coVerify { repository.addPodcast(url = testUrl, forceFull = false, mode = any(), downloadLimit = any()) }
+        coVerify { feedSyncRunner.sync(url = testUrl, forceFull = false, mode = any(), downloadLimit = any()) }
     }
 
     @Test
@@ -74,7 +87,7 @@ class AddPodcastFromUrlUseCaseTest {
         useCase(testUrl)
 
         coVerify {
-            repository.addPodcast(
+            feedSyncRunner.sync(
                 url = testUrl,
                 downloadLimit = 3,
                 mode = FeedUpdateMode.ALWAYS_FULL,

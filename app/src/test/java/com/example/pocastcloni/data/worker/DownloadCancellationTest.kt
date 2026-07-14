@@ -5,9 +5,10 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.Operation
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.data.local.EpisodeEntity
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.DownloadStatus
+import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.util.downloadWorkName
 import com.google.common.util.concurrent.Futures
 import io.mockk.coEvery
@@ -47,12 +48,13 @@ class DownloadCancellationTest {
     @Test
     fun `terminal cancellation finishes reset and cleanup after parent is cancelled`() = runTest {
         val workManager = workManager(WorkInfo.State.CANCELLED)
-        val repository = mockk<PodcastRepository>()
+        val query = mockk<PodcastQueryPort>(relaxed = true)
+        val commands = mockk<PodcastCommandPort>()
         val staging = stagingFiles()
         val publication = FakePublication()
         val transitionStarted = CompletableDeferred<Unit>()
         val finishTransition = CompletableDeferred<Unit>()
-        coEvery { repository.compareAndSetDownloadStatus(any(), any(), any(), any()) } coAnswers {
+        coEvery { commands.compareAndSetDownloadStatus(any(), any(), any(), any()) } coAnswers {
             transitionStarted.complete(Unit)
             finishTransition.await()
             true
@@ -63,7 +65,8 @@ class DownloadCancellationTest {
                     workManager,
                     WORK_ID,
                     EPISODE_ID,
-                    repository,
+                    query,
+                    commands,
                     staging,
                     publication
                 )
@@ -74,7 +77,7 @@ class DownloadCancellationTest {
         job.cancelAndJoin()
 
         coVerify {
-            repository.compareAndSetDownloadStatus(
+            commands.compareAndSetDownloadStatus(
                 EPISODE_ID,
                 listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING, DownloadStatus.DOWNLOADED),
                 DownloadStatus.NOT_DOWNLOADED,
@@ -89,16 +92,18 @@ class DownloadCancellationTest {
     @Test
     fun `constraint stop queues work and preserves resumable staging`() = runTest {
         val workManager = workManager(WorkInfo.State.ENQUEUED)
-        val repository = mockk<PodcastRepository>()
+        val query = mockk<PodcastQueryPort>(relaxed = true)
+        val commands = mockk<PodcastCommandPort>()
         val staging = stagingFiles()
-        coEvery { repository.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
+        coEvery { commands.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
 
         val retained =
             handleDownloadWorkerCancellation(
                 workManager,
                 WORK_ID,
                 EPISODE_ID,
-                repository,
+                query,
+                commands,
                 staging,
                 publication = null
             )
@@ -107,7 +112,7 @@ class DownloadCancellationTest {
         assertTrue(staging.partFile.exists())
         assertTrue(staging.metadataFile.exists())
         coVerify {
-            repository.compareAndSetDownloadStatus(
+            commands.compareAndSetDownloadStatus(
                 EPISODE_ID,
                 listOf(DownloadStatus.DOWNLOADING),
                 DownloadStatus.QUEUED,
@@ -118,7 +123,8 @@ class DownloadCancellationTest {
 
     @Test
     fun `new committed attempt survives old cancellation cleanup for same logical file`() = runTest {
-        val repository = mockk<PodcastRepository>()
+        val query = mockk<PodcastQueryPort>(relaxed = true)
+        val commands = mockk<PodcastCommandPort>()
         val workManager = mockk<WorkManager>()
         val staging = stagingFiles()
         val targetDirectory = temporaryFolder.newFolder("replacement-download")
@@ -139,9 +145,9 @@ class DownloadCancellationTest {
         every { workManager.getWorkInfosForUniqueWork(downloadWorkName(EPISODE_ID)) } answers {
             Futures.immediateFuture(listOf(oldWork, newWork))
         }
-        coEvery { repository.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
+        coEvery { commands.compareAndSetDownloadStatus(any(), any(), any(), any()) } returns true
 
-        assertTrue(queueEpisodeDownload(workManager, repository, episode()))
+        assertTrue(queueEpisodeDownload(workManager, commands, episode()))
         val newPublication =
             legacyPublication("new-publication.part", "new", targetDirectory, newRequest.captured.id)
         commitDownloadPublication(newPublication, { databasePath = it; true }, {})
@@ -150,7 +156,8 @@ class DownloadCancellationTest {
                 workManager,
                 WORK_ID,
                 EPISODE_ID,
-                repository,
+                query,
+                commands,
                 staging,
                 oldPublication
             )
@@ -161,7 +168,7 @@ class DownloadCancellationTest {
         assertEquals(newPublication.path, databasePath)
         assertEquals("new", File(newPublication.path).readText())
         coVerify(exactly = 1) {
-            repository.compareAndSetDownloadStatus(
+            commands.compareAndSetDownloadStatus(
                 EPISODE_ID,
                 listOf(DownloadStatus.NOT_DOWNLOADED),
                 DownloadStatus.QUEUED,
@@ -207,7 +214,7 @@ class DownloadCancellationTest {
         }
 
     private fun episode() =
-        EpisodeEntity(
+        Episode(
             guid = "guid",
             podcastRssUrl = "https://example.com/feed.xml",
             title = "Episode",

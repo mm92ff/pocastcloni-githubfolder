@@ -24,10 +24,8 @@ fun PlayerContainer(
 ) {
     val viewModel: PlayerViewModel = hiltViewModel()
 
-    // Accessing 'playerState' triggers the automatic connection (reactive architecture).
-    // See AudioPlayerController.kt -> onStart { connectInternal() }
-    val playerState by viewModel.playerController.playerState.collectAsStateWithLifecycle()
-    val playbackStateFlow = viewModel.playerController.playbackState
+    val playerState by viewModel.playerState.collectAsStateWithLifecycle()
+    val playbackStateFlow = viewModel.playbackState
 
     val episodeDescription by viewModel.descriptionState.collectAsStateWithLifecycle()
     val isDescriptionVisible by viewModel.isDescriptionVisible.collectAsStateWithLifecycle()

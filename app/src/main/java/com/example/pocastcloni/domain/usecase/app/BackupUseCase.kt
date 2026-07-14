@@ -1,7 +1,7 @@
 package com.example.pocastcloni.domain.usecase.app
 
-import android.net.Uri
 import com.example.pocastcloni.di.DispatcherProvider
+import com.example.pocastcloni.domain.repository.BackupLocation
 import com.example.pocastcloni.domain.repository.BackupRepository
 import com.example.pocastcloni.domain.repository.ImportResult
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
@@ -35,11 +35,11 @@ constructor(
                 is BackupAction.Export -> {
                     val userSettings = userPreferencesRepository.userSettingsFlow.first()
                     // Aufruf geht an das BackupRepository
-                    backupRepository.exportFullBackup(Uri.parse(action.path), userSettings)
+                    backupRepository.exportBackup(BackupLocation(action.path), userSettings)
                     BackupResult.ExportSuccess
                 }
                 is BackupAction.Import -> {
-                    val result = backupRepository.importFullBackup(Uri.parse(action.path))
+                    val result = backupRepository.importBackup(BackupLocation(action.path))
                     BackupResult.ImportSuccess(result)
                 }
             }

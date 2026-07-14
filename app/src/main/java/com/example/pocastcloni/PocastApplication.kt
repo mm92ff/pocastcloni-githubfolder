@@ -5,7 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import coil.Coil
 import coil.ImageLoader
-import com.example.pocastcloni.ui.player.ActivityAppForegroundMonitor
+import com.example.pocastcloni.playback.infrastructure.ActivityAppForegroundMonitor
 import com.example.pocastcloni.util.RedactingDebugTree
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber

@@ -15,8 +15,9 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.example.pocastcloni.R
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.DownloadStatus
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.StatisticsRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.util.ConnectivityProvider
@@ -45,7 +46,8 @@ class DownloadWorker
 constructor(
     @Assisted private val context: Context,
     @Assisted params: WorkerParameters,
-    private val podcastRepository: PodcastRepository,
+    private val podcastQuery: PodcastQueryPort,
+    private val podcastCommands: PodcastCommandPort,
     private val statsRepo: StatisticsRepository,
     private val connectivityProvider: ConnectivityProvider,
     private val okHttpClient: OkHttpClient,
@@ -64,7 +66,7 @@ constructor(
         var retainPartialForRetry = false
 
         try {
-            val podcast = podcastRepository.getPodcastEntityByUrl(episode.podcastRssUrl)
+            val podcast = podcastQuery.getPodcast(episode.podcastRssUrl)
             val url = episode.enclosureUrl
             requireApprovedPodcastResource(
                 feedUrl = episode.podcastRssUrl,
@@ -73,7 +75,7 @@ constructor(
                 allowLocalNetwork = podcast?.allowLocalNetwork == true
             )
             val started =
-                podcastRepository.compareAndSetDownloadStatus(
+                podcastCommands.compareAndSetDownloadStatus(
                     episodeId = episodeId,
                     expectedStatuses = listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING),
                     status = DownloadStatus.DOWNLOADING,
@@ -144,7 +146,7 @@ constructor(
             commitDownloadPublication(
                 publication = publication,
                 commitDatabase = { path ->
-                    podcastRepository.compareAndSetDownloadStatus(
+                    podcastCommands.compareAndSetDownloadStatus(
                         episodeId = episodeId,
                         expectedStatuses = listOf(DownloadStatus.DOWNLOADING),
                         status = DownloadStatus.DOWNLOADED,
@@ -152,7 +154,7 @@ constructor(
                     )
                 },
                 compensateDatabase = { path ->
-                    podcastRepository.compareAndSetDownloadStatusAndPath(
+                    podcastCommands.compareAndSetDownloadStatusAndPath(
                         episodeId = episodeId,
                         expectedStatus = DownloadStatus.DOWNLOADED,
                         expectedPath = path,
@@ -174,7 +176,8 @@ constructor(
                     workManager = workManager,
                     workId = id,
                     episodeId = episodeId,
-                    repository = podcastRepository,
+                    query = podcastQuery,
+                    commands = podcastCommands,
                     stagingFiles = stagingFiles,
                     publication = publication
                 )
@@ -185,7 +188,7 @@ constructor(
             val shouldRetry = shouldRetryDownloadFailure(error, runAttemptCount, MAX_RETRY_ATTEMPTS)
             if (shouldRetry) {
                 val transitionedToQueued =
-                    podcastRepository.compareAndSetDownloadStatus(
+                    podcastCommands.compareAndSetDownloadStatus(
                         episodeId = episodeId,
                         expectedStatuses = listOf(DownloadStatus.DOWNLOADING),
                         status = DownloadStatus.QUEUED,
@@ -195,7 +198,7 @@ constructor(
                     transitionedToQueued && publication == null && stagingFiles.partFile.isFile
                 return if (transitionedToQueued) Result.retry() else Result.failure()
             }
-            podcastRepository.compareAndSetDownloadStatus(
+            podcastCommands.compareAndSetDownloadStatus(
                 episodeId = episodeId,
                 expectedStatuses = listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING),
                 status = DownloadStatus.FAILED,
@@ -213,9 +216,9 @@ constructor(
     private suspend fun resolveEpisode() =
         inputData.getLong(Constants.DOWNLOAD_WORKER_EPISODE_ID, 0L)
             .takeIf { it > 0L }
-            ?.let { podcastRepository.getEpisode(it) }
+            ?.let { podcastQuery.getEpisode(it) }
             ?: inputData.getString(Constants.DOWNLOAD_WORKER_LEGACY_GUID)
-                ?.let { podcastRepository.resolveLegacyDownloadEpisode(it) }
+                ?.let { podcastQuery.resolveLegacyDownloadEpisode(it) }
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun loadPublicDownloadPreference(): Boolean =

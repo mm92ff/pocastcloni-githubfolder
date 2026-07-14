@@ -1,10 +1,11 @@
 package com.example.pocastcloni.domain.usecase.player
 
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.data.local.EpisodeEntity
-import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.DownloadStatus
+import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -30,7 +31,8 @@ class PreparePlaybackUseCaseTest {
     @get:Rule
     val tempFolder = TemporaryFolder()
 
-    private lateinit var repository: PodcastRepository
+    private lateinit var podcastQuery: PodcastQueryPort
+    private lateinit var podcastCommands: PodcastCommandPort
     private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var useCase: PreparePlaybackUseCase
     private lateinit var localNetworkAccessRegistry: LocalNetworkAccessRegistry
@@ -41,16 +43,18 @@ class PreparePlaybackUseCaseTest {
 
     @Before
     fun setup() {
-        repository = mockk(relaxed = true)
+        podcastQuery = mockk(relaxed = true)
+        podcastCommands = mockk(relaxed = true)
         dispatcherProvider = mockk()
         io.mockk.every { dispatcherProvider.io } returns testDispatcher
         localNetworkAccessRegistry = LocalNetworkAccessRegistry()
         useCase = PreparePlaybackUseCase(
-            repository,
+            podcastQuery,
+            podcastCommands,
             dispatcherProvider,
             localNetworkAccessRegistry
         )
-        coEvery { repository.getPodcastEntityByUrl(any()) } returns null
+        coEvery { podcastQuery.getPodcast(any()) } returns null
     }
 
     private fun episode(
@@ -59,7 +63,7 @@ class PreparePlaybackUseCaseTest {
         downloadStatus: DownloadStatus = DownloadStatus.NOT_DOWNLOADED,
         downloadPath: String? = null,
         positionMs: Long = 0L
-    ) = EpisodeEntity(
+    ) = Episode(
         guid = guid,
         podcastRssUrl = feedUrl,
         title = "Title",
@@ -76,7 +80,7 @@ class PreparePlaybackUseCaseTest {
     @Test
     fun `not downloaded episode streams via enclosureUrl`() = runTest(testDispatcher) {
         val ep = episode(downloadStatus = DownloadStatus.NOT_DOWNLOADED)
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
 
         val result = useCase(EPISODE_ID)
 
@@ -88,7 +92,7 @@ class PreparePlaybackUseCaseTest {
     fun `downloaded episode with valid local file plays from file URI`() = runTest(testDispatcher) {
         val file = tempFolder.newFile("episode.mp3")
         val ep = episode(downloadStatus = DownloadStatus.DOWNLOADED, downloadPath = file.absolutePath)
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
 
         val result = useCase(EPISODE_ID)
 
@@ -99,7 +103,7 @@ class PreparePlaybackUseCaseTest {
     fun `downloaded episode with content URI plays MediaStore URI directly`() = runTest(testDispatcher) {
         val contentUri = "content://media/external/downloads/12345"
         val ep = episode(downloadStatus = DownloadStatus.DOWNLOADED, downloadPath = contentUri)
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
 
         val result = useCase(EPISODE_ID)
 
@@ -110,29 +114,29 @@ class PreparePlaybackUseCaseTest {
     fun `downloaded episode with missing file falls back to stream and resets status`() = runTest(testDispatcher) {
         val missingPath = "/nonexistent/path/episode.mp3"
         val ep = episode(downloadStatus = DownloadStatus.DOWNLOADED, downloadPath = missingPath)
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
 
         val result = useCase(EPISODE_ID)
 
         assertEquals("Should fall back to stream URL", streamUrl, result.playUri)
-        coVerify { repository.updateDownloadStatus(EPISODE_ID, DownloadStatus.NOT_DOWNLOADED, null) }
+        coVerify { podcastCommands.updateDownloadStatus(EPISODE_ID, DownloadStatus.NOT_DOWNLOADED, null) }
     }
 
     @Test
     fun `downloaded episode with null downloadPath falls back to stream and resets status`() = runTest(testDispatcher) {
         val ep = episode(downloadStatus = DownloadStatus.DOWNLOADED, downloadPath = null)
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
 
         val result = useCase(EPISODE_ID)
 
         assertEquals("Should fall back to stream URL", streamUrl, result.playUri)
-        coVerify { repository.updateDownloadStatus(EPISODE_ID, DownloadStatus.NOT_DOWNLOADED, null) }
+        coVerify { podcastCommands.updateDownloadStatus(EPISODE_ID, DownloadStatus.NOT_DOWNLOADED, null) }
     }
 
     @Test
     fun `playback starts from saved position`() = runTest(testDispatcher) {
         val ep = episode(positionMs = 42_000L)
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
 
         val result = useCase(EPISODE_ID)
 
@@ -141,7 +145,7 @@ class PreparePlaybackUseCaseTest {
 
     @Test(expected = IllegalStateException::class)
     fun `throws IllegalStateException when episode not found`() = runTest(testDispatcher) {
-        coEvery { repository.getEpisode(UNKNOWN_EPISODE_ID) } returns null
+        coEvery { podcastQuery.getEpisode(UNKNOWN_EPISODE_ID) } returns null
 
         useCase(UNKNOWN_EPISODE_ID)
     }
@@ -149,14 +153,14 @@ class PreparePlaybackUseCaseTest {
     @Test
     fun `loads podcast info alongside episode`() = runTest(testDispatcher) {
         val ep = episode()
-        val podcastEntity = PodcastEntity(
+        val podcast = Podcast(
             rssUrl = feedUrl,
             title = "My Podcast",
             description = "",
             imageUrl = "https://img.jpg"
         )
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
-        coEvery { repository.getPodcastEntityByUrl(feedUrl) } returns podcastEntity
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getPodcast(feedUrl) } returns podcast
 
         val result = useCase(EPISODE_ID)
 
@@ -168,7 +172,7 @@ class PreparePlaybackUseCaseTest {
         val localFeed = "http://192.168.1.20:8080/feed.xml"
         val localAudio = "http://192.168.1.20:8080/audio.mp3"
         val ep = episode().copy(podcastRssUrl = localFeed, enclosureUrl = localAudio)
-        val podcast = PodcastEntity(
+        val podcast = Podcast(
             rssUrl = localFeed,
             title = "Local",
             description = "",
@@ -176,8 +180,8 @@ class PreparePlaybackUseCaseTest {
             allowInsecureHttp = true,
             allowLocalNetwork = true
         )
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
-        coEvery { repository.getPodcastEntityByUrl(localFeed) } returns podcast
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getPodcast(localFeed) } returns podcast
 
         val result = useCase(EPISODE_ID)
 
@@ -190,7 +194,7 @@ class PreparePlaybackUseCaseTest {
         val localFeed = "http://192.168.1.20:8080/feed.xml"
         val foreignAudio = "http://192.168.1.21:8080/audio.mp3"
         val ep = episode().copy(podcastRssUrl = localFeed, enclosureUrl = foreignAudio)
-        val podcast = PodcastEntity(
+        val podcast = Podcast(
             rssUrl = localFeed,
             title = "Local",
             description = "",
@@ -198,8 +202,8 @@ class PreparePlaybackUseCaseTest {
             allowInsecureHttp = true,
             allowLocalNetwork = true
         )
-        coEvery { repository.getEpisode(EPISODE_ID) } returns ep
-        coEvery { repository.getPodcastEntityByUrl(localFeed) } returns podcast
+        coEvery { podcastQuery.getEpisode(EPISODE_ID) } returns ep
+        coEvery { podcastQuery.getPodcast(localFeed) } returns podcast
 
         assertTrue(runCatching { useCase(EPISODE_ID) }.isFailure)
     }

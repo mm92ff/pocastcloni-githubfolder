@@ -7,7 +7,7 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.EpisodePresentation
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.episode.DownloadEpisodeUseCase
 import com.example.pocastcloni.domain.usecase.episode.StartPlaybackUseCase
@@ -17,8 +17,9 @@ import com.example.pocastcloni.domain.usecase.podcast.UpdatePodcastAutoDownloadU
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.navigation.Screen
-import com.example.pocastcloni.ui.player.AudioPlayerController
-import com.example.pocastcloni.ui.player.PlayerScreenEvent
+import com.example.pocastcloni.playback.api.PlayerCommandPort
+import com.example.pocastcloni.playback.api.PlayerScreenEvent
+import com.example.pocastcloni.playback.api.PlayerStatePort
 import com.example.pocastcloni.ui.settings.ThemeUiModel
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.stripHtml
@@ -61,11 +62,13 @@ sealed class PodcastDetailAction {
 @HiltViewModel
 class PodcastDetailViewModel
 @Inject
+@Suppress("LongParameterList")
 constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: PodcastRepository,
+    podcastQuery: PodcastQueryPort,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val playerController: AudioPlayerController,
+    private val playerCommandPort: PlayerCommandPort,
+    playerStatePort: PlayerStatePort,
     private val downloader: DownloadEpisodeUseCase,
     private val startPlaybackUseCase: StartPlaybackUseCase,
     private val toggleEpisodePlayedStatusUseCase: ToggleEpisodePlayedStatusUseCase,
@@ -86,8 +89,8 @@ constructor(
 
     private val podcastDetailsFlow =
         combine(
-            repository.getPodcastFlow(podcastUrl),
-            repository.getEpisodesFlow(podcastUrl),
+            podcastQuery.getPodcastFlow(podcastUrl),
+            podcastQuery.getEpisodesFlow(podcastUrl),
             downloader.downloadProgressFlow
         ) { podcast, episodes, progressMap ->
             if (podcast == null) {
@@ -139,7 +142,7 @@ constructor(
             .flowOn(dispatcherProvider.default)
 
     private val playerStatusFlow =
-        playerController.playerState
+        playerStatePort.playerState
             .map { playerState ->
                 PlayerStatusUiState(
                     currentPlayingEpisodeId = playerState.currentEpisodeId,
@@ -194,7 +197,7 @@ constructor(
         val playerStatus = uiState.value.playerState
 
         if (playerStatus.currentPlayingEpisodeId == episodeId && playerStatus.isPlayerPlaying) {
-            playerController.onEvent(PlayerScreenEvent.TogglePlayPause)
+            playerCommandPort.onEvent(PlayerScreenEvent.TogglePlayPause)
         } else {
             viewModelScope.launch {
                 startPlaybackUseCase(episodeId)

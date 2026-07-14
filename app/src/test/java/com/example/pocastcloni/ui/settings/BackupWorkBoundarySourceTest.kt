@@ -13,7 +13,10 @@ class BackupWorkBoundarySourceTest {
                 .readText()
 
         assertFalse(source.contains("pruneWork"))
-        assertTrue(source.contains("dismissedWorkIds"))
+        assertTrue(source.contains("dismissedJobIds"))
+        assertFalse(source.contains("androidx.work"))
+        assertFalse(source.contains("BackupWorker"))
+        assertFalse(source.contains("WorkManager"))
     }
 
     @Test

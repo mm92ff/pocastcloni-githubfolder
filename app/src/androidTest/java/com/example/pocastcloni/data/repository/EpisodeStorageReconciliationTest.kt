@@ -7,12 +7,10 @@ import com.example.pocastcloni.data.local.AppDatabase
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
-import com.example.pocastcloni.data.manager.PodcastDownloader
 import com.example.pocastcloni.data.remote.ItunesResponse
 import com.example.pocastcloni.data.remote.ItunesSearchApi
 import com.example.pocastcloni.data.worker.downloadStagingFiles
 import com.example.pocastcloni.di.DefaultDispatcherProvider
-import com.example.pocastcloni.domain.usecase.podcast.SyncFeedUseCase
 import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -23,7 +21,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.util.Date
-import javax.inject.Provider
 
 @RunWith(AndroidJUnit4::class)
 class EpisodeStorageReconciliationTest {
@@ -43,15 +40,6 @@ class EpisodeStorageReconciliationTest {
                 }
             },
             dispatcherProvider = DefaultDispatcherProvider(),
-            downloader =
-            PodcastDownloader(
-                context,
-                Provider { throw IllegalStateException("PodcastDownloader is not used in this test.") }
-            ),
-            syncFeedUseCase =
-            Provider<SyncFeedUseCase> {
-                throw IllegalStateException("SyncFeedUseCase is not used in this test.")
-            },
             context = context
         )
     }

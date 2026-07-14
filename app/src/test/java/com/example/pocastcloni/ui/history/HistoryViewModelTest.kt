@@ -11,8 +11,9 @@ import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.episode.GetPlaybackHistoryWithPodcastInfoUseCase
 import com.example.pocastcloni.domain.usecase.history.ClearHistoryUseCase
 import com.example.pocastcloni.ui.common.DateBucket
-import com.example.pocastcloni.ui.player.AudioPlayerController
-import com.example.pocastcloni.ui.player.PlayerUiState
+import com.example.pocastcloni.playback.api.PlaybackStarter
+import com.example.pocastcloni.playback.api.PlayerStatePort
+import com.example.pocastcloni.playback.api.PlayerUiState
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -41,7 +42,8 @@ class HistoryViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var getPlaybackHistoryWithPodcastInfoUseCase: GetPlaybackHistoryWithPodcastInfoUseCase
-    private lateinit var audioPlayerController: AudioPlayerController
+    private lateinit var playbackStarter: PlaybackStarter
+    private lateinit var playerStatePort: PlayerStatePort
     private lateinit var clearHistoryUseCase: ClearHistoryUseCase
     private lateinit var userPreferencesRepository: UserPreferencesRepository
 
@@ -50,13 +52,14 @@ class HistoryViewModelTest {
     @Before
     fun setup() {
         getPlaybackHistoryWithPodcastInfoUseCase = mockk()
-        audioPlayerController = mockk()
+        playbackStarter = mockk()
+        playerStatePort = mockk()
         clearHistoryUseCase = mockk(relaxed = true)
         userPreferencesRepository = mockk()
 
         // Setup default mocks
         every { getPlaybackHistoryWithPodcastInfoUseCase() } returns flowOf(emptyList())
-        every { audioPlayerController.playerState } returns MutableStateFlow(
+        every { playerStatePort.playerState } returns MutableStateFlow(
             PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(
@@ -72,7 +75,8 @@ class HistoryViewModelTest {
 
         viewModel = HistoryViewModel(
             getPlaybackHistoryWithPodcastInfoUseCase = getPlaybackHistoryWithPodcastInfoUseCase,
-            audioPlayerController = audioPlayerController,
+            playbackStarter = playbackStarter,
+            playerStatePort = playerStatePort,
             clearHistoryUseCase = clearHistoryUseCase,
             userPreferencesRepository = userPreferencesRepository
         )
@@ -112,7 +116,8 @@ class HistoryViewModelTest {
 
         viewModel = HistoryViewModel(
             getPlaybackHistoryWithPodcastInfoUseCase = getPlaybackHistoryWithPodcastInfoUseCase,
-            audioPlayerController = audioPlayerController,
+            playbackStarter = playbackStarter,
+            playerStatePort = playerStatePort,
             clearHistoryUseCase = clearHistoryUseCase,
             userPreferencesRepository = userPreferencesRepository
         )
@@ -143,7 +148,8 @@ class HistoryViewModelTest {
 
         viewModel = HistoryViewModel(
             getPlaybackHistoryWithPodcastInfoUseCase = getPlaybackHistoryWithPodcastInfoUseCase,
-            audioPlayerController = audioPlayerController,
+            playbackStarter = playbackStarter,
+            playerStatePort = playerStatePort,
             clearHistoryUseCase = clearHistoryUseCase,
             userPreferencesRepository = userPreferencesRepository
         )
@@ -179,14 +185,14 @@ class HistoryViewModelTest {
     @Test
     fun `onAction OnEpisodeClick calls audio player`() = runTest {
         // Given: audio player is mocked
-        coEvery { audioPlayerController.play(any()) } returns Unit
+        coEvery { playbackStarter.play(any()) } returns Unit
 
         // When: episode is clicked
         viewModel.onAction(HistoryAction.OnEpisodeClick(301L))
         advanceUntilIdle()
 
         // Then: audio player should be called
-        coVerify { audioPlayerController.play(301L) }
+        coVerify { playbackStarter.play(301L) }
     }
 
     @Test

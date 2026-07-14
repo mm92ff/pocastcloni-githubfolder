@@ -1,7 +1,9 @@
 package com.example.pocastcloni.domain.usecase.podcast
 
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.FeedSyncRunner
+import com.example.pocastcloni.domain.repository.FeedSyncStore
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -10,7 +12,9 @@ import javax.inject.Inject
 class AddPodcastFromUrlUseCase
 @Inject
 constructor(
-    private val repository: PodcastRepository,
+    private val podcastQuery: PodcastQueryPort,
+    private val feedSyncStore: FeedSyncStore,
+    private val feedSyncRunner: FeedSyncRunner,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {
@@ -23,16 +27,28 @@ constructor(
             // 1. Load current settings
             val settings = userPreferencesRepository.userSettingsFlow.first()
 
-            // 2. Add the podcast
-            repository.addPodcast(
-                url = url,
+            val normalizedUrl = url.trim()
+            val existing = podcastQuery.getPodcast(normalizedUrl)
+            if (existing != null) {
+                val shouldApproveInsecureHttp = allowInsecureHttp && !existing.allowInsecureHttp
+                val shouldApproveLocalNetwork = allowLocalNetwork && !existing.allowLocalNetwork
+                if (!shouldApproveInsecureHttp && !shouldApproveLocalNetwork) return@withContext
+
+                feedSyncStore.approvePodcastNetworkAccess(
+                    rssUrl = normalizedUrl,
+                    allowInsecureHttp = allowInsecureHttp,
+                    allowLocalNetwork = allowLocalNetwork
+                )
+            }
+
+            feedSyncRunner.sync(
+                url = normalizedUrl,
                 downloadLimit = settings.autoDownloadLimit,
                 mode = settings.feedUpdateMode,
-                // FIX: set forceFull to false so the user's feedUpdateMode setting is respected.
-                // When "Smart Stream" is active, only up to the limit (e.g. 3 episodes) will be fetched.
+                sortOrder = existing?.sortOrder,
                 forceFull = false,
-                allowInsecureHttp = allowInsecureHttp,
-                allowLocalNetwork = allowLocalNetwork
+                allowInsecureHttp = existing?.allowInsecureHttp == true || allowInsecureHttp,
+                allowLocalNetwork = existing?.allowLocalNetwork == true || allowLocalNetwork
             )
         }
     }

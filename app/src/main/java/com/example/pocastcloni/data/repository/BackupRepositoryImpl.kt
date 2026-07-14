@@ -10,15 +10,16 @@ import com.example.pocastcloni.data.local.BackupImportJournalDao
 import com.example.pocastcloni.data.local.BackupImportJournalEntity
 import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.data.local.EpisodeEntity
+import com.example.pocastcloni.data.local.FavoriteOrderUpdate
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
-import com.example.pocastcloni.data.local.FavoriteOrderUpdate
 import com.example.pocastcloni.data.local.PodcastSortUpdate
 import com.example.pocastcloni.data.local.settingsForRestore
 import com.example.pocastcloni.data.manager.PodcastBackupHelper
 import com.example.pocastcloni.data.manager.validateBackupData
 import com.example.pocastcloni.data.worker.BackupPostImportSyncScheduler
 import com.example.pocastcloni.di.DispatcherProvider
+import com.example.pocastcloni.domain.repository.BackupLocation
 import com.example.pocastcloni.domain.repository.BackupRepository
 import com.example.pocastcloni.domain.repository.ImportResult
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
@@ -26,10 +27,10 @@ import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.isAllowedRemoteResource
 import com.fasterxml.jackson.databind.ObjectMapper
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.Date
 import javax.inject.Inject
@@ -51,7 +52,12 @@ constructor(
     private val postImportSyncScheduler: BackupPostImportSyncScheduler,
     @ApplicationContext private val context: Context
 ) : BackupRepository {
-    override suspend fun exportFullBackup(
+    override suspend fun exportBackup(
+        location: BackupLocation,
+        settings: UserSettings
+    ) = exportFullBackup(Uri.parse(location.value), settings)
+
+    suspend fun exportFullBackup(
         uri: Uri,
         settings: UserSettings
     ) {
@@ -71,7 +77,10 @@ constructor(
         }
     }
 
-    override suspend fun importFullBackup(uri: Uri): ImportResult {
+    override suspend fun importBackup(location: BackupLocation): ImportResult =
+        importFullBackup(Uri.parse(location.value))
+
+    suspend fun importFullBackup(uri: Uri): ImportResult {
         return withContext(dispatcherProvider.io) {
             importCoordinator.runExclusive {
                 importFullBackupLocked(uri)

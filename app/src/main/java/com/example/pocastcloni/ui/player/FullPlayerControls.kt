@@ -1,5 +1,8 @@
 package com.example.pocastcloni.ui.player
 
+import com.example.pocastcloni.playback.api.PlayerScreenEvent
+import com.example.pocastcloni.playback.api.PlayerUiState
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row

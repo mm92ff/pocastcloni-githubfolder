@@ -1,6 +1,6 @@
 package com.example.pocastcloni.data.worker
 
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.LibraryMaintenancePort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import io.mockk.coVerify
@@ -13,7 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryCleanupRunnerTest {
-    private val repository = mockk<PodcastRepository>(relaxed = true)
+    private val repository = mockk<LibraryMaintenancePort>(relaxed = true)
     private val preferences = mockk<UserPreferencesRepository>()
     private val runner = LibraryCleanupRunner(repository, preferences)
 

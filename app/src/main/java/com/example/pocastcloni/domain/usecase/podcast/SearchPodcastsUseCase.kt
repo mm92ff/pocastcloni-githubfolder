@@ -1,15 +1,15 @@
 package com.example.pocastcloni.domain.usecase.podcast
 
-import com.example.pocastcloni.data.remote.ItunesPodcastDto
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.PodcastSearchResult
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import javax.inject.Inject
 
 class SearchPodcastsUseCase
 @Inject
 constructor(
-    private val repository: PodcastRepository
+    private val podcastQuery: PodcastQueryPort
 ) {
-    suspend operator fun invoke(query: String): List<ItunesPodcastDto> {
-        return repository.searchPodcasts(query)
+    suspend operator fun invoke(query: String): List<PodcastSearchResult> {
+        return podcastQuery.searchPodcasts(query)
     }
 }

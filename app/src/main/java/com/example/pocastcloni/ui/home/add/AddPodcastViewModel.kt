@@ -3,16 +3,16 @@ package com.example.pocastcloni.ui.home.add
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.R
-import com.example.pocastcloni.data.remote.ItunesPodcastDto
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.PodcastSearchResult as DomainPodcastSearchResult
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
 import com.example.pocastcloni.domain.usecase.podcast.RemovePodcastSubscriptionUseCase
 import com.example.pocastcloni.domain.usecase.podcast.SearchPodcastsUseCase
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.common.asRetainedLoad
-import com.example.pocastcloni.ui.player.AudioPlayerController
+import com.example.pocastcloni.playback.api.PlayerStatePort
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
@@ -36,10 +36,11 @@ import javax.inject.Inject
 @HiltViewModel
 class AddPodcastViewModel
 @Inject
+@Suppress("LongParameterList")
 constructor(
-    private val repository: PodcastRepository,
+    podcastQuery: PodcastQueryPort,
     userPreferencesRepository: UserPreferencesRepository,
-    playerController: AudioPlayerController,
+    playerStatePort: PlayerStatePort,
     private val addPodcastFromUrl: AddPodcastFromUrlUseCase,
     private val searchPodcasts: SearchPodcastsUseCase,
     private val dispatcherProvider: DispatcherProvider,
@@ -48,12 +49,12 @@ constructor(
     private val _internalState = MutableStateFlow(AddPodcastScreenUiState())
 
     private val isPlayerVisibleFlow =
-        playerController.playerState
+        playerStatePort.playerState
             .map { it.currentEpisodeId != null }
             .distinctUntilChanged()
 
     private val subscribedUrlsFlow =
-        repository.getSubscribedUrlsFlow()
+        podcastQuery.getSubscribedUrlsFlow()
             .map { it.toImmutableSet() }
             .distinctUntilChanged()
             .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
@@ -83,7 +84,7 @@ constructor(
 
     private var searchJob: Job? = null
 
-    private fun ItunesPodcastDto.toPodcastSearchResult(): PodcastSearchResult {
+    private fun DomainPodcastSearchResult.toPodcastSearchResult(): PodcastSearchResult {
         return PodcastSearchResult(
             feedUrl = this.feedUrl ?: "",
             title = this.collectionName ?: "",

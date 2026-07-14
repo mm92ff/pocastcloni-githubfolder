@@ -3,9 +3,10 @@ package com.example.pocastcloni.data.worker
 import android.content.Context
 import androidx.core.net.toUri
 import androidx.work.WorkManager
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.data.local.EpisodeEntity
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.DownloadStatus
+import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.util.cancelEpisodeDownloadWork
 import com.example.pocastcloni.util.cancelLegacyDownloadWork
 import kotlinx.coroutines.NonCancellable
@@ -15,15 +16,15 @@ import java.io.File
 @Suppress("TooGenericExceptionCaught")
 internal suspend fun queueEpisodeDownload(
     workManager: WorkManager,
-    repository: PodcastRepository,
-    episode: EpisodeEntity
+    commands: PodcastCommandPort,
+    episode: Episode
 ): Boolean = DownloadWorkStateCoordinator.withLock {
     val previousStatus = episode.downloadStatus
     if (previousStatus != DownloadStatus.NOT_DOWNLOADED && previousStatus != DownloadStatus.FAILED) {
         return@withLock false
     }
     val queued =
-        repository.compareAndSetDownloadStatus(
+        commands.compareAndSetDownloadStatus(
             episodeId = episode.episodeId,
             expectedStatuses = listOf(previousStatus),
             status = DownloadStatus.QUEUED,
@@ -35,7 +36,7 @@ internal suspend fun queueEpisodeDownload(
             val workId = workManager.enqueueDownloadWork(episode.episodeId)
             DownloadWorkStateCoordinator.recordEnqueuedAttempt(episode.episodeId, workId)
         } catch (error: Throwable) {
-            rollbackQueuedStatus(repository, episode, previousStatus)
+            rollbackQueuedStatus(commands, episode, previousStatus)
             throw error
         }
     }
@@ -44,12 +45,12 @@ internal suspend fun queueEpisodeDownload(
 
 @Suppress("TooGenericExceptionCaught")
 private suspend fun rollbackQueuedStatus(
-    repository: PodcastRepository,
-    episode: EpisodeEntity,
+    commands: PodcastCommandPort,
+    episode: Episode,
     previousStatus: DownloadStatus
 ) {
     withContext(NonCancellable) {
-        repository.compareAndSetDownloadStatus(
+        commands.compareAndSetDownloadStatus(
             episodeId = episode.episodeId,
             expectedStatuses = listOf(DownloadStatus.QUEUED),
             status = previousStatus,
@@ -61,17 +62,18 @@ private suspend fun rollbackQueuedStatus(
 internal suspend fun cancelAndDeleteEpisodeDownload(
     context: Context,
     workManager: WorkManager,
-    repository: PodcastRepository,
-    episode: EpisodeEntity
+    query: PodcastQueryPort,
+    commands: PodcastCommandPort,
+    episode: Episode
 ) {
     DownloadWorkStateCoordinator.withLock {
         workManager.cancelEpisodeDownloadWork(episode.episodeId, episode.guid)
         DownloadWorkStateCoordinator.clearAttempt(episode.episodeId)
         withContext(NonCancellable) {
-            val current = repository.getEpisode(episode.episodeId)
+            val current = query.getEpisode(episode.episodeId)
             if (current != null) {
                 val reset =
-                    repository.compareAndSetDownloadStatusAndPath(
+                    commands.compareAndSetDownloadStatusAndPath(
                         episodeId = current.episodeId,
                         expectedStatus = current.downloadStatus,
                         expectedPath = current.downloadPath,

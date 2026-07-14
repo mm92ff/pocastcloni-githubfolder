@@ -10,7 +10,7 @@ class EpisodeIdentitySourceTest {
     fun runtimeEpisodeMutationsUseInternalIds() {
         val daoSource = File("src/main/java/com/example/pocastcloni/data/local/PodcastDao.kt").readText()
         val repositorySource =
-            File("src/main/java/com/example/pocastcloni/domain/repository/PodcastRepository.kt")
+            File("src/main/java/com/example/pocastcloni/domain/repository/PodcastPorts.kt")
                 .readText()
 
         assertTrue(daoSource.contains("WHERE episodeId = :episodeId"))
@@ -46,18 +46,18 @@ class EpisodeIdentitySourceTest {
             File("src/main/java/com/example/pocastcloni/data/manager/PodcastDownloader.kt")
                 .readText()
         val deletionSource =
-            File("src/main/java/com/example/pocastcloni/domain/usecase/podcast/DeletePodcastUseCase.kt")
+            File("src/main/java/com/example/pocastcloni/data/worker/AndroidPodcastRemovalGateway.kt")
                 .readText()
         val coordinatorSource =
             File("src/main/java/com/example/pocastcloni/data/worker/DownloadWorkCoordinator.kt")
                 .readText()
 
-        assertTrue(manualSource.contains("queueEpisodeDownload"))
-        assertTrue(manualSource.contains("cancelAndDeleteEpisodeDownload"))
-        assertTrue(automaticSource.contains("queueEpisodeDownload"))
-        assertTrue(automaticSource.contains("cancelAndDeleteEpisodeDownload"))
+        assertTrue(manualSource.contains("downloadScheduler.queue"))
+        assertTrue(manualSource.contains("downloadScheduler.cancelAndDelete"))
+        assertTrue(automaticSource.contains("downloadScheduler.queue"))
+        assertTrue(automaticSource.contains("downloadScheduler.cancelAndDelete"))
         assertTrue(coordinatorSource.contains("cancelLegacyDownloadWork(episode.guid)"))
         assertTrue(coordinatorSource.contains("cancelEpisodeDownloadWork(episode.episodeId, episode.guid)"))
-        assertTrue(deletionSource.contains("cancelEpisodeDownloadWork(ep.episodeId, ep.guid)"))
+        assertTrue(deletionSource.contains("cancelEpisodeDownloadWork(episode.episodeId, episode.guid)"))
     }
 }

@@ -1,16 +1,16 @@
 package com.example.pocastcloni.domain.usecase.podcast
 
 import com.example.pocastcloni.domain.model.Podcast
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class GetAllPodcastsUseCase
 @Inject
 constructor(
-    private val repository: PodcastRepository
+    private val podcastQuery: PodcastQueryPort
 ) {
     operator fun invoke(): Flow<List<Podcast>> {
-        return repository.getAllPodcastsFlow()
+        return podcastQuery.getAllPodcastsFlow()
     }
 }

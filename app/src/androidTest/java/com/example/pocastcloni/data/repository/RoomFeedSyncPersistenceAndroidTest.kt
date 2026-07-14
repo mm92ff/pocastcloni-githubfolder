@@ -11,8 +11,8 @@ import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.FavoriteOrderUpdate
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
-import com.example.pocastcloni.data.local.PodcastFeedUpdate
 import com.example.pocastcloni.data.local.PodcastSortUpdate
+import com.example.pocastcloni.domain.model.FeedPodcastUpdate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -54,8 +54,8 @@ class RoomFeedSyncPersistenceAndroidTest {
             update = feedUpdate(),
             newPodcast = null,
             episodes = listOf(
-                refreshedEpisode(),
-                episode(guid = "new-guid", title = "New episode", episodeId = 0L)
+                refreshedEpisode().toDomain(),
+                episode(guid = "new-guid", title = "New episode", episodeId = 0L).toDomain()
             )
         )
 
@@ -118,7 +118,7 @@ class RoomFeedSyncPersistenceAndroidTest {
             persistence.persistFeedUpdate(
                 update = feedUpdate(),
                 newPodcast = null,
-                episodes = listOf(episode(episodeId = 0L))
+                episodes = listOf(episode(episodeId = 0L).toDomain())
             )
         }
 
@@ -205,7 +205,7 @@ class RoomFeedSyncPersistenceAndroidTest {
             persistence.persistFeedUpdate(
                 update = feedUpdate(),
                 newPodcast = null,
-                episodes = listOf(refreshedEpisode())
+                episodes = listOf(refreshedEpisode().toDomain())
             )
         }
 
@@ -250,7 +250,7 @@ class RoomFeedSyncPersistenceAndroidTest {
         eTagHeader = "old-etag"
     )
 
-    private fun feedUpdate() = PodcastFeedUpdate(
+    private fun feedUpdate() = FeedPodcastUpdate(
         rssUrl = FEED_URL,
         title = "Updated podcast",
         description = "Updated description",

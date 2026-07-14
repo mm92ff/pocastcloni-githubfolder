@@ -3,7 +3,7 @@ package com.example.pocastcloni.domain.usecase.episode
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.EpisodePresentation
 import com.example.pocastcloni.domain.model.EpisodeWithPodcastInfo
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
@@ -16,15 +16,15 @@ import javax.inject.Inject
 class GetFavoriteEpisodesWithPodcastInfoUseCase
 @Inject
 constructor(
-    private val podcastRepository: PodcastRepository,
+    private val podcastQuery: PodcastQueryPort,
     private val dispatcherProvider: DispatcherProvider
 ) {
     operator fun invoke(): Flow<List<EpisodeWithPodcastInfo>> {
-        return podcastRepository.getFavoriteEpisodesWithPodcastInfoFlow()
+        return podcastQuery.getFavoriteEpisodesWithPodcastInfoFlow()
             .map { map ->
-                map.map { (episodeEntity, podcast) ->
+                map.map { (episode, podcast) ->
                     EpisodeWithPodcastInfo(
-                        episode = EpisodePresentation.from(episodeEntity),
+                        episode = EpisodePresentation.from(episode),
                         podcast = podcast
                     )
                 }

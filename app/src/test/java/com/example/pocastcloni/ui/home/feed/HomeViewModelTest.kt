@@ -11,8 +11,8 @@ import com.example.pocastcloni.domain.usecase.podcast.GetAllPodcastsUseCase
 import com.example.pocastcloni.domain.usecase.podcast.MarkAllPodcastsSeenUseCase
 import com.example.pocastcloni.domain.usecase.podcast.RefreshPodcastsUseCase
 import com.example.pocastcloni.domain.usecase.podcast.ReorderPodcastsUseCase
-import com.example.pocastcloni.ui.player.AudioPlayerController
-import com.example.pocastcloni.ui.player.PlayerUiState
+import com.example.pocastcloni.playback.api.PlayerStatePort
+import com.example.pocastcloni.playback.api.PlayerUiState
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -50,7 +50,7 @@ class HomeViewModelTest {
     private lateinit var reorderPodcasts: ReorderPodcastsUseCase
     private lateinit var markAllPodcastsSeen: MarkAllPodcastsSeenUseCase
     private lateinit var deletePodcastUseCase: DeletePodcastUseCase
-    private lateinit var playerController: AudioPlayerController
+    private lateinit var playerStatePort: PlayerStatePort
     private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var viewModel: HomeViewModel
 
@@ -77,12 +77,12 @@ class HomeViewModelTest {
         reorderPodcasts = mockk(relaxed = true)
         markAllPodcastsSeen = mockk(relaxed = true)
         deletePodcastUseCase = mockk(relaxed = true)
-        playerController = mockk()
+        playerStatePort = mockk()
         dispatcherProvider = mockk()
 
         every { getAllPodcasts() } returns flowOf(emptyList())
         every { getUserSettings() } returns flowOf(UserSettings())
-        every { playerController.playerState } returns MutableStateFlow(
+        every { playerStatePort.playerState } returns MutableStateFlow(
             PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         every { dispatcherProvider.io } returns testDispatcher
@@ -94,7 +94,7 @@ class HomeViewModelTest {
             reorderPodcasts = reorderPodcasts,
             markAllPodcastsSeen = markAllPodcastsSeen,
             deletePodcastUseCase = deletePodcastUseCase,
-            playerController = playerController,
+            playerStatePort = playerStatePort,
             dispatcherProvider = dispatcherProvider
         )
     }
@@ -255,7 +255,7 @@ class HomeViewModelTest {
             reorderPodcasts = reorderPodcasts,
             markAllPodcastsSeen = markAllPodcastsSeen,
             deletePodcastUseCase = deletePodcastUseCase,
-            playerController = playerController,
+            playerStatePort = playerStatePort,
             dispatcherProvider = dispatcherProvider
         )
 
@@ -292,7 +292,7 @@ class HomeViewModelTest {
                 reorderPodcasts = reorderPodcasts,
                 markAllPodcastsSeen = markAllPodcastsSeen,
                 deletePodcastUseCase = deletePodcastUseCase,
-                playerController = playerController,
+                playerStatePort = playerStatePort,
                 dispatcherProvider = dispatcherProvider
             )
     }

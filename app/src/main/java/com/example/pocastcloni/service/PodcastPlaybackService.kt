@@ -29,7 +29,6 @@ import com.example.pocastcloni.data.cache.MediaCacheProvider
 import com.example.pocastcloni.data.repository.StreamingStatisticsRecorder
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.BufferMode
-import com.example.pocastcloni.domain.repository.PodcastRepository
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.ui.main.MainActivity
 import com.example.pocastcloni.util.ConnectivityProvider
@@ -52,8 +51,6 @@ import javax.inject.Named
 @AndroidEntryPoint
 class PodcastPlaybackService : MediaSessionService() {
     @Inject lateinit var dispatcherProvider: DispatcherProvider
-
-    @Inject lateinit var podcastRepository: PodcastRepository
 
     @Inject lateinit var userPreferencesRepository: UserPreferencesRepository
 

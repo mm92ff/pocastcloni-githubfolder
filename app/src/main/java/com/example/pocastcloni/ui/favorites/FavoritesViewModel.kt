@@ -10,7 +10,8 @@ import com.example.pocastcloni.domain.usecase.favorite.ReorderFavoritesUseCase
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.common.asRetainedLoad
-import com.example.pocastcloni.ui.player.AudioPlayerController
+import com.example.pocastcloni.playback.api.PlaybackStarter
+import com.example.pocastcloni.playback.api.PlayerStatePort
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
@@ -32,7 +33,8 @@ class FavoritesViewModel
 @Inject
 constructor(
     getFavoriteEpisodesWithPodcastInfoUseCase: GetFavoriteEpisodesWithPodcastInfoUseCase,
-    private val audioPlayerController: AudioPlayerController,
+    private val playbackStarter: PlaybackStarter,
+    playerStatePort: PlayerStatePort,
     private val toggleFavoriteEpisodeUseCase: ToggleFavoriteEpisodeUseCase,
     private val reorderFavoritesUseCase: ReorderFavoritesUseCase,
     userPreferencesRepository: UserPreferencesRepository
@@ -58,7 +60,7 @@ constructor(
             .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
 
     private val isPlayerVisibleFlow =
-        audioPlayerController.playerState
+        playerStatePort.playerState
             .map { it.currentEpisodeId != null }
             .distinctUntilChanged()
 
@@ -123,7 +125,7 @@ constructor(
             is FavoritesAction.OnEpisodeClick -> {
                 if (!_isEditMode.value) {
                     viewModelScope.launch {
-                        audioPlayerController.play(action.episodeId)
+                        playbackStarter.play(action.episodeId)
                     }
                 }
             }

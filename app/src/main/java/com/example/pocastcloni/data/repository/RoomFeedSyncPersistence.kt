@@ -2,11 +2,12 @@ package com.example.pocastcloni.data.repository
 
 import androidx.room.withTransaction
 import com.example.pocastcloni.data.local.AppDatabase
-import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastDao
-import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.local.PodcastFeedUpdate
-import com.example.pocastcloni.domain.repository.FeedSyncPersistence
+import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.model.FeedPodcastUpdate
+import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.domain.repository.FeedSyncStore
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,24 +18,46 @@ class RoomFeedSyncPersistence
 constructor(
     private val database: AppDatabase,
     private val podcastDao: PodcastDao
-) : FeedSyncPersistence {
+) : FeedSyncStore {
+    override suspend fun getPodcastForSync(url: String): Podcast? =
+        podcastDao.getPodcastByUrl(url)?.toDomain()
+
+    override suspend fun getMaxSortOrder(): Long? = podcastDao.getMaxSortOrder()
+
+    override suspend fun getEpisodesForSync(rssUrl: String): List<Episode> =
+        podcastDao.getEpisodesForPodcastSync(rssUrl).map { it.toDomain() }
+
+    override suspend fun getLatestEpisodeGuid(rssUrl: String): String? =
+        podcastDao.getLatestEpisodeGuid(rssUrl)
+
     override suspend fun persistFeedUpdate(
-        update: PodcastFeedUpdate,
-        newPodcast: PodcastEntity?,
-        episodes: List<EpisodeEntity>
+        update: FeedPodcastUpdate,
+        newPodcast: Podcast?,
+        episodes: List<Episode>
     ): Boolean {
         require(newPodcast == null || newPodcast.rssUrl == update.rssUrl)
         require(episodes.all { it.podcastRssUrl == update.rssUrl })
 
+        val entityUpdate =
+            PodcastFeedUpdate(
+                rssUrl = update.rssUrl,
+                title = update.title,
+                description = update.description,
+                imageUrl = update.imageUrl,
+                lastRefreshed = update.lastRefreshed,
+                lastModifiedHeader = update.lastModifiedHeader,
+                eTagHeader = update.eTagHeader
+            )
+
         database.withTransaction {
             if (newPodcast == null) {
-                check(podcastDao.updatePodcastFromFeed(update) == 1) {
+                check(podcastDao.updatePodcastFromFeed(entityUpdate) == 1) {
                     "Feed update referenced a missing podcast"
                 }
             } else {
-                podcastDao.insertPodcast(newPodcast.copy(hasNewEpisodes = false))
+                podcastDao.insertPodcast(newPodcast.copy(hasNewEpisodes = false).toEntity())
             }
-            val insertResults = podcastDao.upsertEpisodesEfficient(episodes)
+            val insertResults = podcastDao.upsertEpisodesEfficient(episodes.map { it.toEntity() })
             if (insertResults.any { it != ON_CONFLICT_IGNORED }) {
                 check(podcastDao.markPodcastHasNewEpisodes(update.rssUrl) == 1) {
                     "Feed update could not mark its inserted episodes as new"
@@ -54,6 +77,18 @@ constructor(
             }
         }
         return readAutoDownloadEnabled(rssUrl)
+    }
+
+    override suspend fun approvePodcastNetworkAccess(
+        rssUrl: String,
+        allowInsecureHttp: Boolean,
+        allowLocalNetwork: Boolean
+    ) {
+        podcastDao.approvePodcastNetworkAccess(
+            rssUrl = rssUrl,
+            allowInsecureHttp = allowInsecureHttp,
+            allowLocalNetwork = allowLocalNetwork
+        )
     }
 
     private suspend fun readAutoDownloadEnabled(rssUrl: String): Boolean =

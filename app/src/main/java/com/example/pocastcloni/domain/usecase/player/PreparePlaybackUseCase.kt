@@ -1,20 +1,20 @@
 package com.example.pocastcloni.domain.usecase.player
 
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.di.DispatcherProvider
+import com.example.pocastcloni.domain.model.DownloadStatus
+import com.example.pocastcloni.domain.model.Episode
 import com.example.pocastcloni.domain.model.Podcast
-import com.example.pocastcloni.domain.model.toPodcast
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.LocalNetworkApprovalPort
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.util.requireApprovedPodcastResource
-import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
 
 data class PlayEpisodeResult(
-    val episode: EpisodeEntity,
+    val episode: Episode,
     val startPosition: Long,
     val podcast: Podcast?,
     val playUri: String
@@ -23,19 +23,19 @@ data class PlayEpisodeResult(
 class PreparePlaybackUseCase
 @Inject
 constructor(
-    private val repository: PodcastRepository,
+    private val podcastQuery: PodcastQueryPort,
+    private val podcastCommands: PodcastCommandPort,
     private val dispatcherProvider: DispatcherProvider,
-    private val localNetworkAccessRegistry: LocalNetworkAccessRegistry
+    private val localNetworkApproval: LocalNetworkApprovalPort
 ) {
     suspend operator fun invoke(episodeId: Long): PlayEpisodeResult {
         return withContext(dispatcherProvider.io) {
             val savedEpisode =
-                repository.getEpisode(episodeId)
+                podcastQuery.getEpisode(episodeId)
                     ?: throw IllegalStateException("Episode not available for ID $episodeId")
 
             // Load podcast info
-            val podcastEntity = repository.getPodcastEntityByUrl(savedEpisode.podcastRssUrl)
-            val podcast = podcastEntity?.toPodcast()
+            val podcast = podcastQuery.getPodcast(savedEpisode.podcastRssUrl)
 
             // 2. Decision logic: local file vs. stream
             var finalUri = savedEpisode.enclosureUrl // Default: stream
@@ -58,12 +58,20 @@ constructor(
                         } else {
                             // DB says Downloaded, but file is missing -> fall back to stream
                             Timber.w("File missing despite DOWNLOADED status: $localPath. Fallback to stream.")
-                            repository.updateDownloadStatus(savedEpisode.episodeId, DownloadStatus.NOT_DOWNLOADED, null)
+                            podcastCommands.updateDownloadStatus(
+                                savedEpisode.episodeId,
+                                DownloadStatus.NOT_DOWNLOADED,
+                                null
+                            )
                         }
                     }
                 } else {
                     Timber.w("Download path missing in DB despite DOWNLOADED status. Fallback to stream.")
-                    repository.updateDownloadStatus(savedEpisode.episodeId, DownloadStatus.NOT_DOWNLOADED, null)
+                    podcastCommands.updateDownloadStatus(
+                        savedEpisode.episodeId,
+                        DownloadStatus.NOT_DOWNLOADED,
+                        null
+                    )
                 }
             } else {
                 Timber.d("Episode not downloaded (Status: ${savedEpisode.downloadStatus}). Streaming: $finalUri")
@@ -73,11 +81,11 @@ constructor(
                 requireApprovedPodcastResource(
                     feedUrl = savedEpisode.podcastRssUrl,
                     resourceUrl = finalUri,
-                    allowInsecureHttp = podcastEntity?.allowInsecureHttp == true,
-                    allowLocalNetwork = podcastEntity?.allowLocalNetwork == true
+                    allowInsecureHttp = podcast?.allowInsecureHttp == true,
+                    allowLocalNetwork = podcast?.allowLocalNetwork == true
                 )
-                if (podcastEntity?.allowLocalNetwork == true) {
-                    localNetworkAccessRegistry.approveFeed(savedEpisode.podcastRssUrl)
+                if (podcast?.allowLocalNetwork == true) {
+                    localNetworkApproval.approveFeed(savedEpisode.podcastRssUrl)
                 }
             }
 

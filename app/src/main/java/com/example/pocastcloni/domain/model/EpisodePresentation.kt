@@ -1,10 +1,5 @@
 package com.example.pocastcloni.domain.model
 
-import androidx.compose.runtime.Immutable
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.data.local.EpisodeEntity
-
-@Immutable
 data class EpisodePresentation(
     val episodeId: Long,
     val guid: String,
@@ -22,7 +17,7 @@ data class EpisodePresentation(
     val downloadStatus: DownloadStatus
 ) {
     companion object {
-        fun from(entity: EpisodeEntity): EpisodePresentation =
+        fun from(entity: Episode): EpisodePresentation =
             EpisodePresentation(
                 episodeId = entity.episodeId,
                 guid = entity.guid,

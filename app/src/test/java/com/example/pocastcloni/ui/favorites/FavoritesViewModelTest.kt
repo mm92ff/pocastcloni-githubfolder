@@ -12,8 +12,9 @@ import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCa
 import com.example.pocastcloni.domain.usecase.favorite.ReorderFavoritesUseCase
 import com.example.pocastcloni.ui.common.DateBucket
 import com.example.pocastcloni.ui.common.EpisodeDisplayModel
-import com.example.pocastcloni.ui.player.AudioPlayerController
-import com.example.pocastcloni.ui.player.PlayerUiState
+import com.example.pocastcloni.playback.api.PlaybackStarter
+import com.example.pocastcloni.playback.api.PlayerStatePort
+import com.example.pocastcloni.playback.api.PlayerUiState
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coVerify
 import io.mockk.every
@@ -43,7 +44,8 @@ class FavoritesViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var getFavoriteEpisodes: GetFavoriteEpisodesWithPodcastInfoUseCase
-    private lateinit var audioPlayerController: AudioPlayerController
+    private lateinit var playbackStarter: PlaybackStarter
+    private lateinit var playerStatePort: PlayerStatePort
     private lateinit var toggleFavoriteEpisodeUseCase: ToggleFavoriteEpisodeUseCase
     private lateinit var reorderFavoritesUseCase: ReorderFavoritesUseCase
     private lateinit var userPreferencesRepository: UserPreferencesRepository
@@ -73,20 +75,22 @@ class FavoritesViewModelTest {
     @Before
     fun setup() {
         getFavoriteEpisodes = mockk()
-        audioPlayerController = mockk()
+        playbackStarter = mockk()
+        playerStatePort = mockk()
         toggleFavoriteEpisodeUseCase = mockk(relaxed = true)
         reorderFavoritesUseCase = mockk(relaxed = true)
         userPreferencesRepository = mockk()
 
         every { getFavoriteEpisodes() } returns flowOf(emptyList())
-        every { audioPlayerController.playerState } returns MutableStateFlow(
+        every { playerStatePort.playerState } returns MutableStateFlow(
             PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(UserSettings())
 
         viewModel = FavoritesViewModel(
             getFavoriteEpisodesWithPodcastInfoUseCase = getFavoriteEpisodes,
-            audioPlayerController = audioPlayerController,
+            playbackStarter = playbackStarter,
+            playerStatePort = playerStatePort,
             toggleFavoriteEpisodeUseCase = toggleFavoriteEpisodeUseCase,
             reorderFavoritesUseCase = reorderFavoritesUseCase,
             userPreferencesRepository = userPreferencesRepository
@@ -120,27 +124,27 @@ class FavoritesViewModelTest {
     }
 
     @Test
-    fun `OnEpisodeClick calls audioPlayerController when not in edit mode`() = runTest {
-        every { audioPlayerController.playerState } returns MutableStateFlow(
+    fun `OnEpisodeClick calls playback starter when not in edit mode`() = runTest {
+        every { playerStatePort.playerState } returns MutableStateFlow(
             PlayerUiState(currentEpisodeId = null, isPlaying = false)
         )
-        io.mockk.coEvery { audioPlayerController.play(any()) } returns Unit
+        io.mockk.coEvery { playbackStarter.play(any()) } returns Unit
 
         viewModel.onAction(FavoritesAction.OnEpisodeClick(TEST_EPISODE_ID))
         advanceUntilIdle()
 
-        coVerify { audioPlayerController.play(TEST_EPISODE_ID) }
+        coVerify { playbackStarter.play(TEST_EPISODE_ID) }
     }
 
     @Test
-    fun `OnEpisodeClick does NOT call audioPlayerController when in edit mode`() = runTest {
+    fun `OnEpisodeClick does NOT start playback when in edit mode`() = runTest {
         viewModel.onAction(FavoritesAction.ToggleEditMode)
         advanceUntilIdle()
 
         viewModel.onAction(FavoritesAction.OnEpisodeClick(TEST_EPISODE_ID))
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { audioPlayerController.play(any()) }
+        coVerify(exactly = 0) { playbackStarter.play(any()) }
     }
 
     @Test
@@ -233,7 +237,8 @@ class FavoritesViewModelTest {
     private fun createViewModel(): FavoritesViewModel =
         FavoritesViewModel(
             getFavoriteEpisodesWithPodcastInfoUseCase = getFavoriteEpisodes,
-            audioPlayerController = audioPlayerController,
+            playbackStarter = playbackStarter,
+            playerStatePort = playerStatePort,
             toggleFavoriteEpisodeUseCase = toggleFavoriteEpisodeUseCase,
             reorderFavoritesUseCase = reorderFavoritesUseCase,
             userPreferencesRepository = userPreferencesRepository

@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
 import com.example.pocastcloni.domain.usecase.player.GetEpisodeDescriptionUseCase
+import com.example.pocastcloni.playback.api.PlayerCommandPort
+import com.example.pocastcloni.playback.api.PlayerScreenEvent
+import com.example.pocastcloni.playback.api.PlayerStatePort
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,10 +23,14 @@ class PlayerViewModel
 @Inject
 constructor(
     private val dispatcherProvider: DispatcherProvider,
-    val playerController: AudioPlayerController, // Implementiert jetzt PlayerActions & Observer
+    private val playerCommandPort: PlayerCommandPort,
+    playerStatePort: PlayerStatePort,
     private val toggleFavoriteEpisodeUseCase: ToggleFavoriteEpisodeUseCase,
     private val getEpisodeDescriptionUseCase: GetEpisodeDescriptionUseCase
 ) : ViewModel() {
+    val playerState = playerStatePort.playerState
+    val playbackState = playerStatePort.playbackState
+
     // UI State for Description
     private val _descriptionState = MutableStateFlow<Spanned?>(null)
     val descriptionState: StateFlow<Spanned?> = _descriptionState.asStateFlow()
@@ -31,15 +38,11 @@ constructor(
     private val _isDescriptionVisible = MutableStateFlow(false)
     val isDescriptionVisible: StateFlow<Boolean> = _isDescriptionVisible.asStateFlow()
 
-    init {
-        // The controller connects automatically once the UI accesses 'playerController.playerState' via Compose.
-    }
-
     fun handlePlayerEvent(event: PlayerScreenEvent) {
         when (event) {
             PlayerScreenEvent.ToggleFavorite -> {
-                val episodeId = playerController.playerState.value.currentEpisodeId ?: return
-                val currentlyFav = playerController.playerState.value.isCurrentEpisodeFavorite
+                val episodeId = playerState.value.currentEpisodeId ?: return
+                val currentlyFav = playerState.value.isCurrentEpisodeFavorite
                 viewModelScope.launch(dispatcherProvider.io) {
                     runCatching { toggleFavoriteEpisodeUseCase(episodeId, currentlyFav) }
                         .onFailure { Timber.e(it, "Failed to toggle favorite") }
@@ -50,12 +53,12 @@ constructor(
                 _isDescriptionVisible.value = false
                 _descriptionState.value = null
             }
-            else -> playerController.onEvent(event)
+            else -> playerCommandPort.onEvent(event)
         }
     }
 
     private fun loadDescription() {
-        val episodeId = playerController.playerState.value.currentEpisodeId ?: return
+        val episodeId = playerState.value.currentEpisodeId ?: return
         _isDescriptionVisible.value = true
         viewModelScope.launch(dispatcherProvider.io) {
             val rawHtml = runCatching { getEpisodeDescriptionUseCase(episodeId) }

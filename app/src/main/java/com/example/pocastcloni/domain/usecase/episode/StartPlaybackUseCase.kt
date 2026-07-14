@@ -1,6 +1,6 @@
 package com.example.pocastcloni.domain.usecase.episode
 
-import com.example.pocastcloni.domain.player.PlaybackStarter
+import com.example.pocastcloni.playback.api.PlaybackStarter
 import javax.inject.Inject
 
 class StartPlaybackUseCase

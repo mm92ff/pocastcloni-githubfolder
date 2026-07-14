@@ -1,6 +1,6 @@
 package com.example.pocastcloni.domain.usecase.favorite
 
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
@@ -13,7 +13,7 @@ import org.junit.Test
 
 class ReorderFavoritesUseCaseTest {
 
-    private val repository: PodcastRepository = mockk()
+    private val repository: PodcastCommandPort = mockk()
     private val useCase = ReorderFavoritesUseCase(repository)
 
     @Test
@@ -28,7 +28,6 @@ class ReorderFavoritesUseCaseTest {
         useCase(listOf(102L, 101L))
 
         coVerify { repository.reorderFavorites(any(), any()) }
-        coVerify(exactly = 0) { repository.getEpisode(any()) }
         assertEquals(listOf(102L, 101L), capturedIds.captured)
         check(capturedTimestamp.captured > 0L)
     }

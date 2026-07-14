@@ -1,5 +1,7 @@
 package com.example.pocastcloni.ui.player
 
+import com.example.pocastcloni.playback.api.PlaybackState
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State

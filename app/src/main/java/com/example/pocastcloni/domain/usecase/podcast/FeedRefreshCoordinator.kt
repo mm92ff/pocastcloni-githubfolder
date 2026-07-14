@@ -4,7 +4,7 @@ import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.PodcastUpdateSummary
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.FeedUpdateRunner
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -45,7 +45,7 @@ private class RefreshFlight(
 class FeedRefreshCoordinator
 @Inject
 constructor(
-    private val repository: PodcastRepository,
+    private val feedUpdateRunner: FeedUpdateRunner,
     private val preferences: UserPreferencesRepository,
     @ApplicationScope private val applicationScope: CoroutineScope,
     private val dispatcherProvider: DispatcherProvider
@@ -107,7 +107,7 @@ constructor(
     private suspend fun execute(flight: RefreshFlight) {
         try {
             val summary =
-                repository.updateAllPodcasts(
+                feedUpdateRunner.updateAllPodcasts(
                     downloadLimit = flight.request.downloadLimit,
                     mode = flight.request.mode,
                     forceFull = flight.request.forceFull,

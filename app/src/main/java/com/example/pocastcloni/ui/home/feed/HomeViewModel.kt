@@ -16,7 +16,7 @@ import com.example.pocastcloni.domain.usecase.podcast.ReorderPodcastsUseCase
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.common.RetainedLoad
 import com.example.pocastcloni.ui.common.asRetainedLoad
-import com.example.pocastcloni.ui.player.AudioPlayerController
+import com.example.pocastcloni.playback.api.PlayerStatePort
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
@@ -68,6 +68,7 @@ sealed interface HomeUiEvent {
 @HiltViewModel
 class HomeViewModel
 @Inject
+@Suppress("LongParameterList")
 constructor(
     private val getAllPodcasts: GetAllPodcastsUseCase,
     private val getUserSettings: GetUserSettingsUseCase,
@@ -75,7 +76,7 @@ constructor(
     private val reorderPodcasts: ReorderPodcastsUseCase,
     private val markAllPodcastsSeen: MarkAllPodcastsSeenUseCase,
     private val deletePodcastUseCase: DeletePodcastUseCase,
-    playerController: AudioPlayerController,
+    playerStatePort: PlayerStatePort,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
     private val didRunStartRefresh = AtomicBoolean(false)
@@ -103,7 +104,7 @@ constructor(
 
     // Player state flow uses the database episode ID.
     private val isPlayerVisibleFlow =
-        playerController.playerState
+        playerStatePort.playerState
             .map { it.currentEpisodeId != null }
             .distinctUntilChanged()
 

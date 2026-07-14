@@ -1,7 +1,7 @@
 package com.example.pocastcloni.domain.usecase.player
 
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -18,7 +18,7 @@ class MarkEpisodePlayedUseCaseTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private lateinit var repository: PodcastRepository
+    private lateinit var repository: PodcastCommandPort
     private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var useCase: MarkEpisodePlayedUseCase
 
@@ -37,8 +37,5 @@ class MarkEpisodePlayedUseCaseTest {
         useCase(101L)
 
         coVerify(exactly = 1) { repository.markEpisodePlayed(101L, true, any()) }
-        coVerify(exactly = 0) { repository.getEpisode(any()) }
-        coVerify(exactly = 0) { repository.getEpisodesForSync(any()) }
-        coVerify(exactly = 0) { repository.getPodcastEntityByUrl(any()) }
     }
 }

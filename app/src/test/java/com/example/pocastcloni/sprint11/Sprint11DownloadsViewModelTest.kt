@@ -10,12 +10,13 @@ import com.example.pocastcloni.domain.usecase.episode.GetDownloadedEpisodesWithP
 import com.example.pocastcloni.domain.usecase.episode.StartPlaybackUseCase
 import com.example.pocastcloni.domain.usecase.episode.ToggleFavoriteEpisodeUseCase
 import com.example.pocastcloni.ui.home.downloads.DownloadsViewModel
-import com.example.pocastcloni.ui.player.AudioPlayerController
-import com.example.pocastcloni.ui.player.PlayerUiState
+import com.example.pocastcloni.playback.api.PlayerStatePort
+import com.example.pocastcloni.playback.api.PlayerUiState
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -27,7 +28,7 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class Sprint11DownloadsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
 
@@ -49,14 +50,14 @@ class Sprint11DownloadsViewModelTest {
                 flowOf(emptyList())
             }
         }
-        val playerController = mockk<AudioPlayerController>()
-        every { playerController.playerState } returns MutableStateFlow(PlayerUiState())
+        val playerStatePort = mockk<PlayerStatePort>()
+        every { playerStatePort.playerState } returns MutableStateFlow(PlayerUiState())
         val preferences = mockk<UserPreferencesRepository>()
         every { preferences.userSettingsFlow } returns flowOf(UserSettings())
 
         val viewModel =
             DownloadsViewModel(
-                playerController = playerController,
+                playerStatePort = playerStatePort,
                 downloader = mockk<DownloadEpisodeUseCase>(relaxed = true),
                 userPreferencesRepository = preferences,
                 getDownloadedEpisodesWithPodcastInfo = getDownloads,

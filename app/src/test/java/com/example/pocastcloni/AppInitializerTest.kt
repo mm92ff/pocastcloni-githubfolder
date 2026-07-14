@@ -7,7 +7,7 @@ import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import com.example.pocastcloni.data.repository.BackupImportRecovery
 import com.example.pocastcloni.data.worker.AppSchedulingCoordinator
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.LibraryMaintenancePort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.app.ResetAppUseCase
@@ -31,7 +31,7 @@ import java.io.IOException
 class AppInitializerTest {
     private val dispatcher = StandardTestDispatcher()
     private val preferences = mockk<UserPreferencesRepository>()
-    private val repository = mockk<PodcastRepository>(relaxed = true)
+    private val repository = mockk<LibraryMaintenancePort>(relaxed = true)
     private val podcastDao = mockk<PodcastDao>()
     private val workManager = mockk<WorkManager>()
     private val dispatcherProvider = mockk<DispatcherProvider>()
@@ -87,7 +87,7 @@ class AppInitializerTest {
     private fun initializer(scope: kotlinx.coroutines.CoroutineScope) =
         AppInitializer(
             userPreferencesRepository = preferences,
-            podcastRepository = repository,
+            maintenance = repository,
             podcastDao = podcastDao,
             scope = scope,
             workManager = workManager,

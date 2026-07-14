@@ -14,11 +14,12 @@ import coil.memory.MemoryCache
 import com.example.pocastcloni.data.cache.MediaCacheProvider
 import com.example.pocastcloni.data.repository.AppResetMarkerStore
 import com.example.pocastcloni.data.worker.AppSchedulingCoordinator
+import com.example.pocastcloni.data.worker.AndroidAppResetGateway
 import com.example.pocastcloni.data.worker.BackgroundSyncScheduler
 import com.example.pocastcloni.data.worker.LibraryCleanupScheduler
 import com.example.pocastcloni.data.worker.LibraryCleanupWorker
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.LibraryMaintenancePort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.util.Constants
@@ -57,7 +58,7 @@ class ResetAppUseCaseTest {
     val temporaryFolder = TemporaryFolder()
 
     private val dispatcher = StandardTestDispatcher()
-    private val podcastRepository = mockk<PodcastRepository>(relaxed = true)
+    private val maintenance = mockk<LibraryMaintenancePort>(relaxed = true)
     private val userPreferencesRepository = mockk<UserPreferencesRepository>(relaxed = true)
     private val mediaCache = mockk<MediaCache>(relaxed = true)
     private val mediaCacheProvider = MediaCacheProvider { mediaCache }
@@ -115,18 +116,20 @@ class ResetAppUseCaseTest {
             )
         resetApp =
             ResetAppUseCase(
-                podcastRepository = podcastRepository,
+                maintenance = maintenance,
                 userPreferencesRepository = userPreferencesRepository,
-                mediaCacheProvider = mediaCacheProvider,
-                imageLoader = imageLoader,
-                okHttpClient = okHttpClient,
-                localNetworkClient = localNetworkClient,
-                approvedMediaClient = approvedMediaClient,
-                workManager = workManager,
-                markerStore = markerStore,
-                schedulingCoordinator = schedulingCoordinator,
-                dispatcherProvider = dispatcherProvider,
-                context = context
+                resetGateway = AndroidAppResetGateway(
+                    mediaCacheProvider = mediaCacheProvider,
+                    imageLoader = imageLoader,
+                    okHttpClient = okHttpClient,
+                    localNetworkClient = localNetworkClient,
+                    approvedMediaClient = approvedMediaClient,
+                    workManager = workManager,
+                    markerStore = markerStore,
+                    schedulingCoordinator = schedulingCoordinator,
+                    context = context
+                ),
+                dispatcherProvider = dispatcherProvider
             )
     }
 
@@ -261,7 +264,7 @@ class ResetAppUseCaseTest {
         assertTrue(internalDownload.exists())
         assertTrue(externalDownload.exists())
         coVerify(exactly = 1) { userPreferencesRepository.clearSettings() }
-        coVerify(exactly = 1) { podcastRepository.resetDatabase() }
+        coVerify(exactly = 1) { maintenance.resetDatabase() }
         verify(exactly = 1) { workManager.cancelAllWork() }
         assertTrue(!markerStore.isPending())
         verifyOrder {
@@ -289,7 +292,7 @@ class ResetAppUseCaseTest {
         assertTrue(Constants.Cache.MANAGED_CACHE_DIRS.all { !cacheDir.resolve(it).exists() })
         assertTrue(markerStore.isPending())
         coVerify(exactly = 1) { userPreferencesRepository.clearSettings() }
-        coVerify(exactly = 1) { podcastRepository.resetDatabase() }
+        coVerify(exactly = 1) { maintenance.resetDatabase() }
         verify(exactly = 1) { memoryCache.clear() }
         verify(exactly = 1) { diskCache.clear() }
         verify(exactly = 1) { defaultHttpCache.evictAll() }
@@ -310,7 +313,7 @@ class ResetAppUseCaseTest {
 
         assertTrue(markerStore.isPending())
         verify(exactly = 0) { workManager.cancelAllWork() }
-        coVerify(exactly = 0) { podcastRepository.resetDatabase() }
+        coVerify(exactly = 0) { maintenance.resetDatabase() }
         verify(exactly = 0) { mediaCache.release() }
     }
 
@@ -333,7 +336,7 @@ class ResetAppUseCaseTest {
             scheduledWorkNames
         )
         verify(exactly = 1) { workManager.cancelAllWork() }
-        coVerify(exactly = 1) { podcastRepository.resetDatabase() }
+        coVerify(exactly = 1) { maintenance.resetDatabase() }
     }
 
     private fun createManagedCacheMarkers() {

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.player.PlayerVisibilityProvider
+import com.example.pocastcloni.playback.api.PlayerVisibilityProvider
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.app.AppMaintenanceUseCases
 import com.example.pocastcloni.domain.usecase.app.GetUserSettingsUseCase

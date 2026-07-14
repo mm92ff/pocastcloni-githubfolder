@@ -7,7 +7,7 @@ import com.example.pocastcloni.data.repository.BackupImportRecovery
 import com.example.pocastcloni.data.worker.AppSchedulingCoordinator
 import com.example.pocastcloni.di.ApplicationScope
 import com.example.pocastcloni.di.DispatcherProvider
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.LibraryMaintenancePort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.app.ResetAppUseCase
 import com.example.pocastcloni.util.Constants
@@ -29,9 +29,10 @@ import javax.inject.Singleton
 @Singleton
 class AppInitializer
 @Inject
+@Suppress("LongParameterList")
 constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val podcastRepository: PodcastRepository,
+    private val maintenance: LibraryMaintenancePort,
     private val podcastDao: PodcastDao,
     @ApplicationScope private val scope: CoroutineScope,
     private val workManager: WorkManager,
@@ -101,7 +102,7 @@ constructor(
         val workInfos = workManager.getWorkInfosByTag(Constants.DOWNLOAD_WORKER_TAG).await()
         val activeEpisodeIds = activeEpisodeIdsFromDownloadWork(workInfos)
         val correctedEntries =
-            podcastRepository.reconcileEpisodeStorage(activeEpisodeIds) { episodeId ->
+            maintenance.reconcileEpisodeStorage(activeEpisodeIds) { episodeId ->
                 val currentWork = workManager.getWorkInfosByTag(downloadWorkName(episodeId)).await()
                 episodeId in activeEpisodeIdsFromDownloadWork(currentWork)
             }

@@ -6,7 +6,6 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.app.GetUserSettingsUseCase
 import com.example.pocastcloni.ui.main.MainViewModel
-import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.every
 import io.mockk.mockk
@@ -115,7 +114,6 @@ class Sprint11MainViewModelTest {
     private fun createViewModel(getSettings: GetUserSettingsUseCase): MainViewModel =
         MainViewModel(
             getUserSettings = getSettings,
-            playerController = mockk<AudioPlayerController>(relaxed = true),
             dispatcherProvider = mockk<DispatcherProvider>(relaxed = true)
         )
 }

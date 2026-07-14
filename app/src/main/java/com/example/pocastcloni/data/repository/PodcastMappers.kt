@@ -1,14 +1,15 @@
 package com.example.pocastcloni.data.repository
 
-import com.example.pocastcloni.data.local.BackupFavorite
-import com.example.pocastcloni.data.local.BackupEpisodeState
-import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.EpisodeWithPodcastLite
 import com.example.pocastcloni.data.local.PodcastEntity
 import com.example.pocastcloni.data.remote.RssItem
+import com.example.pocastcloni.data.remote.ItunesPodcastDto
+import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.model.EpisodeWithPodcast
 import com.example.pocastcloni.domain.model.Podcast
+import com.example.pocastcloni.domain.model.PodcastSearchResult
 import com.example.pocastcloni.util.Constants
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -29,10 +30,11 @@ fun PodcastEntity.toDomain(): Podcast {
         autoDownloadEnabled = this.autoDownloadEnabled,
         sortOrder = this.sortOrder,
         hasNewEpisodes = this.hasNewEpisodes,
+        latestEpisodeGuid = this.latestEpisodeGuid,
         lastModifiedHeader = this.lastModifiedHeader,
         eTagHeader = this.eTagHeader,
         isLatestEpisodePlayed = this.isLatestEpisodePlayed,
-        latestEpisodeDate = null,
+        latestEpisodeDate = this.latestEpisodePubDate,
         allowInsecureHttp = this.allowInsecureHttp,
         allowLocalNetwork = this.allowLocalNetwork
     )
@@ -50,10 +52,73 @@ fun Podcast.toEntity(): PodcastEntity {
         allowInsecureHttp = this.allowInsecureHttp,
         allowLocalNetwork = this.allowLocalNetwork,
         hasNewEpisodes = this.hasNewEpisodes,
+        latestEpisodeGuid = this.latestEpisodeGuid,
+        latestEpisodePubDate = this.latestEpisodeDate,
+        isLatestEpisodePlayed = this.isLatestEpisodePlayed,
         lastModifiedHeader = this.lastModifiedHeader,
         eTagHeader = this.eTagHeader
     )
 }
+
+fun EpisodeEntity.toDomain(): Episode =
+    Episode(
+        guid = guid,
+        podcastRssUrl = podcastRssUrl,
+        title = title,
+        description = description,
+        pubDate = pubDate,
+        link = link,
+        enclosureUrl = enclosureUrl,
+        type = type,
+        fileSize = fileSize,
+        isPlayed = isPlayed,
+        playbackPositionMs = playbackPositionMs,
+        downloadStatus = downloadStatus,
+        downloadPath = downloadPath,
+        isFavorite = isFavorite,
+        datePlayed = datePlayed,
+        favoriteTimestamp = favoriteTimestamp,
+        favoriteAddedAt = favoriteAddedAt,
+        duration = duration,
+        episodeId = episodeId
+    )
+
+fun Episode.toEntity(): EpisodeEntity =
+    EpisodeEntity(
+        guid = guid,
+        podcastRssUrl = podcastRssUrl,
+        title = title,
+        description = description,
+        pubDate = pubDate,
+        link = link,
+        enclosureUrl = enclosureUrl,
+        type = type,
+        fileSize = fileSize,
+        isPlayed = isPlayed,
+        playbackPositionMs = playbackPositionMs,
+        downloadStatus = downloadStatus,
+        downloadPath = downloadPath,
+        isFavorite = isFavorite,
+        datePlayed = datePlayed,
+        favoriteTimestamp = favoriteTimestamp,
+        favoriteAddedAt = favoriteAddedAt,
+        duration = duration,
+        episodeId = episodeId
+    )
+
+fun EpisodeWithPodcastLite.toDomain(): EpisodeWithPodcast =
+    EpisodeWithPodcast(
+        episode = episode.toDomain(),
+        podcast = toPodcastDomain()
+    )
+
+fun ItunesPodcastDto.toDomain(): PodcastSearchResult =
+    PodcastSearchResult(
+        collectionName = collectionName,
+        artistName = artistName,
+        feedUrl = feedUrl,
+        artworkUrl600 = artworkUrl600
+    )
 
 fun EpisodeWithPodcastLite.toPodcastDomain(): Podcast? {
     val lite = this.podcast ?: return null
@@ -72,52 +137,6 @@ fun EpisodeWithPodcastLite.toPodcastDomain(): Podcast? {
         latestEpisodeDate = null
     )
 }
-
-fun PodcastEntity.toBackupPodcast(): BackupPodcast {
-    return BackupPodcast(
-        url = this.rssUrl,
-        sortOrder = this.sortOrder,
-        autoDownloadEnabled = this.autoDownloadEnabled,
-        allowInsecureHttp = this.allowInsecureHttp,
-        allowLocalNetwork = this.allowLocalNetwork,
-        title = this.title,
-        description = this.description,
-        imageUrl = this.imageUrl
-    )
-}
-
-fun EpisodeEntity.toBackupFavorite(): BackupFavorite {
-    return BackupFavorite(
-        podcastUrl = this.podcastRssUrl,
-        episodeGuid = this.guid,
-        timestamp = this.favoriteAddedAt ?: this.favoriteTimestamp ?: 0L
-    )
-}
-
-fun List<EpisodeEntity>.toBackupEpisodeStates(): List<BackupEpisodeState> {
-    var nextFavoriteOrder = 0L
-    return map { episode ->
-        episode.toBackupEpisodeState(
-            favoriteOrder = if (episode.isFavorite) nextFavoriteOrder++ else null
-        )
-    }
-}
-
-fun EpisodeEntity.toBackupEpisodeState(favoriteOrder: Long?): BackupEpisodeState =
-    BackupEpisodeState(
-        podcastUrl = podcastRssUrl,
-        episodeGuid = guid,
-        title = title,
-        description = description,
-        publishedAt = pubDate?.time,
-        duration = duration,
-        isFavorite = isFavorite,
-        favoriteAddedAt = if (isFavorite) favoriteAddedAt ?: favoriteTimestamp ?: 0L else null,
-        favoriteOrder = favoriteOrder,
-        isPlayed = isPlayed,
-        datePlayed = datePlayed?.time,
-        playbackPositionMs = playbackPositionMs
-    )
 
 // --- NEW LOGIC FOR EPISODES & DATE PROTECTION ---
 

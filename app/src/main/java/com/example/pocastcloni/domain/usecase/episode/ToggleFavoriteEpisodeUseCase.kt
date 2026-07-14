@@ -1,12 +1,12 @@
 package com.example.pocastcloni.domain.usecase.episode
 
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
 import javax.inject.Inject
 
 class ToggleFavoriteEpisodeUseCase
 @Inject
 constructor(
-    private val podcastRepository: PodcastRepository
+    private val podcastCommands: PodcastCommandPort
 ) {
     suspend operator fun invoke(
         episodeId: Long,
@@ -14,6 +14,6 @@ constructor(
     ) {
         val newFavoriteState = !isFavorite
         val timestamp = if (newFavoriteState) System.currentTimeMillis() else null
-        podcastRepository.setFavoriteStatus(episodeId, newFavoriteState, timestamp)
+        podcastCommands.setFavoriteStatus(episodeId, newFavoriteState, timestamp)
     }
 }

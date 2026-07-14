@@ -2,8 +2,9 @@ package com.example.pocastcloni.data.worker
 
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.example.pocastcloni.data.local.DownloadStatus
-import com.example.pocastcloni.domain.repository.PodcastRepository
+import com.example.pocastcloni.domain.model.DownloadStatus
+import com.example.pocastcloni.domain.repository.PodcastCommandPort
+import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.util.downloadWorkName
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.guava.await
@@ -14,14 +15,15 @@ internal suspend fun handleDownloadWorkerCancellation(
     workManager: WorkManager,
     workId: UUID,
     episodeId: Long,
-    repository: PodcastRepository,
+    query: PodcastQueryPort,
+    commands: PodcastCommandPort,
     stagingFiles: DownloadStagingFiles,
     publication: PendingDownloadPublication?
 ): Boolean = withContext(NonCancellable) {
     DownloadWorkStateCoordinator.withLock {
         when (resolveCancellationOwnership(workManager, workId, episodeId)) {
             CancellationOwnership.CURRENT_TERMINAL -> {
-                repository.compareAndSetDownloadStatus(
+                commands.compareAndSetDownloadStatus(
                     episodeId = episodeId,
                     expectedStatuses =
                     listOf(
@@ -38,7 +40,7 @@ internal suspend fun handleDownloadWorkerCancellation(
                 false
             }
             CancellationOwnership.CURRENT_NON_TERMINAL ->
-                preserveResumableStop(episodeId, repository, stagingFiles, publication)
+                preserveResumableStop(episodeId, query, commands, stagingFiles, publication)
             CancellationOwnership.SUPERSEDED -> {
                 runCatching { publication?.cleanup() }
                 true
@@ -94,12 +96,13 @@ private enum class CancellationOwnership {
 
 private suspend fun preserveResumableStop(
     episodeId: Long,
-    repository: PodcastRepository,
+    query: PodcastQueryPort,
+    commands: PodcastCommandPort,
     stagingFiles: DownloadStagingFiles,
     publication: PendingDownloadPublication?
 ): Boolean {
     val transitionedToQueued =
-        repository.compareAndSetDownloadStatus(
+        commands.compareAndSetDownloadStatus(
             episodeId = episodeId,
             expectedStatuses = listOf(DownloadStatus.DOWNLOADING),
             status = DownloadStatus.QUEUED,
@@ -112,7 +115,7 @@ private suspend fun preserveResumableStop(
         return resumablePartialExists
     }
 
-    val currentStatus = repository.getEpisode(episodeId)?.downloadStatus
+    val currentStatus = query.getEpisode(episodeId)?.downloadStatus
     val resourcesAreCommitted = currentStatus == DownloadStatus.DOWNLOADED
     val resumablePartialExists =
         currentStatus == DownloadStatus.QUEUED &&

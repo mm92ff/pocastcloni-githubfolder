@@ -10,7 +10,6 @@ import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.common.RetainedLoad
 import com.example.pocastcloni.ui.common.asRetainedLoad
 import com.example.pocastcloni.ui.common.retainLatestValue
-import com.example.pocastcloni.ui.player.AudioPlayerController
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +43,6 @@ class MainViewModel
 @Inject
 constructor(
     getUserSettings: GetUserSettingsUseCase,
-    val playerController: AudioPlayerController,
     val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
     private val _isPlayerExpanded = MutableStateFlow(false)

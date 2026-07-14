@@ -1,18 +1,19 @@
 package com.example.pocastcloni.domain.repository
 
-import android.net.Uri
-
 data class ImportResult(
     val success: Int,
     val total: Int,
     val skippedFavorites: Int = 0
 )
 
+@JvmInline
+value class BackupLocation(val value: String)
+
 interface BackupRepository {
-    suspend fun exportFullBackup(
-        uri: Uri,
+    suspend fun exportBackup(
+        location: BackupLocation,
         settings: UserSettings
     )
 
-    suspend fun importFullBackup(uri: Uri): ImportResult
+    suspend fun importBackup(location: BackupLocation): ImportResult
 }

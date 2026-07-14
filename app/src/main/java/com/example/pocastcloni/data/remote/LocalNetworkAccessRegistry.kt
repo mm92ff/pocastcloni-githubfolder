@@ -2,6 +2,7 @@ package com.example.pocastcloni.data.remote
 
 import com.example.pocastcloni.util.networkOrigin
 import com.example.pocastcloni.util.networkHost
+import com.example.pocastcloni.domain.repository.LocalNetworkApprovalPort
 import okhttp3.Interceptor
 import okhttp3.Response
 import okhttp3.Dns
@@ -14,11 +15,11 @@ import javax.inject.Singleton
 @Singleton
 class LocalNetworkAccessRegistry
 @Inject
-constructor() {
+constructor() : LocalNetworkApprovalPort {
     private val approvedOrigins = ConcurrentHashMap.newKeySet<String>()
     private val approvedHosts = ConcurrentHashMap.newKeySet<String>()
 
-    fun approveFeed(feedUrl: String) {
+    override fun approveFeed(feedUrl: String) {
         networkOrigin(feedUrl)?.let(approvedOrigins::add)
         networkHost(feedUrl)?.let(approvedHosts::add)
     }
