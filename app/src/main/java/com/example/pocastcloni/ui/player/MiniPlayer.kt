@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -188,6 +189,7 @@ private fun MiniPlayerProgressBar(
     // Only render when duration is known to avoid flickering during load
     if (hasDurationState.value) {
         Box(modifier = modifier) {
+            // The exact outer height keeps only the mini player compact.
             CustomProgressBar(
                 currentPositionMs = currentPositionProvider,
                 bufferedPositionMs = bufferedPositionProvider,
@@ -195,6 +197,7 @@ private fun MiniPlayerProgressBar(
                 height = progressBarHeight,
                 color = MaterialTheme.colorScheme.primary,
                 onSeek = onSeekWrapped,
+                modifier = Modifier.height(progressBarHeight),
                 trackColor = trackColor,
                 bufferedColor = bufferedColor.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
                 onSeekStart = onSeekStart,

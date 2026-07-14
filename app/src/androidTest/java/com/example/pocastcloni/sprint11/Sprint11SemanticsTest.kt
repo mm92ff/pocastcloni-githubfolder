@@ -24,6 +24,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.click
@@ -152,6 +153,25 @@ class Sprint11SemanticsTest {
             .performSemanticsAction(SemanticsActions.SetProgress) { action -> action(50_000f) }
 
         composeRule.runOnIdle { assertEquals(50_000L, seekPosition) }
+    }
+
+    @Test
+    fun progressBar_allowsCompactMiniPlayerHeight() {
+        composeRule.setContent {
+            MaterialTheme {
+                CustomProgressBar(
+                    currentPositionMs = 25_000L,
+                    bufferedPositionMs = 50_000L,
+                    durationMs = 100_000L,
+                    height = 30.dp,
+                    color = Color.Red,
+                    onSeek = {},
+                    modifier = Modifier.height(30.dp).testTag("compact-progress")
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("compact-progress").assertHeightIsEqualTo(30.dp)
     }
 
     @Test
