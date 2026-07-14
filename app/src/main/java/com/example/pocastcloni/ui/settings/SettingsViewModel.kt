@@ -13,7 +13,9 @@ import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingsUseCase
 import com.example.pocastcloni.ui.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,15 +23,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
@@ -85,9 +84,10 @@ constructor(
         )
 
     init {
-        val immediate = updateActions.filterNot { it.shouldDebounce() }
-        val debounced = updateActions.filter { it.shouldDebounce() }.debounce(UPDATE_DEBOUNCE_MS).distinctUntilChanged()
-        merge(immediate, debounced).onEach { applySettingUpdate(it) }.launchIn(viewModelScope)
+        updateActions
+            .debounceByActionType(UPDATE_DEBOUNCE_MS)
+            .onEach { applySettingUpdate(it) }
+            .launchIn(viewModelScope)
     }
 
     private val settingsFlow: Flow<SettingsUiState> =
@@ -204,7 +204,7 @@ constructor(
         }
     }
 
-    private fun UpdateUserSettingAction.shouldDebounce(): Boolean =
+    private fun UpdateUserSettingAction.debounceKey(): Class<out UpdateUserSettingAction>? =
         when (this) {
             is UpdateUserSettingAction.SetColorStrength,
             is UpdateUserSettingAction.SetGradientBackgroundStrength,
@@ -222,10 +222,32 @@ constructor(
             is UpdateUserSettingAction.SetIndicatorYOffset,
             is UpdateUserSettingAction.SetCleanupKeepLimit,
             is UpdateUserSettingAction.SetCleanupIntervalHours
-            -> true
-            // Layout Mode is not debounced so the change is reflected immediately
-            is UpdateUserSettingAction.SetLayoutMode -> false
-            else -> false
+            -> javaClass
+            else -> null
+        }
+
+    /**
+     * Debounces each slider-like action subtype independently. A newer value cancels only that
+     * subtype's pending timer; immediate and expired actions share one downstream collector.
+     */
+    private fun Flow<UpdateUserSettingAction>.debounceByActionType(
+        timeoutMillis: Long
+    ): Flow<UpdateUserSettingAction> =
+        channelFlow {
+            val pendingByType = mutableMapOf<Class<out UpdateUserSettingAction>, Job>()
+            collect { action ->
+                val key = action.debounceKey()
+                if (key == null) {
+                    send(action)
+                } else {
+                    pendingByType.remove(key)?.cancel()
+                    pendingByType[key] =
+                        launch {
+                            delay(timeoutMillis)
+                            send(action)
+                        }
+                }
+            }
         }
 }
 

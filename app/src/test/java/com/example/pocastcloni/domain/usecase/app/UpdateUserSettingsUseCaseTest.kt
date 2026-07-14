@@ -10,6 +10,7 @@ import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction.*
 import com.example.pocastcloni.util.MainDispatcherRule
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -17,9 +18,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdateUserSettingsUseCaseTest {
@@ -80,6 +84,19 @@ class UpdateUserSettingsUseCaseTest {
     fun `SetGridSize calls updateGridSize`() = runTest(testDispatcher) {
         useCase(SetGridSize(3))
         coVerify { repository.updateGridSize(3) }
+    }
+
+    @Test
+    fun `repository failure propagates from use case`() = runTest(testDispatcher) {
+        val failure = IOException("write failed")
+        coEvery { repository.updateGridSize(3) } throws failure
+
+        try {
+            useCase(SetGridSize(3))
+            fail("Expected IOException")
+        } catch (actual: IOException) {
+            assertEquals(failure.message, actual.message)
+        }
     }
 
     @Test

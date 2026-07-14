@@ -10,14 +10,18 @@ import com.example.pocastcloni.domain.usecase.app.GetUserSettingsUseCase
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingAction
 import com.example.pocastcloni.domain.usecase.app.UpdateUserSettingsUseCase
 import com.example.pocastcloni.util.MainDispatcherRule
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,6 +29,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -182,7 +187,102 @@ class SettingsViewModelTest {
         }
     }
 
-    // ---- shouldDebounce ----
+    // ---- keyed debounce ----
+
+    @Test
+    fun `different debounced action types persist independently`() = runTest(testDispatcher) {
+        runCurrent()
+        val gridSize = UpdateUserSettingAction.SetGridSize(140)
+        val navBarHeight = UpdateUserSettingAction.SetNavBarHeight(64)
+
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(gridSize))
+        advanceTimeBy(100)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(navBarHeight))
+
+        advanceTimeBy(200)
+        runCurrent()
+        coVerify(exactly = 1) { updateUserSettings(gridSize) }
+        coVerify(exactly = 0) { updateUserSettings(navBarHeight) }
+
+        advanceTimeBy(100)
+        runCurrent()
+        coVerify(exactly = 1) { updateUserSettings(navBarHeight) }
+    }
+
+    @Test
+    fun `same debounced action type persists only latest value`() = runTest(testDispatcher) {
+        runCurrent()
+        val earlier = UpdateUserSettingAction.SetGridSize(120)
+        val latest = UpdateUserSettingAction.SetGridSize(160)
+
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(earlier))
+        advanceTimeBy(100)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(latest))
+        advanceTimeBy(300)
+        runCurrent()
+
+        coVerify(exactly = 0) { updateUserSettings(earlier) }
+        coVerify(exactly = 1) { updateUserSettings(latest) }
+    }
+
+    @Test
+    fun `immediate toggle bypasses pending debounce timer`() = runTest(testDispatcher) {
+        runCurrent()
+        val slider = UpdateUserSettingAction.SetGridSize(150)
+        val toggle = UpdateUserSettingAction.ToggleShowGridTitles(false)
+
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(slider))
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(toggle))
+        runCurrent()
+
+        coVerify(exactly = 1) { updateUserSettings(toggle) }
+        coVerify(exactly = 0) { updateUserSettings(slider) }
+
+        advanceTimeBy(300)
+        runCurrent()
+        coVerify(exactly = 1) { updateUserSettings(slider) }
+    }
+
+    @Test
+    fun `same value can retry after failed persistence`() = runTest(testDispatcher) {
+        val action = UpdateUserSettingAction.SetGridSize(150)
+        var attempts = 0
+        coEvery { updateUserSettings(action) } answers {
+            attempts += 1
+            if (attempts == 1) throw IOException("write failed")
+        }
+
+        viewModel.effects.test {
+            runCurrent()
+            viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+            advanceTimeBy(300)
+            runCurrent()
+            assertTrue(awaitItem() is SettingsViewModel.SettingsUiEffect.Snackbar)
+
+            viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+            advanceTimeBy(300)
+            runCurrent()
+
+            coVerify(exactly = 2) { updateUserSettings(action) }
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `persistence cancellation is not reported as failure`() = runTest(testDispatcher) {
+        val action = UpdateUserSettingAction.SetGridSize(150)
+        coEvery { updateUserSettings(action) } throws CancellationException("cancelled")
+
+        viewModel.effects.test {
+            runCurrent()
+            viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+            advanceTimeBy(300)
+            runCurrent()
+
+            coVerify(exactly = 1) { updateUserSettings(action) }
+            expectNoEvents()
+        }
+    }
 
     @Test
     fun `SetCleanupKeepLimit action is debounced`() = runTest(testDispatcher) {

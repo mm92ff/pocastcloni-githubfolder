@@ -2,6 +2,7 @@ package com.example.pocastcloni.data.repository
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import timber.log.Timber
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,12 +31,16 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 private val Keys = UserPreferenceKeys
 
 @Singleton
-class UserPreferencesRepositoryImpl
-@Inject
-constructor(
-    @ApplicationContext private val context: Context,
+class UserPreferencesRepositoryImpl private constructor(
+    private val dataStore: DataStore<Preferences>,
     private val installationStateProvider: InstallationStateProvider
 ) : UserPreferencesRepository {
+    @Inject
+    constructor(
+        @ApplicationContext context: Context,
+        installationStateProvider: InstallationStateProvider
+    ) : this(context.dataStore, installationStateProvider)
+
     private val migrationMutex = Mutex()
 
     @Volatile private var migrationComplete = false
@@ -45,7 +49,7 @@ constructor(
         RetryingDataFlow.bounded(
             upstream = flow {
                 ensureDefaultsMigrated()
-                emitAll(context.dataStore.data)
+                emitAll(dataStore.data)
             },
             shouldRetry = { it is IOException }
         ).map { prefs -> prefs.toUserSettings() }
@@ -54,7 +58,7 @@ constructor(
         if (migrationComplete) return
         migrationMutex.withLock {
             if (migrationComplete) return
-            context.dataStore.edit { preferences ->
+            editPreferences { preferences ->
                 SettingsDefaultsMigration.apply(
                     preferences = preferences,
                     installationState = installationStateProvider.installationState()
@@ -64,332 +68,176 @@ constructor(
         }
     }
 
+    private suspend fun editPreferences(transform: suspend (MutablePreferences) -> Unit) {
+        dataStore.edit { preferences -> transform(preferences) }
+    }
+
     override suspend fun updateTheme(theme: AppTheme) {
-        try {
-            context.dataStore.edit { it[Keys.THEME] = theme.name }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist theme preference")
-        }
+        editPreferences { it[Keys.THEME] = theme.name }
     }
 
     override suspend fun updateAppColor(color: AppColor) {
-        try {
-            context.dataStore.edit { it[Keys.APP_COLOR] = color.name }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist app color preference")
-        }
+        editPreferences { it[Keys.APP_COLOR] = color.name }
     }
 
     override suspend fun updateColorStrength(strength: Float) {
-        try {
-            context.dataStore.edit { it[Keys.COLOR_STRENGTH] = strength }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist color strength preference")
-        }
+        editPreferences { it[Keys.COLOR_STRENGTH] = strength }
     }
 
     override suspend fun updateBufferSettings(mode: BufferMode) {
-        try {
-            context.dataStore.edit { it[Keys.BUFFER_MODE] = mode.name }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist buffer settings preference")
-        }
+        editPreferences { it[Keys.BUFFER_MODE] = mode.name }
     }
 
     override suspend fun updateLayoutMode(mode: LayoutMode) {
-        try {
-            context.dataStore.edit { it[Keys.LAYOUT_MODE] = mode.name }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist layout mode preference")
-        }
+        editPreferences { it[Keys.LAYOUT_MODE] = mode.name }
     }
 
     override suspend fun updateGridSize(size: Int) {
-        try {
-            context.dataStore.edit { it[Keys.GRID_SIZE] = size }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist grid size preference")
-        }
+        editPreferences { it[Keys.GRID_SIZE] = size }
     }
 
     override suspend fun updateShowGridTitles(show: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.SHOW_GRID_TITLES] = show }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist show grid titles preference")
-        }
+        editPreferences { it[Keys.SHOW_GRID_TITLES] = show }
     }
 
     override suspend fun updateConfirmDelete(confirm: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.CONFIRM_DELETE] = confirm }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist confirm delete preference")
-        }
+        editPreferences { it[Keys.CONFIRM_DELETE] = confirm }
     }
 
     override suspend fun updateProgressBarHeight(height: Int) {
-        try {
-            context.dataStore.edit { it[Keys.PROGRESS_BAR_HEIGHT] = height }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist progress bar height preference")
-        }
+        editPreferences { it[Keys.PROGRESS_BAR_HEIGHT] = height }
     }
 
     override suspend fun updateNavBarHeight(height: Int) {
-        try {
-            context.dataStore.edit { it[Keys.NAV_BAR_HEIGHT] = height }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist nav bar height preference")
-        }
+        editPreferences { it[Keys.NAV_BAR_HEIGHT] = height }
     }
 
     override suspend fun updateShowMiniPlayerTimeOverlay(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist mini player time overlay preference")
-        }
+        editPreferences { it[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = enabled }
     }
 
     override suspend fun updateTransparentMiniPlayer(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.TRANSPARENT_MINI_PLAYER] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist transparent mini player preference")
-        }
+        editPreferences { it[Keys.TRANSPARENT_MINI_PLAYER] = enabled }
     }
 
     override suspend fun updateTransparentBottomBar(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.TRANSPARENT_BOTTOM_BAR] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist transparent bottom bar preference")
-        }
+        editPreferences { it[Keys.TRANSPARENT_BOTTOM_BAR] = enabled }
     }
 
     override suspend fun updateOneHandedMode(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.ONE_HANDED_MODE] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist one handed mode preference")
-        }
+        editPreferences { it[Keys.ONE_HANDED_MODE] = enabled }
     }
 
     override suspend fun updateBottomBarCleanModeEnabled(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist bottom bar clean mode preference")
-        }
+        editPreferences { it[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = enabled }
     }
 
     override suspend fun updateBottomBarAutoHideEnabled(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist bottom bar auto-hide preference")
-        }
+        editPreferences { it[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = enabled }
     }
 
     override suspend fun updateBottomBarAutoHideDelaySeconds(seconds: Int) {
-        try {
-            context.dataStore.edit { it[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = seconds }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist bottom bar auto-hide delay preference")
-        }
+        editPreferences { it[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = seconds }
     }
 
     override suspend fun updateGradientBackgroundEnabled(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.GRADIENT_BACKGROUND_ENABLED] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist gradient background preference")
-        }
+        editPreferences { it[Keys.GRADIENT_BACKGROUND_ENABLED] = enabled }
     }
 
     override suspend fun updateGradientBackgroundStrength(strength: Float) {
-        try {
-            context.dataStore.edit { it[Keys.GRADIENT_BACKGROUND_STRENGTH] = strength.coerceIn(0f, 1f) }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist gradient background strength preference")
-        }
+        editPreferences { it[Keys.GRADIENT_BACKGROUND_STRENGTH] = strength.coerceIn(0f, 1f) }
     }
 
     override suspend fun updateGradientBackgroundDirection(direction: GradientDirection) {
-        try {
-            context.dataStore.edit { it[Keys.GRADIENT_BACKGROUND_DIRECTION] = direction.name }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist gradient background direction preference")
-        }
+        editPreferences { it[Keys.GRADIENT_BACKGROUND_DIRECTION] = direction.name }
     }
 
     override suspend fun updateTransparentSearchCards(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.TRANSPARENT_SEARCH_CARDS] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist transparent search cards preference")
-        }
+        editPreferences { it[Keys.TRANSPARENT_SEARCH_CARDS] = enabled }
     }
 
     override suspend fun updateTransparentPodcastCards(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.TRANSPARENT_PODCAST_CARDS] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist transparent podcast cards preference")
-        }
+        editPreferences { it[Keys.TRANSPARENT_PODCAST_CARDS] = enabled }
     }
 
     override suspend fun updateTransparentEpisodeRows(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.TRANSPARENT_EPISODE_ROWS] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist transparent episode rows preference")
-        }
+        editPreferences { it[Keys.TRANSPARENT_EPISODE_ROWS] = enabled }
     }
 
     override suspend fun updateTransparentCardsAndRows(enabled: Boolean) {
-        try {
-            context.dataStore.edit {
-                it[Keys.TRANSPARENT_SEARCH_CARDS] = enabled
-                it[Keys.TRANSPARENT_PODCAST_CARDS] = enabled
-                it[Keys.TRANSPARENT_EPISODE_ROWS] = enabled
-            }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist transparent cards and rows preference")
+        editPreferences {
+            it[Keys.TRANSPARENT_SEARCH_CARDS] = enabled
+            it[Keys.TRANSPARENT_PODCAST_CARDS] = enabled
+            it[Keys.TRANSPARENT_EPISODE_ROWS] = enabled
         }
     }
 
     override suspend fun updateAutoDownloadLimit(limit: Int) {
-        try {
-            context.dataStore.edit { it[Keys.AUTO_DOWNLOAD_LIMIT] = limit }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist auto download limit preference")
-        }
+        editPreferences { it[Keys.AUTO_DOWNLOAD_LIMIT] = limit }
     }
 
     override suspend fun updateAutoRefreshOnStart(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.AUTO_REFRESH_ON_START] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist auto refresh on start preference")
-        }
+        editPreferences { it[Keys.AUTO_REFRESH_ON_START] = enabled }
     }
 
     override suspend fun updateBackgroundCheckEnabled(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.BACKGROUND_CHECK_ENABLED] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist background check enabled preference")
-        }
+        editPreferences { it[Keys.BACKGROUND_CHECK_ENABLED] = enabled }
     }
 
     override suspend fun updateBackgroundCheckInterval(hours: Int) {
-        try {
-            context.dataStore.edit { it[Keys.BACKGROUND_CHECK_INTERVAL] = hours }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist background check interval preference")
-        }
+        editPreferences { it[Keys.BACKGROUND_CHECK_INTERVAL] = hours }
     }
 
     override suspend fun updateMarkPlayedDuration(seconds: Int) {
-        try {
-            context.dataStore.edit { it[Keys.MARK_PLAYED_DURATION] = seconds }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist mark played duration preference")
-        }
+        editPreferences { it[Keys.MARK_PLAYED_DURATION] = seconds }
     }
 
     override suspend fun updateFeedUpdateMode(mode: FeedUpdateMode) {
-        try {
-            context.dataStore.edit { it[Keys.FEED_UPDATE_MODE] = mode.name }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist feed update mode preference")
-        }
+        editPreferences { it[Keys.FEED_UPDATE_MODE] = mode.name }
     }
 
     override suspend fun updateIndicatorColor(colorArgb: Long) {
-        try {
-            context.dataStore.edit { it[Keys.INDICATOR_COLOR] = colorArgb }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist indicator color preference")
-        }
+        editPreferences { it[Keys.INDICATOR_COLOR] = colorArgb }
     }
 
     override suspend fun updateIndicatorSize(sizeDp: Int) {
-        try {
-            context.dataStore.edit { it[Keys.INDICATOR_SIZE] = sizeDp }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist indicator size preference")
-        }
+        editPreferences { it[Keys.INDICATOR_SIZE] = sizeDp }
     }
 
     override suspend fun updateIndicatorBorderWidth(widthDp: Int) {
-        try {
-            context.dataStore.edit { it[Keys.INDICATOR_BORDER] = widthDp }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist indicator border width preference")
-        }
+        editPreferences { it[Keys.INDICATOR_BORDER] = widthDp }
     }
 
     override suspend fun updateIndicatorXOffset(offsetDp: Int) {
-        try {
-            context.dataStore.edit { it[Keys.INDICATOR_X_OFFSET] = offsetDp }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist indicator X offset preference")
-        }
+        editPreferences { it[Keys.INDICATOR_X_OFFSET] = offsetDp }
     }
 
     override suspend fun updateIndicatorYOffset(offsetDp: Int) {
-        try {
-            context.dataStore.edit { it[Keys.INDICATOR_Y_OFFSET] = offsetDp }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist indicator Y offset preference")
-        }
+        editPreferences { it[Keys.INDICATOR_Y_OFFSET] = offsetDp }
     }
 
     override suspend fun updateSaveToDownloadsFolder(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.SAVE_TO_DOWNLOADS_FOLDER] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist save_to_downloads_folder preference")
-        }
+        editPreferences { it[Keys.SAVE_TO_DOWNLOADS_FOLDER] = enabled }
     }
 
     override suspend fun updateAutoCleanupEnabled(enabled: Boolean) {
-        try {
-            context.dataStore.edit { it[Keys.AUTO_CLEANUP_ENABLED] = enabled }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist auto_cleanup_enabled preference")
-        }
+        editPreferences { it[Keys.AUTO_CLEANUP_ENABLED] = enabled }
     }
 
     override suspend fun updateCleanupKeepLimit(limit: Int) {
-        try {
-            context.dataStore.edit { it[Keys.CLEANUP_KEEP_LIMIT] = limit }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist cleanup_keep_limit preference")
-        }
+        editPreferences { it[Keys.CLEANUP_KEEP_LIMIT] = limit }
     }
 
     override suspend fun updateCleanupIntervalHours(hours: Int) {
-        try {
-            context.dataStore.edit { it[Keys.CLEANUP_INTERVAL_HOURS] = hours }
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to persist cleanup_interval_hours preference")
-        }
+        editPreferences { it[Keys.CLEANUP_INTERVAL_HOURS] = hours }
     }
 
     override suspend fun restoreSettings(settings: UserSettings) {
-        try {
-            restoreSettingsOrThrow(settings)
-        } catch (e: IOException) {
-            Timber.e(e, "Failed to restore settings to DataStore")
-        }
+        restoreSettingsOrThrow(settings)
     }
 
     override suspend fun restoreSettingsOrThrow(settings: UserSettings) {
-        context.dataStore.edit { prefs ->
+        editPreferences { prefs ->
             prefs[Keys.THEME] = settings.theme.name
             prefs[Keys.APP_COLOR] = settings.appColor.name
             prefs[Keys.COLOR_STRENGTH] = settings.colorStrength
@@ -439,7 +287,7 @@ constructor(
     }
 
     override suspend fun clearSettings() {
-        context.dataStore.edit { preferences ->
+        editPreferences { preferences ->
             preferences.clear()
             SettingsDefaultsMigration.apply(
                 preferences = preferences,
@@ -447,5 +295,13 @@ constructor(
             )
         }
         migrationComplete = true
+    }
+
+    internal companion object {
+        fun createForTest(
+            dataStore: DataStore<Preferences>,
+            installationStateProvider: InstallationStateProvider
+        ): UserPreferencesRepositoryImpl =
+            UserPreferencesRepositoryImpl(dataStore, installationStateProvider)
     }
 }

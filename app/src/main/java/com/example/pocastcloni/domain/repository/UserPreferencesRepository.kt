@@ -8,6 +8,11 @@ import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Persists user settings. Every mutator returns only after persistence completes and propagates
+ * persistence failures, including [java.io.IOException], while coroutine cancellation stays
+ * cancellation.
+ */
 interface UserPreferencesRepository {
     val userSettingsFlow: Flow<UserSettings>
 
@@ -90,8 +95,10 @@ interface UserPreferencesRepository {
 
     suspend fun updateCleanupIntervalHours(hours: Int)
 
+    /** Persists the complete settings snapshot with the same strict error contract as setters. */
     suspend fun restoreSettings(settings: UserSettings)
 
+    /** Compatibility alias for callers that already require explicit throw-through restore. */
     suspend fun restoreSettingsOrThrow(settings: UserSettings)
 
     suspend fun clearSettings()
