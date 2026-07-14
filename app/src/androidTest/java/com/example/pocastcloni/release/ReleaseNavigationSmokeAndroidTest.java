@@ -18,8 +18,11 @@ import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
+import com.example.pocastcloni.BuildConfig;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -55,6 +58,10 @@ public final class ReleaseNavigationSmokeAndroidTest {
 
     @Before
     public void setUp() throws IOException {
+        Assume.assumeTrue(
+                "Release navigation smoke only runs against the minified releaseSmoke variant",
+                "releaseSmoke".equals(BuildConfig.BUILD_TYPE)
+        );
         server = new ReleaseFeedServer();
         device.executeShellCommand("rm -f /sdcard/Download/" + BACKUP_FILE_NAME);
     }

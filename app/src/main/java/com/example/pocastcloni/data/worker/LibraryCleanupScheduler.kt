@@ -1,6 +1,5 @@
 package com.example.pocastcloni.data.worker
 
-import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -14,9 +13,7 @@ import javax.inject.Singleton
 internal data class LibraryCleanupSchedule(
     val intervalHours: Long,
     val requiresDeviceIdle: Boolean = true,
-    val requiresBatteryNotLow: Boolean = true,
-    val backoffPolicy: BackoffPolicy = BackoffPolicy.EXPONENTIAL,
-    val backoffDelaySeconds: Long = 30L
+    val requiresBatteryNotLow: Boolean = true
 )
 
 internal fun libraryCleanupSchedule(intervalHours: Int): LibraryCleanupSchedule =
@@ -51,11 +48,6 @@ constructor(
         val request =
             PeriodicWorkRequestBuilder<LibraryCleanupWorker>(schedule.intervalHours, TimeUnit.HOURS)
                 .setConstraints(constraints)
-                .setBackoffCriteria(
-                    schedule.backoffPolicy,
-                    schedule.backoffDelaySeconds,
-                    TimeUnit.SECONDS
-                )
                 .build()
 
         workManager.enqueueUniquePeriodicWork(
