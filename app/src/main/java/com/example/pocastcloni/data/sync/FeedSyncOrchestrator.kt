@@ -142,7 +142,7 @@ constructor(
                 streamParser.parse(
                     stream,
                     context.request.url,
-                    effectiveFeedParserLimit(context.request.downloadLimit),
+                    Constants.SecurityLimits.MAX_FEED_ITEMS,
                     isFullSync = false,
                     latestKnownGuid = latestKnownGuid
                 )
@@ -398,6 +398,10 @@ internal data class FeedResponseValidators(
     val etag: String?
 )
 
+/**
+ * Retains response validators only when the final response has the requested origin.
+ * Cross-origin validators must not affect a later request to the original feed.
+ */
 internal fun originBoundFeedValidators(
     requestedUrl: String,
     response: retrofit2.Response<okhttp3.ResponseBody>
@@ -412,13 +416,6 @@ internal fun originBoundFeedValidators(
         etag = response.headers()[Constants.Network.HEADER_ETAG]
     )
 }
-
-internal fun effectiveFeedParserLimit(requestedLimit: Int): Int =
-    if (requestedLimit <= 0) {
-        Constants.SecurityLimits.MAX_FEED_ITEMS
-    } else {
-        requestedLimit.coerceAtMost(Constants.SecurityLimits.MAX_FEED_ITEMS)
-    }
 
 private fun validateRssItemLimits(item: RssItem) {
     require(item.title.orEmpty().length <= Constants.SecurityLimits.MAX_TITLE_CHARS) {

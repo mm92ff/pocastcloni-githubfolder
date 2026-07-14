@@ -12,6 +12,10 @@ import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Persists feed metadata and episodes in one transaction, then reads auto-download state
+ * after commit so callers schedule work from the committed podcast state.
+ */
 @Singleton
 class RoomFeedSyncPersistence
 @Inject

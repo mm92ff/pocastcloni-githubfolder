@@ -1,8 +1,3 @@
-/**
- * Implements a memory-efficient, streaming RSS parser using XmlPullParser.
- * Its primary purpose is the "Smart Sync" operation, where parsing can be
- * stopped as soon as the last known episode is found.
- */
 package com.example.pocastcloni.data.remote
 
 import android.util.Xml
@@ -11,6 +6,10 @@ import kotlinx.coroutines.yield
 import org.xmlpull.v1.XmlPullParser
 import java.io.InputStream
 
+/**
+ * Streams a bounded prefix of RSS items in document order, including unordered feeds.
+ * A matching known GUID is skipped without ending the scan; publication dates are payload only.
+ */
 class RssSmartSyncParser(
     private val limits: Limits = Limits(),
     private val parserFactory: () -> XmlPullParser = { Xml.newPullParser() }
@@ -32,8 +31,6 @@ class RssSmartSyncParser(
         val newItems: List<RssItem>
     )
 
-    private data class ItemParseResult(val item: RssItem?, val isKnown: Boolean)
-
     @Suppress("UNUSED_PARAMETER")
     suspend fun parse(
         inputStream: InputStream,
@@ -53,6 +50,7 @@ class RssSmartSyncParser(
         var image: RssImage? = null
         var itunesImage: RssImage? = null
         val newItems = mutableListOf<RssItem>()
+        var encounteredItemCount = 0
 
         val effectiveLatestKnownGuid = if (isFullSync) null else latestKnownGuid
 
@@ -62,19 +60,14 @@ class RssSmartSyncParser(
             when (events.eventType) {
                 XmlPullParser.START_TAG -> {
                     if (name == Constants.Parsing.ITEM) {
-                        if (limit > 0 && newItems.size >= limit) {
+                        if (limit > 0 && encounteredItemCount >= limit) {
                             return buildResult(title, description, image, itunesImage, newItems)
                         }
+                        encounteredItemCount++
 
-                        val itemResult = parseItem(events, effectiveLatestKnownGuid)
-
-                        if (itemResult.isKnown) {
+                        parseItem(events, effectiveLatestKnownGuid)?.let(newItems::add)
+                        if (limit > 0 && encounteredItemCount >= limit) {
                             return buildResult(title, description, image, itunesImage, newItems)
-                        } else if (itemResult.item != null) {
-                            newItems.add(itemResult.item)
-                            if (limit > 0 && newItems.size >= limit) {
-                                return buildResult(title, description, image, itunesImage, newItems)
-                            }
                         }
                     } else {
                         when (name) {
@@ -121,7 +114,7 @@ class RssSmartSyncParser(
     private fun parseItem(
         events: LimitedXmlEventReader,
         latestKnownGuid: String?
-    ): ItemParseResult {
+    ): RssItem? {
         var title: String? = null
         var description: String? = null
         var link: String? = null
@@ -130,7 +123,6 @@ class RssSmartSyncParser(
         var itunesDuration: String? = null
         var enclosure: RssEnclosure? = null
 
-        var isKnown = false
         var inItem = true
 
         while (inItem) {
@@ -143,7 +135,13 @@ class RssSmartSyncParser(
                         Constants.Parsing.GUID -> {
                             guid = readText(events)
                             if (latestKnownGuid != null && guid == latestKnownGuid) {
-                                isKnown = true
+                                while (
+                                    events.eventType != XmlPullParser.END_TAG ||
+                                    events.name != Constants.Parsing.ITEM
+                                ) {
+                                    events.nextToken()
+                                }
+                                return null
                             }
                         }
 
@@ -167,26 +165,17 @@ class RssSmartSyncParser(
 
                 XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException("Unexpected end of RSS item")
             }
-
-            if (isKnown) {
-                while (events.eventType != XmlPullParser.END_TAG || events.name != Constants.Parsing.ITEM) {
-                    events.nextToken()
-                }
-                return ItemParseResult(null, true)
-            }
         }
 
-        val item =
-            RssItem(
-                title = title,
-                description = description,
-                link = link,
-                guid = guid,
-                pubDate = pubDate,
-                enclosure = enclosure,
-                itunesDuration = itunesDuration
-            )
-        return ItemParseResult(item, false)
+        return RssItem(
+            title = title,
+            description = description,
+            link = link,
+            guid = guid,
+            pubDate = pubDate,
+            enclosure = enclosure,
+            itunesDuration = itunesDuration
+        )
     }
 
     private fun readText(events: LimitedXmlEventReader): String {

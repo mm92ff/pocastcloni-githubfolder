@@ -122,6 +122,25 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         return xml.toResponseBody("application/rss+xml".toMediaType())
     }
 
+    private fun makeRssBody(guids: List<String>): ResponseBody {
+        val items = guids.joinToString(separator = "\n") { guid ->
+            """<item>
+      <title>$guid</title>
+      <guid isPermaLink="false">$guid</guid>
+      <enclosure url="https://example.com/$guid.mp3" type="audio/mpeg" length="0"/>
+    </item>"""
+        }
+        val xml = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Test Podcast</title>
+    <itunes:image href="https://example.com/cover.jpg"/>
+    $items
+  </channel>
+</rss>"""
+        return xml.toResponseBody("application/rss+xml".toMediaType())
+    }
+
     private fun mockSuccessResponse(
         guid: String,
         headers: Headers = Headers.headersOf(),
@@ -137,6 +156,17 @@ class SyncFeedUseCaseHasNewEpisodesTest {
                 .headers(headers)
                 .build()
         return Response.success(body, rawResponse)
+    }
+
+    private fun mockSuccessResponse(guids: List<String>): Response<ResponseBody> {
+        val rawResponse =
+            okhttp3.Response.Builder()
+                .request(Request.Builder().url(feedUrl).build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(HttpURLConnection.HTTP_OK)
+                .message("OK")
+                .build()
+        return Response.success(makeRssBody(guids), rawResponse)
     }
 
     private fun existingPodcast(hasNew: Boolean = false) = Podcast(
@@ -413,6 +443,30 @@ class SyncFeedUseCaseHasNewEpisodesTest {
             downloadScheduler.queue(downloadable)
         }
     }
+
+    @Test
+    fun `smart sync persists all parsed candidates while download limit caps queued work`() =
+        runTest(testDispatcher) {
+            val feedGuids = listOf("candidate-1", "candidate-2", "candidate-3")
+            val newest = existingEpisode("download-newest").copy(episodeId = 81L, pubDate = Date(3_000))
+            val older = existingEpisode("download-older").copy(episodeId = 82L, pubDate = Date(2_000))
+            coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns
+                mockSuccessResponse(feedGuids)
+            coEvery { repository.getPodcastForSync(feedUrl) } returns existingPodcast()
+            coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns "known-outside-prefix"
+            coEvery { feedSyncPersistence.persistFeedUpdate(any(), any(), any()) } returns true
+            coEvery { repository.getEpisodesForSync(feedUrl) } returns listOf(older, newest)
+
+            useCase(feedUrl, downloadLimit = 1, mode = FeedUpdateMode.SMART_STREAM)
+
+            val persistedEpisodes = slot<List<Episode>>()
+            coVerify {
+                feedSyncPersistence.persistFeedUpdate(any(), null, capture(persistedEpisodes))
+            }
+            assertEquals(feedGuids, persistedEpisodes.captured.map { it.guid })
+            coVerify(exactly = 1) { downloadScheduler.queue(newest) }
+            coVerify(exactly = 0) { downloadScheduler.queue(older) }
+        }
 
     @Test
     fun `rolled back headers are reused by the next request`() = runTest(testDispatcher) {

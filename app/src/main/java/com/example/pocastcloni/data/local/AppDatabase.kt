@@ -27,9 +27,13 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var Instance: AppDatabase? = null
 
+        /**
+         * Returns the safely published process-wide database instance.
+         * The synchronized recheck prevents concurrent first callers from building duplicates.
+         */
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
-                Room.databaseBuilder(
+                Instance ?: Room.databaseBuilder(
                     context,
                     AppDatabase::class.java,
                     Constants.Database.DATABASE_NAME
