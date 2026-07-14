@@ -23,9 +23,23 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Coordinates application startup in a child supervisor of the application scope.
+ *
+ * [initialize] claims startup atomically and is at-most-once for this singleton instance. A
+ * single coordinator repairs interrupted backup imports, resumes a pending reset, and reconciles
+ * episode storage in that order. An ordinary phase failure is logged without skipping later
+ * cleanup phases, but all three phases must succeed before the long-lived observers are started.
+ *
+ * The owned scope follows application-scope cancellation. Its [SupervisorJob] keeps observer
+ * failures independent, while [CancellationException] is always propagated and prevents any
+ * remaining startup phases or observers from starting. Ordinary observer exceptions are logged
+ * at the child boundary and do not cancel sibling observers.
+ */
 @Singleton
 class AppInitializer
 @Inject
@@ -42,21 +56,35 @@ constructor(
     private val localNetworkAccessRegistry: LocalNetworkAccessRegistry,
     private val schedulingCoordinator: AppSchedulingCoordinator
 ) {
+    private val initialized = AtomicBoolean(false)
     private val startupScope =
         CoroutineScope(
             scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job])
         )
 
     fun initialize() {
-        launchStartupChild("recover interrupted backup import") {
-            backupImportRecovery.recoverInterruptedImport()
+        if (!initialized.compareAndSet(false, true)) return
+
+        startupScope.launch(dispatcherProvider.io) {
+            val recoverySucceeded =
+                runStartupOperation("recover interrupted backup import") {
+                    backupImportRecovery.recoverInterruptedImport()
+                }
+            val resetSucceeded =
+                runStartupOperation("resume pending app reset") {
+                    resetAppUseCase.resumeIfPending()
+                }
+            val reconciliationSucceeded =
+                runStartupOperation("reconcile local episode storage state") {
+                    reconcileEpisodeStorage()
+                }
+            if (recoverySucceeded && resetSucceeded && reconciliationSucceeded) {
+                startLongLivedObservers()
+            }
         }
-        launchStartupChild("resume pending app reset") {
-            resetAppUseCase.resumeIfPending()
-        }
-        launchStartupChild("reconcile local episode storage state") {
-            reconcileEpisodeStorage()
-        }
+    }
+
+    private fun startLongLivedObservers() {
         launchStartupChild("observe approved local feeds") {
             observeApprovedLocalFeeds()
         }
@@ -73,15 +101,23 @@ constructor(
         block: suspend () -> Unit
     ) {
         startupScope.launch(dispatcherProvider.io) {
-            try {
-                block()
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                Timber.e(error, "Failed to %s.", description)
-            }
+            runStartupOperation(description, block)
         }
     }
+
+    private suspend fun runStartupOperation(
+        description: String,
+        block: suspend () -> Unit
+    ): Boolean =
+        try {
+            block()
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.e(error, "Failed to %s.", description)
+            false
+        }
 
     private suspend fun observeApprovedLocalFeeds() {
         RetryingDataFlow.bounded(podcastDao.getApprovedLocalFeedUrlsFlow())
