@@ -1,6 +1,7 @@
 package com.example.pocastcloni.ui.settings
 
 import androidx.compose.runtime.Immutable
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.R
@@ -11,21 +12,21 @@ import com.example.pocastcloni.domain.backup.BackupJobScheduler
 import com.example.pocastcloni.domain.backup.BackupJobState
 import com.example.pocastcloni.ui.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsBackupViewModel
 @Inject
 constructor(
-    private val backupJobScheduler: BackupJobScheduler
+    private val backupJobScheduler: BackupJobScheduler,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    private val dismissedJobIds = MutableStateFlow<Set<String>>(emptySet())
+    private val trackedJobId: StateFlow<String?> =
+        savedStateHandle.getStateFlow(KEY_TRACKED_JOB_ID, null)
     private val backupJobs =
         backupJobScheduler.jobs
             .stateIn(
@@ -41,11 +42,8 @@ constructor(
     )
 
     val uiState: StateFlow<BackupUiState> =
-        combine(backupJobs, dismissedJobIds) { jobs, dismissedIds ->
-            val activeJob = jobs
-                .filterNot { it.id in dismissedIds }
-                .maxByOrNull { it.generation }
-            mapJobToState(activeJob)
+        combine(backupJobs, trackedJobId) { jobs, jobId ->
+            mapJobToState(jobs.firstOrNull { it.id == jobId })
         }
             .stateIn(
                 scope = viewModelScope,
@@ -56,20 +54,23 @@ constructor(
     fun onEvent(event: SettingsUiEvent) {
         when (event) {
             is SettingsUiEvent.ExportFullBackup ->
-                backupJobScheduler.enqueue(BackupJobOperation.EXPORT, event.path)
+                trackJob(BackupJobOperation.EXPORT, event.path)
             is SettingsUiEvent.ImportFullBackup ->
-                backupJobScheduler.enqueue(BackupJobOperation.IMPORT, event.path)
+                trackJob(BackupJobOperation.IMPORT, event.path)
             SettingsUiEvent.ResetImportState,
             SettingsUiEvent.ResetExportState
             -> {
-                dismissedJobIds.update { dismissedIds ->
-                    dismissedIds + backupJobs.value
-                        .filter { it.state.isFinished }
-                        .map { it.id }
-                }
+                savedStateHandle[KEY_TRACKED_JOB_ID] = null
             }
             else -> Unit
         }
+    }
+
+    private fun trackJob(
+        operation: BackupJobOperation,
+        path: String
+    ) {
+        savedStateHandle[KEY_TRACKED_JOB_ID] = backupJobScheduler.enqueue(operation, path)
     }
 
     private fun mapJobToState(job: BackupJob?): BackupUiState {
@@ -124,9 +125,7 @@ constructor(
         )
     }
 
-    private val BackupJobState.isFinished: Boolean
-        get() =
-            this is BackupJobState.Succeeded ||
-                this is BackupJobState.Failed ||
-                this is BackupJobState.Cancelled
+    private companion object {
+        const val KEY_TRACKED_JOB_ID = "tracked_backup_job_id"
+    }
 }

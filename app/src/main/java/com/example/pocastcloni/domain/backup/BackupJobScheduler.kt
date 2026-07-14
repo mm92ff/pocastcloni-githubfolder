@@ -8,7 +8,7 @@ interface BackupJobScheduler {
     fun enqueue(
         operation: BackupJobOperation,
         path: String
-    )
+    ): String
 }
 
 enum class BackupJobOperation {
@@ -18,7 +18,6 @@ enum class BackupJobOperation {
 
 data class BackupJob(
     val id: String,
-    val generation: Int,
     val operation: BackupJobOperation,
     val state: BackupJobState,
     val progress: BackupJobProgress? = null

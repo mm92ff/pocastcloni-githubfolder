@@ -13,7 +13,9 @@ class BackupWorkBoundarySourceTest {
                 .readText()
 
         assertFalse(source.contains("pruneWork"))
-        assertTrue(source.contains("dismissedJobIds"))
+        assertFalse(source.contains("dismissedJobIds"))
+        assertTrue(source.contains("trackedJobId"))
+        assertTrue(source.contains("SavedStateHandle"))
         assertFalse(source.contains("androidx.work"))
         assertFalse(source.contains("BackupWorker"))
         assertFalse(source.contains("WorkManager"))

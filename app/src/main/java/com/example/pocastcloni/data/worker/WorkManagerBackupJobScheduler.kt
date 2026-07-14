@@ -32,7 +32,7 @@ constructor(
     override fun enqueue(
         operation: BackupJobOperation,
         path: String
-    ) {
+    ): String {
         val inputData =
             Data.Builder()
                 .putString(BackupWorker.KEY_ACTION_TYPE, operation.toWorkerAction())
@@ -51,13 +51,13 @@ constructor(
             ExistingWorkPolicy.REPLACE,
             request
         )
+        return request.id.toString()
     }
 
     internal fun toBackupJob(workInfo: WorkInfo): BackupJob? {
         val operation = workInfo.tags.toBackupOperation() ?: return null
         return BackupJob(
             id = workInfo.id.toString(),
-            generation = workInfo.generation,
             operation = operation,
             state = workInfo.toBackupJobState(operation),
             progress = workInfo.progress.toBackupJobProgress()

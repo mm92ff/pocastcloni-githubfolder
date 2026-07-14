@@ -35,7 +35,7 @@ class WorkManagerBackupJobSchedulerTest {
             )
         } returns mockk<Operation>(relaxed = true)
 
-        scheduler.enqueue(BackupJobOperation.IMPORT, "content://backup/import.json")
+        val jobId = scheduler.enqueue(BackupJobOperation.IMPORT, "content://backup/import.json")
 
         verify(exactly = 1) {
             workManager.enqueueUniqueWork(
@@ -54,6 +54,7 @@ class WorkManagerBackupJobSchedulerTest {
         )
         assertTrue(request.captured.tags.contains(WorkManagerBackupJobScheduler.TAG_BACKUP_JOB))
         assertTrue(request.captured.tags.contains(WorkManagerBackupJobScheduler.TAG_IMPORT))
+        assertEquals(request.captured.id.toString(), jobId)
     }
 
     @Test
@@ -75,14 +76,12 @@ class WorkManagerBackupJobSchedulerTest {
             state = WorkInfo.State.SUCCEEDED,
             tags = setOf(WorkManagerBackupJobScheduler.TAG_IMPORT),
             output = output,
-            progress = progress,
-            generation = 7
+            progress = progress
         )
 
         val job = requireNotNull(scheduler.toBackupJob(workInfo))
 
         assertEquals(jobId.toString(), job.id)
-        assertEquals(7, job.generation)
         assertEquals(BackupJobOperation.IMPORT, job.operation)
         assertEquals(
             BackupJobState.Succeeded(BackupJobResult(4, 6, 2)),
@@ -121,8 +120,7 @@ class WorkManagerBackupJobSchedulerTest {
         state: WorkInfo.State,
         tags: Set<String>,
         output: Data = Data.EMPTY,
-        progress: Data = Data.EMPTY,
-        generation: Int = 0
+        progress: Data = Data.EMPTY
     ): WorkInfo =
         mockk<WorkInfo>().also { workInfo ->
             every { workInfo.id } returns id
@@ -130,6 +128,5 @@ class WorkManagerBackupJobSchedulerTest {
             every { workInfo.tags } returns tags
             every { workInfo.outputData } returns output
             every { workInfo.progress } returns progress
-            every { workInfo.generation } returns generation
         }
 }

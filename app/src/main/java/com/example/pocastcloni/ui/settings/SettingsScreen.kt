@@ -50,8 +50,6 @@ fun SettingsScreen(
         }
     }
 
-    HandleBackupSideEffects(backupState, snackbarHostState, context)
-
     val exportLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.CreateDocument(Constants.Backup.MIME_TYPE_JSON)
@@ -147,24 +145,6 @@ private fun ManualRefreshDialog() {
                 Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
                 Text(stringResource(R.string.updating_all_feeds))
             }
-        }
-    }
-}
-
-@Composable
-private fun HandleBackupSideEffects(
-    backupState: SettingsBackupViewModel.BackupUiState,
-    snackbarHostState: SnackbarHostState,
-    context: android.content.Context
-) {
-    LaunchedEffect(backupState.importState) {
-        if (backupState.importState is ImportUiState.Success) {
-            snackbarHostState.showSnackbar((backupState.importState as ImportUiState.Success).message.asString(context))
-        }
-    }
-    LaunchedEffect(backupState.exportState) {
-        if (backupState.exportState is ExportUiState.Success) {
-            snackbarHostState.showSnackbar((backupState.exportState as ExportUiState.Success).message.asString(context))
         }
     }
 }

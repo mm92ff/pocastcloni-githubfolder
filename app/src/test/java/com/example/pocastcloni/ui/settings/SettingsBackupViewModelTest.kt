@@ -1,5 +1,6 @@
 package com.example.pocastcloni.ui.settings
 
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.backup.BackupJob
@@ -29,7 +30,7 @@ class SettingsBackupViewModelTest {
     @Test
     fun `events schedule neutral import and export operations`() = runTest(dispatcher) {
         val scheduler = FakeBackupJobScheduler()
-        val viewModel = SettingsBackupViewModel(scheduler)
+        val viewModel = SettingsBackupViewModel(scheduler, SavedStateHandle())
 
         viewModel.onEvent(SettingsUiEvent.ImportFullBackup("content://backup/import.json"))
         viewModel.onEvent(SettingsUiEvent.ExportFullBackup("content://backup/export.json"))
@@ -46,17 +47,19 @@ class SettingsBackupViewModelTest {
     @Test
     fun `import success maps neutral result to existing UI message`() = runTest(dispatcher) {
         val scheduler = FakeBackupJobScheduler()
-        val viewModel = SettingsBackupViewModel(scheduler)
+        val viewModel = SettingsBackupViewModel(scheduler, SavedStateHandle())
         advanceUntilIdle()
 
         viewModel.uiState.test {
             assertEquals(SettingsBackupViewModel.BackupUiState(), awaitItem())
 
+            viewModel.onEvent(SettingsUiEvent.ImportFullBackup("content://backup/import.json"))
+            val jobId = requireNotNull(scheduler.lastScheduledJobId)
+
             scheduler.jobState.value =
                 listOf(
                     BackupJob(
-                        id = "import-1",
-                        generation = 1,
+                        id = jobId,
                         operation = BackupJobOperation.IMPORT,
                         state = BackupJobState.Succeeded(BackupJobResult(4, 6, 2))
                     )
@@ -76,16 +79,17 @@ class SettingsBackupViewModelTest {
     @Test
     fun `reset dismisses finished result without hiding a later job`() = runTest(dispatcher) {
         val scheduler = FakeBackupJobScheduler()
-        val viewModel = SettingsBackupViewModel(scheduler)
+        val viewModel = SettingsBackupViewModel(scheduler, SavedStateHandle())
         advanceUntilIdle()
 
         viewModel.uiState.test {
             awaitItem()
+            viewModel.onEvent(SettingsUiEvent.ExportFullBackup("content://backup/export-1.json"))
+            val firstJobId = requireNotNull(scheduler.lastScheduledJobId)
             scheduler.jobState.value =
                 listOf(
                     BackupJob(
-                        id = "export-1",
-                        generation = 1,
+                        id = firstJobId,
                         operation = BackupJobOperation.EXPORT,
                         state = BackupJobState.Failed("disk full")
                     )
@@ -100,11 +104,12 @@ class SettingsBackupViewModelTest {
             viewModel.onEvent(SettingsUiEvent.ResetExportState)
             assertEquals(SettingsBackupViewModel.BackupUiState(), awaitItem())
 
+            viewModel.onEvent(SettingsUiEvent.ExportFullBackup("content://backup/export-2.json"))
+            val secondJobId = requireNotNull(scheduler.lastScheduledJobId)
             scheduler.jobState.value =
                 scheduler.jobState.value +
                 BackupJob(
-                    id = "export-2",
-                    generation = 2,
+                    id = secondJobId,
                     operation = BackupJobOperation.EXPORT,
                     state = BackupJobState.Running
                 )
@@ -112,17 +117,71 @@ class SettingsBackupViewModelTest {
         }
     }
 
+    @Test
+    fun `finished job from before view model creation stays idle`() = runTest(dispatcher) {
+        val scheduler = FakeBackupJobScheduler()
+        scheduler.jobState.value =
+            listOf(
+                BackupJob(
+                    id = "old-export",
+                    operation = BackupJobOperation.EXPORT,
+                    state = BackupJobState.Succeeded()
+                )
+            )
+        val viewModel = SettingsBackupViewModel(scheduler, SavedStateHandle())
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            assertEquals(SettingsBackupViewModel.BackupUiState(), awaitItem())
+            advanceUntilIdle()
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `saved state restores only the explicitly tracked job`() = runTest(dispatcher) {
+        val scheduler = FakeBackupJobScheduler()
+        val savedStateHandle = SavedStateHandle()
+        val originalViewModel = SettingsBackupViewModel(scheduler, savedStateHandle)
+        originalViewModel.onEvent(SettingsUiEvent.ExportFullBackup("content://backup/export.json"))
+        val jobId = requireNotNull(scheduler.lastScheduledJobId)
+        scheduler.jobState.value =
+            listOf(
+                BackupJob(
+                    id = jobId,
+                    operation = BackupJobOperation.EXPORT,
+                    state = BackupJobState.Succeeded()
+                )
+            )
+
+        val restoredViewModel = SettingsBackupViewModel(scheduler, savedStateHandle)
+        restoredViewModel.uiState.test {
+            assertEquals(SettingsBackupViewModel.BackupUiState(), awaitItem())
+            assertEquals(
+                ExportUiState.Success(UiText.StringResource(R.string.export_success_message)),
+                awaitItem().exportState
+            )
+        }
+    }
+
     private class FakeBackupJobScheduler : BackupJobScheduler {
         val jobState = MutableStateFlow<List<BackupJob>>(emptyList())
         val scheduledBackups = mutableListOf<ScheduledBackup>()
+        var lastScheduledJobId: String? = null
+            private set
+
+        private var nextJobNumber = 0
 
         override val jobs: Flow<List<BackupJob>> = jobState
 
         override fun enqueue(
             operation: BackupJobOperation,
             path: String
-        ) {
+        ): String {
+            val jobId = "backup-${++nextJobNumber}"
+            lastScheduledJobId = jobId
             scheduledBackups += ScheduledBackup(operation, path)
+            return jobId
         }
     }
 
