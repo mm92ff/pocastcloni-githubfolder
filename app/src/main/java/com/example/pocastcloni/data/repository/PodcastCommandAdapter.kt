@@ -27,12 +27,12 @@ internal class PodcastCommandAdapter(
         removePodcastByUrl(podcast.rssUrl)
     }
 
-    override suspend fun reorderPodcasts(list: List<Podcast>) {
+    override suspend fun reorderPodcasts(rssUrlsInOrder: List<String>) {
         withContext(dispatcherProvider.io) {
             val updates =
-                list.mapIndexed { index, item ->
+                rssUrlsInOrder.mapIndexed { index, rssUrl ->
                     PodcastSortUpdate(
-                        rssUrl = item.rssUrl,
+                        rssUrl = rssUrl,
                         sortOrder = index.toLong()
                     )
                 }

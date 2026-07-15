@@ -2,13 +2,16 @@ package com.example.pocastcloni.data.repository
 
 import android.content.Context
 import com.example.pocastcloni.data.local.PodcastDao
+import com.example.pocastcloni.data.local.PodcastSortUpdate
 import com.example.pocastcloni.di.DispatcherProvider
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -31,5 +34,23 @@ class PodcastCommandAdapterTest {
         adapter.markAllAsSeen()
 
         coVerify(exactly = 1) { podcastDao.markAllAsSeen() }
+    }
+
+    @Test
+    fun `reorder maps each rss url once to contiguous sort indices`() = runTest(dispatcher) {
+        val updates = slot<List<PodcastSortUpdate>>()
+        val rssUrlsInOrder = listOf("feed-c", "feed-a", "feed-b")
+
+        adapter.reorderPodcasts(rssUrlsInOrder = rssUrlsInOrder)
+
+        coVerify(exactly = 1) { podcastDao.updatePodcastSortOrders(capture(updates)) }
+        assertEquals(
+            listOf(
+                PodcastSortUpdate("feed-c", 0L),
+                PodcastSortUpdate("feed-a", 1L),
+                PodcastSortUpdate("feed-b", 2L)
+            ),
+            updates.captured
+        )
     }
 }

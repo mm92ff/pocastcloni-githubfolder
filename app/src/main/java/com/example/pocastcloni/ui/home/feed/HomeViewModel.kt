@@ -35,29 +35,63 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 // Internal state representation (clean & type-safe)
-private data class IntermediateHomeState(
+private data class PodcastContentState(
     val podcasts: ImmutableList<Podcast>,
-    val contentLoad: RetainedLoad<ImmutableList<Podcast>>,
+    val contentLoad: RetainedLoad<ImmutableList<Podcast>>
+)
+
+private data class HomeConfigurationState(
     val settings: UserSettings,
     val editState: EditState,
+    val showDeleteConfirmation: Boolean
+)
+
+private data class HomeActivityState(
     val isRefreshing: Boolean,
     val isPlayerVisible: Boolean,
-    val showDeleteConfirmation: Boolean,
     val screenError: UiText?
+)
+
+private data class IntermediateHomeState(
+    val content: PodcastContentState,
+    val configuration: HomeConfigurationState,
+    val activity: HomeActivityState
 )
 
 private data class EditState(
     val isEditMode: Boolean = false,
-    val selectedPodcastGuids: ImmutableSet<String> = persistentSetOf()
+    val selectedPodcastRssUrls: ImmutableSet<String> = persistentSetOf()
+)
+
+private data class ReorderRequest(
+    val id: Long,
+    val rssUrlsInOrder: List<String>,
+    val preWriteDatabaseSequence: Long
+)
+
+private data class OptimisticOrder(
+    val id: Long,
+    val rssUrlsInOrder: List<String>,
+    val preWriteDatabaseSequence: Long,
+    val matchingDatabaseConfirmationSequence: Long? = null,
+    val awaitingDatabaseConfirmation: Boolean = false
+)
+
+private data class DatabasePodcastOrder(
+    val sequence: Long,
+    val rssUrlsInOrder: List<String>
 )
 
 // One-time events for the UI (e.g. Snackbars)
@@ -81,6 +115,9 @@ constructor(
 ) : ViewModel() {
     private val didRunStartRefresh = AtomicBoolean(false)
     private val ownsManualRefreshPresentation = AtomicBoolean(false)
+    private val reorderRequestIds = AtomicLong(0L)
+    private val databaseOrderSequences = AtomicLong(0L)
+    private val latestDatabaseOrder = AtomicReference<DatabasePodcastOrder?>(null)
     private var lastStartRefreshAtMs: Long = 0L
 
     // Exposed "silent refresh" indicator for the TopBar
@@ -95,11 +132,18 @@ constructor(
 
     private val _screenError = MutableStateFlow<UiText?>(null)
 
-    // PERFORMANCE: optimistic cache for drag & drop
-    private val _optimisticPodcasts = MutableStateFlow<List<Podcast>?>(null)
+    // Rebuilds optimistic display entries from current DB models instead of caching stale models.
+    private val _optimisticOrder = MutableStateFlow<OptimisticOrder?>(null)
+
+    /**
+     * Receives identified, immutable RSS URL order snapshots from drag moves. Conflation keeps the
+     * request already being persisted and only the latest identified request queued behind it, so
+     * writes never overlap and superseded intermediate drag positions do not reach the database.
+     */
+    private val reorderRequests = Channel<ReorderRequest>(capacity = Channel.CONFLATED)
 
     // Event channel for one-shot UI actions (Snackbars)
-    private val _events = Channel<HomeUiEvent>()
+    private val _events = Channel<HomeUiEvent>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
     // Player state flow uses the database episode ID.
@@ -111,95 +155,105 @@ constructor(
     private val podcastsFlow =
         getAllPodcasts()
             .map { it.toImmutableList() }
+            .onEach(::recordDatabaseOrderEmission)
             .distinctUntilChanged()
             .asRetainedLoad(UiText.StringResource(R.string.error_unknown))
 
-    // Stage 1: combine data into an intermediate state
-    private val intermediateStateFlow: Flow<IntermediateHomeState> =
+    private val podcastContentFlow: Flow<PodcastContentState> =
         combine(
             podcastsFlow,
-            _optimisticPodcasts,
-            getUserSettings(),
-            _editState,
-            _isRefreshing,
-            isPlayerVisibleFlow,
-            _showDeleteConfirmation,
-            _screenError
-        ) { args ->
-            @Suppress("UNCHECKED_CAST")
-            val podcastLoad = args[0] as RetainedLoad<ImmutableList<Podcast>>
+            _optimisticOrder
+        ) { podcastLoad, optimisticOrder ->
             val dbPodcasts = podcastLoad.lastValue ?: emptyList<Podcast>().toImmutableList()
+            val podcasts = dbPodcasts.inOrder(optimisticOrder?.rssUrlsInOrder)
 
-            @Suppress("UNCHECKED_CAST")
-            val optimisticPodcasts = args[1] as List<Podcast>?
-            val settings = args[2] as UserSettings
-            val editState = args[3] as EditState
-            val isRefreshing = args[4] as Boolean
-            val isPlayerVisible = args[5] as Boolean
-            val showDeleteConfirmation = args[6] as Boolean
-            val screenError = args[7] as UiText?
-
-            // If optimistic data exists (during drag & drop), use it.
-            val finalPodcasts =
-                if (optimisticPodcasts != null && optimisticPodcasts.size == dbPodcasts.size) {
-                    optimisticPodcasts.toImmutableList()
-                } else {
-                    dbPodcasts
-                }
-
-            IntermediateHomeState(
-                podcasts = finalPodcasts,
-                contentLoad = if (podcastLoad.lastValue == null) {
+            PodcastContentState(
+                podcasts = podcasts,
+                contentLoad =
+                if (podcastLoad.lastValue == null) {
                     podcastLoad
                 } else {
-                    podcastLoad.copy(lastValue = finalPodcasts)
-                },
+                    podcastLoad.copy(lastValue = podcasts)
+                }
+            )
+        }
+
+    private val homeConfigurationFlow: Flow<HomeConfigurationState> =
+        combine(
+            getUserSettings(),
+            _editState,
+            _showDeleteConfirmation
+        ) { settings, editState, showDeleteConfirmation ->
+            HomeConfigurationState(
                 settings = settings,
                 editState = editState,
+                showDeleteConfirmation = showDeleteConfirmation
+            )
+        }
+
+    private val homeActivityFlow: Flow<HomeActivityState> =
+        combine(
+            _isRefreshing,
+            isPlayerVisibleFlow,
+            _screenError
+        ) { isRefreshing, isPlayerVisible, screenError ->
+            HomeActivityState(
                 isRefreshing = isRefreshing,
                 isPlayerVisible = isPlayerVisible,
-                showDeleteConfirmation = showDeleteConfirmation,
                 screenError = screenError
             )
         }
 
-    // Stage 2: produce the final UI state
+    /** Combines named, typed state groups so each source has a compile-time checked destination. */
+    private val intermediateStateFlow: Flow<IntermediateHomeState> =
+        combine(
+            podcastContentFlow,
+            homeConfigurationFlow,
+            homeActivityFlow
+        ) { content, configuration, activity ->
+            IntermediateHomeState(content, configuration, activity)
+        }
+
     val uiState: StateFlow<HomeUiState> =
         intermediateStateFlow
             .map { state ->
-                // Compute the list of currently selected podcasts for the UI
+                val content = state.content
+                val configuration = state.configuration
+                val activity = state.activity
                 val selectedPodcasts =
-                    if (state.editState.selectedPodcastGuids.isNotEmpty()) {
-                        state.podcasts.filter { it.rssUrl in state.editState.selectedPodcastGuids }
+                    if (configuration.editState.selectedPodcastRssUrls.isNotEmpty()) {
+                        content.podcasts.filter {
+                            it.rssUrl in configuration.editState.selectedPodcastRssUrls
+                        }
                     } else {
                         emptyList()
                     }
 
                 HomeUiState(
-                    contentLoad = state.contentLoad,
-                    podcasts = state.podcasts,
-                    isLoading = state.contentLoad.loading,
-                    layoutMode = state.settings.layoutMode,
-                    gridSize = state.settings.gridSize,
-                    showGridTitles = state.settings.showGridTitles,
-                    transparentPodcastCards = state.settings.transparentPodcastCards,
-                    oneHandedMode = state.settings.oneHandedMode,
-                    isEditMode = state.editState.isEditMode,
-                    selectedPodcastGuids = state.editState.selectedPodcastGuids,
-                    confirmDelete = state.settings.confirmDelete,
-                    indicatorColorArgb = state.settings.indicator.colorArgb,
-                    indicatorSize = state.settings.indicator.size,
-                    indicatorBorderWidth = state.settings.indicator.borderWidth,
-                    indicatorXOffset = state.settings.indicator.xOffset,
-                    indicatorYOffset = state.settings.indicator.yOffset,
-                    isRefreshing = state.isRefreshing,
-                    progressBarHeight = state.settings.progressBarHeight,
-                    navBarHeight = state.settings.navBarHeight,
-                    isPlayerVisible = state.isPlayerVisible,
+                    contentLoad = content.contentLoad,
+                    podcasts = content.podcasts,
+                    isLoading = content.contentLoad.loading,
+                    layoutMode = configuration.settings.layoutMode,
+                    gridSize = configuration.settings.gridSize,
+                    showGridTitles = configuration.settings.showGridTitles,
+                    transparentPodcastCards = configuration.settings.transparentPodcastCards,
+                    oneHandedMode = configuration.settings.oneHandedMode,
+                    isEditMode = configuration.editState.isEditMode,
+                    selectedPodcastRssUrls = configuration.editState.selectedPodcastRssUrls,
+                    confirmDelete = configuration.settings.confirmDelete,
+                    indicatorColorArgb = configuration.settings.indicator.colorArgb,
+                    indicatorSize = configuration.settings.indicator.size,
+                    indicatorBorderWidth = configuration.settings.indicator.borderWidth,
+                    indicatorXOffset = configuration.settings.indicator.xOffset,
+                    indicatorYOffset = configuration.settings.indicator.yOffset,
+                    isRefreshing = activity.isRefreshing,
+                    progressBarHeight = configuration.settings.progressBarHeight,
+                    navBarHeight = configuration.settings.navBarHeight,
+                    isPlayerVisible = activity.isPlayerVisible,
                     userMessage = null,
-                    showDeleteConfirmation = state.showDeleteConfirmation,
+                    showDeleteConfirmation = configuration.showDeleteConfirmation,
                     selectedPodcastsForDelete = selectedPodcasts,
-                    screenError = state.screenError
+                    screenError = activity.screenError
                 )
             }
             .stateIn(
@@ -207,6 +261,12 @@ constructor(
                 started = SharingStarted.WhileSubscribed(Constants.ViewModel.STATE_IN_TIMEOUT),
                 initialValue = HomeUiState(isLoading = true)
             )
+
+    init {
+        viewModelScope.launch(dispatcherProvider.io) {
+            consumeReorderRequests()
+        }
+    }
 
     fun markAllAsSeen() {
         viewModelScope.launch(dispatcherProvider.io) {
@@ -310,43 +370,137 @@ constructor(
         _editState.update {
             it.copy(
                 isEditMode = true,
-                selectedPodcastGuids = persistentSetOf(initialPodcastUrl)
+                selectedPodcastRssUrls = persistentSetOf(initialPodcastUrl)
             )
         }
     }
 
     fun exitEditMode() {
-        _editState.update { it.copy(isEditMode = false, selectedPodcastGuids = persistentSetOf()) }
-        _optimisticPodcasts.value = null
+        _editState.update { it.copy(isEditMode = false, selectedPodcastRssUrls = persistentSetOf()) }
     }
 
     fun onReorder(
         fromIndex: Int,
         toIndex: Int
     ) {
-        val currentList = uiState.value.podcasts.toMutableList()
+        if (fromIndex == toIndex) return
 
-        if (fromIndex in currentList.indices && toIndex in currentList.indices) {
-            val item = currentList.removeAt(fromIndex)
-            currentList.add(toIndex, item)
-            _optimisticPodcasts.value = currentList.toList()
+        val currentPodcasts = uiState.value.podcasts
+        val currentRssUrls =
+            _optimisticOrder.value
+                ?.rssUrlsInOrder
+                ?.takeIf { it.isCompleteOrderOf(currentPodcasts) }
+                ?: currentPodcasts.map(Podcast::rssUrl)
+        if (fromIndex !in currentRssUrls.indices || toIndex !in currentRssUrls.indices) return
 
-            viewModelScope.launch(dispatcherProvider.io) {
-                try {
-                    reorderPodcasts(currentList)
-                } catch (e: CancellationException) {
-                    throw e // structured concurrency requires this
-                } catch (e: Exception) {
-                    _events.send(HomeUiEvent.ShowUserMessage(UiText.StringResource(R.string.reorder_error)))
-                    _optimisticPodcasts.value = null
+        val reorderedRssUrls = currentRssUrls.toMutableList()
+        val movedRssUrl = reorderedRssUrls.removeAt(fromIndex)
+        reorderedRssUrls.add(toIndex, movedRssUrl)
+        if (reorderedRssUrls == currentRssUrls) return
+
+        val immutableSnapshot = reorderedRssUrls.toList()
+        val preWriteDatabaseSequence = latestDatabaseOrder.get()?.sequence ?: 0L
+        val request =
+            ReorderRequest(
+                id = reorderRequestIds.incrementAndGet(),
+                rssUrlsInOrder = immutableSnapshot,
+                preWriteDatabaseSequence = preWriteDatabaseSequence
+            )
+        _optimisticOrder.value =
+            OptimisticOrder(
+                id = request.id,
+                rssUrlsInOrder = request.rssUrlsInOrder,
+                preWriteDatabaseSequence = request.preWriteDatabaseSequence
+            )
+        latestDatabaseOrder.get()?.let(::reconcileOptimisticOrderWithDatabase)
+        if (_optimisticOrder.value?.id != request.id) return
+        reorderRequests.trySend(request)
+    }
+
+    /**
+     * Persists orders serially. Success marks only the matching request as awaiting a confirming DB
+     * emission; failure clears only the matching request. Cancellation escapes immediately with
+     * structured concurrency, while ordinary failures are reported before the latest request runs.
+     */
+    private suspend fun consumeReorderRequests() {
+        for (request in reorderRequests) {
+            try {
+                reorderPodcasts(rssUrlsInOrder = request.rssUrlsInOrder)
+                _optimisticOrder.update { current ->
+                    if (current?.id == request.id) {
+                        val wasConfirmedWhilePending =
+                            current.matchingDatabaseConfirmationSequence?.let { sequence ->
+                                sequence > request.preWriteDatabaseSequence
+                            } == true
+                        if (wasConfirmedWhilePending) {
+                            null
+                        } else {
+                            current.copy(awaitingDatabaseConfirmation = true)
+                        }
+                    } else {
+                        current
+                    }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _optimisticOrder.update { current ->
+                    current?.takeUnless { it.id == request.id }
+                }
+                Timber.e(e, "Failed to persist podcast order")
+                _events.send(HomeUiEvent.ShowUserMessage(UiText.StringResource(R.string.reorder_error)))
             }
+        }
+    }
+
+    /**
+     * Records every raw DB emission before downstream UI deduplication, then reconciles by request
+     * identity and sequence. A matching emission newer than the request's pre-write sequence is
+     * retained while pending or clears an awaiting order; membership changes always invalidate it.
+     */
+    private fun recordDatabaseOrderEmission(dbPodcasts: ImmutableList<Podcast>) {
+        val databaseOrder =
+            DatabasePodcastOrder(
+                sequence = databaseOrderSequences.incrementAndGet(),
+                rssUrlsInOrder = dbPodcasts.map(Podcast::rssUrl)
+            )
+        latestDatabaseOrder.set(databaseOrder)
+        reconcileOptimisticOrderWithDatabase(databaseOrder)
+    }
+
+    private fun reconcileOptimisticOrderWithDatabase(databaseOrder: DatabasePodcastOrder) {
+        while (true) {
+            val current = _optimisticOrder.value ?: return
+            val membershipChanged =
+                !current.rssUrlsInOrder.hasSameMembershipAs(databaseOrder.rssUrlsInOrder)
+            if (membershipChanged) {
+                if (_optimisticOrder.compareAndSet(current, null)) return
+                continue
+            }
+
+            val isNewMatchingConfirmation =
+                databaseOrder.sequence > current.preWriteDatabaseSequence &&
+                    databaseOrder.rssUrlsInOrder == current.rssUrlsInOrder
+            if (!isNewMatchingConfirmation) return
+
+            val updated =
+                if (current.awaitingDatabaseConfirmation) {
+                    null
+                } else if (
+                    current.matchingDatabaseConfirmationSequence == null ||
+                    databaseOrder.sequence > current.matchingDatabaseConfirmationSequence
+                ) {
+                    current.copy(matchingDatabaseConfirmationSequence = databaseOrder.sequence)
+                } else {
+                    return
+                }
+            if (_optimisticOrder.compareAndSet(current, updated)) return
         }
     }
 
     fun toggleSelection(podcastUrl: String) {
         _editState.update { state ->
-            val current = state.selectedPodcastGuids
+            val current = state.selectedPodcastRssUrls
             // '+' and '-' create new ImmutableSets
             val newSet =
                 if (current.contains(podcastUrl)) {
@@ -354,7 +508,7 @@ constructor(
                 } else {
                     current + podcastUrl
                 }
-            state.copy(selectedPodcastGuids = newSet.toImmutableSet())
+            state.copy(selectedPodcastRssUrls = newSet.toImmutableSet())
         }
     }
 
@@ -364,7 +518,7 @@ constructor(
     }
 
     fun onDeleteSelectedRequest() {
-        val selectedCount = _editState.value.selectedPodcastGuids.size
+        val selectedCount = _editState.value.selectedPodcastRssUrls.size
         if (selectedCount == 0) return
 
         if (uiState.value.confirmDelete) {
@@ -384,10 +538,10 @@ constructor(
     }
 
     private fun executeDeleteSelected() {
-        val guidsToDelete = _editState.value.selectedPodcastGuids
-        if (guidsToDelete.isEmpty()) return
+        val rssUrlsToDelete = _editState.value.selectedPodcastRssUrls
+        if (rssUrlsToDelete.isEmpty()) return
 
-        val podcastsToDelete = uiState.value.podcasts.filter { it.rssUrl in guidsToDelete }
+        val podcastsToDelete = uiState.value.podcasts.filter { it.rssUrl in rssUrlsToDelete }
 
         viewModelScope.launch(dispatcherProvider.io) {
             podcastsToDelete.forEach { podcast ->
@@ -407,4 +561,23 @@ constructor(
     fun clearScreenError() {
         _screenError.value = null
     }
+}
+
+private fun ImmutableList<Podcast>.inOrder(rssUrlsInOrder: List<String>?): ImmutableList<Podcast> {
+    if (rssUrlsInOrder == null || !rssUrlsInOrder.isCompleteOrderOf(this)) return this
+
+    val podcastsByRssUrl = associateBy(Podcast::rssUrl)
+    return rssUrlsInOrder.map { rssUrl -> requireNotNull(podcastsByRssUrl[rssUrl]) }.toImmutableList()
+}
+
+private fun List<String>.isCompleteOrderOf(podcasts: List<Podcast>): Boolean {
+    return hasSameMembershipAs(podcasts.map(Podcast::rssUrl))
+}
+
+private fun List<String>.hasSameMembershipAs(other: List<String>): Boolean {
+    if (size != other.size) return false
+
+    val membership = toSet()
+    val otherMembership = other.toSet()
+    return membership.size == size && otherMembership.size == other.size && membership == otherMembership
 }

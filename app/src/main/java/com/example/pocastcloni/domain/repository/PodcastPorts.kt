@@ -68,7 +68,8 @@ interface PodcastCatalogCommandPort {
 
     suspend fun deletePodcast(podcast: Podcast)
 
-    suspend fun reorderPodcasts(list: List<Podcast>)
+    /** Persists the complete podcast order from first to last as unique RSS URLs. */
+    suspend fun reorderPodcasts(rssUrlsInOrder: List<String>)
 
     suspend fun markAllAsSeen()
 

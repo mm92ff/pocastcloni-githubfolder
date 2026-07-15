@@ -23,7 +23,7 @@ data class HomeUiState(
     val oneHandedMode: Boolean = Constants.Preferences.DEFAULT_ONE_HANDED_MODE,
     val isEditMode: Boolean = false,
     // Set instead of a single String to support multi-select
-    val selectedPodcastGuids: ImmutableSet<String> = persistentSetOf(),
+    val selectedPodcastRssUrls: ImmutableSet<String> = persistentSetOf(),
     val confirmDelete: Boolean = Constants.Preferences.DEFAULT_CONFIRM_DELETE,
     val indicatorColorArgb: Long = Constants.Preferences.DEFAULT_INDICATOR_COLOR,
     val indicatorSize: Int = Constants.Preferences.DEFAULT_INDICATOR_SIZE,

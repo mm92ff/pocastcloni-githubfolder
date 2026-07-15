@@ -153,7 +153,7 @@ fun HomeScreen(
                         Text(stringResource(R.string.home_title))
                     } else {
                         // Show count of selected items
-                        val selectedCount = uiState.selectedPodcastGuids.size
+                        val selectedCount = uiState.selectedPodcastRssUrls.size
                         if (selectedCount > 0) {
                             Text("$selectedCount")
                         }
@@ -175,7 +175,7 @@ fun HomeScreen(
 
                     if (uiState.isEditMode) {
                         // Show delete icon only when items are selected
-                        if (uiState.selectedPodcastGuids.isNotEmpty()) {
+                        if (uiState.selectedPodcastRssUrls.isNotEmpty()) {
                             IconButton(onClick = viewModel::onDeleteSelectedRequest) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
@@ -262,7 +262,7 @@ fun HomeScreen(
                         oneHandedMode = uiState.oneHandedMode,
                         isPlayerVisible = uiState.isPlayerVisible,
                         isEditMode = uiState.isEditMode,
-                        selectedPodcastGuids = uiState.selectedPodcastGuids,
+                        selectedPodcastRssUrls = uiState.selectedPodcastRssUrls,
                         progressBarHeight = uiState.progressBarHeight,
                         showGridTitles = uiState.showGridTitles,
                         transparentPodcastCards = uiState.transparentPodcastCards,
@@ -299,7 +299,7 @@ fun PodcastListContent(
     isEditMode: Boolean,
     showGridTitles: Boolean,
     transparentPodcastCards: Boolean,
-    selectedPodcastGuids: ImmutableSet<String>,
+    selectedPodcastRssUrls: ImmutableSet<String>,
     progressBarHeight: Int,
     indicatorColorArgb: Long,
     indicatorSize: Int,
@@ -404,7 +404,7 @@ fun PodcastListContent(
                 animationSpec = Motion.enterSpec()
             )
         ) {
-            val isSelected = selectedPodcastGuids.contains(podcast.rssUrl) || isDragging
+            val isSelected = selectedPodcastRssUrls.contains(podcast.rssUrl) || isDragging
 
             if (layoutMode == LayoutMode.LIST) {
                 PodcastItem(
