@@ -31,8 +31,6 @@ constructor(
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         return try {
-            setForeground(createForegroundInfo())
-            Timber.d("Starting feed update...")
             val source =
                 inputData.getString(KEY_REFRESH_SOURCE)
                     ?.let { storedSource ->
@@ -40,6 +38,10 @@ constructor(
                     }
                     ?: FeedRefreshSource.BACKGROUND
             val targetFeedUrl = inputData.getString(KEY_FEED_URL)?.trim()?.takeIf(String::isNotEmpty)
+            if (feedUpdateRequiresForeground(targetFeedUrl)) {
+                setForeground(createForegroundInfo())
+            }
+            Timber.d("Starting feed update...")
             val summary = feedUpdateRunner(source, targetFeedUrl?.let(::setOf))
 
             if (summary.hasFailures) {
@@ -119,3 +121,6 @@ constructor(
         private const val NOTIFICATION_ID = 1001
     }
 }
+
+/** Single-feed retries stay within regular WorkManager execution and preserve the shared FGS budget. */
+internal fun feedUpdateRequiresForeground(targetFeedUrl: String?): Boolean = targetFeedUrl == null

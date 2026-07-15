@@ -9,8 +9,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.example.pocastcloni.ui.main.MainActivity
 import com.google.common.util.concurrent.ListenableFuture
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,7 +46,7 @@ class PodcastPlaybackServiceLifecycleAndroidTest {
             var connectedBeforeCommand = false
             instrumentation.runOnMainSync {
                 connectedBeforeCommand = controller.isConnected
-                controller.play()
+                controller.prepare()
             }
             assertTrue(connectedBeforeCommand)
             instrumentation.waitForIdleSync()
@@ -65,6 +67,7 @@ class PodcastPlaybackServiceLifecycleAndroidTest {
     fun playPauseSeekAndQueuePositionSurviveControllerReconnect() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
+        val activityScenario = ActivityScenario.launch(MainActivity::class.java)
         val serviceIntent = Intent(context, PodcastPlaybackService::class.java)
         context.stopService(serviceIntent)
         instrumentation.waitForIdleSync()
@@ -151,7 +154,11 @@ class PodcastPlaybackServiceLifecycleAndroidTest {
                     context.stopService(serviceIntent)
                     instrumentation.waitForIdleSync()
                 } finally {
-                    audioFile.delete()
+                    try {
+                        audioFile.delete()
+                    } finally {
+                        activityScenario.close()
+                    }
                 }
             }
         }
