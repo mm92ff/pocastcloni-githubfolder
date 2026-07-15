@@ -9,8 +9,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -38,6 +42,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -66,6 +71,7 @@ internal fun CleanModeBottomBarHost(
     var autoHideTimerKey by rememberSaveable { mutableStateOf(0) }
     val swipeThresholdPx = with(LocalDensity.current) { BottomBarSwipeThreshold.toPx() }
     val autoHideDelayMillis = userSettings.bottomBarAutoHideDelaySeconds.coerceAtLeast(1) * 1_000L
+    val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LaunchedEffect(cleanModeEnabled) {
         bottomBarRevealed = !cleanModeEnabled
@@ -130,9 +136,9 @@ internal fun CleanModeBottomBarHost(
                 bottomBarRevealed = true
                 autoHideTimerKey++
             },
+            bottomInset = navigationBarInset,
             modifier =
             Modifier
-                .height(BottomBarHandleHeight)
                 .bottomBarSwipeGesture(
                     enabled = cleanModeEnabled,
                     thresholdPx = swipeThresholdPx,
@@ -148,14 +154,16 @@ internal fun CleanModeBottomBarHost(
 @Composable
 internal fun BottomBarRevealHandle(
     onReveal: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomInset: Dp = 0.dp
 ) {
     val label = stringResource(R.string.desc_reveal_bottom_bar)
     Box(
         modifier =
         modifier
             .fillMaxWidth()
-            .height(BottomBarHandleHeight)
+            .height(BottomBarHandleHeight + bottomInset)
+            .padding(bottom = bottomInset)
             .clickable(
                 role = Role.Button,
                 onClickLabel = label,
@@ -228,6 +236,7 @@ private fun AppBottomNavigation(
     modifier: Modifier = Modifier
 ) {
     val transparentBottomBar = userSettings.transparentBottomBar
+    val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val transparentItemColors =
         NavigationBarItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.onBackground,
@@ -238,7 +247,7 @@ private fun AppBottomNavigation(
         )
 
     NavigationBar(
-        modifier = modifier.height(userSettings.navBarHeight.dp),
+        modifier = modifier.height(userSettings.navBarHeight.dp + navigationBarInset),
         containerColor = if (transparentBottomBar) Color.Transparent else NavigationBarDefaults.containerColor,
         tonalElevation = if (transparentBottomBar) 0.dp else NavigationBarDefaults.Elevation
     ) {

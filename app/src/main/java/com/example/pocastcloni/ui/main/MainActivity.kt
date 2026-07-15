@@ -3,8 +3,10 @@ package com.example.pocastcloni.ui.main
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -51,6 +53,7 @@ import java.nio.charset.StandardCharsets
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         setContent {
             val viewModel: MainViewModel = hiltViewModel()
@@ -120,6 +123,7 @@ class MainActivity : ComponentActivity() {
                                         Modifier
                                             .fillMaxSize()
                                             .padding(innerPadding)
+                                            .consumeWindowInsets(innerPadding)
                                     ) {
                                         val currentBackStackEntry by navController.currentBackStackEntryAsState()
                                         val currentRoute = currentBackStackEntry?.destination?.route

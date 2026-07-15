@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.os.Build
+import android.view.Window
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -239,8 +240,9 @@ fun PocastCloniTheme(
                     } else {
                         colorScheme.background.toArgb()
                     }
-                window.statusBarColor = statusBarColor
-                window.navigationBarColor = navigationBarColor
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                    setLegacySystemBarColors(window, statusBarColor, navigationBarColor)
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     window.isNavigationBarContrastEnforced = false
                 }
@@ -267,4 +269,14 @@ private fun Context.findActivity(): Activity? {
         context = context.baseContext
     }
     return null
+}
+
+@Suppress("DEPRECATION")
+private fun setLegacySystemBarColors(
+    window: Window,
+    statusBarColor: Int,
+    navigationBarColor: Int
+) {
+    window.statusBarColor = statusBarColor
+    window.navigationBarColor = navigationBarColor
 }
