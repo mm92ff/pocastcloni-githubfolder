@@ -88,6 +88,9 @@ xxx/
 .DS_Store
 Thumbs.db
 
+# Local project backup archives
+*-backup-*.7z
+
 # Optional local signing files
 *.jks
 *.keystore
