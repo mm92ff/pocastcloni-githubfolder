@@ -11,20 +11,13 @@ if /i "%~1"=="--self-test" set "SELF_TEST=1"
 call :find_7zip
 if errorlevel 1 goto :missing_7zip
 
-for /f "usebackq delims=" %%I in (`powershell.exe -NoProfile -Command "Get-Date -Format 'yyyyMMdd-HHmmss'"`) do set "TIMESTAMP=%%I"
+for /f "usebackq delims=" %%I in (`powershell.exe -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'"`) do set "TIMESTAMP=%%I"
 if not defined TIMESTAMP goto :timestamp_error
 
-set "GIT_SHA=nogit"
-set "GIT_STATE=no-git"
-set "DIRTY_SUFFIX="
-if exist ".git\" call :read_git_state
-
 if "%SELF_TEST%"=="1" (
-    set "ARCHIVE_NAME=%PROJECT_NAME%-backup-self-test.7z"
-    set "PASSWORD_SWITCH=-pcodex-backup-self-test-only"
+    set "ARCHIVE_NAME=%PROJECT_NAME%_backup_self-test.7z"
 ) else (
-    set "ARCHIVE_NAME=%PROJECT_NAME%-backup-%TIMESTAMP%-%GIT_SHA%%DIRTY_SUFFIX%.7z"
-    set "PASSWORD_SWITCH=-p"
+    set "ARCHIVE_NAME=%PROJECT_NAME%_backup_%TIMESTAMP%.7z"
 )
 set "ARCHIVE_PATH=%SCRIPT_DIR%%ARCHIVE_NAME%"
 
@@ -32,32 +25,31 @@ if exist "%ARCHIVE_PATH%" del /q "%ARCHIVE_PATH%" >nul 2>&1
 
 if "%SELF_TEST%"=="0" (
     echo.
-    echo Encrypted project backup
-    echo ========================
+    echo Project backup
+    echo ==============
     echo Project:   %PROJECT_NAME%
-    echo Git:       %GIT_SHA% ^(%GIT_STATE%^)
     echo Output:    %ARCHIVE_PATH%
     echo.
-    echo This archive contains local signing files and may contain keystores.
-    echo 7-Zip will ask for a password now and again for the integrity test.
-    echo Use the same strong password both times. The password is not stored.
+    echo WARNING: This archive is not encrypted.
+    echo It contains local signing files and may contain keystores.
+    echo Store the archive in a protected location.
     echo.
 ) else (
-    echo Running encrypted project backup self-test...
+    echo Running project backup self-test...
 )
 
 "%SEVEN_ZIP%" a -t7z "%ARCHIVE_PATH%" "." ^
-    -mx=7 -m0=lzma2 -mhe=on %PASSWORD_SWITCH% ^
+    -mx=7 -m0=lzma2 ^
     -xr!build -xr!.gradle -xr!.idea ^
     -xr!benchmark-reports -xr!artifacts -xr!logs ^
     -xr!*.log -xr!*.perfetto-trace -xr!*benchmarkData.json ^
     -xr!emulator-screen.png -xr!ui*.xml ^
-    -xr!%PROJECT_NAME%-backup-*.7z
+    -xr!%PROJECT_NAME%_backup_*.7z
 if errorlevel 1 goto :archive_failed
 
 echo.
 echo Verifying archive integrity...
-"%SEVEN_ZIP%" t "%ARCHIVE_PATH%" %PASSWORD_SWITCH% -bsp0
+"%SEVEN_ZIP%" t "%ARCHIVE_PATH%" -bsp0
 if errorlevel 1 goto :verification_failed
 
 if "%SELF_TEST%"=="1" goto :validate_self_test
@@ -67,19 +59,13 @@ echo.
 echo Backup created and verified successfully.
 echo File:  %ARCHIVE_PATH%
 echo Bytes: %ARCHIVE_SIZE%
-echo Git:   %GIT_SHA% ^(%GIT_STATE%^)
 echo.
 pause
 exit /b 0
 
 :validate_self_test
 set "LIST_FILE=%TEMP%\%PROJECT_NAME%-backup-list-%RANDOM%%RANDOM%.txt"
-"%SEVEN_ZIP%" l "%ARCHIVE_PATH%" -pdefinitely-wrong-self-test-password -bso0 -bse0 >nul 2>&1
-if not errorlevel 1 (
-    echo [ERROR] Archive headers could be listed with an incorrect password.
-    goto :self_test_failed
-)
-"%SEVEN_ZIP%" l -slt "%ARCHIVE_PATH%" %PASSWORD_SWITCH% >"%LIST_FILE%"
+"%SEVEN_ZIP%" l -slt "%ARCHIVE_PATH%" >"%LIST_FILE%"
 if errorlevel 1 goto :self_test_failed
 
 findstr.exe /i /l /c:"Path = .git\HEAD" "%LIST_FILE%" >nul
@@ -124,13 +110,6 @@ if defined SEVEN_ZIP exit /b 0
 if exist "%ProgramFiles(x86)%\7-Zip\7z.exe" set "SEVEN_ZIP=%ProgramFiles(x86)%\7-Zip\7z.exe"
 if defined SEVEN_ZIP exit /b 0
 exit /b 1
-
-:read_git_state
-for /f "delims=" %%I in ('git rev-parse --short HEAD 2^>nul') do set "GIT_SHA=%%I"
-set "GIT_STATE=clean"
-for /f "delims=" %%I in ('git status --porcelain --untracked-files^=normal 2^>nul') do set "GIT_STATE=dirty"
-if "%GIT_STATE%"=="dirty" set "DIRTY_SUFFIX=-dirty"
-exit /b 0
 
 :archive_failed
 echo.

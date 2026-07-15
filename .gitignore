@@ -89,7 +89,7 @@ xxx/
 Thumbs.db
 
 # Local project backup archives
-*-backup-*.7z
+*_backup_*.7z
 
 # Optional local signing files
 *.jks
