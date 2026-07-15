@@ -30,7 +30,7 @@ val instrumentationBuildType =
 
 android {
     namespace = "com.example.pocastcloni"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.pocastcloni"

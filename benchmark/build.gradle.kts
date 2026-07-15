@@ -7,7 +7,7 @@ val fullTracingEnabled = providers.gradleProperty("fullTracing").orElse("false")
 
 android {
     namespace = "com.example.pocastcloni.benchmark"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 30
