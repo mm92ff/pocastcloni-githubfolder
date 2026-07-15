@@ -160,33 +160,36 @@ class MediaControllerConnection private constructor(
                     true
                 }
             }
-        if (!attemptStarted) return null
-
-        val future =
-            controllerFutureFactory.build(
-                object : MediaController.Listener {
-                    override fun onDisconnected(controller: MediaController) {
-                        handleDisconnected(controller, connectionAttempt)
+        return if (!attemptStarted) {
+            null
+        } else {
+            val future =
+                controllerFutureFactory.build(
+                    object : MediaController.Listener {
+                        override fun onDisconnected(controller: MediaController) {
+                            handleDisconnected(controller, connectionAttempt)
+                        }
+                    }
+                )
+            val futureAttached =
+                synchronized(stateLock) {
+                    if (
+                        lifecycleGeneration == connectGeneration &&
+                        connectingAttempt === connectionAttempt
+                    ) {
+                        mediaControllerFuture = future
+                        true
+                    } else {
+                        false
                     }
                 }
-            )
-        val futureAttached =
-            synchronized(stateLock) {
-                if (
-                    lifecycleGeneration == connectGeneration &&
-                    connectingAttempt === connectionAttempt
-                ) {
-                    mediaControllerFuture = future
-                    true
-                } else {
-                    false
-                }
+            if (futureAttached) {
+                StartedControllerConnection(connectionAttempt, future)
+            } else {
+                releaseFuture(future)
+                null
             }
-        if (!futureAttached) {
-            releaseFuture(future)
-            return null
         }
-        return StartedControllerConnection(connectionAttempt, future)
     }
 
     private fun recordAwaitedController(

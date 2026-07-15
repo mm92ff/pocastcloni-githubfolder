@@ -57,8 +57,6 @@ import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.ui.theme.Motion
 import com.example.pocastcloni.util.Constants
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -256,21 +254,7 @@ fun HomeScreen(
                     }
                 } else {
                     PodcastListContent(
-                        podcasts = uiState.podcasts,
-                        layoutMode = uiState.layoutMode,
-                        gridSize = uiState.gridSize,
-                        oneHandedMode = uiState.oneHandedMode,
-                        isPlayerVisible = uiState.isPlayerVisible,
-                        isEditMode = uiState.isEditMode,
-                        selectedPodcastRssUrls = uiState.selectedPodcastRssUrls,
-                        progressBarHeight = uiState.progressBarHeight,
-                        showGridTitles = uiState.showGridTitles,
-                        transparentPodcastCards = uiState.transparentPodcastCards,
-                        indicatorColorArgb = uiState.indicatorColorArgb,
-                        indicatorSize = uiState.indicatorSize,
-                        indicatorBorderWidth = uiState.indicatorBorderWidth,
-                        indicatorXOffset = uiState.indicatorXOffset,
-                        indicatorYOffset = uiState.indicatorYOffset,
+                        uiState = uiState,
                         onPodcastClick = handlePodcastClick,
                         onEnterEditMode = viewModel::enterEditMode,
                         onReorder = viewModel::onReorder
@@ -290,26 +274,15 @@ fun HomeScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun PodcastListContent(
-    podcasts: ImmutableList<Podcast>,
-    layoutMode: LayoutMode,
-    gridSize: Int,
-    oneHandedMode: Boolean,
-    isPlayerVisible: Boolean,
-    isEditMode: Boolean,
-    showGridTitles: Boolean,
-    transparentPodcastCards: Boolean,
-    selectedPodcastRssUrls: ImmutableSet<String>,
-    progressBarHeight: Int,
-    indicatorColorArgb: Long,
-    indicatorSize: Int,
-    indicatorBorderWidth: Int,
-    indicatorXOffset: Int,
-    indicatorYOffset: Int,
+@Suppress("LongMethod")
+private fun PodcastListContent(
+    uiState: HomeUiState,
     onPodcastClick: (Podcast) -> Unit,
     onEnterEditMode: (String) -> Unit,
     onReorder: (Int, Int) -> Unit
 ) {
+    val podcasts = uiState.podcasts
+    val layoutMode = uiState.layoutMode
     val commonModifier = Modifier.fillMaxSize()
     val context = LocalContext.current
     val podcastImageUrls =
@@ -340,8 +313,8 @@ fun PodcastListContent(
 
     val bottomPadding =
         MiniPlayerLayoutDefaults.reservedBottomPadding(
-            isPlayerVisible = isPlayerVisible,
-            progressBarHeight = progressBarHeight,
+            isPlayerVisible = uiState.isPlayerVisible,
+            progressBarHeight = uiState.progressBarHeight,
             extraPadding = Dimens.PaddingLarge
         )
 
@@ -354,22 +327,28 @@ fun PodcastListContent(
         )
 
     val indicatorStyle =
-        remember(indicatorColorArgb, indicatorSize, indicatorBorderWidth, indicatorXOffset, indicatorYOffset) {
+        remember(
+            uiState.indicatorColorArgb,
+            uiState.indicatorSize,
+            uiState.indicatorBorderWidth,
+            uiState.indicatorXOffset,
+            uiState.indicatorYOffset
+        ) {
             PodcastIndicatorStyle(
-                xOffset = indicatorXOffset,
-                yOffset = indicatorYOffset,
-                borderWidth = indicatorBorderWidth,
-                size = indicatorSize,
-                colorArgb = indicatorColorArgb
+                xOffset = uiState.indicatorXOffset,
+                yOffset = uiState.indicatorYOffset,
+                borderWidth = uiState.indicatorBorderWidth,
+                size = uiState.indicatorSize,
+                colorArgb = uiState.indicatorColorArgb
             )
         }
 
     val columns =
-        remember(layoutMode, gridSize) {
+        remember(layoutMode, uiState.gridSize) {
             if (layoutMode == LayoutMode.LIST) {
                 GridCells.Fixed(1)
             } else {
-                GridCells.Adaptive(minSize = gridSize.dp)
+                GridCells.Adaptive(minSize = uiState.gridSize.dp)
             }
         }
 
@@ -385,11 +364,11 @@ fun PodcastListContent(
         onReorder = onReorder,
         modifier = commonModifier,
         contentPadding = contentPadding,
-        reverseLayout = oneHandedMode,
+        reverseLayout = uiState.oneHandedMode,
         verticalArrangement =
         Arrangement.spacedBy(
             verticalSpacing,
-            if (oneHandedMode) Alignment.Bottom else Alignment.Top
+            if (uiState.oneHandedMode) Alignment.Bottom else Alignment.Top
         ),
         horizontalArrangement = Arrangement.spacedBy(Dimens.PaddingMedium),
         onDragStartIndex = { index ->
@@ -404,24 +383,24 @@ fun PodcastListContent(
                 animationSpec = Motion.enterSpec()
             )
         ) {
-            val isSelected = selectedPodcastRssUrls.contains(podcast.rssUrl) || isDragging
+            val isSelected = uiState.selectedPodcastRssUrls.contains(podcast.rssUrl) || isDragging
 
             if (layoutMode == LayoutMode.LIST) {
                 PodcastItem(
                     podcast = podcast,
-                    isEditMode = isEditMode,
+                    isEditMode = uiState.isEditMode,
                     isSelected = isSelected,
                     onClick = { onPodcastClick(podcast) },
                     onLongClick = null,
                     onDeleteClick = { },
                     indicatorStyle = indicatorStyle,
-                    transparentCard = transparentPodcastCards
+                    transparentCard = uiState.transparentPodcastCards
                 )
             } else {
                 PodcastGridItem(
                     podcast = podcast,
-                    isEditMode = isEditMode,
-                    showGridTitles = showGridTitles,
+                    isEditMode = uiState.isEditMode,
+                    showGridTitles = uiState.showGridTitles,
                     isSelected = isSelected,
                     onClick = { onPodcastClick(podcast) },
                     onLongClick = null,

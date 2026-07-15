@@ -31,74 +31,77 @@ internal class PodcastMaintenanceAdapter(
         isDownloadWorkActive: suspend (episodeId: Long) -> Boolean
     ): Int =
         withContext(dispatcherProvider.io) {
-            var correctedEntries =
-                DownloadPublicationGate.withLock {
-                    val downloadedRows =
-                        podcastDao.getEpisodeDownloadStates(listOf(DownloadStatus.DOWNLOADED))
-                    DownloadPublicationRecovery.from(context).recover(
-                        records =
-                            downloadedRows.mapNotNull { row ->
-                                row.downloadPath?.let { path ->
-                                    DownloadPublicationRecord(row.episodeId, path)
-                                }
-                            },
-                        resetDownload = { episodeId, expectedPath ->
-                            podcastDao.compareAndSetDownloadStatusAndPath(
-                                episodeId = episodeId,
-                                expectedStatus = DownloadStatus.DOWNLOADED,
-                                expectedPath = expectedPath,
-                                status = DownloadStatus.NOT_DOWNLOADED,
-                                path = null
-                            ) == 1
-                        }
-                    )
-                }
-            val transientDownloads =
-                podcastDao.getEpisodeDownloadStates(
-                    listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING)
-                )
-            transientDownloads.forEach { row ->
-                correctedEntries +=
-                    reconcileTransientDownloadState(
-                        initiallyActive = row.episodeId in activeDownloadEpisodeIds,
-                        isWorkActive = { isDownloadWorkActive(row.episodeId) },
-                        compareAndReset = {
-                            podcastDao.compareAndSetDownloadStatus(
-                                episodeId = row.episodeId,
-                                expectedStatuses = listOf(row.downloadStatus),
-                                status = DownloadStatus.NOT_DOWNLOADED,
-                                path = null
-                            ) == 1
-                        },
-                        deleteStaging = {
-                            downloadStagingFiles(context.filesDir, row.episodeId).delete()
-                        }
-                    )
-            }
+            recoverInterruptedPublications() +
+                reconcileTransientDownloads(activeDownloadEpisodeIds, isDownloadWorkActive) +
+                reconcileUnreadableDownloads()
+        }
 
-            correctedEntries +=
-                reconcileDownloadedReadability(
-                    loadDownloadedRows = {
-                        podcastDao.getEpisodeDownloadStates(listOf(DownloadStatus.DOWNLOADED))
-                    },
-                    fileIsReadable = { path ->
-                        if (path.startsWith("content://")) {
-                            isContentUriReadable(path)
-                        } else {
-                            File(path).let { it.exists() && it.isFile && it.canRead() }
-                        }
-                    },
-                    compareAndReset = { row ->
-                        podcastDao.compareAndSetDownloadStatusAndPath(
+    private suspend fun recoverInterruptedPublications(): Int =
+        DownloadPublicationGate.withLock {
+            val downloadedRows =
+                podcastDao.getEpisodeDownloadStates(listOf(DownloadStatus.DOWNLOADED))
+            DownloadPublicationRecovery.from(context).recover(
+                records = downloadedRows.mapNotNull { row ->
+                    row.downloadPath?.let { path -> DownloadPublicationRecord(row.episodeId, path) }
+                },
+                resetDownload = { episodeId, expectedPath ->
+                    podcastDao.compareAndSetDownloadStatusAndPath(
+                        episodeId = episodeId,
+                        expectedStatus = DownloadStatus.DOWNLOADED,
+                        expectedPath = expectedPath,
+                        status = DownloadStatus.NOT_DOWNLOADED,
+                        path = null
+                    ) == 1
+                }
+            )
+        }
+
+    private suspend fun reconcileTransientDownloads(
+        activeDownloadEpisodeIds: Set<Long>,
+        isDownloadWorkActive: suspend (episodeId: Long) -> Boolean
+    ): Int =
+        podcastDao
+            .getEpisodeDownloadStates(listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING))
+            .sumOf { row ->
+                reconcileTransientDownloadState(
+                    initiallyActive = row.episodeId in activeDownloadEpisodeIds,
+                    isWorkActive = { isDownloadWorkActive(row.episodeId) },
+                    compareAndReset = {
+                        podcastDao.compareAndSetDownloadStatus(
                             episodeId = row.episodeId,
-                            expectedStatus = DownloadStatus.DOWNLOADED,
-                            expectedPath = row.downloadPath,
+                            expectedStatuses = listOf(row.downloadStatus),
                             status = DownloadStatus.NOT_DOWNLOADED,
                             path = null
                         ) == 1
+                    },
+                    deleteStaging = {
+                        downloadStagingFiles(context.filesDir, row.episodeId).delete()
                     }
                 )
-            correctedEntries
+            }
+
+    private suspend fun reconcileUnreadableDownloads(): Int =
+        reconcileDownloadedReadability(
+            loadDownloadedRows = {
+                podcastDao.getEpisodeDownloadStates(listOf(DownloadStatus.DOWNLOADED))
+            },
+            fileIsReadable = ::isDownloadedPathReadable,
+            compareAndReset = { row ->
+                podcastDao.compareAndSetDownloadStatusAndPath(
+                    episodeId = row.episodeId,
+                    expectedStatus = DownloadStatus.DOWNLOADED,
+                    expectedPath = row.downloadPath,
+                    status = DownloadStatus.NOT_DOWNLOADED,
+                    path = null
+                ) == 1
+            }
+        )
+
+    private fun isDownloadedPathReadable(path: String): Boolean =
+        if (path.startsWith("content://")) {
+            isContentUriReadable(path)
+        } else {
+            File(path).let { it.exists() && it.isFile && it.canRead() }
         }
 
     private fun isContentUriReadable(uriString: String): Boolean =

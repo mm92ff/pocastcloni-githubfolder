@@ -379,6 +379,7 @@ constructor(
         _editState.update { it.copy(isEditMode = false, selectedPodcastRssUrls = persistentSetOf()) }
     }
 
+    @Suppress("ReturnCount")
     fun onReorder(
         fromIndex: Int,
         toIndex: Int
@@ -468,6 +469,7 @@ constructor(
         reconcileOptimisticOrderWithDatabase(databaseOrder)
     }
 
+    @Suppress("ReturnCount")
     private fun reconcileOptimisticOrderWithDatabase(databaseOrder: DatabasePodcastOrder) {
         while (true) {
             val current = _optimisticOrder.value ?: return

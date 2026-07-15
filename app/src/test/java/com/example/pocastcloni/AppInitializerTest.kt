@@ -46,6 +46,7 @@ class AppInitializerTest {
     private val localRegistry = mockk<LocalNetworkAccessRegistry>(relaxed = true)
     private val schedulingCoordinator = mockk<AppSchedulingCoordinator>(relaxed = true)
 
+    @Suppress("LongMethod")
     @Test
     fun `one-shot phases finish in order before observers start`() = runTest(dispatcher) {
         val events = mutableListOf<String>()

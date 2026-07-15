@@ -297,6 +297,7 @@ class AudioPlayerControllerConcurrencyTest {
         verify(exactly = 0) { newJob.cancel(any()) }
     }
 
+    @Suppress("LongMethod")
     @Test
     fun `release transition completes before concurrent user reuse can activate`() = runTest {
         val fresh = TestMediaController()

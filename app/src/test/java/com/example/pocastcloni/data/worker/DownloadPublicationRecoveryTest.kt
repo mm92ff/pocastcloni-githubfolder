@@ -193,12 +193,10 @@ class DownloadPublicationRecoveryTest {
 
         override fun isReadable(path: String): Boolean = rows[path]?.readable == true
 
-        override fun publish(path: String): Boolean {
-            val row = rows[path] ?: return false
-            if (!row.publishSucceeds) return false
-            row.pending = false
-            return true
-        }
+        override fun publish(path: String): Boolean =
+            rows[path]
+                ?.takeIf(MediaRow::publishSucceeds)
+                ?.also { it.pending = false } != null
 
         override fun delete(path: String): Boolean = rows.remove(path) != null
     }

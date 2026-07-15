@@ -67,22 +67,32 @@ internal class DownloadPublicationRecovery(
         var resetRows = 0
         attemptDirectories(privateDownloadsDirectory, PRIVATE_PUBLICATION_ATTEMPT_DIRECTORY)
             .forEach { attemptDirectory ->
-                attemptFiles(attemptDirectory).forEach { target ->
-                    val path = target.absolutePath
-                    val records = recordsByPath[path]
-                    when {
-                        records == null -> target.delete()
-                        isReadableFile(target) -> Unit
-                        else -> {
-                            val reset = resetRecords(records, path, resetDownload)
-                            resetRows += reset.count
-                            if (reset.allReset) target.delete()
-                        }
-                    }
-                }
-                deleteIfEmpty(attemptDirectory)
+                resetRows += recoverPrivateAttemptDirectory(attemptDirectory, recordsByPath, resetDownload)
             }
         deleteIfEmpty(File(privateDownloadsDirectory, PRIVATE_PUBLICATION_ATTEMPT_DIRECTORY))
+        return resetRows
+    }
+
+    private suspend fun recoverPrivateAttemptDirectory(
+        attemptDirectory: File,
+        recordsByPath: Map<String, List<DownloadPublicationRecord>>,
+        resetDownload: suspend (episodeId: Long, expectedPath: String) -> Boolean
+    ): Int {
+        var resetRows = 0
+        attemptFiles(attemptDirectory).forEach { target ->
+            val path = target.absolutePath
+            val records = recordsByPath[path]
+            when {
+                records == null -> target.delete()
+                isReadableFile(target) -> Unit
+                else -> {
+                    val reset = resetRecords(records, path, resetDownload)
+                    resetRows += reset.count
+                    if (reset.allReset) target.delete()
+                }
+            }
+        }
+        deleteIfEmpty(attemptDirectory)
         return resetRows
     }
 
@@ -98,33 +108,7 @@ internal class DownloadPublicationRecovery(
         var resetRows = 0
 
         databaseTargets.forEach { (path, records) ->
-            val target = File(path)
-            val matchingAttempts = attemptsByTarget[path].orEmpty()
-            when {
-                isReadableFile(target) -> matchingAttempts.forEach(::deleteLegacyAttempt)
-                matchingAttempts.size == 1 && isReadableFile(matchingAttempts.single().pendingFile) -> {
-                    var moved = false
-                    val recovered =
-                        runCatching {
-                            moveReplacing(matchingAttempts.single().pendingFile, target)
-                            moved = true
-                            isReadableFile(target)
-                        }.getOrDefault(false)
-                    if (recovered) {
-                        matchingAttempts.forEach(::deleteLegacyAttempt)
-                    } else {
-                        if (moved) target.delete()
-                        val reset = resetRecords(records, path, resetDownload)
-                        resetRows += reset.count
-                        if (reset.allReset) matchingAttempts.forEach(::deleteLegacyAttempt)
-                    }
-                }
-                else -> {
-                    val reset = resetRecords(records, path, resetDownload)
-                    resetRows += reset.count
-                    if (reset.allReset) matchingAttempts.forEach(::deleteLegacyAttempt)
-                }
-            }
+            resetRows += recoverLegacyTarget(path, records, attemptsByTarget[path].orEmpty(), resetDownload)
         }
 
         attemptsByTarget
@@ -136,6 +120,46 @@ internal class DownloadPublicationRecovery(
             .forEach(::deleteIfEmpty)
         deleteIfEmpty(File(legacyDownloadsDirectory, LEGACY_PUBLICATION_ATTEMPT_DIRECTORY))
         return resetRows
+    }
+
+    private suspend fun recoverLegacyTarget(
+        path: String,
+        records: List<DownloadPublicationRecord>,
+        matchingAttempts: List<LegacyAttempt>,
+        resetDownload: suspend (episodeId: Long, expectedPath: String) -> Boolean
+    ): Int {
+        val target = File(path)
+        val candidate = matchingAttempts.singleOrNull()?.takeIf { isReadableFile(it.pendingFile) }
+        return when {
+            isReadableFile(target) -> {
+                matchingAttempts.forEach(::deleteLegacyAttempt)
+                0
+            }
+            candidate != null && moveLegacyAttempt(candidate, target) -> {
+                matchingAttempts.forEach(::deleteLegacyAttempt)
+                0
+            }
+            else -> {
+                val reset = resetRecords(records, path, resetDownload)
+                if (reset.allReset) matchingAttempts.forEach(::deleteLegacyAttempt)
+                reset.count
+            }
+        }
+    }
+
+    private fun moveLegacyAttempt(
+        attempt: LegacyAttempt,
+        target: File
+    ): Boolean {
+        var moved = false
+        val recovered =
+            runCatching {
+                moveReplacing(attempt.pendingFile, target)
+                moved = true
+                isReadableFile(target)
+            }.getOrDefault(false)
+        if (!recovered && moved) target.delete()
+        return recovered
     }
 
     private suspend fun recoverPendingMediaStore(

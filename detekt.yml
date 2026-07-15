@@ -3,7 +3,7 @@ build:
 
 complexity:
   active: true
-  ComplexMethod:
+  CyclomaticComplexMethod:
     active: true
     threshold: 10
   LongMethod:

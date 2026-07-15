@@ -47,6 +47,7 @@ import org.junit.Test
 import java.util.Date
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass")
 class HomeViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
@@ -646,6 +647,7 @@ class HomeViewModelTest {
             stateCollector.cancel()
         }
 
+    @Suppress("LongMethod")
     @Test
     fun `typed state sources map and update in isolation`() = runTest(testDispatcher) {
         val podcastsFlow = MutableStateFlow(listOf(testPodcast))

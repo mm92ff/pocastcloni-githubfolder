@@ -115,67 +115,57 @@ class RssSmartSyncParser(
         events: LimitedXmlEventReader,
         latestKnownGuid: String?
     ): RssItem? {
-        var title: String? = null
-        var description: String? = null
-        var link: String? = null
-        var guid: String? = null
-        var pubDate: String? = null
-        var itunesDuration: String? = null
-        var enclosure: RssEnclosure? = null
-
-        var inItem = true
-
-        while (inItem) {
+        val fields = RssItemFields()
+        while (true) {
             when (events.nextToken()) {
-                XmlPullParser.START_TAG -> {
-                    when (events.name) {
-                        Constants.Parsing.TITLE -> title = readText(events)
-                        Constants.Parsing.DESCRIPTION -> description = readText(events)
-                        Constants.Parsing.LINK -> link = readText(events)
-                        Constants.Parsing.GUID -> {
-                            guid = readText(events)
-                            if (latestKnownGuid != null && guid == latestKnownGuid) {
-                                while (
-                                    events.eventType != XmlPullParser.END_TAG ||
-                                    events.name != Constants.Parsing.ITEM
-                                ) {
-                                    events.nextToken()
-                                }
-                                return null
-                            }
-                        }
-
-                        Constants.Parsing.PUB_DATE -> pubDate = readText(events)
-                        Constants.Parsing.ITUNES_DURATION -> itunesDuration = readText(events)
-
-                        Constants.Parsing.ENCLOSURE -> {
-                            val url = events.getAttributeValue(null, Constants.Parsing.URL)
-                            val length =
-                                events.getAttributeValue(null, Constants.Parsing.LENGTH)?.toLongOrNull()
-                                    ?: Constants.Parsing.DEFAULT_ENCLOSURE_LENGTH
-                            val type = events.getAttributeValue(null, Constants.Parsing.TYPE)
-                            enclosure = RssEnclosure(url, type, length)
-                        }
-                    }
-                }
-
-                XmlPullParser.END_TAG -> {
-                    if (events.name == Constants.Parsing.ITEM) inItem = false
-                }
-
+                XmlPullParser.START_TAG ->
+                    if (readItemField(events, fields, latestKnownGuid)) return null
+                XmlPullParser.END_TAG ->
+                    if (events.name == Constants.Parsing.ITEM) return fields.toRssItem()
                 XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException("Unexpected end of RSS item")
             }
         }
+    }
 
-        return RssItem(
-            title = title,
-            description = description,
-            link = link,
-            guid = guid,
-            pubDate = pubDate,
-            enclosure = enclosure,
-            itunesDuration = itunesDuration
-        )
+    private fun readItemField(
+        events: LimitedXmlEventReader,
+        fields: RssItemFields,
+        latestKnownGuid: String?
+    ): Boolean {
+        when (events.name) {
+            Constants.Parsing.TITLE -> fields.title = readText(events)
+            Constants.Parsing.DESCRIPTION -> fields.description = readText(events)
+            Constants.Parsing.LINK -> fields.link = readText(events)
+            Constants.Parsing.GUID -> {
+                fields.guid = readText(events)
+                if (latestKnownGuid != null && fields.guid == latestKnownGuid) {
+                    skipCurrentItem(events)
+                    return true
+                }
+            }
+            Constants.Parsing.PUB_DATE -> fields.pubDate = readText(events)
+            Constants.Parsing.ITUNES_DURATION -> fields.itunesDuration = readText(events)
+            Constants.Parsing.ENCLOSURE -> fields.enclosure = readEnclosure(events)
+        }
+        return false
+    }
+
+    private fun readEnclosure(events: LimitedXmlEventReader): RssEnclosure {
+        val url = events.getAttributeValue(null, Constants.Parsing.URL)
+        val length =
+            events.getAttributeValue(null, Constants.Parsing.LENGTH)?.toLongOrNull()
+                ?: Constants.Parsing.DEFAULT_ENCLOSURE_LENGTH
+        val type = events.getAttributeValue(null, Constants.Parsing.TYPE)
+        return RssEnclosure(url, type, length)
+    }
+
+    private fun skipCurrentItem(events: LimitedXmlEventReader) {
+        while (
+            events.eventType != XmlPullParser.END_TAG ||
+            events.name != Constants.Parsing.ITEM
+        ) {
+            events.nextToken()
+        }
     }
 
     private fun readText(events: LimitedXmlEventReader): String {
@@ -219,6 +209,27 @@ class RssSmartSyncParser(
             )
         return ParseResult(channel, newItems)
     }
+}
+
+private data class RssItemFields(
+    var title: String? = null,
+    var description: String? = null,
+    var link: String? = null,
+    var guid: String? = null,
+    var pubDate: String? = null,
+    var itunesDuration: String? = null,
+    var enclosure: RssEnclosure? = null
+) {
+    fun toRssItem() =
+        RssItem(
+            title = title,
+            description = description,
+            link = link,
+            guid = guid,
+            pubDate = pubDate,
+            enclosure = enclosure,
+            itunesDuration = itunesDuration
+        )
 }
 
 private class LimitedXmlEventReader(
