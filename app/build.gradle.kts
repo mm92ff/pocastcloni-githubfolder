@@ -35,7 +35,7 @@ android {
     defaultConfig {
         applicationId = "com.example.pocastcloni"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("boolean", "BENCHMARK_BUILD", "false")

@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         minSdk = 30
-        targetSdk = 34
+        targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["androidx.benchmark.fullTracing.enable"] = fullTracingEnabled.get()
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"
