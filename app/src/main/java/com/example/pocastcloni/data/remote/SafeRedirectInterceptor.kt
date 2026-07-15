@@ -7,6 +7,12 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
 
+/**
+ * Follows a bounded redirect chain manually so every target is revalidated before a request is
+ * sent. Redirects are limited to read-only methods, HTTPS-to-HTTP downgrades are blocked, and
+ * origin-sensitive headers are removed on cross-origin hops. Every consumed or rejected response
+ * is closed before continuing or throwing.
+ */
 class SafeRedirectInterceptor(
     private val isAllowedUrl: (String) -> Boolean = { parseNetworkUrl(it) != null },
     private val allowOriginChange: Boolean = true,

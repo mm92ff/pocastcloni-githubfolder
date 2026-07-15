@@ -20,6 +20,13 @@ internal data class PlaybackProgressSnapshot(
     val sequence: Long
 )
 
+/**
+ * App-scoped, non-blocking playback-progress writer.
+ *
+ * Requests are normalized and coalesced per episode in memory. A single application-scope worker
+ * serializes writes, skips positions already persisted, and retries failures with bounded
+ * exponential backoff. Cancelling the application scope cancels the worker immediately.
+ */
 @Singleton
 @Suppress("TooGenericExceptionCaught")
 class PlaybackProgressWriter
@@ -99,6 +106,13 @@ constructor(
     }
 }
 
+/**
+ * App-scoped accumulator for listening time.
+ *
+ * Callers only add positive durations and request a flush; one worker serializes persistence.
+ * Failed or cancelled writes put the claimed duration back before retrying or propagating
+ * cancellation, so concurrent additions are not lost.
+ */
 @Singleton
 @Suppress("TooGenericExceptionCaught")
 class PlaybackListeningTimeWriter

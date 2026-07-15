@@ -12,6 +12,11 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Process-local mirror of feed origins that already have persisted user approval elsewhere.
+ * Exact origin keys authorize requests and redirects; host keys only choose whether DNS may use
+ * the system resolver. Replacing approvals refreshes the mirror after startup or import.
+ */
 @Singleton
 class LocalNetworkAccessRegistry
 @Inject
@@ -41,6 +46,7 @@ constructor() : LocalNetworkApprovalPort {
     }
 }
 
+/** Enforces exact-origin approval before an approved-media request reaches the network. */
 class ApprovedLocalRequestInterceptor(
     private val registry: LocalNetworkAccessRegistry
 ) : Interceptor {
@@ -57,6 +63,7 @@ class ApprovedLocalRequestInterceptor(
     }
 }
 
+/** Uses system DNS only for approved hosts and the public-only DNS guard for every other host. */
 class ApprovedOriginDns(
     private val registry: LocalNetworkAccessRegistry,
     private val publicDns: Dns = PublicNetworkDns(),

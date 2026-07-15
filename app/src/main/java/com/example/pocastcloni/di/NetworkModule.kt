@@ -34,6 +34,12 @@ import javax.inject.Named
 import okhttp3.Dns
 import javax.inject.Singleton
 
+/**
+ * Defines three network trust profiles: public clients reject local/private DNS answers, the
+ * explicit local-feed client stays on one approved origin, and the approved-media client combines
+ * exact-origin request checks with host-scoped DNS selection. Redirect handling remains manual in
+ * every profile so each hop is evaluated against the same policy.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class NetworkModule {
@@ -60,7 +66,7 @@ abstract class NetworkModule {
             loggingInterceptor: HttpLoggingInterceptor
         ): OkHttpClient {
             val cacheDir = context.cacheDir.resolve(Constants.Cache.HTTP_CACHE_DIR)
-            val cache = Cache(cacheDir, 50 * 1024 * 1024L) // 50 MB Cache
+            val cache = Cache(cacheDir, 50 * 1024 * 1024L)
 
             return OkHttpClient.Builder()
                 .cache(cache)

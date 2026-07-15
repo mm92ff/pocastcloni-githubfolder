@@ -36,6 +36,14 @@ import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Coordinates full backup export and crash-recoverable import across Room and user preferences.
+ *
+ * Imports are serialized process-wide, validated before mutation, and journal the previous
+ * settings before touching either store. Room changes commit transactionally; mutation failures
+ * and cancellation restore settings before the journal can be cleared. Imported feed flags never
+ * grant cleartext or local-network approval, and post-commit feed synchronization is best effort.
+ */
 @Singleton
 class BackupRepositoryImpl
 @Inject

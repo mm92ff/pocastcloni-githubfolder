@@ -8,6 +8,11 @@ import java.net.InetAddress
 
 internal const val MAX_NETWORK_REDIRECTS = 5
 
+/**
+ * Parses credential-free HTTP(S) URLs and rejects local/private destinations unless the caller is
+ * operating in an explicitly approved local-network path. DNS resolution is enforced separately
+ * by the selected OkHttp client.
+ */
 fun parseNetworkUrl(
     value: String,
     allowLocalNetwork: Boolean = false
@@ -51,6 +56,11 @@ fun isAllowedRemoteResource(
     }.isSuccess
 }
 
+/**
+ * Applies feed approval to a podcast resource. A local/private resource must share the feed's
+ * canonical origin and requires explicit local-network approval; cleartext HTTP independently
+ * requires insecure-transport approval.
+ */
 fun requireApprovedPodcastResource(
     feedUrl: String,
     resourceUrl: String,
@@ -98,6 +108,7 @@ fun shouldUseLocalNetworkForResource(
     return hasSameOrigin(feed, resource)
 }
 
+/** Returns a canonical origin key composed of normalized scheme, host, and effective port. */
 fun networkOrigin(value: String): String? {
     val url = parseNetworkUrl(value, allowLocalNetwork = true) ?: return null
     return "${url.scheme}|${url.host}|${url.port}"

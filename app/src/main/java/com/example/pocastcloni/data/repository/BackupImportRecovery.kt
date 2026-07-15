@@ -8,6 +8,11 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Restores settings recorded by an interrupted import before clearing its journal entry.
+ * Failures and cancellation leave the journal intact for the next recovery attempt. The locked
+ * entry point must only be called while holding [BackupImportCoordinator].
+ */
 @Singleton
 class BackupImportRecovery @Inject constructor(
     private val journalDao: BackupImportJournalDao,
@@ -20,6 +25,7 @@ class BackupImportRecovery @Inject constructor(
             recoverInterruptedImportLocked()
         }
 
+    /** Recovery variant for callers already serialized by [BackupImportCoordinator]. */
     internal suspend fun recoverInterruptedImportLocked() {
         val pending = journalDao.getPendingImport() ?: return
         val previousSettings = objectMapper.readValue(

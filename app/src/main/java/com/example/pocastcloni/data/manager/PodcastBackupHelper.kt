@@ -24,6 +24,14 @@ import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Reads and writes the portable JSON backup format on the IO dispatcher.
+ *
+ * Imports are size-limited before parsing, structurally prevalidated, and then validated as typed
+ * data. Versionless object backups and the legacy URL-list format remain supported. Stream
+ * ownership is transferred to this helper: imported streams and supplied export streams are
+ * closed after use, including failure paths.
+ */
 @Singleton
 class PodcastBackupHelper
 @Inject

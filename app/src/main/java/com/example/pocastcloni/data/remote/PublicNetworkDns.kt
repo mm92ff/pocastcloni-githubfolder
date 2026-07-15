@@ -5,6 +5,11 @@ import okhttp3.Dns
 import java.net.InetAddress
 import java.net.UnknownHostException
 
+/**
+ * DNS guard for public-only clients. An empty answer or any local/private address rejects the
+ * entire lookup, preventing mixed public/private answers from bypassing request-time URL checks.
+ * Delegate resolution failures propagate unchanged.
+ */
 class PublicNetworkDns(
     private val delegate: Dns = Dns.SYSTEM
 ) : Dns {

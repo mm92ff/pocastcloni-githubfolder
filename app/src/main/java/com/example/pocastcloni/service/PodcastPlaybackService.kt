@@ -47,6 +47,13 @@ import okhttp3.OkHttpClient
 import javax.inject.Inject
 import javax.inject.Named
 
+/**
+ * Owns the service-scoped player, media session, streaming cache, and transfer accounting.
+ *
+ * Buffer-mode changes replace the ExoPlayer while preserving queue and playback state in the
+ * existing session. Controller admission is limited to trusted controllers or this app's own
+ * package/UID pair, and all owned resources are released when the service is destroyed.
+ */
 @OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class PodcastPlaybackService : MediaSessionService() {
@@ -85,13 +92,10 @@ class PodcastPlaybackService : MediaSessionService() {
         super.onCreate()
         serviceScope = CoroutineScope(dispatcherProvider.main + SupervisorJob())
 
-        // One-time setup (cache, data source, notification provider, session activity intent)
         initializeStaticComponents()
         currentBufferMode = BufferMode.NORMAL
         recreatePlayer(BufferMode.NORMAL)
 
-        // React to buffer mode changes while the service stays alive (e.g. playback ongoing).
-        // Only rebuild the player when bufferMode actually changes.
         serviceScope.launch {
             userPreferencesRepository.userSettingsFlow
                 .map { it.bufferMode }
@@ -110,25 +114,18 @@ class PodcastPlaybackService : MediaSessionService() {
     }
 
     private fun initializeStaticComponents() {
-        // Listener for statistics (counts streamed bytes)
         val statsListener = StreamingStatsListener()
-
-        // Attach stats listener to HTTP data source
         val httpDataSourceFactory =
             OkHttpDataSource.Factory(okHttpClient)
                 .setTransferListener(statsListener)
 
-        // DefaultDataSource wraps HTTP + file
         val upstreamFactory: DataSource.Factory = DefaultDataSource.Factory(this, httpDataSourceFactory)
-
-        // Optional cache layer
         val cacheFactory = playbackDataSourceFactory(upstreamFactory, mediaCacheProvider.getCacheOrNull())
 
         mediaSourceFactory =
             ProgressiveMediaSource.Factory(cacheFactory)
                 .setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy())
 
-        // Session activity intent for notification
         val intent =
             packageManager.getLaunchIntentForPackage(packageName)
                 ?: Intent(this, MainActivity::class.java)
@@ -150,8 +147,9 @@ class PodcastPlaybackService : MediaSessionService() {
     }
 
     /**
-     * Rebuilds the player (LoadControl/buffer config) and swaps it into the existing MediaSession.
-     * Keeps playback as seamless as possible by restoring the queue & state.
+     * Rebuilds the player for a new buffer policy and restores its queue, position, playback
+     * intent, repeat/shuffle state, and speed. The existing MediaSession is retained when Media3
+     * accepts the player swap; otherwise the session is rebuilt around the replacement player.
      */
     private fun recreatePlayer(bufferMode: BufferMode) {
         val oldPlayer: ExoPlayer? = if (this::player.isInitialized) player else null
@@ -170,7 +168,6 @@ class PodcastPlaybackService : MediaSessionService() {
         player = newPlayer
 
         if (this::mediaSession.isInitialized) {
-            // Media3 supports swapping players on an existing MediaSession.
             runCatching { mediaSession.player = newPlayer }
                 .onFailure { t ->
                     Timber.w(t, "Failed to swap player on MediaSession; recreating MediaSession")
@@ -214,7 +211,6 @@ class PodcastPlaybackService : MediaSessionService() {
             }
 
         return DefaultLoadControl.Builder()
-            // Correct order: (minBufferMs, maxBufferMs, bufferForPlaybackMs, bufferForPlaybackAfterRebufferMs)
             .setBufferDurationsMs(
                 minBufferMs,
                 maxBufferMs,

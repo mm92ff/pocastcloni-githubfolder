@@ -5,6 +5,10 @@ import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Process-local, non-reentrant import lock shared by active imports and startup recovery.
+ * [Mutex.withLock] preserves structured cancellation while ensuring only one journal owner exists.
+ */
 @Singleton
 class BackupImportCoordinator
 @Inject
