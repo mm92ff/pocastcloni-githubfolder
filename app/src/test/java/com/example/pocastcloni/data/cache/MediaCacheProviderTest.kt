@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
@@ -105,25 +106,58 @@ class MediaCacheProviderTest {
     }
 
     @Test
-    fun `close releases each initialized instance exactly once`() {
+    fun `overlapping service leases delay reset close until the final release`() {
+        val cache = mockk<Cache>(relaxed = true)
+        val provider = MediaCacheProvider { cache }
+        val firstLease = provider.acquire()
+        val secondLease = provider.acquire()
+        val reset = provider.beginReset()
+
+        try {
+            assertSame(cache, firstLease.cache)
+            assertSame(cache, secondLease.cache)
+            assertNull(provider.acquire().cache)
+
+            firstLease.close()
+            assertFalse(provider.awaitNoActiveLeases(0L, TimeUnit.MILLISECONDS))
+            secondLease.close()
+            assertTrue(provider.awaitNoActiveLeases(TIMEOUT_SECONDS, TimeUnit.SECONDS))
+
+            provider.closeForReset()
+        } finally {
+            reset.close()
+        }
+
+        verify(exactly = 1) { cache.release() }
+    }
+
+    @Test
+    fun `reset gate serves cacheless leases and allows a fresh generation afterwards`() {
         val firstCache = mockk<Cache>(relaxed = true)
         val secondCache = mockk<Cache>(relaxed = true)
         val caches = ArrayDeque(listOf(firstCache, secondCache))
         val provider = MediaCacheProvider { caches.removeFirst() }
 
         assertSame(firstCache, provider.getCacheOrNull())
-        provider.close()
-        provider.close()
-        assertSame(secondCache, provider.getCacheOrNull())
-        provider.close()
-        provider.close()
+        val reset = provider.beginReset()
+        try {
+            assertNull(provider.getCacheOrNull())
+            assertNull(provider.acquire().cache)
+            provider.closeForReset()
+        } finally {
+            reset.close()
+        }
+
+        val nextLease = provider.acquire()
+        assertSame(secondCache, nextLease.cache)
+        nextLease.close()
 
         verify(exactly = 1) { firstCache.release() }
-        verify(exactly = 1) { secondCache.release() }
+        verify(exactly = 0) { secondCache.release() }
     }
 
     @Test
-    fun `close clears the reference before a failing release`() {
+    fun `failed reset close clears the reference before a later retry`() {
         val firstCache = mockk<Cache>()
         val secondCache = mockk<Cache>(relaxed = true)
         val caches = ArrayDeque(listOf(firstCache, secondCache))
@@ -131,12 +165,15 @@ class MediaCacheProviderTest {
         every { firstCache.release() } throws IOException("release failed")
 
         assertSame(firstCache, provider.getCacheOrNull())
-        assertThrows(IOException::class.java) { provider.close() }
+        val reset = provider.beginReset()
+        try {
+            assertThrows(IOException::class.java) { provider.closeForReset() }
+        } finally {
+            reset.close()
+        }
         assertSame(secondCache, provider.getCacheOrNull())
-        provider.close()
 
         verify(exactly = 1) { firstCache.release() }
-        verify(exactly = 1) { secondCache.release() }
     }
 
     private companion object {

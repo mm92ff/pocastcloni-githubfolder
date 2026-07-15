@@ -1,6 +1,7 @@
 package com.example.pocastcloni.di
 
 import com.example.pocastcloni.playback.api.PlaybackStarter
+import com.example.pocastcloni.playback.api.PlaybackResetPort
 import com.example.pocastcloni.playback.api.PlayerCommandPort
 import com.example.pocastcloni.playback.api.PlayerStatePort
 import com.example.pocastcloni.playback.api.PlayerVisibilityProvider
@@ -12,6 +13,7 @@ import com.example.pocastcloni.playback.infrastructure.MediaDispatcherFactory
 import com.example.pocastcloni.playback.infrastructure.MonotonicClock
 import com.example.pocastcloni.playback.infrastructure.PlaybackTickSource
 import com.example.pocastcloni.playback.infrastructure.PlaybackTicker
+import com.example.pocastcloni.playback.infrastructure.PlaybackResetCoordinator
 import com.example.pocastcloni.playback.infrastructure.SystemMonotonicClock
 import dagger.Binds
 import dagger.Module
@@ -29,6 +31,10 @@ abstract class PlaybackModule {
     @Binds
     @Singleton
     abstract fun bindPlaybackStarter(impl: AudioPlayerController): PlaybackStarter
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaybackResetPort(impl: PlaybackResetCoordinator): PlaybackResetPort
 
     @Binds
     @Singleton

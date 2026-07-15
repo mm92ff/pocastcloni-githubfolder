@@ -7,6 +7,10 @@ interface PlaybackStarter {
     suspend fun play(episodeId: Long)
 }
 
+interface PlaybackResetPort {
+    suspend fun stopAndReleaseForReset()
+}
+
 interface PlayerCommandPort {
     fun pause()
 

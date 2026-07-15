@@ -48,7 +48,8 @@ import javax.inject.Inject
 import javax.inject.Named
 
 /**
- * Owns the service-scoped player, media session, streaming cache, and transfer accounting.
+ * Owns the service-scoped player, media session, and transfer accounting while using the
+ * process-wide streaming cache.
  *
  * Buffer-mode changes replace the ExoPlayer while preserving queue and playback state in the
  * existing session. Controller admission is limited to trusted controllers or this app's own
@@ -75,6 +76,7 @@ class PodcastPlaybackService : MediaSessionService() {
 
     private lateinit var player: ExoPlayer
     private lateinit var mediaSession: MediaSession
+    private lateinit var mediaCacheLease: MediaCacheProvider.Lease
 
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private lateinit var sessionActivityPendingIntent: PendingIntent
@@ -120,7 +122,8 @@ class PodcastPlaybackService : MediaSessionService() {
                 .setTransferListener(statsListener)
 
         val upstreamFactory: DataSource.Factory = DefaultDataSource.Factory(this, httpDataSourceFactory)
-        val cacheFactory = playbackDataSourceFactory(upstreamFactory, mediaCacheProvider.getCacheOrNull())
+        mediaCacheLease = mediaCacheProvider.acquire()
+        val cacheFactory = playbackDataSourceFactory(upstreamFactory, mediaCacheLease.cache)
 
         mediaSourceFactory =
             ProgressiveMediaSource.Factory(cacheFactory)
@@ -313,10 +316,9 @@ class PodcastPlaybackService : MediaSessionService() {
         if (this::player.isInitialized) {
             runCatching { player.release() }
         }
-        try {
-            mediaCacheProvider.close()
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to close media cache during service teardown")
+        if (this::mediaCacheLease.isInitialized) {
+            runCatching { mediaCacheLease.close() }
+                .onFailure { error -> Timber.w(error, "Failed to release media cache lease") }
         }
         streamingStatisticsRecorder.requestFlush()
         if (this::serviceScope.isInitialized) {

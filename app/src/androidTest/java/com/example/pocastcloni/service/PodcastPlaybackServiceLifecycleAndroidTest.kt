@@ -211,9 +211,9 @@ class PodcastPlaybackServiceLifecycleAndroidTest {
                     currentPositionMs = controller.currentPosition,
                     currentMediaItemIndex = controller.currentMediaItemIndex,
                     mediaIds =
-                        (0 until controller.mediaItemCount).map { index ->
-                            controller.getMediaItemAt(index).mediaId
-                        }
+                    (0 until controller.mediaItemCount).map { index ->
+                        controller.getMediaItemAt(index).mediaId
+                    }
                 )
         }
         return requireNotNull(state)

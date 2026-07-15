@@ -86,7 +86,7 @@ internal class DownloadPublicationRecovery(
                 records == null -> target.delete()
                 isReadableFile(target) -> Unit
                 else -> {
-                            val reset = resetRecords(records, resetDownload)
+                    val reset = resetRecords(records, resetDownload)
                     resetRows += reset.count
                     if (reset.allReset) target.delete()
                 }
@@ -229,16 +229,16 @@ internal class DownloadPublicationRecovery(
             DownloadPublicationRecovery(
                 privateDownloadsDirectory = File(context.filesDir, Constants.DOWNLOADS_DIR),
                 legacyDownloadsDirectory =
-                    File(
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                        PUBLIC_DOWNLOAD_DIRECTORY
-                    ),
+                File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    PUBLIC_DOWNLOAD_DIRECTORY
+                ),
                 pendingMediaStore =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        AndroidPendingMediaStoreRecovery(context)
-                    } else {
-                        null
-                    }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    AndroidPendingMediaStoreRecovery(context)
+                } else {
+                    null
+                }
             )
     }
 }

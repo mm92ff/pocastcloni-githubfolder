@@ -22,6 +22,7 @@ import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.LibraryMaintenancePort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
+import com.example.pocastcloni.playback.api.PlaybackResetPort
 import com.example.pocastcloni.util.Constants
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -42,6 +43,7 @@ import okhttp3.Cache
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -76,6 +78,7 @@ class ResetAppUseCaseTest {
     }
     private val context = mockk<Context>()
     private val workManager = mockk<WorkManager>()
+    private val playbackResetPort = mockk<PlaybackResetPort>(relaxed = true)
     private val cancelOperation = mockk<Operation>()
     private val scheduleOperation = mockk<Operation>(relaxed = true)
 
@@ -95,6 +98,7 @@ class ResetAppUseCaseTest {
         noBackupFilesDir = temporaryFolder.newFolder("no-backup")
         every { context.cacheDir } returns cacheDir
         every { context.noBackupFilesDir } returns noBackupFilesDir
+        every { context.stopService(any()) } returns true
         every { cancelOperation.result } returns Futures.immediateFuture(Operation.SUCCESS)
         every { scheduleOperation.result } returns Futures.immediateFuture(Operation.SUCCESS)
         every { workManager.cancelAllWork() } returns cancelOperation
@@ -108,29 +112,7 @@ class ResetAppUseCaseTest {
         every { userPreferencesRepository.userSettingsFlow } returns flowOf(UserSettings())
         mediaCacheProvider.getCacheOrNull()
         markerStore = AppResetMarkerStore(context)
-        val schedulingCoordinator =
-            AppSchedulingCoordinator(
-                markerStore = markerStore,
-                backgroundSyncScheduler = BackgroundSyncScheduler(workManager),
-                libraryCleanupScheduler = LibraryCleanupScheduler(workManager)
-            )
-        resetApp =
-            ResetAppUseCase(
-                maintenance = maintenance,
-                userPreferencesRepository = userPreferencesRepository,
-                resetGateway = AndroidAppResetGateway(
-                    mediaCacheProvider = mediaCacheProvider,
-                    imageLoader = imageLoader,
-                    okHttpClient = okHttpClient,
-                    localNetworkClient = localNetworkClient,
-                    approvedMediaClient = approvedMediaClient,
-                    workManager = workManager,
-                    markerStore = markerStore,
-                    schedulingCoordinator = schedulingCoordinator,
-                    context = context
-                ),
-                dispatcherProvider = dispatcherProvider
-            )
+        resetApp = createResetUseCase(mediaCacheProvider)
     }
 
     @Test
@@ -266,6 +248,8 @@ class ResetAppUseCaseTest {
         coVerify(exactly = 1) { userPreferencesRepository.clearSettings() }
         coVerify(exactly = 1) { maintenance.resetDatabase() }
         verify(exactly = 1) { workManager.cancelAllWork() }
+        coVerify(exactly = 1) { playbackResetPort.stopAndReleaseForReset() }
+        verify(exactly = 1) { context.stopService(any()) }
         assertTrue(!markerStore.isPending())
         verifyOrder {
             mediaCache.release()
@@ -278,8 +262,23 @@ class ResetAppUseCaseTest {
     }
 
     @Test
+    fun `reset deletes stale media directory after cache initialization failure`() = runTest(dispatcher) {
+        val unavailableCacheProvider =
+            MediaCacheProvider { throw IOException("cache unavailable") }
+        val mediaCacheMarker = createMarker(cacheDir.resolve(Constants.Cache.MEDIA_CACHE_DIR))
+        assertNull(unavailableCacheProvider.getCacheOrNull())
+
+        createResetUseCase(unavailableCacheProvider)()
+
+        assertFalse(mediaCacheMarker.exists())
+        assertFalse(cacheDir.resolve(Constants.Cache.MEDIA_CACHE_DIR).exists())
+        assertFalse(markerStore.isPending())
+    }
+
+    @Test
     fun `one cleanup failure does not stop later cleanup steps`() = runTest(dispatcher) {
         createManagedCacheMarkers()
+        createMarker(cacheDir.resolve(Constants.Cache.MEDIA_CACHE_DIR))
         every { mediaCache.release() } throws IOException("release failed")
 
         try {
@@ -289,7 +288,8 @@ class ResetAppUseCaseTest {
             assertEquals("release failed", e.message)
         }
 
-        assertTrue(Constants.Cache.MANAGED_CACHE_DIRS.all { !cacheDir.resolve(it).exists() })
+        assertTrue(fileBackedCacheDirs().all { !cacheDir.resolve(it).exists() })
+        assertTrue(cacheDir.resolve(Constants.Cache.MEDIA_CACHE_DIR).exists())
         assertTrue(markerStore.isPending())
         coVerify(exactly = 1) { userPreferencesRepository.clearSettings() }
         coVerify(exactly = 1) { maintenance.resetDatabase() }
@@ -340,9 +340,38 @@ class ResetAppUseCaseTest {
     }
 
     private fun createManagedCacheMarkers() {
-        Constants.Cache.MANAGED_CACHE_DIRS.forEach { directoryName ->
+        fileBackedCacheDirs().forEach { directoryName ->
             createMarker(cacheDir.resolve(directoryName))
         }
+    }
+
+    private fun fileBackedCacheDirs(): Set<String> =
+        Constants.Cache.MANAGED_CACHE_DIRS - Constants.Cache.MEDIA_CACHE_DIR
+
+    private fun createResetUseCase(cacheProvider: MediaCacheProvider): ResetAppUseCase {
+        val schedulingCoordinator =
+            AppSchedulingCoordinator(
+                markerStore = markerStore,
+                backgroundSyncScheduler = BackgroundSyncScheduler(workManager),
+                libraryCleanupScheduler = LibraryCleanupScheduler(workManager)
+            )
+        return ResetAppUseCase(
+            maintenance = maintenance,
+            userPreferencesRepository = userPreferencesRepository,
+            resetGateway = AndroidAppResetGateway(
+                mediaCacheProvider = cacheProvider,
+                imageLoader = imageLoader,
+                okHttpClient = okHttpClient,
+                localNetworkClient = localNetworkClient,
+                approvedMediaClient = approvedMediaClient,
+                workManager = workManager,
+                markerStore = markerStore,
+                schedulingCoordinator = schedulingCoordinator,
+                playbackResetPort = playbackResetPort,
+                context = context
+            ),
+            dispatcherProvider = dispatcherProvider
+        )
     }
 
     private fun stubScheduleOperation(

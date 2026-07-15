@@ -209,8 +209,8 @@ class EpisodeStorageReconciliationTest {
                 put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/Pocastcloni/")
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
-            val uri =
-                requireNotNull(
+        val uri =
+            requireNotNull(
                 context.contentResolver.insert(
                     MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
                     values
