@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
+import com.example.pocastcloni.PocastApplication
 import com.example.pocastcloni.data.local.AppDatabase
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
@@ -58,6 +59,9 @@ class EpisodeStorageReconciliationTest {
     @Before
     fun setUp() =
         runBlocking {
+            (context.applicationContext as PocastApplication)
+                .appInitializer
+                .awaitStartupCompletion()
             downloadsDir.deleteRecursively()
             dao.deleteAllPodcasts()
         }
@@ -196,7 +200,7 @@ class EpisodeStorageReconciliationTest {
             assertFalse(mediaStoreRowExists(orphan))
         }
 
-    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.Q)
     private fun insertPendingMediaStoreDownload(displayName: String): Uri {
         val values =
             ContentValues().apply {
@@ -205,16 +209,19 @@ class EpisodeStorageReconciliationTest {
                 put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/Pocastcloni/")
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
-        val uri =
-            requireNotNull(
-                context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            val uri =
+                requireNotNull(
+                context.contentResolver.insert(
+                    MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                    values
+                )
             )
         insertedMediaStoreRows += uri
         context.contentResolver.openOutputStream(uri, "w")?.use { it.write("audio".toByteArray()) }
         return uri
     }
 
-    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.Q)
     private fun pendingFlag(uri: Uri): Int? =
         context.contentResolver
             .query(uri, arrayOf(MediaStore.Downloads.IS_PENDING), null, null, null)

@@ -15,6 +15,7 @@ import com.example.pocastcloni.util.RetryingDataFlow
 import com.example.pocastcloni.util.activeEpisodeIdsFromDownloadWork
 import com.example.pocastcloni.util.downloadWorkName
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -57,6 +58,7 @@ constructor(
     private val schedulingCoordinator: AppSchedulingCoordinator
 ) {
     private val initialized = AtomicBoolean(false)
+    private val startupCompletion = CompletableDeferred<Unit>()
     private val startupScope =
         CoroutineScope(
             scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job])
@@ -65,23 +67,32 @@ constructor(
     fun initialize() {
         if (!initialized.compareAndSet(false, true)) return
 
-        startupScope.launch(dispatcherProvider.io) {
-            val recoverySucceeded =
-                runStartupOperation("recover interrupted backup import") {
-                    backupImportRecovery.recoverInterruptedImport()
+        startupScope
+            .launch(dispatcherProvider.io) {
+                val recoverySucceeded =
+                    runStartupOperation("recover interrupted backup import") {
+                        backupImportRecovery.recoverInterruptedImport()
+                    }
+                val resetSucceeded =
+                    runStartupOperation("resume pending app reset") {
+                        resetAppUseCase.resumeIfPending()
+                    }
+                val reconciliationSucceeded =
+                    runStartupOperation("reconcile local episode storage state") {
+                        reconcileEpisodeStorage()
+                    }
+                if (recoverySucceeded && resetSucceeded && reconciliationSucceeded) {
+                    startLongLivedObservers()
                 }
-            val resetSucceeded =
-                runStartupOperation("resume pending app reset") {
-                    resetAppUseCase.resumeIfPending()
-                }
-            val reconciliationSucceeded =
-                runStartupOperation("reconcile local episode storage state") {
-                    reconcileEpisodeStorage()
-                }
-            if (recoverySucceeded && resetSucceeded && reconciliationSucceeded) {
-                startLongLivedObservers()
             }
-        }
+            .invokeOnCompletion {
+                startupCompletion.complete(Unit)
+            }
+    }
+
+    /** Waits until all one-shot startup phases have either completed or been cancelled. */
+    internal suspend fun awaitStartupCompletion() {
+        startupCompletion.await()
     }
 
     private fun startLongLivedObservers() {

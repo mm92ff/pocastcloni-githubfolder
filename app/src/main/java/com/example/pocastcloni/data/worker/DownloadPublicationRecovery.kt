@@ -2,10 +2,10 @@ package com.example.pocastcloni.data.worker
 
 import android.content.ContentResolver
 import android.content.ContentUris
-import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
@@ -21,7 +21,7 @@ internal data class DownloadPublicationRecord(
 
 internal data class PendingMediaStorePublication(
     val path: String,
-    val sizeBytes: Long
+    val alternatePaths: Set<String> = emptySet()
 )
 
 internal interface PendingMediaStoreRecovery {
@@ -86,7 +86,7 @@ internal class DownloadPublicationRecovery(
                 records == null -> target.delete()
                 isReadableFile(target) -> Unit
                 else -> {
-                    val reset = resetRecords(records, path, resetDownload)
+                            val reset = resetRecords(records, resetDownload)
                     resetRows += reset.count
                     if (reset.allReset) target.delete()
                 }
@@ -140,7 +140,7 @@ internal class DownloadPublicationRecovery(
                 0
             }
             else -> {
-                val reset = resetRecords(records, path, resetDownload)
+                val reset = resetRecords(records, resetDownload)
                 if (reset.allReset) matchingAttempts.forEach(::deleteLegacyAttempt)
                 reset.count
             }
@@ -169,19 +169,22 @@ internal class DownloadPublicationRecovery(
         val mediaStore = pendingMediaStore ?: return 0
         var resetRows = 0
         mediaStore.pendingPublications().forEach { pending ->
-            val records = recordsByPath[pending.path]
-            if (records == null) {
+            val records =
+                (sequenceOf(pending.path) + pending.alternatePaths.asSequence())
+                    .flatMap { path -> recordsByPath[path].orEmpty().asSequence() }
+                    .distinctBy { record -> record.episodeId to record.path }
+                    .toList()
+            if (records.isEmpty()) {
                 mediaStore.delete(pending.path)
                 return@forEach
             }
             val published =
-                pending.sizeBytes > 0L &&
-                    mediaStore.isReadable(pending.path) &&
+                mediaStore.isReadable(pending.path) &&
                     runCatching {
                         mediaStore.publish(pending.path) && mediaStore.isReadable(pending.path)
                     }.getOrDefault(false)
             if (!published) {
-                val reset = resetRecords(records, pending.path, resetDownload)
+                val reset = resetRecords(records, resetDownload)
                 resetRows += reset.count
                 if (reset.allReset) runCatching { mediaStore.delete(pending.path) }
             }
@@ -197,12 +200,11 @@ internal class DownloadPublicationRecovery(
 
     private suspend fun resetRecords(
         records: List<DownloadPublicationRecord>,
-        path: String,
         resetDownload: suspend (episodeId: Long, expectedPath: String) -> Boolean
     ): ResetResult {
         var count = 0
         records.forEach { record ->
-            if (resetDownload(record.episodeId, path)) count++
+            if (resetDownload(record.episodeId, record.path)) count++
         }
         return ResetResult(count, count == records.size)
     }
@@ -265,27 +267,46 @@ private class AndroidPendingMediaStoreRecovery(
 ) : PendingMediaStoreRecovery {
     private val resolver: ContentResolver = context.contentResolver
     private val ownerPackageName: String = context.packageName
+    private val downloadsCollection: Uri =
+        MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
 
     override fun pendingPublications(): List<PendingMediaStorePublication> {
         val publications = mutableListOf<PendingMediaStorePublication>()
         val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/$PUBLIC_DOWNLOAD_DIRECTORY/"
         val legacyRelativePath = relativePath.removeSuffix("/")
+        val queryArgs =
+            Bundle().apply {
+                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_ONLY)
+                putString(
+                    ContentResolver.QUERY_ARG_SQL_SELECTION,
+                    "${MediaStore.Downloads.OWNER_PACKAGE_NAME} = ? AND " +
+                        "(${MediaStore.Downloads.RELATIVE_PATH} = ? OR " +
+                        "${MediaStore.Downloads.RELATIVE_PATH} = ?)"
+                )
+                putStringArray(
+                    ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                    arrayOf(ownerPackageName, relativePath, legacyRelativePath)
+                )
+            }
         val cursor =
             resolver.query(
-                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.SIZE),
-                "${MediaStore.Downloads.IS_PENDING} = ? AND " +
-                    "${MediaStore.Downloads.OWNER_PACKAGE_NAME} = ? AND " +
-                    "(${MediaStore.Downloads.RELATIVE_PATH} = ? OR ${MediaStore.Downloads.RELATIVE_PATH} = ?)",
-                arrayOf("1", ownerPackageName, relativePath, legacyRelativePath),
+                downloadsCollection,
+                arrayOf(MediaStore.Downloads._ID),
+                queryArgs,
                 null
             ) ?: throw IOException("Could not query pending MediaStore downloads")
         cursor.use {
             val idColumn = it.getColumnIndexOrThrow(MediaStore.Downloads._ID)
-            val sizeColumn = it.getColumnIndexOrThrow(MediaStore.Downloads.SIZE)
             while (it.moveToNext()) {
-                val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, it.getLong(idColumn))
-                publications += PendingMediaStorePublication(uri.toString(), it.getLong(sizeColumn))
+                val id = it.getLong(idColumn)
+                val uri = ContentUris.withAppendedId(downloadsCollection, id)
+                val legacyAlias =
+                    ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id).toString()
+                publications +=
+                    PendingMediaStorePublication(
+                        path = uri.toString(),
+                        alternatePaths = setOf(legacyAlias)
+                    )
             }
         }
         return publications
@@ -299,12 +320,7 @@ private class AndroidPendingMediaStoreRecovery(
         }.getOrDefault(false)
 
     override fun publish(path: String): Boolean =
-        resolver.update(
-            Uri.parse(path),
-            ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
-            null,
-            null
-        ) == 1
+        MediaStorePendingPublisher.publish(resolver, Uri.parse(path))
 
     override fun delete(path: String): Boolean = resolver.delete(Uri.parse(path), null, null) == 1
 }

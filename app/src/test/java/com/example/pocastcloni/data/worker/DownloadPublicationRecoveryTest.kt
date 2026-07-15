@@ -189,9 +189,10 @@ class DownloadPublicationRecoveryTest {
         override fun pendingPublications(): List<PendingMediaStorePublication> =
             rows
                 .filterValues(MediaRow::pending)
-                .map { (path, row) -> PendingMediaStorePublication(path, row.sizeBytes) }
+                .map { (path, _) -> PendingMediaStorePublication(path) }
 
-        override fun isReadable(path: String): Boolean = rows[path]?.readable == true
+        override fun isReadable(path: String): Boolean =
+            rows[path]?.let { row -> row.readable && row.sizeBytes > 0L } == true
 
         override fun publish(path: String): Boolean =
             rows[path]

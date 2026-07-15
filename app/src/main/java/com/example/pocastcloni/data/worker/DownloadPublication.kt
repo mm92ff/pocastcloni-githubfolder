@@ -116,7 +116,10 @@ internal class DownloadPublisher(
             }
         val resolver = context.contentResolver
         val uri =
-            resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            resolver.insert(
+                MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                values
+            )
                 ?: throw IOException("MediaStore insert failed")
 
         copyStagedDownload(
@@ -132,14 +135,9 @@ internal class DownloadPublisher(
             path = uri.toString(),
             totalBytes = stagedFile.length(),
             makeVisibleAction = {
-                val changed =
-                    resolver.update(
-                        uri,
-                        ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
-                        null,
-                        null
-                    )
-                if (changed != 1) throw IOException("Could not publish MediaStore download")
+                if (!MediaStorePendingPublisher.publish(resolver, uri)) {
+                    throw IOException("Could not publish MediaStore download")
+                }
             },
             cleanupAction = { resolver.delete(uri, null, null) }
         )
