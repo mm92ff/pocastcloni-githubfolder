@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.FileObserver;
 import android.os.SystemClock;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -27,6 +28,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -49,36 +51,49 @@ public final class ReleaseNavigationSmokeAndroidTest {
     private static final String FEED_TITLE = "Release Smoke Podcast";
     private static final String EPISODE_TITLE = "Release Smoke Episode";
     private static final String BACKUP_FILE_NAME = "pocast_backup.json";
+    private static final String APP_RESET_MARKER_FILE_NAME = "app_reset_pending";
 
     private final Context targetContext =
             InstrumentationRegistry.getInstrumentation().getTargetContext();
     private final UiDevice device =
             UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
     private ReleaseFeedServer server;
+    private boolean smokeEnabled;
 
     @Before
     public void setUp() throws IOException {
-        Assume.assumeTrue(
-                "Release navigation smoke only runs against the minified releaseSmoke variant",
+        smokeEnabled =
                 "releaseSmoke".equals(BuildConfig.BUILD_TYPE)
+                        || ("debug".equals(BuildConfig.BUILD_TYPE) && isExplicitDebugSmokeRun());
+        Assume.assumeTrue(
+                "Debug smoke is destructive and must be selected explicitly",
+                smokeEnabled
         );
-        server = new ReleaseFeedServer();
         device.executeShellCommand("rm -f /sdcard/Download/" + BACKUP_FILE_NAME);
+        resetTargetAppState();
+        server = new ReleaseFeedServer();
     }
 
     @After
     public void tearDown() throws IOException {
-        if (server != null) server.close();
+        if (!smokeEnabled) return;
+        try {
+            resetTargetAppState();
+        } finally {
+            device.executeShellCommand("rm -f /sdcard/Download/" + BACKUP_FILE_NAME);
+            if (server != null) server.close();
+        }
     }
 
     @Test
-    public void minifiedAppExercisesSettingsBackupFeedAndPlayer() {
+    public void appExercisesSettingsBackupFeedAndPlayer() {
         launchApp();
         waitForText("My Podcasts");
 
         openBottomDestination("Settings");
         waitForText("Design");
         addLocalReleaseFeed();
+        refreshExistingFeed();
 
         openBottomDestination("Home");
         clickDescription("Cover image");
@@ -91,6 +106,83 @@ public final class ReleaseNavigationSmokeAndroidTest {
         openBottomDestination("Settings");
         waitForText("Design");
         verifyBackupRoundTripEntryPoints();
+    }
+
+    private void resetTargetAppState() throws IOException {
+        File resetMarker = new File(
+                targetContext.getNoBackupFilesDir(),
+                APP_RESET_MARKER_FILE_NAME
+        );
+        launchApp();
+        assertTrue(
+                "A previous app reset did not complete",
+                waitForFileToDisappear(resetMarker)
+        );
+
+        launchApp();
+        waitForText("My Podcasts");
+        openBottomDestination("Settings");
+        waitForText("Design");
+        clickText("Data");
+        clickNodeOrClickableParent(findTextWithScrolling("Reset database"));
+        waitForText("Reset app?");
+
+        CountDownLatch resetStarted = new CountDownLatch(1);
+        CountDownLatch resetCompleted = new CountDownLatch(1);
+        FileObserver resetObserver = resetObserver(resetMarker, resetStarted, resetCompleted);
+        resetObserver.startWatching();
+        try {
+            clickText("Delete everything");
+            assertTrue("App reset did not start", await(resetStarted));
+            assertTrue("App reset did not clear target state", await(resetCompleted));
+        } finally {
+            resetObserver.stopWatching();
+        }
+
+        openBottomDestination("Home");
+        waitForText("No podcasts yet. Press +");
+    }
+
+    private boolean isExplicitDebugSmokeRun() {
+        String selectedClass =
+                InstrumentationRegistry.getArguments().getString("class", "");
+        return selectedClass.contains(getClass().getName());
+    }
+
+    @SuppressWarnings("deprecation")
+    private static FileObserver resetObserver(
+            File marker,
+            CountDownLatch resetStarted,
+            CountDownLatch resetCompleted
+    ) {
+        return new FileObserver(
+                marker.getParent(),
+                FileObserver.CREATE | FileObserver.DELETE
+        ) {
+            @Override
+            public void onEvent(int event, String path) {
+                if (!APP_RESET_MARKER_FILE_NAME.equals(path)) return;
+                if ((event & FileObserver.CREATE) != 0) resetStarted.countDown();
+                if ((event & FileObserver.DELETE) != 0) resetCompleted.countDown();
+            }
+        };
+    }
+
+    private static boolean await(CountDownLatch latch) {
+        try {
+            return latch.await(TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private static boolean waitForFileToDisappear(File file) {
+        long deadline = SystemClock.elapsedRealtime() + TIMEOUT_MS;
+        while (file.exists() && SystemClock.elapsedRealtime() < deadline) {
+            SystemClock.sleep(50L);
+        }
+        return !file.exists();
     }
 
     private void verifyBackupRoundTripEntryPoints() {
@@ -163,13 +255,26 @@ public final class ReleaseNavigationSmokeAndroidTest {
         enableCheckbox("Allow local network feed");
 
         clickText("Add");
-        boolean feedRequested = server.awaitFeedRequest();
+        boolean feedRequested = server.awaitFeedRequestCount(1);
         assertTrue(
                 "Production feed request did not reach the local fixture. Visible text: "
                         + visibleTextSummary(),
                 feedRequested
         );
         waitForText("Podcast added successfully");
+    }
+
+    private void refreshExistingFeed() {
+        int requestCountBeforeRefresh = server.feedRequestCount();
+        assertTrue("The feed was not fetched before manual refresh", requestCountBeforeRefresh >= 1);
+
+        clickNodeOrClickableParent(findTextWithScrolling("Manual Full Refresh"));
+        assertTrue(
+                "Manual Full Refresh did not issue a second request to the existing feed",
+                server.awaitFeedRequestCount(requestCountBeforeRefresh + 1)
+        );
+        waitForText("1 podcast updated.");
+        assertTrue("The loopback feed was not requested twice", server.feedRequestCount() >= 2);
     }
 
     private String visibleTextSummary() {
@@ -269,18 +374,27 @@ public final class ReleaseNavigationSmokeAndroidTest {
     }
 
     private void openBottomDestination(String label) {
-        UiObject2 destination = device.wait(Until.findObject(By.text(label)), 2_000L);
-        if (destination == null) {
-            device.swipe(
-                    device.getDisplayWidth() / 2,
-                    device.getDisplayHeight() * 88 / 100,
-                    device.getDisplayWidth() / 2,
-                    device.getDisplayHeight() * 55 / 100,
-                    20
-            );
-            destination = waitForText(label);
+        for (int attempt = 0; attempt < 4; attempt++) {
+            UiObject2 destination = device.wait(Until.findObject(By.text(label)), 2_000L);
+            if (destination == null) {
+                device.swipe(
+                        device.getDisplayWidth() / 2,
+                        device.getDisplayHeight() * 88 / 100,
+                        device.getDisplayWidth() / 2,
+                        device.getDisplayHeight() * 55 / 100,
+                        20
+                );
+                destination = device.wait(Until.findObject(By.text(label)), 2_000L);
+            }
+            if (destination == null) continue;
+            try {
+                clickNodeOrClickableParent(destination);
+                return;
+            } catch (StaleObjectException ignored) {
+                SystemClock.sleep(150L);
+            }
         }
-        clickNodeOrClickableParent(destination);
+        clickNodeOrClickableParent(waitForText(label));
     }
 
     private void clickText(String text) {
@@ -323,7 +437,8 @@ public final class ReleaseNavigationSmokeAndroidTest {
     private static final class ReleaseFeedServer implements AutoCloseable {
         private final ServerSocket serverSocket;
         private final Thread acceptThread;
-        private final CountDownLatch feedRequested = new CountDownLatch(1);
+        private final Object feedRequestLock = new Object();
+        private int feedRequestCount;
         private volatile boolean closed;
 
         private ReleaseFeedServer() throws IOException {
@@ -366,7 +481,7 @@ public final class ReleaseNavigationSmokeAndroidTest {
 
                 String path = requestLine == null ? "" : requestLine.split(" ")[1];
                 if ("/feed.xml".equals(path)) {
-                    feedRequested.countDown();
+                    recordFeedRequest();
                     writeResponse(
                             connection.getOutputStream(),
                             200,
@@ -388,12 +503,33 @@ public final class ReleaseNavigationSmokeAndroidTest {
             }
         }
 
-        private boolean awaitFeedRequest() {
-            try {
-                return feedRequested.await(TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException error) {
-                Thread.currentThread().interrupt();
-                return false;
+        private void recordFeedRequest() {
+            synchronized (feedRequestLock) {
+                feedRequestCount++;
+                feedRequestLock.notifyAll();
+            }
+        }
+
+        private int feedRequestCount() {
+            synchronized (feedRequestLock) {
+                return feedRequestCount;
+            }
+        }
+
+        private boolean awaitFeedRequestCount(int expectedCount) {
+            long deadline = SystemClock.elapsedRealtime() + TIMEOUT_MS;
+            synchronized (feedRequestLock) {
+                while (feedRequestCount < expectedCount) {
+                    long remaining = deadline - SystemClock.elapsedRealtime();
+                    if (remaining <= 0L) return false;
+                    try {
+                        feedRequestLock.wait(remaining);
+                    } catch (InterruptedException error) {
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
+                }
+                return true;
             }
         }
 

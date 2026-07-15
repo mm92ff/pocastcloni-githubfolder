@@ -274,23 +274,34 @@ private class AndroidPendingMediaStoreRecovery(
         val publications = mutableListOf<PendingMediaStorePublication>()
         val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/$PUBLIC_DOWNLOAD_DIRECTORY/"
         val legacyRelativePath = relativePath.removeSuffix("/")
+        val queryStrategy = pendingMediaStoreQueryStrategy(Build.VERSION.SDK_INT)
+        val queryUri =
+            if (queryStrategy.includePendingInUri) {
+                @Suppress("DEPRECATION")
+                MediaStore.setIncludePending(downloadsCollection)
+            } else {
+                downloadsCollection
+            }
+        val selection =
+            "${MediaStore.Downloads.OWNER_PACKAGE_NAME} = ? AND " +
+                "(${MediaStore.Downloads.RELATIVE_PATH} = ? OR " +
+                "${MediaStore.Downloads.RELATIVE_PATH} = ?)" +
+                queryStrategy.pendingSelectionSuffix
+        val selectionArgs =
+            mutableListOf(ownerPackageName, relativePath, legacyRelativePath).apply {
+                queryStrategy.pendingSelectionArgument?.let(::add)
+            }.toTypedArray()
         val queryArgs =
             Bundle().apply {
-                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_ONLY)
-                putString(
-                    ContentResolver.QUERY_ARG_SQL_SELECTION,
-                    "${MediaStore.Downloads.OWNER_PACKAGE_NAME} = ? AND " +
-                        "(${MediaStore.Downloads.RELATIVE_PATH} = ? OR " +
-                        "${MediaStore.Downloads.RELATIVE_PATH} = ?)"
-                )
-                putStringArray(
-                    ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
-                    arrayOf(ownerPackageName, relativePath, legacyRelativePath)
-                )
+                queryStrategy.matchPending?.let {
+                    putInt(MediaStore.QUERY_ARG_MATCH_PENDING, it)
+                }
+                putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, selectionArgs)
             }
         val cursor =
             resolver.query(
-                downloadsCollection,
+                queryUri,
                 arrayOf(MediaStore.Downloads._ID),
                 queryArgs,
                 null
@@ -324,3 +335,27 @@ private class AndroidPendingMediaStoreRecovery(
 
     override fun delete(path: String): Boolean = resolver.delete(Uri.parse(path), null, null) == 1
 }
+
+internal data class PendingMediaStoreQueryStrategy(
+    val includePendingInUri: Boolean,
+    val matchPending: Int?,
+    val pendingSelectionSuffix: String,
+    val pendingSelectionArgument: String?
+)
+
+internal fun pendingMediaStoreQueryStrategy(sdkInt: Int): PendingMediaStoreQueryStrategy =
+    if (sdkInt >= Build.VERSION_CODES.R) {
+        PendingMediaStoreQueryStrategy(
+            includePendingInUri = false,
+            matchPending = MediaStore.MATCH_ONLY,
+            pendingSelectionSuffix = "",
+            pendingSelectionArgument = null
+        )
+    } else {
+        PendingMediaStoreQueryStrategy(
+            includePendingInUri = true,
+            matchPending = null,
+            pendingSelectionSuffix = " AND ${MediaStore.Downloads.IS_PENDING} = ?",
+            pendingSelectionArgument = "1"
+        )
+    }

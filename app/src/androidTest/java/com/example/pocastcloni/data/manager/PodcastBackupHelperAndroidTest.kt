@@ -7,6 +7,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.di.DefaultDispatcherProvider
+import com.example.pocastcloni.domain.model.AppColor
+import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.domain.model.BufferMode
+import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
+import com.example.pocastcloni.domain.model.LayoutMode
+import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -50,6 +57,51 @@ class PodcastBackupHelperAndroidTest {
     @Test
     fun exportAndImport_roundTripBackupThroughContentResolver() =
         runBlocking {
+            val expectedSettings =
+                UserSettings(
+                    theme = AppTheme.DARK,
+                    appColor = AppColor.TURQUOISE,
+                    colorStrength = 0.65f,
+                    bufferMode = BufferMode.MAXIMAL,
+                    layoutMode = LayoutMode.LIST,
+                    gridSize = 5,
+                    showGridTitles = false,
+                    confirmDelete = false,
+                    progressBarHeight = 11,
+                    navBarHeight = 92,
+                    showMiniPlayerTimeOverlay = true,
+                    transparentMiniPlayer = true,
+                    transparentBottomBar = true,
+                    oneHandedMode = true,
+                    bottomBarCleanModeEnabled = true,
+                    bottomBarAutoHideEnabled = true,
+                    bottomBarAutoHideDelaySeconds = 9,
+                    gradientBackgroundEnabled = true,
+                    gradientBackgroundStrength = 0.8f,
+                    gradientBackgroundDirection = GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT,
+                    transparentSearchCards = true,
+                    transparentPodcastCards = true,
+                    transparentEpisodeRows = true,
+                    autoDownloadLimit = 7,
+                    autoRefreshOnStart = false,
+                    backgroundCheckEnabled = false,
+                    backgroundCheckInterval = 12,
+                    markPlayedDurationSeconds = 45,
+                    feedUpdateMode = FeedUpdateMode.SMART_STREAM,
+                    indicator =
+                    IndicatorSettings(
+                        colorArgb = 0xFF123456,
+                        size = 23,
+                        borderWidth = 4,
+                        xOffset = 13,
+                        yOffset = -8
+                    ),
+                    saveToDownloadsFolder = true,
+                    autoCleanupEnabled = true,
+                    cleanupKeepLimit = 37,
+                    cleanupIntervalHours = 48
+                )
+
             helper.exportBackup(
                 podcasts =
                 listOf(
@@ -74,7 +126,7 @@ class PodcastBackupHelperAndroidTest {
                         favoriteOrder = 0
                     )
                 ),
-                settings = UserSettings(autoDownloadLimit = 4),
+                settings = expectedSettings,
                 uri = backupFile.toUri(),
                 contentResolver = context.contentResolver
             )
@@ -85,7 +137,7 @@ class PodcastBackupHelperAndroidTest {
             assertEquals("https://example.com/feed.xml", restored.podcasts.first().url)
             assertEquals(1, restored.episodeStates.size)
             assertEquals("episode-1", restored.episodeStates.first().episodeGuid)
-            assertEquals(4, restored.settings?.autoDownloadLimit)
+            assertEquals(expectedSettings, restored.settings)
         }
 
     @Test

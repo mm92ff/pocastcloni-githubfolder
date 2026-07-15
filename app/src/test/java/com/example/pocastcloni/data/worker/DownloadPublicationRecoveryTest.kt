@@ -1,10 +1,13 @@
 package com.example.pocastcloni.data.worker
 
+import android.os.Build
+import android.provider.MediaStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -15,6 +18,22 @@ import java.util.UUID
 class DownloadPublicationRecoveryTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+
+    @Test
+    fun `API 29 and API 30 use their supported pending query strategies`() {
+        val api29 = pendingMediaStoreQueryStrategy(Build.VERSION_CODES.Q)
+        val api30 = pendingMediaStoreQueryStrategy(Build.VERSION_CODES.R)
+
+        assertTrue(api29.includePendingInUri)
+        assertNull(api29.matchPending)
+        assertEquals(" AND ${MediaStore.Downloads.IS_PENDING} = ?", api29.pendingSelectionSuffix)
+        assertEquals("1", api29.pendingSelectionArgument)
+
+        assertFalse(api30.includePendingInUri)
+        assertEquals(MediaStore.MATCH_ONLY, api30.matchPending)
+        assertEquals("", api30.pendingSelectionSuffix)
+        assertNull(api30.pendingSelectionArgument)
+    }
 
     @Test
     fun `private recovery preserves readable reference and prunes invalid and orphan attempts`() = runTest {

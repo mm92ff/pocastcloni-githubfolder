@@ -5,6 +5,7 @@ import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.FeedUpdateMode
+import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -106,6 +107,27 @@ class UpdateUserSettingsUseCaseTest {
     }
 
     @Test
+    fun `remaining layout and transparency actions map to their repository setters`() = runTest(testDispatcher) {
+        useCase(ToggleConfirmDelete(false))
+        useCase(SetProgressBarHeight(13))
+        useCase(SetNavBarHeight(21))
+        useCase(ToggleTransparentMiniPlayer(true))
+        useCase(ToggleTransparentBottomBar(true))
+        useCase(ToggleOneHandedMode(true))
+        useCase(ToggleTransparentPodcastCards(true))
+        useCase(ToggleTransparentCardsAndRows(true))
+
+        coVerify { repository.updateConfirmDelete(false) }
+        coVerify { repository.updateProgressBarHeight(13) }
+        coVerify { repository.updateNavBarHeight(21) }
+        coVerify { repository.updateTransparentMiniPlayer(true) }
+        coVerify { repository.updateTransparentBottomBar(true) }
+        coVerify { repository.updateOneHandedMode(true) }
+        coVerify { repository.updateTransparentPodcastCards(true) }
+        coVerify { repository.updateTransparentCardsAndRows(true) }
+    }
+
+    @Test
     fun `ToggleMiniPlayerTimeOverlay calls updateShowMiniPlayerTimeOverlay`() = runTest(testDispatcher) {
         useCase(ToggleMiniPlayerTimeOverlay(true))
         coVerify { repository.updateShowMiniPlayerTimeOverlay(true) }
@@ -142,6 +164,12 @@ class UpdateUserSettingsUseCaseTest {
     }
 
     @Test
+    fun `gradient direction maps to its repository setter`() = runTest(testDispatcher) {
+        useCase(SetGradientBackgroundDirection(GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT))
+        coVerify { repository.updateGradientBackgroundDirection(GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT) }
+    }
+
+    @Test
     fun `ToggleTransparentSearchCards calls updateTransparentSearchCards`() = runTest(testDispatcher) {
         useCase(ToggleTransparentSearchCards(true))
         coVerify { repository.updateTransparentSearchCards(true) }
@@ -171,6 +199,30 @@ class UpdateUserSettingsUseCaseTest {
     fun `SetFeedUpdateMode does NOT trigger background worker sync`() = runTest(testDispatcher) {
         useCase(SetFeedUpdateMode(FeedUpdateMode.SMART_STREAM))
         coVerify { repository.updateFeedUpdateMode(FeedUpdateMode.SMART_STREAM) }
+    }
+
+    @Test
+    fun `remaining automation actions map to their repository setters`() = runTest(testDispatcher) {
+        useCase(ToggleAutoRefreshOnStart(true))
+        useCase(SetMarkPlayedDuration(90))
+
+        coVerify { repository.updateAutoRefreshOnStart(true) }
+        coVerify { repository.updateMarkPlayedDuration(90) }
+    }
+
+    @Test
+    fun `indicator actions map every value to its repository setter`() = runTest(testDispatcher) {
+        useCase(SetIndicatorColor(0xFF112233L))
+        useCase(SetIndicatorSize(23))
+        useCase(SetIndicatorBorderWidth(4))
+        useCase(SetIndicatorXOffset(7))
+        useCase(SetIndicatorYOffset(9))
+
+        coVerify { repository.updateIndicatorColor(0xFF112233L) }
+        coVerify { repository.updateIndicatorSize(23) }
+        coVerify { repository.updateIndicatorBorderWidth(4) }
+        coVerify { repository.updateIndicatorXOffset(7) }
+        coVerify { repository.updateIndicatorYOffset(9) }
     }
 
     // --- Cleanup ---

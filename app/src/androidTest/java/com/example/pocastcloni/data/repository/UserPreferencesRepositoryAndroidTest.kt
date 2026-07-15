@@ -11,8 +11,14 @@ import com.example.pocastcloni.domain.model.GradientDirection
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -91,6 +97,39 @@ class UserPreferencesRepositoryAndroidTest {
         repository.restoreSettings(expected)
 
         assertEquals(expected, repository.userSettingsFlow.first())
+    }
+
+    @Test
+    fun concurrentIndependentSliderUpdates_persistEveryValueWithinBound() = runBlocking {
+        withTimeout(5_000L) {
+            val startGate = CompletableDeferred<Unit>()
+            coroutineScope {
+                listOf(
+                    async(Dispatchers.Default) {
+                        startGate.await()
+                        repository.updateGridSize(5)
+                    },
+                    async(Dispatchers.Default) {
+                        startGate.await()
+                        repository.updateNavBarHeight(91)
+                    },
+                    async(Dispatchers.Default) {
+                        startGate.await()
+                        repository.updateProgressBarHeight(12)
+                    },
+                    async(Dispatchers.Default) {
+                        startGate.await()
+                        repository.updateGradientBackgroundStrength(0.75f)
+                    }
+                ).also { startGate.complete(Unit) }.awaitAll()
+            }
+
+            val persisted = repository.userSettingsFlow.first()
+            assertEquals(5, persisted.gridSize)
+            assertEquals(91, persisted.navBarHeight)
+            assertEquals(12, persisted.progressBarHeight)
+            assertEquals(0.75f, persisted.gradientBackgroundStrength)
+        }
     }
 
     @Test

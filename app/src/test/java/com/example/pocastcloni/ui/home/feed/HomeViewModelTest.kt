@@ -726,6 +726,60 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `internal state sources update only their owned home fields`() = runTest(testDispatcher) {
+        val settings = UserSettings(confirmDelete = true, gridSize = 177)
+        val refreshResult = CompletableDeferred<PodcastUpdateSummary>()
+        coEvery { refreshPodcasts(forceFull = true) } coAnswers { refreshResult.await() }
+        recreateViewModel(podcasts = emptyList(), settings = settings)
+        val stateCollector =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.uiState.collect()
+            }
+        runCurrent()
+
+        viewModel.enterEditMode(testPodcast.rssUrl)
+        runCurrent()
+        val afterEdit = viewModel.uiState.value
+        assertTrue(afterEdit.isEditMode)
+        assertEquals(setOf(testPodcast.rssUrl), afterEdit.selectedPodcastRssUrls)
+        assertEquals(177, afterEdit.gridSize)
+        assertFalse(afterEdit.isRefreshing)
+
+        viewModel.onDeleteSelectedRequest()
+        runCurrent()
+        val afterDeleteRequest = viewModel.uiState.value
+        assertTrue(afterDeleteRequest.showDeleteConfirmation)
+        assertTrue(afterDeleteRequest.isEditMode)
+        assertEquals(177, afterDeleteRequest.gridSize)
+
+        viewModel.cancelDelete()
+        viewModel.refresh()
+        runCurrent()
+        val duringRefresh = viewModel.uiState.value
+        assertFalse(duringRefresh.showDeleteConfirmation)
+        assertTrue(duringRefresh.isRefreshing)
+        assertTrue(duringRefresh.isEditMode)
+        assertEquals(177, duringRefresh.gridSize)
+        assertEquals(null, duringRefresh.screenError)
+
+        refreshResult.complete(PodcastUpdateSummary(totalCount = 1, successfulCount = 0, failureCount = 1))
+        advanceUntilIdle()
+        val afterRefreshFailure = viewModel.uiState.value
+        assertFalse(afterRefreshFailure.isRefreshing)
+        assertTrue(afterRefreshFailure.screenError != null)
+        assertTrue(afterRefreshFailure.isEditMode)
+        assertEquals(177, afterRefreshFailure.gridSize)
+
+        viewModel.clearScreenError()
+        runCurrent()
+        val afterErrorClear = viewModel.uiState.value
+        assertEquals(null, afterErrorClear.screenError)
+        assertTrue(afterErrorClear.isEditMode)
+        assertEquals(177, afterErrorClear.gridSize)
+        stateCollector.cancel()
+    }
+
+    @Test
     fun `onDeleteSelectedRequest with confirmDelete=true shows confirmation dialog`() = runTest(testDispatcher) {
         every { getUserSettings() } returns flowOf(UserSettings(confirmDelete = true))
         viewModel = HomeViewModel(
