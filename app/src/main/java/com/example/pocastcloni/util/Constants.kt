@@ -222,7 +222,7 @@ object Constants {
         const val DEFAULT_BACKGROUND_CHECK_ENABLED = true
         const val DEFAULT_BACKGROUND_CHECK_INTERVAL = 1
         const val MIN_SMART_STREAM_ITEM_LIMIT = 0
-        const val MAX_SMART_STREAM_ITEM_LIMIT = 20
+        const val MAX_SMART_STREAM_ITEM_LIMIT = 100
         const val DEFAULT_SMART_STREAM_ITEM_LIMIT = MIN_SMART_STREAM_ITEM_LIMIT
         const val DEFAULT_INDICATOR_COLOR = 0xFF4CAF50
         const val DEFAULT_INDICATOR_SIZE = 12

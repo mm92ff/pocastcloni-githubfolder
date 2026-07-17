@@ -216,14 +216,21 @@ fun SectionAutomation(
         SettingsSliderCard(
             title = stringResource(R.string.settings_smart_stream_item_limit),
             value = smartStreamItemLimit,
-            valueRange =
-            Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT.toFloat().rangeTo(
-                Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT.toFloat()
-            ),
-            steps =
-            Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT -
-                Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT - 1,
+            valueRange = SMART_STREAM_SLIDER_RANGE,
+            steps = SMART_STREAM_SLIDER_STEPS,
             onValueChangeFinished = onSetSmartStreamItemLimit,
+            valueMapping =
+            SettingsSliderValueMapping(
+                toSliderPosition = ::smartStreamItemLimitToSliderPosition,
+                toValue = ::smartStreamSliderPositionToItemLimit,
+                stateDescription = { limit ->
+                    if (limit == Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT) {
+                        stringResource(R.string.settings_smart_stream_item_limit_full)
+                    } else {
+                        stringResource(R.string.settings_smart_stream_item_limit_entries, limit)
+                    }
+                }
+            ),
             valueDisplay = { limit ->
                 Text(
                     if (limit == Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT) {

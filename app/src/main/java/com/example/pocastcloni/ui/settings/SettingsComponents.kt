@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
@@ -139,6 +141,20 @@ fun SettingsSwitchCard(
     }
 }
 
+class SettingsSliderValueMapping(
+    val toSliderPosition: (Int) -> Float,
+    val toValue: (Float) -> Int,
+    val stateDescription: (@Composable (Int) -> String)? = null
+) {
+    companion object {
+        val Identity =
+            SettingsSliderValueMapping(
+                toSliderPosition = { it.toFloat() },
+                toValue = { it.roundToInt() }
+            )
+    }
+}
+
 @Composable
 fun SettingsSliderCard(
     title: String,
@@ -146,9 +162,12 @@ fun SettingsSliderCard(
     valueRange: ClosedFloatingPointRange<Float>,
     steps: Int = 0,
     onValueChangeFinished: (Int) -> Unit,
-    valueDisplay: @Composable (Int) -> Unit
+    valueDisplay: @Composable (Int) -> Unit,
+    valueMapping: SettingsSliderValueMapping = SettingsSliderValueMapping.Identity
 ) {
-    var sliderPosition by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    var sliderPosition by remember(value) { mutableFloatStateOf(valueMapping.toSliderPosition(value)) }
+    var displayedValue by remember(value) { mutableIntStateOf(value) }
+    val displayedStateDescription = valueMapping.stateDescription?.invoke(displayedValue)
 
     SettingsCard {
         Row(
@@ -167,21 +186,30 @@ fun SettingsSliderCard(
                 modifier = Modifier.weight(Constants.Weights.FULL / 2f),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                valueDisplay(sliderPosition.roundToInt())
+                valueDisplay(displayedValue)
             }
         }
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
         Slider(
             value = sliderPosition,
-            onValueChange = { sliderPosition = it },
+            onValueChange = {
+                sliderPosition = it
+                displayedValue = valueMapping.toValue(it)
+            },
             onValueChangeFinished = {
-                val finalValue = sliderPosition.roundToInt()
-                sliderPosition = finalValue.toFloat()
+                val finalValue = valueMapping.toValue(sliderPosition)
+                sliderPosition = valueMapping.toSliderPosition(finalValue)
+                displayedValue = finalValue
                 onValueChangeFinished(finalValue)
             },
             valueRange = valueRange,
             steps = steps,
-            modifier = Modifier.fillMaxWidth()
+            modifier =
+            Modifier
+                .fillMaxWidth()
+                .semantics {
+                    displayedStateDescription?.let { this.stateDescription = it }
+                }
         )
     }
 }

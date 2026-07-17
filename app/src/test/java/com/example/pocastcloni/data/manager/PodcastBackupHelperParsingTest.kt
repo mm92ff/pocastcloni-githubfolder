@@ -605,12 +605,25 @@ class PodcastBackupHelperParsingTest {
                 """
                 {
                   "settings": {
-                    "smartStreamItemLimit": 21
+                    "smartStreamItemLimit": 101
                   }
                 }
                 """.trimIndent(),
                 objectMapper
             )
+        }
+    }
+
+    @Test
+    fun parseBackupJson_preservesNonPresetAndMaximumSmartStreamLimits() {
+        listOf(37, 100).forEach { itemLimit ->
+            val result =
+                parseBackupJson(
+                    """{"settings":{"smartStreamItemLimit":$itemLimit}}""",
+                    objectMapper
+                )
+
+            assertEquals(itemLimit, result.settings?.smartStreamItemLimit)
         }
     }
 

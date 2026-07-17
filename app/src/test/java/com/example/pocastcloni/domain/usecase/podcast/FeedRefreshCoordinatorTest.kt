@@ -209,14 +209,14 @@ class FeedRefreshCoordinatorTest {
 
     @Test
     fun `limited smart refresh passes the configured feed prefix`() = runTest(dispatcher) {
-        givenSmartSettings(smartStreamItemLimit = 10)
+        givenSmartSettings(smartStreamItemLimit = 37)
         val expected = PodcastUpdateSummary(1, 1, 0)
         coEvery {
             repository.updateAllPodcasts(
                 3,
                 FeedUpdateMode.SMART_STREAM,
                 false,
-                feedItemLimit = 10
+                feedItemLimit = 37
             )
         } returns expected
 
@@ -227,7 +227,32 @@ class FeedRefreshCoordinatorTest {
                 3,
                 FeedUpdateMode.SMART_STREAM,
                 false,
-                feedItemLimit = 10
+                feedItemLimit = 37
+            )
+        }
+    }
+
+    @Test
+    fun `maximum smart limit passes one hundred feed items`() = runTest(dispatcher) {
+        givenSmartSettings(smartStreamItemLimit = 100)
+        val expected = PodcastUpdateSummary(1, 1, 0)
+        coEvery {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 100
+            )
+        } returns expected
+
+        assertEquals(expected, coordinator().refresh(FeedRefreshSource.BACKGROUND))
+
+        coVerify(exactly = 1) {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 100
             )
         }
     }

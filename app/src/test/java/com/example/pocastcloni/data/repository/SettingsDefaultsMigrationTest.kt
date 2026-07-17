@@ -27,9 +27,19 @@ class SettingsDefaultsMigrationTest {
     }
 
     @Test
-    fun `invalid persisted smart stream limit falls back to full feed`() {
+    fun `persisted smart stream limits retain non preset and maximum values`() {
+        listOf(37, 100).forEach { itemLimit ->
+            val preferences =
+                mutablePreferencesOf(UserPreferenceKeys.SMART_STREAM_ITEM_LIMIT to itemLimit)
+
+            assertEquals(itemLimit, preferences.toUserSettings().smartStreamItemLimit)
+        }
+    }
+
+    @Test
+    fun `smart stream limit above one hundred falls back to full feed`() {
         val preferences =
-            mutablePreferencesOf(UserPreferenceKeys.SMART_STREAM_ITEM_LIMIT to 21)
+            mutablePreferencesOf(UserPreferenceKeys.SMART_STREAM_ITEM_LIMIT to 101)
 
         assertEquals(
             Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT,

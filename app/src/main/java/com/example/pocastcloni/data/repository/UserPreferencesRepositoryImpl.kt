@@ -317,5 +317,5 @@ private fun requireValidSmartStreamItemLimit(limit: Int) {
     require(
         limit >= Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT &&
             limit <= Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT
-    ) { "Smart Stream item limit must be between 0 and 20." }
+    ) { "Smart Stream item limit must be between 0 and 100." }
 }
