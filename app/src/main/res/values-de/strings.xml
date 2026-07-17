@@ -7,4 +7,6 @@
     <string name="settings_smart_stream_item_limit_full">Vollständiger Feed</string>
     <string name="settings_smart_stream_item_limit_entries">%1$d Einträge</string>
     <string name="settings_smart_stream_item_limit_warning">Der begrenzte Modus stoppt früh in der Feed-Reihenfolge. Bei unsortierten Feeds oder mehr neuen Episoden als dem Limit können Episoden fehlen.</string>
+    <string name="settings_manual_full_refresh">Alle Feeds vollständig aktualisieren</string>
+    <string name="settings_manual_full_refresh_subtitle">Ignoriert das Feed-Leselimit und lädt keine Audiodateien herunter.</string>
 </resources>

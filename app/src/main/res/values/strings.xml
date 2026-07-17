@@ -192,8 +192,8 @@
     <string name="settings_smart_stream_item_limit_warning">Limited mode stops early in feed order. Unsorted feeds or more new episodes than the limit can cause episodes to be missed.</string>
     <string name="settings_section_downloads_data">Downloads &amp; Data</string>
     <string name="settings_auto_download_limit">Auto-Download Limit</string>
-    <string name="settings_manual_full_refresh">Manual Full Refresh</string>
-    <string name="settings_manual_full_refresh_subtitle">Reload all feeds completely</string>
+    <string name="settings_manual_full_refresh">Refresh all feeds completely</string>
+    <string name="settings_manual_full_refresh_subtitle">Ignores the feed read limit and downloads no audio.</string>
     <string name="settings_section_cleanup">Auto Cleanup</string>
     <string name="settings_cleanup_enabled">Enable Auto Cleanup</string>
     <string name="settings_cleanup_enabled_subtitle">Automatically delete played episodes that exceed the keep limit</string>

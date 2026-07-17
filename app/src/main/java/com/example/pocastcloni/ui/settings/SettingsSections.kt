@@ -140,7 +140,8 @@ fun SectionAutomation(
     onToggleBackgroundCheck: (Boolean) -> Unit,
     onSetBackgroundCheckInterval: (Int) -> Unit,
     onSetFeedUpdateMode: (FeedUpdateMode) -> Unit,
-    onSetSmartStreamItemLimit: (Int) -> Unit
+    onSetSmartStreamItemLimit: (Int) -> Unit,
+    onStartManualDownload: () -> Unit
 ) {
     SettingsSectionTitle(stringResource(R.string.settings_section_automation))
 
@@ -239,6 +240,38 @@ fun SectionAutomation(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Dimens.PaddingSmall)
         )
+    }
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+    ManualFullRefreshButton(onClick = onStartManualDownload)
+}
+
+@Composable
+private fun ManualFullRefreshButton(onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(
+            horizontal = Dimens.PaddingMedium,
+            vertical = Dimens.PaddingSmall
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.Refresh,
+            contentDescription = null,
+            modifier = Modifier.size(Dimens.PaddingLarge)
+        )
+        Spacer(modifier = Modifier.width(Dimens.PaddingMedium))
+        Column(modifier = Modifier.weight(Constants.Weights.FULL)) {
+            Text(
+                text = stringResource(R.string.settings_manual_full_refresh),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.settings_manual_full_refresh_subtitle),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
     }
 }
 

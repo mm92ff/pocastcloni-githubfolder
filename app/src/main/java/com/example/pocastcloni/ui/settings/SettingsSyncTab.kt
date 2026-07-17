@@ -58,7 +58,8 @@ internal fun SyncStorageSettingsContent(
                     limit: Int ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetSmartStreamItemLimit(limit)))
             }
-        }
+        },
+        onStartManualDownload = remember(onEvent) { { onEvent(SettingsUiEvent.StartManualDownload) } }
     )
     SettingsTabDivider()
 
@@ -71,8 +72,7 @@ internal fun SyncStorageSettingsContent(
                     limit: Int ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetAutoDownloadLimit(limit)))
             }
-        },
-        onStartManualDownload = remember(onEvent) { { onEvent(SettingsUiEvent.StartManualDownload) } }
+        }
     )
 
     SectionDownloadLocation(
