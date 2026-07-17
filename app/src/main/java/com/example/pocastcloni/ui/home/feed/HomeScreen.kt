@@ -39,6 +39,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -272,6 +273,20 @@ fun HomeScreen(
     }
 }
 
+internal fun homeGridBottomPadding(
+    isPlayerVisible: Boolean,
+    progressBarHeight: Int
+): Dp =
+    if (isPlayerVisible) {
+        MiniPlayerLayoutDefaults.reservedBottomPadding(
+            isPlayerVisible = true,
+            progressBarHeight = progressBarHeight,
+            extraPadding = Dimens.PaddingLarge
+        )
+    } else {
+        Dimens.Zero
+    }
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 @Suppress("LongMethod")
@@ -311,12 +326,7 @@ private fun PodcastListContent(
         }
     }
 
-    val bottomPadding =
-        MiniPlayerLayoutDefaults.reservedBottomPadding(
-            isPlayerVisible = uiState.isPlayerVisible,
-            progressBarHeight = uiState.progressBarHeight,
-            extraPadding = Dimens.PaddingLarge
-        )
+    val bottomPadding = homeGridBottomPadding(uiState.isPlayerVisible, uiState.progressBarHeight)
 
     val contentPadding =
         PaddingValues(

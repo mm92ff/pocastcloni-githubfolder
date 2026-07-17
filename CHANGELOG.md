@@ -43,6 +43,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Updated README to describe the current app feature set and local file policy.
 
 ### Fixed
+- Home podcast tiles no longer leave an extra bottom gap above the clean-mode
+  reveal area when the mini-player is hidden; visible-player clearance is unchanged.
 - Episode identity is scoped to its podcast feed, preventing collisions when
   different feeds reuse the same GUID.
 - Feed refresh requests are coordinated and persisted atomically, with safe
