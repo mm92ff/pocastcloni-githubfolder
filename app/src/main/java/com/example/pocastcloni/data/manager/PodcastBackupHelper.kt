@@ -254,7 +254,8 @@ private fun enforceBackupStringLimit(
             Constants.SecurityLimits.MAX_URL_CHARS
         } else {
             when (fieldName) {
-                "url", "image_url", "podcast_url", "podcastUrl" -> Constants.SecurityLimits.MAX_URL_CHARS
+                "url", "image_url", "podcast_url", "podcastUrl", "link", "enclosureUrl", "enclosure_url" ->
+                    Constants.SecurityLimits.MAX_URL_CHARS
                 "title" -> Constants.SecurityLimits.MAX_TITLE_CHARS
                 "episode_guid", "episodeGuid" -> Constants.SecurityLimits.MAX_GUID_CHARS
                 "last_modified", "etag" -> Constants.SecurityLimits.MAX_HEADER_CHARS
@@ -337,6 +338,10 @@ private fun validateEpisodeStates(backupData: BackupData) {
         require(state.title.length <= Constants.SecurityLimits.MAX_TITLE_CHARS)
         require(state.description.length <= Constants.SecurityLimits.MAX_DESCRIPTION_CHARS)
         require(state.duration >= 0) { "Backup contains a negative episode duration." }
+        require(state.link.length <= Constants.SecurityLimits.MAX_URL_CHARS)
+        require(state.enclosureUrl.length <= Constants.SecurityLimits.MAX_URL_CHARS)
+        require(state.type.length <= Constants.SecurityLimits.MAX_BACKUP_MEDIA_TYPE_CHARS)
+        require(state.fileSize >= 0) { "Backup contains a negative episode file size." }
         require(state.playbackPositionMs >= 0) { "Backup contains a negative playback position." }
         require(state.favoriteAddedAt == null || state.favoriteAddedAt >= 0)
         require(state.favoriteOrder == null || state.favoriteOrder >= 0)

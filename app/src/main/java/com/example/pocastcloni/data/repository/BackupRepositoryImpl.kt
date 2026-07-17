@@ -24,7 +24,10 @@ import com.example.pocastcloni.domain.repository.BackupRepository
 import com.example.pocastcloni.domain.repository.ImportResult
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
+import com.example.pocastcloni.util.Constants
+import com.example.pocastcloni.util.isAllowedPodcastResource
 import com.example.pocastcloni.util.isAllowedRemoteResource
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import com.fasterxml.jackson.databind.ObjectMapper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -152,7 +155,7 @@ constructor(
                 restoreResult = restoreAvailableEpisodeStates(
                     podcastDao = podcastDao,
                     backupData = backupData,
-                    restoreDuration = true
+                    restoreDuration = backupData.version < Constants.Backup.BACKUP_VERSION
                 )
                 backupImportJournalDao.clearPendingImport()
             }
@@ -248,7 +251,7 @@ internal suspend fun restoreAvailableEpisodeStates(
     backupData.favorites.forEach { favorite ->
         if (favorite.backupKey() in stateKeys) return@forEach
         val episode = podcastDao.getEpisodeByFeedAndGuid(favorite.podcastUrl, favorite.episodeGuid)
-            ?: insertEpisodePlaceholderIfParentExists(podcastDao, favorite.toPlaceholder())
+            ?: insertEpisodePlaceholderIfParentExists(podcastDao, favorite.podcastUrl) { favorite.toPlaceholder() }
             ?: return@forEach
         podcastDao.setFavoriteStatus(
             episodeId = episode.episodeId,
@@ -298,7 +301,9 @@ private object PortableEpisodeStateRestorer {
     ) {
         episodeStates.forEach { state ->
             val episode = podcastDao.getEpisodeByFeedAndGuid(state.podcastUrl, state.episodeGuid)
-                ?: insertEpisodePlaceholderIfParentExists(podcastDao, state.toPlaceholder())
+                ?: insertEpisodePlaceholderIfParentExists(podcastDao, state.podcastUrl) { parent ->
+                    state.toPlaceholder(parent)
+                }
                 ?: return@forEach
             check(
                 podcastDao.updatePortableEpisodeState(
@@ -320,17 +325,37 @@ private fun BackupEpisodeState.backupKey() = EpisodeBackupKey(podcastUrl, episod
 
 private fun BackupFavorite.backupKey() = EpisodeBackupKey(podcastUrl, episodeGuid)
 
-private fun BackupEpisodeState.toPlaceholder() =
-    EpisodeEntity(
+private fun BackupEpisodeState.toPlaceholder(parent: PodcastEntity): EpisodeEntity {
+    val sanitizedEnclosure = enclosureUrl.takeIf {
+        isAllowedPodcastResource(
+            feedUrl = parent.rssUrl,
+            resourceUrl = it,
+            allowInsecureHttp = parent.allowInsecureHttp,
+            allowLocalNetwork = parent.allowLocalNetwork
+        )
+    }.orEmpty()
+    return EpisodeEntity(
         guid = episodeGuid,
         podcastRssUrl = podcastUrl,
         title = title.ifBlank { episodeGuid },
         description = description,
         pubDate = publishedAt?.let(::Date),
-        link = "",
-        enclosureUrl = "",
+        link = link.takeIf {
+            isAllowedPodcastResource(
+                feedUrl = parent.rssUrl,
+                resourceUrl = it,
+                allowInsecureHttp = parent.allowInsecureHttp,
+                allowLocalNetwork = parent.allowLocalNetwork
+            )
+        }.orEmpty(),
+        enclosureUrl = sanitizedEnclosure,
+        type = type.takeIf { sanitizedEnclosure.isNotEmpty() && it.toMediaTypeOrNull() != null }
+            ?: Constants.Backup.DEFAULT_EPISODE_MEDIA_TYPE,
+        fileSize = fileSize.takeIf { sanitizedEnclosure.isNotEmpty() && it >= 0 }
+            ?: Constants.Backup.DEFAULT_EPISODE_FILE_SIZE,
         duration = duration
     )
+}
 
 private fun BackupFavorite.toPlaceholder() =
     EpisodeEntity(
@@ -345,9 +370,11 @@ private fun BackupFavorite.toPlaceholder() =
 
 private suspend fun insertEpisodePlaceholderIfParentExists(
     podcastDao: PodcastDao,
-    placeholder: EpisodeEntity
+    podcastUrl: String,
+    createPlaceholder: (PodcastEntity) -> EpisodeEntity
 ): EpisodeEntity? {
-    if (podcastDao.getPodcastByUrl(placeholder.podcastRssUrl) == null) return null
+    val parent = podcastDao.getPodcastByUrl(podcastUrl) ?: return null
+    val placeholder = createPlaceholder(parent)
     podcastDao.insertEpisodesIgnore(listOf(placeholder))
     return podcastDao.getEpisodeByFeedAndGuid(placeholder.podcastRssUrl, placeholder.guid)
 }

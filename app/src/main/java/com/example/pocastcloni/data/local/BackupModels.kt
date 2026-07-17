@@ -229,6 +229,14 @@ data class BackupEpisodeState(
     @param:JsonAlias("duration_ms")
     @JsonProperty("duration")
     val duration: Long = 0,
+    @JsonProperty("link") val link: String = "",
+    @param:JsonAlias("enclosure_url")
+    @JsonProperty("enclosureUrl")
+    val enclosureUrl: String = "",
+    @JsonProperty("type") val type: String = Constants.Backup.DEFAULT_EPISODE_MEDIA_TYPE,
+    @param:JsonAlias("file_size")
+    @JsonProperty("fileSize")
+    val fileSize: Long = Constants.Backup.DEFAULT_EPISODE_FILE_SIZE,
     @param:JsonAlias("is_favorite")
     @JsonProperty("isFavorite")
     val isFavorite: Boolean = false,

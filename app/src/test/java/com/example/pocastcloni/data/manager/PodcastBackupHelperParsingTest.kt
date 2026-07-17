@@ -226,6 +226,7 @@ class PodcastBackupHelperParsingTest {
             )
         )
         val source = BackupData(
+            version = 2,
             podcasts = listOf(
                 BackupPodcast(
                     url = "https://feed-a.example/rss",
@@ -238,10 +239,95 @@ class PodcastBackupHelperParsingTest {
 
         val parsed = parseBackupJson(objectMapper.writeValueAsString(source), objectMapper)
 
-        assertEquals(Constants.Backup.BACKUP_VERSION, parsed.version)
+        assertEquals(2, parsed.version)
         assertEquals(true, parsed.podcasts.single().autoDownloadEnabled)
         assertEquals(expected, parsed.episodeStates)
         assertEquals(listOf(0L, 1L), parsed.episodeStates.map { it.favoriteOrder })
+        assertTrue(parsed.episodeStates.all { it.link.isEmpty() && it.enclosureUrl.isEmpty() })
+        assertTrue(
+            parsed.episodeStates.all {
+                it.type == Constants.Backup.DEFAULT_EPISODE_MEDIA_TYPE &&
+                    it.fileSize == Constants.Backup.DEFAULT_EPISODE_FILE_SIZE
+            }
+        )
+    }
+
+    @Test
+    fun versionThreeEpisodeStateRoundTripUsesPortableMediaSchemaOnly() {
+        val expected =
+            BackupEpisodeState(
+                podcastUrl = "https://feed.example/rss",
+                episodeGuid = "episode-v3",
+                title = "Episode v3",
+                link = "https://feed.example/episodes/v3",
+                enclosureUrl = "https://cdn.example/episodes/v3.mp3",
+                type = "audio/ogg",
+                fileSize = 12_345L
+            )
+        val json =
+            objectMapper.writeValueAsString(
+                BackupData(
+                    version = 3,
+                    podcasts = listOf(BackupPodcast(url = expected.podcastUrl)),
+                    episodeStates = listOf(expected)
+                )
+            )
+
+        val parsed = parseBackupJson(json, objectMapper)
+
+        assertEquals(3, parsed.version)
+        assertEquals(expected, parsed.episodeStates.single())
+        assertTrue(json.contains("\"enclosureUrl\":\"https://cdn.example/episodes/v3.mp3\""))
+        assertTrue(json.contains("\"fileSize\":12345"))
+        assertFalse(json.contains("downloadPath"))
+        assertFalse(json.contains("downloadStatus"))
+    }
+
+    @Test
+    fun validateBackupData_acceptsInvalidOptionalMediaUrlsForLaterSanitizing() {
+        validateBackupData(
+            BackupData(
+                version = 3,
+                podcasts = listOf(BackupPodcast(url = "https://feed.example/rss")),
+                episodeStates =
+                listOf(
+                    BackupEpisodeState(
+                        podcastUrl = "https://feed.example/rss",
+                        episodeGuid = "episode-v3",
+                        link = "javascript:alert(1)",
+                        enclosureUrl = "not a URL"
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun validateBackupData_rejectsNegativeOrOversizedEpisodeMediaMetadata() {
+        val valid =
+            BackupEpisodeState(
+                podcastUrl = "https://feed.example/rss",
+                episodeGuid = "episode-v3"
+            )
+        fun backupWith(state: BackupEpisodeState) =
+            BackupData(
+                version = 3,
+                podcasts = listOf(BackupPodcast(url = state.podcastUrl)),
+                episodeStates = listOf(state)
+            )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            validateBackupData(backupWith(valid.copy(fileSize = -1)))
+        }
+        listOf(
+            valid.copy(link = "x".repeat(Constants.SecurityLimits.MAX_URL_CHARS + 1)),
+            valid.copy(enclosureUrl = "x".repeat(Constants.SecurityLimits.MAX_URL_CHARS + 1)),
+            valid.copy(type = "x".repeat(Constants.SecurityLimits.MAX_BACKUP_MEDIA_TYPE_CHARS + 1))
+        ).forEach { invalid ->
+            assertThrows(IllegalArgumentException::class.java) {
+                validateBackupData(backupWith(invalid))
+            }
+        }
     }
 
     @Test

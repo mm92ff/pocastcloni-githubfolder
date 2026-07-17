@@ -5,6 +5,7 @@ import com.example.pocastcloni.data.local.BackupFavorite
 import com.example.pocastcloni.data.local.BackupPodcast
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.PodcastEntity
+import com.example.pocastcloni.util.Constants
 
 fun PodcastEntity.toBackupPodcast(): BackupPodcast =
     BackupPodcast(
@@ -42,6 +43,10 @@ fun EpisodeEntity.toBackupEpisodeState(favoriteOrder: Long?): BackupEpisodeState
         description = description,
         publishedAt = pubDate?.time,
         duration = duration,
+        link = link,
+        enclosureUrl = enclosureUrl,
+        type = type,
+        fileSize = fileSize.takeIf { it >= 0 } ?: Constants.Backup.DEFAULT_EPISODE_FILE_SIZE,
         isFavorite = isFavorite,
         favoriteAddedAt = if (isFavorite) favoriteAddedAt ?: favoriteTimestamp ?: 0L else null,
         favoriteOrder = favoriteOrder,

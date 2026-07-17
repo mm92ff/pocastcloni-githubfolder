@@ -21,6 +21,7 @@ import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.IndicatorSettings
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.domain.model.AppTheme
+import com.example.pocastcloni.util.Constants
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -45,6 +46,7 @@ import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass")
 class BackupRepositorySecurityTest {
     private val dispatcher = StandardTestDispatcher()
     private val dao = mockk<PodcastDao>(relaxed = true)
@@ -84,6 +86,7 @@ class BackupRepositorySecurityTest {
     }
 
     @Test
+    @Suppress("LongMethod")
     fun `export maps one transactional Room snapshot with feed scoped episode state`() = runTest(dispatcher) {
         val uri = mockk<Uri>()
         val settings = UserSettings(autoDownloadLimit = 7)
@@ -102,13 +105,17 @@ class BackupRepositorySecurityTest {
                     title = "Episode A",
                     description = "",
                     pubDate = null,
-                    link = "",
-                    enclosureUrl = "",
+                    link = "$feedA/episode-a",
+                    enclosureUrl = "https://cdn.example/a.mp3",
+                    type = "audio/ogg",
+                    fileSize = 42_000L,
                     isFavorite = true,
                     favoriteTimestamp = 10,
                     favoriteAddedAt = 100,
                     isPlayed = true,
-                    playbackPositionMs = 5_000
+                    playbackPositionMs = 5_000,
+                    downloadStatus = DownloadStatus.DOWNLOADED,
+                    downloadPath = "/private/local/a.ogg"
                 ),
                 EpisodeEntity(
                     guid = sharedGuid,
@@ -135,7 +142,11 @@ class BackupRepositorySecurityTest {
                 episodeStates = match { states ->
                     states.map { it.podcastUrl to it.episodeGuid } ==
                         listOf(feedA to sharedGuid, feedB to sharedGuid) &&
-                        states.first().favoriteOrder == 0L
+                        states.first().favoriteOrder == 0L &&
+                        states.first().link == "$feedA/episode-a" &&
+                        states.first().enclosureUrl == "https://cdn.example/a.mp3" &&
+                        states.first().type == "audio/ogg" &&
+                        states.first().fileSize == 42_000L
                 },
                 settings = settings,
                 uri = uri,
@@ -230,6 +241,7 @@ class BackupRepositorySecurityTest {
             episodeId = 22
         )
         coEvery { backupHelper.importBackup(any(), any()) } returns BackupData(
+            version = 2,
             podcasts = listOf(
                 BackupPodcast(feedB, sortOrder = 4, autoDownloadEnabled = false),
                 BackupPodcast(feedA, sortOrder = 4, autoDownloadEnabled = true)
@@ -315,6 +327,122 @@ class BackupRepositorySecurityTest {
         coVerify { dao.updateAutoDownloadEnabled(feedB, false) }
         coVerify(exactly = 0) { dao.updateDownloadStatus(any(), any(), any()) }
         assertTrue(episodeA.downloadPath == "/local/a.mp3" && episodeB.downloadPath == "/local/b.mp3")
+    }
+
+    @Test
+    fun `v3 restore only updates portable status on an existing episode`() = runTest(dispatcher) {
+        val feedUrl = "https://feed.example/rss"
+        val existing =
+            EpisodeEntity(
+                guid = "episode-v3",
+                podcastRssUrl = feedUrl,
+                title = "Local title",
+                description = "Local description",
+                pubDate = null,
+                link = "$feedUrl/local-link",
+                enclosureUrl = "https://cdn.example/local.mp3",
+                type = "audio/ogg",
+                fileSize = 50_000L,
+                duration = 90_000L,
+                episodeId = 41L
+            )
+        coEvery { backupHelper.importBackup(any(), any()) } returns
+            BackupData(
+                version = 3,
+                podcasts = listOf(BackupPodcast(url = feedUrl)),
+                episodeStates =
+                listOf(
+                    BackupEpisodeState(
+                        podcastUrl = feedUrl,
+                        episodeGuid = existing.guid,
+                        title = "Backup title",
+                        link = "$feedUrl/backup-link",
+                        enclosureUrl = "https://cdn.example/backup.mp3",
+                        type = "audio/mpeg",
+                        fileSize = 1L,
+                        duration = 1L,
+                        isPlayed = true
+                    )
+                )
+            )
+        coEvery { dao.getEpisodeByFeedAndGuid(feedUrl, existing.guid) } returns existing
+        coEvery {
+            dao.updatePortableEpisodeState(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns 1
+
+        repository.importFullBackup(mockk())
+
+        coVerify(exactly = 1) {
+            dao.updatePortableEpisodeState(
+                episodeId = 41L,
+                isFavorite = false,
+                favoriteAddedAt = null,
+                isPlayed = true,
+                datePlayed = null,
+                playbackPositionMs = 0L,
+                duration = 1L,
+                restoreDuration = false
+            )
+        }
+        coVerify(exactly = 0) { dao.insertEpisodesIgnore(any()) }
+        assertEquals("Local title", existing.title)
+        assertEquals("https://cdn.example/local.mp3", existing.enclosureUrl)
+        assertEquals(90_000L, existing.duration)
+    }
+
+    @Test
+    fun `v3 placeholder uses local podcast approvals and sanitizes media metadata`() = runTest(dispatcher) {
+        val feedUrl = "http://192.168.1.20:8080/feed.xml"
+        val state =
+            BackupEpisodeState(
+                podcastUrl = feedUrl,
+                episodeGuid = "episode-v3",
+                title = "Restored episode",
+                link = "http://192.168.1.20:8080/episodes/1",
+                enclosureUrl = "http://192.168.1.21:8080/audio/1.mp3",
+                type = "audio/ogg",
+                fileSize = 42_000L
+            )
+        val parent =
+            PodcastEntity(
+                rssUrl = feedUrl,
+                title = "Local podcast",
+                description = "",
+                imageUrl = "",
+                allowInsecureHttp = true,
+                allowLocalNetwork = true
+            )
+        val inserted =
+            EpisodeEntity(
+                guid = state.episodeGuid,
+                podcastRssUrl = feedUrl,
+                title = state.title,
+                description = "",
+                pubDate = null,
+                link = state.link,
+                enclosureUrl = "",
+                episodeId = 51L
+            )
+        val captured = io.mockk.slot<List<EpisodeEntity>>()
+        coEvery { dao.getEpisodeByFeedAndGuid(feedUrl, state.episodeGuid) } returnsMany
+            listOf(null, inserted)
+        coEvery { dao.getPodcastByUrl(feedUrl) } returns parent
+        coEvery { dao.insertEpisodesIgnore(capture(captured)) } returns listOf(51L)
+        coEvery {
+            dao.updatePortableEpisodeState(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns 1
+
+        restoreAvailableEpisodeStates(
+            podcastDao = dao,
+            backupData = BackupData(version = 3, episodeStates = listOf(state)),
+            restoreDuration = false
+        )
+
+        val placeholder = captured.captured.single()
+        assertEquals(state.link, placeholder.link)
+        assertEquals("", placeholder.enclosureUrl)
+        assertEquals(Constants.Backup.DEFAULT_EPISODE_MEDIA_TYPE, placeholder.type)
+        assertEquals(Constants.Backup.DEFAULT_EPISODE_FILE_SIZE, placeholder.fileSize)
     }
 
     @Test

@@ -102,7 +102,7 @@ object Constants {
     }
 
     object Backup {
-        const val BACKUP_VERSION = 2
+        const val BACKUP_VERSION = 3
         const val BACKUP_FILE_NAME = "pocast_backup.json"
         const val MIME_TYPE_JSON = "application/json"
         const val MIME_TYPE_ALL = "*/*"
@@ -112,6 +112,8 @@ object Constants {
         const val KEY_EPISODE_STATES = "episodeStates"
         const val KEY_URL = "url"
         const val KEY_SORT_ORDER = "sortOrder"
+        const val DEFAULT_EPISODE_MEDIA_TYPE = "audio/mpeg"
+        const val DEFAULT_EPISODE_FILE_SIZE = 0L
     }
 
     object Parsing {
@@ -284,6 +286,7 @@ object Constants {
         const val MIN_BACKUP_BACKGROUND_INTERVAL_HOURS = 1
         const val MAX_BACKUP_BACKGROUND_INTERVAL_HOURS = 168
         const val MAX_BACKUP_MARK_PLAYED_SECONDS = 3_600
+        const val MAX_BACKUP_MEDIA_TYPE_CHARS = 256
         const val MIN_BACKUP_INDICATOR_SIZE = 1
         const val MAX_BACKUP_INDICATOR_SIZE = 100
         const val MAX_BACKUP_INDICATOR_BORDER = 50

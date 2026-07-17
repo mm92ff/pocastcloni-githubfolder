@@ -64,9 +64,12 @@ constructor(
         feedUrls: Set<String>? = null
     ): PodcastUpdateSummary {
         val settings = preferences.userSettingsFlow.first()
+        val backupRestoreRequiresFullRefresh =
+            source == FeedRefreshSource.BACKUP_RESTORE &&
+                settings.smartStreamItemLimit == Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT
         val requiresFullRefresh =
             forceFull || source == FeedRefreshSource.MANUAL ||
-                source == FeedRefreshSource.BACKUP_RESTORE ||
+                backupRestoreRequiresFullRefresh ||
                 settings.feedUpdateMode.requiresForceFullRefresh()
         val request =
             FeedRefreshRequest(

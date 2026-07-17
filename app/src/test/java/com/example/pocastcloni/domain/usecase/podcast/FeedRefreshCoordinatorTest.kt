@@ -311,7 +311,7 @@ class FeedRefreshCoordinatorTest {
     }
 
     @Test
-    fun `backup restore always forces a full refresh`() = runTest(dispatcher) {
+    fun `backup restore with smart zero forces a full refresh`() = runTest(dispatcher) {
         givenSmartSettings()
         val expected = PodcastUpdateSummary(1, 1, 0)
         coEvery { repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, true) } returns expected
@@ -321,6 +321,66 @@ class FeedRefreshCoordinatorTest {
         assertEquals(expected, result)
         coVerify(exactly = 1) {
             repository.updateAllPodcasts(3, FeedUpdateMode.SMART_STREAM, true)
+        }
+    }
+
+    @Test
+    fun `backup restore with a smart limit uses the configured feed prefix`() = runTest(dispatcher) {
+        givenSmartSettings(smartStreamItemLimit = 10)
+        val expected = PodcastUpdateSummary(1, 1, 0)
+        coEvery {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 10
+            )
+        } returns expected
+
+        val result = coordinator().refresh(FeedRefreshSource.BACKUP_RESTORE)
+
+        assertEquals(expected, result)
+        coVerify(exactly = 1) {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 10
+            )
+        }
+    }
+
+    @Test
+    fun `backup restore in always full mode remains full`() = runTest(dispatcher) {
+        every { preferences.userSettingsFlow } returns
+            flowOf(
+                UserSettings(
+                    autoDownloadLimit = 3,
+                    feedUpdateMode = FeedUpdateMode.ALWAYS_FULL,
+                    smartStreamItemLimit = 10
+                )
+            )
+        every { dispatcherProvider.io } returns dispatcher
+        val expected = PodcastUpdateSummary(1, 1, 0)
+        coEvery {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.ALWAYS_FULL,
+                true,
+                feedItemLimit = Constants.SecurityLimits.MAX_FEED_ITEMS
+            )
+        } returns expected
+
+        val result = coordinator().refresh(FeedRefreshSource.BACKUP_RESTORE)
+
+        assertEquals(expected, result)
+        coVerify(exactly = 1) {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.ALWAYS_FULL,
+                true,
+                feedItemLimit = Constants.SecurityLimits.MAX_FEED_ITEMS
+            )
         }
     }
 

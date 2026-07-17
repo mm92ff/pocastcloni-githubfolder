@@ -90,7 +90,32 @@ class PodcastMappersTest {
         assertNotEquals(states[0].podcastUrl, states[1].podcastUrl)
         assertEquals(100L, states[0].favoriteAddedAt)
         assertEquals(9_000L, states[0].playbackPositionMs)
+        assertEquals("https://feed-a.example/rss/episode", states[0].link)
+        assertEquals("https://feed-a.example/rss/audio.mp3", states[0].enclosureUrl)
+        assertEquals("audio/mpeg", states[0].type)
+        assertEquals(0L, states[0].fileSize)
         assertTrue(states[0].isPlayed)
+    }
+
+    @Test
+    fun `portable state mapping includes media metadata but not local download state`() {
+        val state =
+            episodeEntity(
+                feedUrl = "https://feed.example/rss",
+                guid = "episode",
+                favoriteAddedAt = 100L,
+                isPlayed = false,
+                playbackPositionMs = 0L
+            ).copy(
+                type = "audio/ogg",
+                fileSize = 42_000L,
+                downloadStatus = DownloadStatus.DOWNLOADED,
+                downloadPath = "/private/local/audio.ogg"
+            ).toBackupEpisodeState(favoriteOrder = 0L)
+
+        assertEquals("audio/ogg", state.type)
+        assertEquals(42_000L, state.fileSize)
+        assertEquals("https://feed.example/rss/audio.mp3", state.enclosureUrl)
     }
 
     // ---- RssItem.toEpisodeEntity() ----
