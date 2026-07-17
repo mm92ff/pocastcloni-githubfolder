@@ -255,29 +255,25 @@ fun SectionAutomation(
 
 @Composable
 private fun ManualFullRefreshButton(onClick: () -> Unit) {
-    FilledTonalButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(
-            horizontal = Dimens.PaddingMedium,
-            vertical = Dimens.PaddingSmall
-        )
-    ) {
-        Icon(
-            imageVector = Icons.Default.Refresh,
-            contentDescription = null,
-            modifier = Modifier.size(Dimens.PaddingLarge)
-        )
-        Spacer(modifier = Modifier.width(Dimens.PaddingMedium))
-        Column(modifier = Modifier.weight(Constants.Weights.FULL)) {
-            Text(
-                text = stringResource(R.string.settings_manual_full_refresh),
-                style = MaterialTheme.typography.titleMedium
+    SettingsCard(onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.CloudDownload,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
             )
-            Text(
-                text = stringResource(R.string.settings_manual_full_refresh_subtitle),
-                style = MaterialTheme.typography.bodySmall
-            )
+            Spacer(modifier = Modifier.width(Dimens.PaddingMedium))
+            Column(modifier = Modifier.weight(Constants.Weights.FULL)) {
+                Text(
+                    text = stringResource(R.string.settings_manual_full_refresh),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stringResource(R.string.settings_manual_full_refresh_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
