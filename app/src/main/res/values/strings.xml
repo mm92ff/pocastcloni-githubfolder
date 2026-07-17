@@ -185,7 +185,11 @@
     <string name="settings_update_method">Update Method</string>
     <string name="settings_update_method_full">Full (Stable, loads everything)</string>
     <string name="settings_update_method_smart_stream">Smart Stream (Fast)</string>
-    <string name="settings_update_method_smart_stream_subtitle">Saves mobile data</string>
+    <string name="settings_update_method_smart_stream_subtitle">Can stop RSS downloads early</string>
+    <string name="settings_smart_stream_item_limit">Feed read limit</string>
+    <string name="settings_smart_stream_item_limit_full">Full feed</string>
+    <string name="settings_smart_stream_item_limit_entries">%1$d entries</string>
+    <string name="settings_smart_stream_item_limit_warning">Limited mode stops early in feed order. Unsorted feeds or more new episodes than the limit can cause episodes to be missed.</string>
     <string name="settings_section_downloads_data">Downloads &amp; Data</string>
     <string name="settings_auto_download_limit">Auto-Download Limit</string>
     <string name="settings_manual_full_refresh">Manual Full Refresh</string>

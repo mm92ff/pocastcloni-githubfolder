@@ -189,6 +189,7 @@ object Constants {
         const val KEY_BACKGROUND_CHECK_ENABLED = "background_check_enabled"
         const val KEY_BACKGROUND_CHECK_INTERVAL = "background_check_interval"
         const val KEY_MARK_PLAYED_DURATION = "mark_played_duration"
+        const val KEY_SMART_STREAM_ITEM_LIMIT = "smart_stream_item_limit"
         const val KEY_INDICATOR_COLOR = "indicator_color"
         const val KEY_INDICATOR_SIZE = "indicator_size"
         const val KEY_INDICATOR_BORDER = "indicator_border"
@@ -218,6 +219,9 @@ object Constants {
         const val DEFAULT_AUTO_REFRESH_ON_START = true
         const val DEFAULT_BACKGROUND_CHECK_ENABLED = true
         const val DEFAULT_BACKGROUND_CHECK_INTERVAL = 1
+        const val MIN_SMART_STREAM_ITEM_LIMIT = 0
+        const val MAX_SMART_STREAM_ITEM_LIMIT = 20
+        const val DEFAULT_SMART_STREAM_ITEM_LIMIT = MIN_SMART_STREAM_ITEM_LIMIT
         const val DEFAULT_INDICATOR_COLOR = 0xFF4CAF50
         const val DEFAULT_INDICATOR_SIZE = 12
         const val DEFAULT_INDICATOR_BORDER = 1

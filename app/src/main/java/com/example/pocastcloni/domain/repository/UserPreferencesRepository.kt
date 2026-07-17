@@ -77,6 +77,8 @@ interface UserPreferencesRepository {
 
     suspend fun updateFeedUpdateMode(mode: FeedUpdateMode)
 
+    suspend fun updateSmartStreamItemLimit(limit: Int)
+
     suspend fun updateIndicatorColor(colorArgb: Long)
 
     suspend fun updateIndicatorSize(sizeDp: Int)

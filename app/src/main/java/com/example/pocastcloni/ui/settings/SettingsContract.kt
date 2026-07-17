@@ -107,6 +107,7 @@ sealed interface SettingsUiState {
         val backgroundCheckInterval: Int = 12,
         val markPlayedDurationSeconds: Int = 30,
         val feedUpdateMode: FeedUpdateMode = FeedUpdateMode.ALWAYS_FULL,
+        val smartStreamItemLimit: Int = Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT,
         val indicator: IndicatorSettingsUiState = IndicatorSettingsUiState(),
         val saveToDownloadsFolder: Boolean = Constants.Preferences.DEFAULT_SAVE_TO_DOWNLOADS_FOLDER,
         val autoCleanupEnabled: Boolean = Constants.Preferences.DEFAULT_AUTO_CLEANUP_ENABLED,

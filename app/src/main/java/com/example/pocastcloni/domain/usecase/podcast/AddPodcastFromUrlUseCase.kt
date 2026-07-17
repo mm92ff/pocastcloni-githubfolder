@@ -48,7 +48,8 @@ constructor(
                 sortOrder = existing?.sortOrder,
                 forceFull = false,
                 allowInsecureHttp = existing?.allowInsecureHttp == true || allowInsecureHttp,
-                allowLocalNetwork = existing?.allowLocalNetwork == true || allowLocalNetwork
+                allowLocalNetwork = existing?.allowLocalNetwork == true || allowLocalNetwork,
+                feedItemLimit = settings.feedItemLimitFor(forceFull = false)
             )
         }
     }

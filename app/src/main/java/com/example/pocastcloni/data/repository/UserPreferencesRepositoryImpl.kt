@@ -196,6 +196,11 @@ class UserPreferencesRepositoryImpl private constructor(
         editPreferences { it[Keys.FEED_UPDATE_MODE] = mode.name }
     }
 
+    override suspend fun updateSmartStreamItemLimit(limit: Int) {
+        requireValidSmartStreamItemLimit(limit)
+        editPreferences { it[Keys.SMART_STREAM_ITEM_LIMIT] = limit }
+    }
+
     override suspend fun updateIndicatorColor(colorArgb: Long) {
         editPreferences { it[Keys.INDICATOR_COLOR] = colorArgb }
     }
@@ -237,6 +242,7 @@ class UserPreferencesRepositoryImpl private constructor(
     }
 
     override suspend fun restoreSettingsOrThrow(settings: UserSettings) {
+        requireValidSmartStreamItemLimit(settings.smartStreamItemLimit)
         editPreferences { prefs ->
             prefs[Keys.THEME] = settings.theme.name
             prefs[Keys.APP_COLOR] = settings.appColor.name
@@ -271,6 +277,7 @@ class UserPreferencesRepositoryImpl private constructor(
 
             prefs[Keys.MARK_PLAYED_DURATION] = settings.markPlayedDurationSeconds
             prefs[Keys.FEED_UPDATE_MODE] = settings.feedUpdateMode.name
+            prefs[Keys.SMART_STREAM_ITEM_LIMIT] = settings.smartStreamItemLimit
 
             prefs[Keys.INDICATOR_COLOR] = settings.indicator.colorArgb
             prefs[Keys.INDICATOR_SIZE] = settings.indicator.size
@@ -304,4 +311,11 @@ class UserPreferencesRepositoryImpl private constructor(
         ): UserPreferencesRepositoryImpl =
             UserPreferencesRepositoryImpl(dataStore, installationStateProvider)
     }
+}
+
+private fun requireValidSmartStreamItemLimit(limit: Int) {
+    require(
+        limit >= Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT &&
+            limit <= Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT
+    ) { "Smart Stream item limit must be between 0 and 20." }
 }

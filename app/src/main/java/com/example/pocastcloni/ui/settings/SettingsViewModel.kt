@@ -215,6 +215,7 @@ constructor(
             is UpdateUserSettingAction.SetAutoDownloadLimit,
             is UpdateUserSettingAction.SetBackgroundCheckInterval,
             is UpdateUserSettingAction.SetMarkPlayedDuration,
+            is UpdateUserSettingAction.SetSmartStreamItemLimit,
             is UpdateUserSettingAction.SetIndicatorColor,
             is UpdateUserSettingAction.SetIndicatorSize,
             is UpdateUserSettingAction.SetIndicatorBorderWidth,
@@ -282,6 +283,7 @@ private fun UserSettings.toUiState(): SettingsUiState.Success {
         backgroundCheckInterval = backgroundCheckInterval,
         markPlayedDurationSeconds = markPlayedDurationSeconds,
         feedUpdateMode = feedUpdateMode,
+        smartStreamItemLimit = smartStreamItemLimit,
         indicator =
         IndicatorSettingsUiState(
             colorArgb = this.indicator.colorArgb,

@@ -20,6 +20,21 @@ class SettingsDefaultsMigrationTest {
         assertEquals(SettingsDefaultsMigration.CURRENT_VERSION, preferences[SettingsDefaultsMigration.VERSION_KEY])
         assertEquals(FeedUpdateMode.SMART_STREAM, preferences.toUserSettings().feedUpdateMode)
         assertEquals(6, preferences.toUserSettings().backgroundCheckInterval)
+        assertEquals(
+            Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT,
+            preferences.toUserSettings().smartStreamItemLimit
+        )
+    }
+
+    @Test
+    fun `invalid persisted smart stream limit falls back to full feed`() {
+        val preferences =
+            mutablePreferencesOf(UserPreferenceKeys.SMART_STREAM_ITEM_LIMIT to 21)
+
+        assertEquals(
+            Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT,
+            preferences.toUserSettings().smartStreamItemLimit
+        )
     }
 
     @Test

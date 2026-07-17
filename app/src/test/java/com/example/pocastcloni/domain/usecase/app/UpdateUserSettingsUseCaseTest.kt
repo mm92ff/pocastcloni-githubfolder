@@ -202,6 +202,12 @@ class UpdateUserSettingsUseCaseTest {
     }
 
     @Test
+    fun `SetSmartStreamItemLimit persists the selected prefix`() = runTest(testDispatcher) {
+        useCase(SetSmartStreamItemLimit(10))
+        coVerify { repository.updateSmartStreamItemLimit(10) }
+    }
+
+    @Test
     fun `remaining automation actions map to their repository setters`() = runTest(testDispatcher) {
         useCase(ToggleAutoRefreshOnStart(true))
         useCase(SetMarkPlayedDuration(90))

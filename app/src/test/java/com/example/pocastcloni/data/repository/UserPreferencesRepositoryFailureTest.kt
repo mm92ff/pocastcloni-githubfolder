@@ -112,6 +112,23 @@ class UserPreferencesRepositoryFailureTest {
         assertEquals(8, dataStore.current[UserPreferenceKeys.INDICATOR_Y_OFFSET])
     }
 
+    @Test
+    fun `smart stream item limit persists and rejects values outside zero to twenty`() = runTest {
+        val dataStore = TestDataStore()
+        val repository = repository(dataStore)
+
+        repository.updateSmartStreamItemLimit(10)
+
+        assertEquals(10, dataStore.current[UserPreferenceKeys.SMART_STREAM_ITEM_LIMIT])
+        try {
+            repository.updateSmartStreamItemLimit(21)
+            fail("Expected IllegalArgumentException")
+        } catch (_: IllegalArgumentException) {
+            // Expected.
+        }
+        assertEquals(10, dataStore.current[UserPreferenceKeys.SMART_STREAM_ITEM_LIMIT])
+    }
+
     private fun repository(dataStore: DataStore<Preferences>): UserPreferencesRepositoryImpl =
         UserPreferencesRepositoryImpl.createForTest(
             dataStore = dataStore,

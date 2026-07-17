@@ -88,6 +88,12 @@ internal fun Preferences.toUserSettings(): UserSettings {
         backgroundCheckInterval = this[Keys.BACKGROUND_CHECK_INTERVAL] ?: defaultSettings.backgroundCheckInterval,
         markPlayedDurationSeconds = this[Keys.MARK_PLAYED_DURATION] ?: defaultSettings.markPlayedDurationSeconds,
         feedUpdateMode = feedMode,
+        smartStreamItemLimit =
+        this[Keys.SMART_STREAM_ITEM_LIMIT]
+            ?.takeIf {
+                it >= Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT &&
+                    it <= Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT
+            } ?: defaultSettings.smartStreamItemLimit,
         indicator =
         IndicatorSettings(
             colorArgb = this[Keys.INDICATOR_COLOR] ?: defaultSettings.indicator.colorArgb,

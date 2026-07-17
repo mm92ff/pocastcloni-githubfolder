@@ -452,6 +452,7 @@ class PodcastBackupHelperParsingTest {
                 backgroundCheckInterval = 12,
                 markPlayedDurationSeconds = 45,
                 feedUpdateMode = FeedUpdateMode.SMART_STREAM,
+                smartStreamItemLimit = 12,
                 indicator =
                 IndicatorSettings(
                     colorArgb = 0xFF112233,
@@ -490,6 +491,41 @@ class PodcastBackupHelperParsingTest {
             )
 
         assertFalse(result.settings?.showMiniPlayerTimeOverlay ?: true)
+    }
+
+    @Test
+    fun parseBackupJson_missingSmartStreamLimitDoesNotClobberCurrentValue() {
+        val result =
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "feedUpdateMode": "SMART_STREAM"
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        val restored = result.settingsForRestore(UserSettings(smartStreamItemLimit = 17))
+
+        assertEquals(17, restored?.smartStreamItemLimit)
+    }
+
+    @Test
+    fun parseBackupJson_rejectsSmartStreamLimitOutsideSupportedRange() {
+        assertThrows(IllegalArgumentException::class.java) {
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "smartStreamItemLimit": 21
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+        }
     }
 
     @Test

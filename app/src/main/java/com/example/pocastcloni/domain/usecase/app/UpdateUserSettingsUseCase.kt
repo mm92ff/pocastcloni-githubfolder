@@ -46,6 +46,7 @@ constructor(
                 is ToggleAutoRefreshOnStart -> repository.updateAutoRefreshOnStart(action.enabled)
                 is SetMarkPlayedDuration -> repository.updateMarkPlayedDuration(action.seconds)
                 is SetFeedUpdateMode -> repository.updateFeedUpdateMode(action.mode)
+                is SetSmartStreamItemLimit -> repository.updateSmartStreamItemLimit(action.limit)
 
                 is SetIndicatorColor -> repository.updateIndicatorColor(action.colorArgb)
                 is SetIndicatorSize -> repository.updateIndicatorSize(action.sizeDp)

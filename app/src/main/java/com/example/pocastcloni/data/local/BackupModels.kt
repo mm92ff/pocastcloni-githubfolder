@@ -157,6 +157,11 @@ private fun UserSettings.mergeSyncAndDataSettings(
         current.markPlayedDurationSeconds
     ),
     feedUpdateMode = fields.importedValue("feedUpdateMode", feedUpdateMode, current.feedUpdateMode),
+    smartStreamItemLimit = fields.importedValue(
+        "smartStreamItemLimit",
+        smartStreamItemLimit,
+        current.smartStreamItemLimit
+    ),
     saveToDownloadsFolder = fields.importedValue(
         "saveToDownloadsFolder",
         saveToDownloadsFolder,

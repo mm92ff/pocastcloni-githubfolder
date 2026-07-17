@@ -23,6 +23,7 @@ internal fun SyncStorageSettingsContent(
         backgroundCheckEnabled = settings.backgroundCheckEnabled,
         backgroundCheckInterval = settings.backgroundCheckInterval,
         feedUpdateMode = settings.feedUpdateMode,
+        smartStreamItemLimit = settings.smartStreamItemLimit,
         onToggleAutoRefreshOnStart =
         remember(onEvent) {
             {
@@ -49,6 +50,13 @@ internal fun SyncStorageSettingsContent(
             {
                     mode: FeedUpdateMode ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetFeedUpdateMode(mode)))
+            }
+        },
+        onSetSmartStreamItemLimit =
+        remember(onEvent) {
+            {
+                    limit: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetSmartStreamItemLimit(limit)))
             }
         }
     )

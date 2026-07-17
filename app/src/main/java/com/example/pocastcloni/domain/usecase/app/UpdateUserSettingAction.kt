@@ -68,6 +68,8 @@ sealed interface UpdateUserSettingAction {
 
     data class SetFeedUpdateMode(val mode: FeedUpdateMode) : UpdateUserSettingAction
 
+    data class SetSmartStreamItemLimit(val limit: Int) : UpdateUserSettingAction
+
     data class SetIndicatorColor(val colorArgb: Long) : UpdateUserSettingAction
 
     data class SetIndicatorSize(val sizeDp: Int) : UpdateUserSettingAction

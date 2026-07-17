@@ -6,6 +6,7 @@ import com.example.pocastcloni.domain.model.PodcastUpdateSummary
 import com.example.pocastcloni.domain.repository.FeedUpdateRunner
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
+import com.example.pocastcloni.util.Constants
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -16,6 +17,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
@@ -176,9 +178,16 @@ class FeedRefreshCoordinatorTest {
 
     @Test
     fun `settings manual refresh preserves no-download policy`() = runTest(dispatcher) {
-        givenSmartSettings()
+        givenSmartSettings(smartStreamItemLimit = 10)
         val expected = PodcastUpdateSummary(1, 1, 0)
-        coEvery { repository.updateAllPodcasts(0, FeedUpdateMode.SMART_STREAM, true) } returns expected
+        coEvery {
+            repository.updateAllPodcasts(
+                0,
+                FeedUpdateMode.SMART_STREAM,
+                true,
+                feedItemLimit = Constants.SecurityLimits.MAX_FEED_ITEMS
+            )
+        } returns expected
 
         val result =
             coordinator().refresh(
@@ -188,7 +197,95 @@ class FeedRefreshCoordinatorTest {
             )
 
         assertEquals(expected, result)
-        coVerify(exactly = 1) { repository.updateAllPodcasts(0, FeedUpdateMode.SMART_STREAM, true) }
+        coVerify(exactly = 1) {
+            repository.updateAllPodcasts(
+                0,
+                FeedUpdateMode.SMART_STREAM,
+                true,
+                feedItemLimit = Constants.SecurityLimits.MAX_FEED_ITEMS
+            )
+        }
+    }
+
+    @Test
+    fun `limited smart refresh passes the configured feed prefix`() = runTest(dispatcher) {
+        givenSmartSettings(smartStreamItemLimit = 10)
+        val expected = PodcastUpdateSummary(1, 1, 0)
+        coEvery {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 10
+            )
+        } returns expected
+
+        assertEquals(expected, coordinator().refresh(FeedRefreshSource.BACKGROUND))
+
+        coVerify(exactly = 1) {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 10
+            )
+        }
+    }
+
+    @Test
+    fun `smart refreshes with different feed limits use separate flights`() = runTest(dispatcher) {
+        val settings = MutableStateFlow(
+            UserSettings(
+                autoDownloadLimit = 3,
+                feedUpdateMode = FeedUpdateMode.SMART_STREAM,
+                smartStreamItemLimit = 10
+            )
+        )
+        every { preferences.userSettingsFlow } returns settings
+        every { dispatcherProvider.io } returns dispatcher
+        val firstGate = CompletableDeferred<Unit>()
+        val firstSummary = PodcastUpdateSummary(1, 1, 0)
+        val secondSummary = PodcastUpdateSummary(2, 2, 0)
+        coEvery {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 10
+            )
+        } coAnswers {
+            firstGate.await()
+            firstSummary
+        }
+        coEvery {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 5
+            )
+        } returns secondSummary
+        val coordinator = coordinator()
+
+        val first = async { coordinator.refresh(FeedRefreshSource.STARTUP) }
+        runCurrent()
+        settings.value = settings.value.copy(smartStreamItemLimit = 5)
+        val second = async { coordinator.refresh(FeedRefreshSource.BACKGROUND) }
+        runCurrent()
+
+        coVerify(exactly = 0) {
+            repository.updateAllPodcasts(
+                3,
+                FeedUpdateMode.SMART_STREAM,
+                false,
+                feedItemLimit = 5
+            )
+        }
+        firstGate.complete(Unit)
+        runCurrent()
+
+        assertEquals(firstSummary, first.await())
+        assertEquals(secondSummary, second.await())
     }
 
     @Test
@@ -248,9 +345,17 @@ class FeedRefreshCoordinatorTest {
         }
     }
 
-    private fun givenSmartSettings() {
+    private fun givenSmartSettings(
+        smartStreamItemLimit: Int = Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT
+    ) {
         every { preferences.userSettingsFlow } returns
-            flowOf(UserSettings(autoDownloadLimit = 3, feedUpdateMode = FeedUpdateMode.SMART_STREAM))
+            flowOf(
+                UserSettings(
+                    autoDownloadLimit = 3,
+                    feedUpdateMode = FeedUpdateMode.SMART_STREAM,
+                    smartStreamItemLimit = smartStreamItemLimit
+                )
+            )
         every { dispatcherProvider.io } returns dispatcher
     }
 

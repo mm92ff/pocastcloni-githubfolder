@@ -7,6 +7,7 @@ import com.example.pocastcloni.domain.repository.FeedSyncStore
 import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
+import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.MainDispatcherRule
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -53,8 +54,13 @@ class AddPodcastFromUrlUseCaseTest {
     }
 
     @Test
-    fun `passes autoDownloadLimit and feedUpdateMode from settings to repository`() = runTest(testDispatcher) {
-        val settings = UserSettings(autoDownloadLimit = 5, feedUpdateMode = FeedUpdateMode.SMART_STREAM)
+    fun `passes smart stream settings to feed sync`() = runTest(testDispatcher) {
+        val settings =
+            UserSettings(
+                autoDownloadLimit = 5,
+                feedUpdateMode = FeedUpdateMode.SMART_STREAM,
+                smartStreamItemLimit = 10
+            )
         io.mockk.every { userPreferencesRepository.userSettingsFlow } returns flowOf(settings)
 
         useCase(testUrl)
@@ -64,7 +70,8 @@ class AddPodcastFromUrlUseCaseTest {
                 url = testUrl,
                 downloadLimit = 5,
                 mode = FeedUpdateMode.SMART_STREAM,
-                forceFull = false
+                forceFull = false,
+                feedItemLimit = 10
             )
         }
     }
@@ -91,7 +98,8 @@ class AddPodcastFromUrlUseCaseTest {
                 url = testUrl,
                 downloadLimit = 3,
                 mode = FeedUpdateMode.ALWAYS_FULL,
-                forceFull = false
+                forceFull = false,
+                feedItemLimit = Constants.SecurityLimits.MAX_FEED_ITEMS
             )
         }
     }

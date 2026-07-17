@@ -20,7 +20,8 @@ constructor(
             url = podcastUrl,
             downloadLimit = settings.autoDownloadLimit,
             mode = settings.feedUpdateMode,
-            forceFull = forceFull
+            forceFull = forceFull,
+            feedItemLimit = settings.feedItemLimitFor(forceFull)
         )
     }
 }

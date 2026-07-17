@@ -51,8 +51,12 @@ constructor(
         sortOrder: Long?,
         forceFull: Boolean,
         allowInsecureHttp: Boolean,
-        allowLocalNetwork: Boolean
+        allowLocalNetwork: Boolean,
+        feedItemLimit: Int
     ) {
+        require(feedItemLimit in 1..Constants.SecurityLimits.MAX_FEED_ITEMS) {
+            "Feed item limit is outside the supported range."
+        }
         val request =
             FeedSyncRequest(
                 url = url,
@@ -61,7 +65,8 @@ constructor(
                 sortOrder = sortOrder,
                 forceFull = forceFull,
                 allowInsecureHttp = allowInsecureHttp,
-                allowLocalNetwork = allowLocalNetwork
+                allowLocalNetwork = allowLocalNetwork,
+                feedItemLimit = feedItemLimit
             )
         withContext(dispatcherProvider.io) {
             runCatching { performSync(request) }
@@ -73,6 +78,7 @@ constructor(
         }
     }
 
+    @Suppress("LongParameterList")
     suspend operator fun invoke(
         url: String,
         downloadLimit: Int,
@@ -80,7 +86,8 @@ constructor(
         sortOrder: Long? = null,
         forceFull: Boolean = false,
         allowInsecureHttp: Boolean = false,
-        allowLocalNetwork: Boolean = false
+        allowLocalNetwork: Boolean = false,
+        feedItemLimit: Int = Constants.SecurityLimits.MAX_FEED_ITEMS
     ) = sync(
         url = url,
         downloadLimit = downloadLimit,
@@ -88,7 +95,8 @@ constructor(
         sortOrder = sortOrder,
         forceFull = forceFull,
         allowInsecureHttp = allowInsecureHttp,
-        allowLocalNetwork = allowLocalNetwork
+        allowLocalNetwork = allowLocalNetwork,
+        feedItemLimit = feedItemLimit
     )
 
     private suspend fun performSync(request: FeedSyncRequest) {
@@ -142,7 +150,7 @@ constructor(
                 streamParser.parse(
                     stream,
                     context.request.url,
-                    Constants.SecurityLimits.MAX_FEED_ITEMS,
+                    context.request.feedItemLimit,
                     isFullSync = false,
                     latestKnownGuid = latestKnownGuid
                 )
@@ -360,7 +368,8 @@ private data class FeedSyncRequest(
     val sortOrder: Long?,
     val forceFull: Boolean,
     val allowInsecureHttp: Boolean,
-    val allowLocalNetwork: Boolean
+    val allowLocalNetwork: Boolean,
+    val feedItemLimit: Int
 )
 
 private data class FeedAccessPolicy(

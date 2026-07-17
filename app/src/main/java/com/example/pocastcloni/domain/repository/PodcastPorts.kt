@@ -8,6 +8,7 @@ import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.PodcastUpdateSummary
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.model.PodcastSearchResult
+import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.flow.Flow
 import java.util.Date
 
@@ -181,6 +182,7 @@ interface LibraryMaintenancePort {
 }
 
 interface FeedSyncRunner {
+    @Suppress("LongParameterList")
     suspend fun sync(
         url: String,
         downloadLimit: Int,
@@ -188,7 +190,8 @@ interface FeedSyncRunner {
         sortOrder: Long? = null,
         forceFull: Boolean = false,
         allowInsecureHttp: Boolean = false,
-        allowLocalNetwork: Boolean = false
+        allowLocalNetwork: Boolean = false,
+        feedItemLimit: Int = Constants.SecurityLimits.MAX_FEED_ITEMS
     )
 }
 
@@ -197,6 +200,7 @@ interface FeedUpdateRunner {
         downloadLimit: Int,
         mode: FeedUpdateMode,
         forceFull: Boolean,
-        feedUrls: Set<String>? = null
+        feedUrls: Set<String>? = null,
+        feedItemLimit: Int = Constants.SecurityLimits.MAX_FEED_ITEMS
     ): PodcastUpdateSummary
 }

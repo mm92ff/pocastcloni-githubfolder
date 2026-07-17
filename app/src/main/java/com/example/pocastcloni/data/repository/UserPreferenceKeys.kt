@@ -43,6 +43,7 @@ internal object UserPreferenceKeys {
     val MARK_PLAYED_DURATION = intPreferencesKey(Constants.Preferences.KEY_MARK_PLAYED_DURATION)
 
     val FEED_UPDATE_MODE = stringPreferencesKey(Constants.KEY_FEED_UPDATE_MODE)
+    val SMART_STREAM_ITEM_LIMIT = intPreferencesKey(Constants.Preferences.KEY_SMART_STREAM_ITEM_LIMIT)
 
     val INDICATOR_COLOR = longPreferencesKey(Constants.Preferences.KEY_INDICATOR_COLOR)
     val INDICATOR_SIZE = intPreferencesKey(Constants.Preferences.KEY_INDICATOR_SIZE)

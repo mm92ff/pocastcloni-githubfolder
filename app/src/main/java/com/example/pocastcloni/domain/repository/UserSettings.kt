@@ -54,6 +54,7 @@ data class UserSettings(
     val backgroundCheckInterval: Int = Constants.Preferences.DEFAULT_BACKGROUND_CHECK_INTERVAL,
     val markPlayedDurationSeconds: Int = 0,
     val feedUpdateMode: FeedUpdateMode = FeedUpdateMode.ALWAYS_FULL,
+    val smartStreamItemLimit: Int = Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT,
     val indicator: IndicatorSettings = IndicatorSettings(),
     val saveToDownloadsFolder: Boolean = Constants.Preferences.DEFAULT_SAVE_TO_DOWNLOADS_FOLDER,
     val autoCleanupEnabled: Boolean = Constants.Preferences.DEFAULT_AUTO_CLEANUP_ENABLED,

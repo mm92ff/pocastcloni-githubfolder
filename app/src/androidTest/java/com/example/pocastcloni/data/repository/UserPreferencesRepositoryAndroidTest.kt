@@ -80,6 +80,7 @@ class UserPreferencesRepositoryAndroidTest {
                 backgroundCheckInterval = 12,
                 markPlayedDurationSeconds = 45,
                 feedUpdateMode = FeedUpdateMode.SMART_STREAM,
+                smartStreamItemLimit = 12,
                 indicator =
                 IndicatorSettings(
                     colorArgb = 0xFF123456,

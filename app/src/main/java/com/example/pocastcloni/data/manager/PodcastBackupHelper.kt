@@ -389,6 +389,10 @@ internal fun validateBackupSettings(settings: UserSettings) {
         settings.markPlayedDurationSeconds in
             0..limits.MAX_BACKUP_MARK_PLAYED_SECONDS
     )
+    require(
+        settings.smartStreamItemLimit >= Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT &&
+            settings.smartStreamItemLimit <= Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT
+    ) { "Backup Smart Stream item limit is outside the supported range." }
     require(settings.indicator.colorArgb in 0L..0xFFFF_FFFFL)
     require(
         settings.indicator.size in

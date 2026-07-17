@@ -469,6 +469,51 @@ class SyncFeedUseCaseHasNewEpisodesTest {
         }
 
     @Test
+    fun `smart sync stops after the configured feed prefix`() = runTest(testDispatcher) {
+        val feedGuids = listOf("candidate-1", "candidate-2", "candidate-3")
+        coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns
+            mockSuccessResponse(feedGuids)
+        coEvery { repository.getPodcastForSync(feedUrl) } returns existingPodcast()
+        coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns "known-outside-prefix"
+
+        useCase(
+            feedUrl,
+            downloadLimit = 3,
+            mode = FeedUpdateMode.SMART_STREAM,
+            feedItemLimit = 2
+        )
+
+        val persistedEpisodes = slot<List<Episode>>()
+        coVerify {
+            feedSyncPersistence.persistFeedUpdate(any(), null, capture(persistedEpisodes))
+        }
+        assertEquals(feedGuids.take(2), persistedEpisodes.captured.map { it.guid })
+    }
+
+    @Test
+    fun `forced smart sync ignores the configured prefix`() = runTest(testDispatcher) {
+        val feedGuids = listOf("candidate-1", "candidate-2", "candidate-3")
+        coEvery { podcastService.fetchRawFeed(feedUrl, any(), any()) } returns
+            mockSuccessResponse(feedGuids)
+        coEvery { repository.getPodcastForSync(feedUrl) } returns existingPodcast()
+        coEvery { repository.getLatestEpisodeGuid(feedUrl) } returns "known-outside-prefix"
+
+        useCase(
+            feedUrl,
+            downloadLimit = 3,
+            mode = FeedUpdateMode.SMART_STREAM,
+            forceFull = true,
+            feedItemLimit = 1
+        )
+
+        val persistedEpisodes = slot<List<Episode>>()
+        coVerify {
+            feedSyncPersistence.persistFeedUpdate(any(), null, capture(persistedEpisodes))
+        }
+        assertEquals(feedGuids, persistedEpisodes.captured.map { it.guid })
+    }
+
+    @Test
     fun `rolled back headers are reused by the next request`() = runTest(testDispatcher) {
         val existing = existingPodcast().copy(
             lastModifiedHeader = "old-last-modified",

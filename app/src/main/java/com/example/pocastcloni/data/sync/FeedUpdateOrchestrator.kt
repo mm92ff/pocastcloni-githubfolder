@@ -32,9 +32,10 @@ constructor(
         downloadLimit: Int,
         mode: FeedUpdateMode,
         forceFull: Boolean,
-        feedUrls: Set<String>?
+        feedUrls: Set<String>?,
+        feedItemLimit: Int
     ): PodcastUpdateSummary = withContext(dispatcherProvider.io) {
-        val request = FeedUpdateRequest(downloadLimit, mode, forceFull)
+        val request = FeedUpdateRequest(downloadLimit, mode, forceFull, feedItemLimit)
         val subscribedUrls = podcastQuery.getSubscribedUrls()
         val urls = feedUrls?.let { selected -> subscribedUrls.filter(selected::contains) } ?: subscribedUrls
         val outcomes =
@@ -64,7 +65,8 @@ constructor(
                     url = url,
                     downloadLimit = request.downloadLimit,
                     mode = request.mode,
-                    forceFull = request.forceFull
+                    forceFull = request.forceFull,
+                    feedItemLimit = request.feedItemLimit
                 )
             }.exceptionOrNull() ?: return@withPermit null
 
@@ -86,5 +88,6 @@ constructor(
 private data class FeedUpdateRequest(
     val downloadLimit: Int,
     val mode: FeedUpdateMode,
-    val forceFull: Boolean
+    val forceFull: Boolean,
+    val feedItemLimit: Int
 )

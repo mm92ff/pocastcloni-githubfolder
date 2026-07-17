@@ -6,6 +6,8 @@ import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.domain.model.PodcastUpdateSummary
 import com.example.pocastcloni.domain.repository.FeedUpdateRunner
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
+import com.example.pocastcloni.domain.repository.UserSettings
+import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -30,7 +32,8 @@ private data class FeedRefreshRequest(
     val downloadLimit: Int,
     val mode: FeedUpdateMode,
     val forceFull: Boolean,
-    val feedUrls: Set<String>?
+    val feedUrls: Set<String>?,
+    val feedItemLimit: Int
 )
 
 private class RefreshFlight(
@@ -61,14 +64,17 @@ constructor(
         feedUrls: Set<String>? = null
     ): PodcastUpdateSummary {
         val settings = preferences.userSettingsFlow.first()
+        val requiresFullRefresh =
+            forceFull || source == FeedRefreshSource.MANUAL ||
+                source == FeedRefreshSource.BACKUP_RESTORE ||
+                settings.feedUpdateMode.requiresForceFullRefresh()
         val request =
             FeedRefreshRequest(
                 downloadLimit = downloadLimitOverride ?: settings.autoDownloadLimit,
                 mode = settings.feedUpdateMode,
-                forceFull = forceFull || source == FeedRefreshSource.MANUAL ||
-                    source == FeedRefreshSource.BACKUP_RESTORE ||
-                    settings.feedUpdateMode.requiresForceFullRefresh(),
-                feedUrls = feedUrls?.toSet()
+                forceFull = requiresFullRefresh,
+                feedUrls = feedUrls?.toSet(),
+                feedItemLimit = settings.feedItemLimitFor(requiresFullRefresh)
             )
 
         val flight = registerWaiter(request)
@@ -111,7 +117,8 @@ constructor(
                     downloadLimit = flight.request.downloadLimit,
                     mode = flight.request.mode,
                     forceFull = flight.request.forceFull,
-                    feedUrls = flight.request.feedUrls
+                    feedUrls = flight.request.feedUrls,
+                    feedItemLimit = flight.request.feedItemLimit
                 )
             withContext(NonCancellable) { finishFlight(flight) }
             flight.result.complete(summary)
@@ -162,7 +169,8 @@ constructor(
         val hasMatchingConfiguration =
             this.request.downloadLimit == request.downloadLimit &&
                 this.request.mode == request.mode &&
-                this.request.feedUrls == request.feedUrls
+                this.request.feedUrls == request.feedUrls &&
+                this.request.feedItemLimit == request.feedItemLimit
         return when {
             !acceptingWaiters -> false
             !hasMatchingConfiguration -> false
@@ -170,3 +178,11 @@ constructor(
         }
     }
 }
+
+internal fun UserSettings.feedItemLimitFor(forceFull: Boolean): Int =
+    smartStreamItemLimit
+        .takeIf {
+            !forceFull &&
+                feedUpdateMode == FeedUpdateMode.SMART_STREAM &&
+                it > Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT
+        } ?: Constants.SecurityLimits.MAX_FEED_ITEMS

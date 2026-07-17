@@ -545,6 +545,7 @@ class BackupRepositorySecurityTest {
                 theme = AppTheme.DARK,
                 gridSize = 7,
                 backgroundCheckInterval = 24,
+                smartStreamItemLimit = 17,
                 indicator =
                 IndicatorSettings(
                     colorArgb = 0xFF112233,

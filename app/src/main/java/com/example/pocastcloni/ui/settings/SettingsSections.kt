@@ -23,6 +23,7 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.FeedUpdateMode
 import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.Constants.SettingsDefaults
 import com.example.pocastcloni.util.formatBytes
 import com.example.pocastcloni.util.formatDuration
@@ -128,15 +129,18 @@ fun SectionAddPodcast(
 }
 
 @Composable
+@Suppress("LongMethod", "LongParameterList")
 fun SectionAutomation(
     autoRefreshOnStart: Boolean,
     backgroundCheckEnabled: Boolean,
     backgroundCheckInterval: Int,
     feedUpdateMode: FeedUpdateMode,
+    smartStreamItemLimit: Int,
     onToggleAutoRefreshOnStart: (Boolean) -> Unit,
     onToggleBackgroundCheck: (Boolean) -> Unit,
     onSetBackgroundCheckInterval: (Int) -> Unit,
-    onSetFeedUpdateMode: (FeedUpdateMode) -> Unit
+    onSetFeedUpdateMode: (FeedUpdateMode) -> Unit,
+    onSetSmartStreamItemLimit: (Int) -> Unit
 ) {
     SettingsSectionTitle(stringResource(R.string.settings_section_automation))
 
@@ -204,6 +208,37 @@ fun SectionAutomation(
                 )
             }
         }
+    }
+
+    if (feedUpdateMode == FeedUpdateMode.SMART_STREAM) {
+        Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+        SettingsSliderCard(
+            title = stringResource(R.string.settings_smart_stream_item_limit),
+            value = smartStreamItemLimit,
+            valueRange =
+            Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT.toFloat().rangeTo(
+                Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT.toFloat()
+            ),
+            steps =
+            Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT -
+                Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT - 1,
+            onValueChangeFinished = onSetSmartStreamItemLimit,
+            valueDisplay = { limit ->
+                Text(
+                    if (limit == Constants.Preferences.DEFAULT_SMART_STREAM_ITEM_LIMIT) {
+                        stringResource(R.string.settings_smart_stream_item_limit_full)
+                    } else {
+                        stringResource(R.string.settings_smart_stream_item_limit_entries, limit)
+                    }
+                )
+            }
+        )
+        Text(
+            text = stringResource(R.string.settings_smart_stream_item_limit_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Dimens.PaddingSmall)
+        )
     }
 }
 
