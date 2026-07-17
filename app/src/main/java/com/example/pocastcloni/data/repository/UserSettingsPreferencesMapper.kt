@@ -66,6 +66,13 @@ internal fun Preferences.toUserSettings(): UserSettings {
         confirmDelete = this[Keys.CONFIRM_DELETE] ?: defaultSettings.confirmDelete,
         progressBarHeight = this[Keys.PROGRESS_BAR_HEIGHT] ?: defaultSettings.progressBarHeight,
         navBarHeight = this[Keys.NAV_BAR_HEIGHT] ?: defaultSettings.navBarHeight,
+        homeBottomSpacing =
+        this[Keys.HOME_BOTTOM_SPACING]
+            ?.takeIf {
+                it >= Constants.SettingsDefaults.MIN_HOME_BOTTOM_SPACING_DP.toInt() &&
+                    it <= Constants.SettingsDefaults.MAX_HOME_BOTTOM_SPACING_DP.toInt() &&
+                    it % Constants.SettingsDefaults.HOME_BOTTOM_SPACING_STEP_DP == 0
+            } ?: defaultSettings.homeBottomSpacing,
         showMiniPlayerTimeOverlay = this[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] ?: defaultSettings.showMiniPlayerTimeOverlay,
         transparentMiniPlayer = this[Keys.TRANSPARENT_MINI_PLAYER] ?: defaultSettings.transparentMiniPlayer,
         transparentBottomBar = this[Keys.TRANSPARENT_BOTTOM_BAR] ?: defaultSettings.transparentBottomBar,

@@ -23,6 +23,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Gradient background option with adjustable strength.
 - Transparent search/settings cards and transparent history/favorites rows.
 - One-handed layout improvements for history.
+- Configurable Home bottom spacing above the bottom-bar reveal area, defaulting
+  to no extra gap while preserving visible mini-player clearance.
 
 ### Changed
 - Android API 35 build support with Android 15 edge-to-edge behavior and
@@ -43,8 +45,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Updated README to describe the current app feature set and local file policy.
 
 ### Fixed
-- Home podcast tiles no longer leave an extra bottom gap above the clean-mode
-  reveal area when the mini-player is hidden; visible-player clearance is unchanged.
+- Home pull-to-refresh now honors the configured feed update mode and Smart
+  Stream read limit.
 - Episode identity is scoped to its podcast feed, preventing collisions when
   different feeds reuse the same GUID.
 - Feed refresh requests are coordinated and persisted atomically, with safe

@@ -374,6 +374,7 @@ internal fun validateBackupSettings(settings: UserSettings) {
     require(settings.gridSize in limits.MIN_BACKUP_GRID_SIZE..limits.MAX_BACKUP_GRID_SIZE)
     require(settings.progressBarHeight in limits.MIN_BACKUP_UI_HEIGHT..limits.MAX_BACKUP_UI_HEIGHT)
     require(settings.navBarHeight in limits.MIN_BACKUP_UI_HEIGHT..limits.MAX_BACKUP_UI_HEIGHT)
+    validateHomeBottomSpacing(settings.homeBottomSpacing)
     require(
         settings.bottomBarAutoHideDelaySeconds in
             limits.MIN_BACKUP_AUTO_HIDE_SECONDS..limits.MAX_BACKUP_AUTO_HIDE_SECONDS
@@ -422,5 +423,13 @@ internal fun validateBackupSettings(settings: UserSettings) {
     require(
         settings.cleanupIntervalHours in
             limits.MIN_BACKUP_CLEANUP_INTERVAL_HOURS..limits.MAX_BACKUP_CLEANUP_INTERVAL_HOURS
+    )
+}
+
+private fun validateHomeBottomSpacing(spacingDp: Int) {
+    val limits = Constants.SecurityLimits
+    require(
+        spacingDp in limits.MIN_BACKUP_HOME_BOTTOM_SPACING..limits.MAX_BACKUP_HOME_BOTTOM_SPACING &&
+            spacingDp % Constants.SettingsDefaults.HOME_BOTTOM_SPACING_STEP_DP == 0
     )
 }

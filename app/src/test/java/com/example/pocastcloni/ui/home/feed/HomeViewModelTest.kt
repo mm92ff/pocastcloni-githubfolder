@@ -191,8 +191,8 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `refresh sets isRefreshing to false after completion`() = runTest(testDispatcher) {
-        coEvery { refreshPodcasts(forceFull = true) } returns PodcastUpdateSummary(
+    fun `pull refresh uses configured policy and clears isRefreshing after completion`() = runTest(testDispatcher) {
+        coEvery { refreshPodcasts(forceFull = false) } returns PodcastUpdateSummary(
             totalCount = 0,
             successfulCount = 0,
             failureCount = 0
@@ -202,10 +202,11 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isRefreshing)
+        coVerify(exactly = 1) { refreshPodcasts(forceFull = false) }
     }
 
     @Test
-    fun `manual refresh owns presentation while startup refresh overlaps`() = runTest(testDispatcher) {
+    fun `pull refresh owns presentation while startup refresh overlaps`() = runTest(testDispatcher) {
         val gate = CompletableDeferred<PodcastUpdateSummary>()
         coEvery { refreshPodcasts(any()) } coAnswers { gate.await() }
         val stateCollector =
@@ -226,16 +227,15 @@ class HomeViewModelTest {
         advanceUntilIdle()
         assertFalse(viewModel.isAutoRefreshing.value)
         assertFalse(viewModel.uiState.value.isRefreshing)
-        coVerify(exactly = 1) { refreshPodcasts(forceFull = false) }
-        coVerify(exactly = 1) { refreshPodcasts(forceFull = true) }
+        coVerify(exactly = 2) { refreshPodcasts(forceFull = false) }
         stateCollector.cancel()
     }
 
     @Test
-    fun `coalesced manual callers emit one user message`() = runTest(testDispatcher) {
+    fun `coalesced pull refresh callers emit one user message`() = runTest(testDispatcher) {
         recreateViewModel(podcasts = listOf(testPodcast))
         val gate = CompletableDeferred<PodcastUpdateSummary>()
-        coEvery { refreshPodcasts(forceFull = true) } coAnswers { gate.await() }
+        coEvery { refreshPodcasts(forceFull = false) } coAnswers { gate.await() }
         val stateCollector =
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
                 viewModel.uiState.collect()
@@ -252,7 +252,7 @@ class HomeViewModelTest {
             awaitItem()
             expectNoEvents()
         }
-        coVerify(exactly = 2) { refreshPodcasts(forceFull = true) }
+        coVerify(exactly = 2) { refreshPodcasts(forceFull = false) }
         stateCollector.cancel()
     }
 
@@ -660,6 +660,7 @@ class HomeViewModelTest {
                     confirmDelete = true,
                     progressBarHeight = 11,
                     navBarHeight = 17,
+                    homeBottomSpacing = 12,
                     oneHandedMode = true,
                     transparentPodcastCards = true,
                     indicator = IndicatorSettings(42L, 7, 3, 5, 9)
@@ -693,6 +694,7 @@ class HomeViewModelTest {
         assertEquals(9, state.indicatorYOffset)
         assertEquals(11, state.progressBarHeight)
         assertEquals(17, state.navBarHeight)
+        assertEquals(12, state.homeBottomSpacing)
         assertTrue(state.isPlayerVisible)
         assertTrue(state.isEditMode)
         assertEquals(setOf(testPodcast.rssUrl), state.selectedPodcastRssUrls)
@@ -729,7 +731,7 @@ class HomeViewModelTest {
     fun `internal state sources update only their owned home fields`() = runTest(testDispatcher) {
         val settings = UserSettings(confirmDelete = true, gridSize = 177)
         val refreshResult = CompletableDeferred<PodcastUpdateSummary>()
-        coEvery { refreshPodcasts(forceFull = true) } coAnswers { refreshResult.await() }
+        coEvery { refreshPodcasts(forceFull = false) } coAnswers { refreshResult.await() }
         recreateViewModel(podcasts = emptyList(), settings = settings)
         val stateCollector =
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {

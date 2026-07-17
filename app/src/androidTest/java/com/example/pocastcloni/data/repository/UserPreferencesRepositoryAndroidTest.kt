@@ -61,6 +61,7 @@ class UserPreferencesRepositoryAndroidTest {
                 confirmDelete = false,
                 progressBarHeight = 11,
                 navBarHeight = 92,
+                homeBottomSpacing = 12,
                 showMiniPlayerTimeOverlay = true,
                 transparentMiniPlayer = true,
                 transparentBottomBar = true,
@@ -120,6 +121,10 @@ class UserPreferencesRepositoryAndroidTest {
                     },
                     async(Dispatchers.Default) {
                         startGate.await()
+                        repository.updateHomeBottomSpacing(20)
+                    },
+                    async(Dispatchers.Default) {
+                        startGate.await()
                         repository.updateGradientBackgroundStrength(0.75f)
                     }
                 ).also { startGate.complete(Unit) }.awaitAll()
@@ -129,6 +134,7 @@ class UserPreferencesRepositoryAndroidTest {
             assertEquals(5, persisted.gridSize)
             assertEquals(91, persisted.navBarHeight)
             assertEquals(12, persisted.progressBarHeight)
+            assertEquals(20, persisted.homeBottomSpacing)
             assertEquals(0.75f, persisted.gradientBackgroundStrength)
         }
     }

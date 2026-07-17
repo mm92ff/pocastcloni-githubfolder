@@ -141,6 +141,7 @@ internal fun DesignSettingsContent(
         bottomBarAutoHideDelaySeconds = settings.bottomBarAutoHideDelaySeconds,
         progressBarHeight = settings.progressBarHeight,
         navBarHeight = settings.navBarHeight,
+        homeBottomSpacing = settings.homeBottomSpacing,
         confirmDelete = settings.confirmDelete,
         onSetLayoutMode =
         remember(onEvent) {
@@ -203,6 +204,13 @@ internal fun DesignSettingsContent(
             {
                     height: Int ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetNavBarHeight(height)))
+            }
+        },
+        onSetHomeBottomSpacing =
+        remember(onEvent) {
+            {
+                    spacingDp: Int ->
+                onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetHomeBottomSpacing(spacingDp)))
             }
         },
         onToggleConfirmDelete =

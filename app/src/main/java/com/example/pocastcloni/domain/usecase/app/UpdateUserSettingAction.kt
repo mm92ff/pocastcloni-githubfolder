@@ -28,6 +28,8 @@ sealed interface UpdateUserSettingAction {
 
     data class SetNavBarHeight(val height: Int) : UpdateUserSettingAction
 
+    data class SetHomeBottomSpacing(val spacingDp: Int) : UpdateUserSettingAction
+
     data class ToggleMiniPlayerTimeOverlay(val enabled: Boolean) : UpdateUserSettingAction
 
     data class ToggleTransparentMiniPlayer(val enabled: Boolean) : UpdateUserSettingAction

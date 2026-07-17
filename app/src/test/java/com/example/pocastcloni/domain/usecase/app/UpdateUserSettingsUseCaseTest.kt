@@ -111,6 +111,7 @@ class UpdateUserSettingsUseCaseTest {
         useCase(ToggleConfirmDelete(false))
         useCase(SetProgressBarHeight(13))
         useCase(SetNavBarHeight(21))
+        useCase(SetHomeBottomSpacing(12))
         useCase(ToggleTransparentMiniPlayer(true))
         useCase(ToggleTransparentBottomBar(true))
         useCase(ToggleOneHandedMode(true))
@@ -120,6 +121,7 @@ class UpdateUserSettingsUseCaseTest {
         coVerify { repository.updateConfirmDelete(false) }
         coVerify { repository.updateProgressBarHeight(13) }
         coVerify { repository.updateNavBarHeight(21) }
+        coVerify { repository.updateHomeBottomSpacing(12) }
         coVerify { repository.updateTransparentMiniPlayer(true) }
         coVerify { repository.updateTransparentBottomBar(true) }
         coVerify { repository.updateOneHandedMode(true) }

@@ -112,6 +112,11 @@ class UserPreferencesRepositoryImpl private constructor(
         editPreferences { it[Keys.NAV_BAR_HEIGHT] = height }
     }
 
+    override suspend fun updateHomeBottomSpacing(spacingDp: Int) {
+        requireValidHomeBottomSpacing(spacingDp)
+        editPreferences { it[Keys.HOME_BOTTOM_SPACING] = spacingDp }
+    }
+
     override suspend fun updateShowMiniPlayerTimeOverlay(enabled: Boolean) {
         editPreferences { it[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = enabled }
     }
@@ -243,6 +248,7 @@ class UserPreferencesRepositoryImpl private constructor(
 
     override suspend fun restoreSettingsOrThrow(settings: UserSettings) {
         requireValidSmartStreamItemLimit(settings.smartStreamItemLimit)
+        requireValidHomeBottomSpacing(settings.homeBottomSpacing)
         editPreferences { prefs ->
             prefs[Keys.THEME] = settings.theme.name
             prefs[Keys.APP_COLOR] = settings.appColor.name
@@ -256,6 +262,7 @@ class UserPreferencesRepositoryImpl private constructor(
             prefs[Keys.CONFIRM_DELETE] = settings.confirmDelete
             prefs[Keys.PROGRESS_BAR_HEIGHT] = settings.progressBarHeight
             prefs[Keys.NAV_BAR_HEIGHT] = settings.navBarHeight
+            prefs[Keys.HOME_BOTTOM_SPACING] = settings.homeBottomSpacing
             prefs[Keys.SHOW_MINI_PLAYER_TIME_OVERLAY] = settings.showMiniPlayerTimeOverlay
             prefs[Keys.TRANSPARENT_MINI_PLAYER] = settings.transparentMiniPlayer
             prefs[Keys.TRANSPARENT_BOTTOM_BAR] = settings.transparentBottomBar
@@ -318,4 +325,12 @@ private fun requireValidSmartStreamItemLimit(limit: Int) {
         limit >= Constants.Preferences.MIN_SMART_STREAM_ITEM_LIMIT &&
             limit <= Constants.Preferences.MAX_SMART_STREAM_ITEM_LIMIT
     ) { "Smart Stream item limit must be between 0 and 100." }
+}
+
+private fun requireValidHomeBottomSpacing(spacingDp: Int) {
+    require(
+        spacingDp >= Constants.SettingsDefaults.MIN_HOME_BOTTOM_SPACING_DP.toInt() &&
+            spacingDp <= Constants.SettingsDefaults.MAX_HOME_BOTTOM_SPACING_DP.toInt() &&
+            spacingDp % Constants.SettingsDefaults.HOME_BOTTOM_SPACING_STEP_DP == 0
+    ) { "Home bottom spacing must be a multiple of 4 between 0 and 24 dp." }
 }

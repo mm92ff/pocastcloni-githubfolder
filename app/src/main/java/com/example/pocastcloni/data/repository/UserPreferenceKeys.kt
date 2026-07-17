@@ -20,6 +20,7 @@ internal object UserPreferenceKeys {
     val CONFIRM_DELETE = booleanPreferencesKey(Constants.Preferences.KEY_CONFIRM_DELETE)
     val PROGRESS_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_PROGRESS_BAR_HEIGHT)
     val NAV_BAR_HEIGHT = intPreferencesKey(Constants.Preferences.KEY_NAV_BAR_HEIGHT)
+    val HOME_BOTTOM_SPACING = intPreferencesKey(Constants.Preferences.KEY_HOME_BOTTOM_SPACING)
     val SHOW_MINI_PLAYER_TIME_OVERLAY = booleanPreferencesKey(Constants.Preferences.KEY_SHOW_MINI_PLAYER_TIME_OVERLAY)
     val TRANSPARENT_MINI_PLAYER = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_MINI_PLAYER)
     val TRANSPARENT_BOTTOM_BAR = booleanPreferencesKey(Constants.Preferences.KEY_TRANSPARENT_BOTTOM_BAR)

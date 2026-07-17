@@ -37,6 +37,8 @@ interface UserPreferencesRepository {
 
     suspend fun updateNavBarHeight(height: Int)
 
+    suspend fun updateHomeBottomSpacing(spacingDp: Int)
+
     suspend fun updateShowMiniPlayerTimeOverlay(enabled: Boolean)
 
     suspend fun updateTransparentMiniPlayer(enabled: Boolean)

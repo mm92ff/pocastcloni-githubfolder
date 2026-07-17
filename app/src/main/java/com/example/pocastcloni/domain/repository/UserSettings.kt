@@ -35,6 +35,7 @@ data class UserSettings(
     val confirmDelete: Boolean = Constants.Preferences.DEFAULT_CONFIRM_DELETE,
     val progressBarHeight: Int = Constants.Preferences.DEFAULT_PROGRESS_BAR_HEIGHT,
     val navBarHeight: Int = Constants.Preferences.DEFAULT_NAV_BAR_HEIGHT,
+    val homeBottomSpacing: Int = Constants.Preferences.DEFAULT_HOME_BOTTOM_SPACING,
     val showMiniPlayerTimeOverlay: Boolean = Constants.Preferences.DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY,
     val transparentMiniPlayer: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_MINI_PLAYER,
     val transparentBottomBar: Boolean = Constants.Preferences.DEFAULT_TRANSPARENT_BOTTOM_BAR,

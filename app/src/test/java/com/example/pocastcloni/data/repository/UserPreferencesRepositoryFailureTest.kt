@@ -131,6 +131,25 @@ class UserPreferencesRepositoryFailureTest {
         assertEquals(100, dataStore.current[UserPreferenceKeys.SMART_STREAM_ITEM_LIMIT])
     }
 
+    @Test
+    fun `home bottom spacing persists supported steps and rejects other values`() = runTest {
+        val dataStore = TestDataStore()
+        val repository = repository(dataStore)
+
+        repository.updateHomeBottomSpacing(12)
+        assertEquals(12, dataStore.current[UserPreferenceKeys.HOME_BOTTOM_SPACING])
+
+        listOf(-4, 2, 28).forEach { invalid ->
+            try {
+                repository.updateHomeBottomSpacing(invalid)
+                fail("Expected IllegalArgumentException")
+            } catch (_: IllegalArgumentException) {
+                // Expected.
+            }
+        }
+        assertEquals(12, dataStore.current[UserPreferenceKeys.HOME_BOTTOM_SPACING])
+    }
+
     private fun repository(dataStore: DataStore<Preferences>): UserPreferencesRepositoryImpl =
         UserPreferencesRepositoryImpl.createForTest(
             dataStore = dataStore,

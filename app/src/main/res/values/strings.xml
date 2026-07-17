@@ -215,6 +215,7 @@
     <string name="settings_bottom_bar_auto_hide_delay">Auto-hide Delay</string>
     <string name="settings_progress_bar_height">Progress Bar Height</string>
     <string name="settings_navigation_bar_height">Navigation Bar Height</string>
+    <string name="settings_home_bottom_spacing">Home Bottom Spacing</string>
     <string name="settings_confirm_delete">Confirm Delete</string>
     <string name="settings_confirm_delete_subtitle">Ask for confirmation before deleting</string>
     <string name="settings_section_playback">Playback</string>

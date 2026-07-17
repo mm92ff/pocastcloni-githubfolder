@@ -361,6 +361,7 @@ class PodcastBackupHelperParsingTest {
             UserSettings(
                 theme = AppTheme.DARK,
                 appColor = AppColor.RED,
+                homeBottomSpacing = 12,
                 backgroundCheckInterval = 24,
                 feedUpdateMode = FeedUpdateMode.SMART_STREAM,
                 indicator =
@@ -519,6 +520,7 @@ class PodcastBackupHelperParsingTest {
                 confirmDelete = false,
                 progressBarHeight = 9,
                 navBarHeight = 88,
+                homeBottomSpacing = 20,
                 showMiniPlayerTimeOverlay = true,
                 transparentMiniPlayer = true,
                 transparentBottomBar = true,
@@ -596,6 +598,25 @@ class PodcastBackupHelperParsingTest {
         val restored = result.settingsForRestore(UserSettings(smartStreamItemLimit = 17))
 
         assertEquals(17, restored?.smartStreamItemLimit)
+    }
+
+    @Test
+    fun parseBackupJson_missingHomeBottomSpacingDoesNotClobberCurrentValue() {
+        val result =
+            parseBackupJson(
+                """
+                {
+                  "settings": {
+                    "layoutMode": "GRID"
+                  }
+                }
+                """.trimIndent(),
+                objectMapper
+            )
+
+        val restored = result.settingsForRestore(UserSettings(homeBottomSpacing = 16))
+
+        assertEquals(16, restored?.homeBottomSpacing)
     }
 
     @Test

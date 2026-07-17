@@ -59,7 +59,8 @@ private fun UserSettings.mergeCoreAppearance(
     showGridTitles = fields.importedValue("showGridTitles", showGridTitles, current.showGridTitles),
     confirmDelete = fields.importedValue("confirmDelete", confirmDelete, current.confirmDelete),
     progressBarHeight = fields.importedValue("progressBarHeight", progressBarHeight, current.progressBarHeight),
-    navBarHeight = fields.importedValue("navBarHeight", navBarHeight, current.navBarHeight)
+    navBarHeight = fields.importedValue("navBarHeight", navBarHeight, current.navBarHeight),
+    homeBottomSpacing = fields.importedValue("homeBottomSpacing", homeBottomSpacing, current.homeBottomSpacing)
 )
 
 private fun UserSettings.mergeSurfaceSettings(

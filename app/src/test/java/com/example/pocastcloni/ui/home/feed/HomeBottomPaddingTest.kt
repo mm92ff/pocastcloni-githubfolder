@@ -9,7 +9,14 @@ class HomeBottomPaddingTest {
     @Test
     fun `hidden player leaves no bottom padding regardless of progress height`() {
         listOf(0, 7, 100).forEach { progressBarHeight ->
-            assertEquals(0.dp, homeGridBottomPadding(false, progressBarHeight))
+            assertEquals(0.dp, homeGridBottomPadding(false, progressBarHeight, 0))
+        }
+    }
+
+    @Test
+    fun `hidden player uses every configurable bottom spacing`() {
+        listOf(0, 4, 8, 12, 16, 20, 24).forEach { spacing ->
+            assertEquals(spacing.dp, homeGridBottomPadding(false, 7, spacing))
         }
     }
 
@@ -19,7 +26,11 @@ class HomeBottomPaddingTest {
 
         assertEquals(
             MiniPlayerLayoutDefaults.collapsedHeight(progressBarHeight.dp) + 24.dp,
-            homeGridBottomPadding(true, progressBarHeight)
+            homeGridBottomPadding(true, progressBarHeight, 0)
+        )
+        assertEquals(
+            MiniPlayerLayoutDefaults.collapsedHeight(progressBarHeight.dp) + 24.dp,
+            homeGridBottomPadding(true, progressBarHeight, 24)
         )
     }
 }

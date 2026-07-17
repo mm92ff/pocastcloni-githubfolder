@@ -275,7 +275,8 @@ fun HomeScreen(
 
 internal fun homeGridBottomPadding(
     isPlayerVisible: Boolean,
-    progressBarHeight: Int
+    progressBarHeight: Int,
+    homeBottomSpacing: Int
 ): Dp =
     if (isPlayerVisible) {
         MiniPlayerLayoutDefaults.reservedBottomPadding(
@@ -284,7 +285,7 @@ internal fun homeGridBottomPadding(
             extraPadding = Dimens.PaddingLarge
         )
     } else {
-        Dimens.Zero
+        homeBottomSpacing.dp
     }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -326,7 +327,12 @@ private fun PodcastListContent(
         }
     }
 
-    val bottomPadding = homeGridBottomPadding(uiState.isPlayerVisible, uiState.progressBarHeight)
+    val bottomPadding =
+        homeGridBottomPadding(
+            isPlayerVisible = uiState.isPlayerVisible,
+            progressBarHeight = uiState.progressBarHeight,
+            homeBottomSpacing = uiState.homeBottomSpacing
+        )
 
     val contentPadding =
         PaddingValues(

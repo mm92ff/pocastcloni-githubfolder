@@ -249,6 +249,7 @@ constructor(
                     isRefreshing = activity.isRefreshing,
                     progressBarHeight = configuration.settings.progressBarHeight,
                     navBarHeight = configuration.settings.navBarHeight,
+                    homeBottomSpacing = configuration.settings.homeBottomSpacing,
                     isPlayerVisible = activity.isPlayerVisible,
                     userMessage = null,
                     showDeleteConfirmation = configuration.showDeleteConfirmation,
@@ -283,7 +284,7 @@ constructor(
                 _screenError.value = null
             }
             try {
-                val summary = refreshPodcasts(forceFull = true)
+                val summary = refreshPodcasts(forceFull = false)
                 if (presentsResult) presentManualRefreshResult(summary)
             } catch (e: CancellationException) {
                 throw e // structured concurrency requires this

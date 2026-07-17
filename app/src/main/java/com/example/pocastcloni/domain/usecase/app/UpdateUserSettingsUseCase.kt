@@ -28,6 +28,7 @@ constructor(
                 is ToggleConfirmDelete -> repository.updateConfirmDelete(action.confirm)
                 is SetProgressBarHeight -> repository.updateProgressBarHeight(action.height)
                 is SetNavBarHeight -> repository.updateNavBarHeight(action.height)
+                is SetHomeBottomSpacing -> repository.updateHomeBottomSpacing(action.spacingDp)
                 is ToggleMiniPlayerTimeOverlay -> repository.updateShowMiniPlayerTimeOverlay(action.enabled)
                 is ToggleTransparentMiniPlayer -> repository.updateTransparentMiniPlayer(action.enabled)
                 is ToggleTransparentBottomBar -> repository.updateTransparentBottomBar(action.enabled)

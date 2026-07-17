@@ -50,6 +50,7 @@ class SettingsViewModelTest {
         autoCleanupEnabled = true,
         cleanupKeepLimit = 50,
         cleanupIntervalHours = 24,
+        homeBottomSpacing = 12,
         showMiniPlayerTimeOverlay = true,
         bottomBarCleanModeEnabled = true,
         bottomBarAutoHideEnabled = true,
@@ -85,6 +86,16 @@ class SettingsViewModelTest {
     }
 
     // ---- toUiState mapping ----
+
+    @Test
+    fun `uiState maps homeBottomSpacing from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertEquals(12, success.homeBottomSpacing)
+        }
+    }
 
     @Test
     fun `uiState maps autoCleanupEnabled from UserSettings`() = runTest(testDispatcher) {

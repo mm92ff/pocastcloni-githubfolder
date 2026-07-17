@@ -26,8 +26,10 @@ import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants.SettingsDefaults
+import kotlin.math.roundToInt
 
 @Composable
+@Suppress("LongMethod", "LongParameterList")
 fun SectionInterface(
     layoutMode: LayoutMode,
     gridSize: Int,
@@ -38,6 +40,7 @@ fun SectionInterface(
     bottomBarAutoHideDelaySeconds: Int,
     progressBarHeight: Int,
     navBarHeight: Int,
+    homeBottomSpacing: Int,
     confirmDelete: Boolean,
     onSetLayoutMode: (LayoutMode) -> Unit,
     onSetGridSize: (Int) -> Unit,
@@ -48,6 +51,7 @@ fun SectionInterface(
     onSetBottomBarAutoHideDelay: (Int) -> Unit,
     onSetProgressBarHeight: (Int) -> Unit,
     onSetNavBarHeight: (Int) -> Unit,
+    onSetHomeBottomSpacing: (Int) -> Unit,
     onToggleConfirmDelete: (Boolean) -> Unit
 ) {
     SettingsSectionTitle(stringResource(R.string.settings_section_interface))
@@ -90,6 +94,28 @@ fun SectionInterface(
             onCheckedChange = onToggleShowGridTitles
         )
     }
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
+    SettingsSliderCard(
+        title = stringResource(R.string.settings_home_bottom_spacing),
+        value = homeBottomSpacing,
+        valueRange =
+        SettingsDefaults.MIN_HOME_BOTTOM_SPACING_DP..SettingsDefaults.MAX_HOME_BOTTOM_SPACING_DP,
+        steps =
+        (
+            (SettingsDefaults.MAX_HOME_BOTTOM_SPACING_DP - SettingsDefaults.MIN_HOME_BOTTOM_SPACING_DP) /
+                SettingsDefaults.HOME_BOTTOM_SPACING_STEP_DP - 1
+            ).toInt(),
+        onValueChangeFinished = onSetHomeBottomSpacing,
+        valueDisplay = { Text(stringResource(R.string.settings_unit_dp, it)) },
+        valueMapping =
+        SettingsSliderValueMapping(
+            toSliderPosition = { it.toFloat() },
+            toValue = { it.roundToInt() },
+            stateDescription = { stringResource(R.string.settings_unit_dp, it) }
+        )
+    )
 
     Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 

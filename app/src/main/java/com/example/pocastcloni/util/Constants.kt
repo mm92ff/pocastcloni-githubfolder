@@ -73,6 +73,9 @@ object Constants {
         const val MAX_AUTO_DOWNLOAD_LIMIT = 10f
         const val MIN_GRID_SIZE_DP = 60f
         const val MAX_GRID_SIZE_DP = 200f
+        const val MIN_HOME_BOTTOM_SPACING_DP = 0f
+        const val MAX_HOME_BOTTOM_SPACING_DP = 24f
+        const val HOME_BOTTOM_SPACING_STEP_DP = 4
         const val MIN_PROGRESS_BAR_HEIGHT_DP = 20f
         const val MAX_PROGRESS_BAR_HEIGHT_DP = 60f
         const val MIN_NAV_BAR_HEIGHT_DP = 60f
@@ -173,6 +176,7 @@ object Constants {
         const val KEY_CONFIRM_DELETE = "confirm_delete"
         const val KEY_PROGRESS_BAR_HEIGHT = "progress_bar_height"
         const val KEY_NAV_BAR_HEIGHT = "nav_bar_height"
+        const val KEY_HOME_BOTTOM_SPACING = "home_bottom_spacing"
         const val KEY_SHOW_MINI_PLAYER_TIME_OVERLAY = "show_mini_player_time_overlay"
         const val KEY_TRANSPARENT_MINI_PLAYER = "transparent_mini_player"
         const val KEY_TRANSPARENT_BOTTOM_BAR = "transparent_bottom_bar"
@@ -204,6 +208,7 @@ object Constants {
         const val DEFAULT_CONFIRM_DELETE = true
         const val DEFAULT_PROGRESS_BAR_HEIGHT = 30
         const val DEFAULT_NAV_BAR_HEIGHT = 80
+        const val DEFAULT_HOME_BOTTOM_SPACING = 0
         const val DEFAULT_SHOW_MINI_PLAYER_TIME_OVERLAY = false
         const val DEFAULT_TRANSPARENT_MINI_PLAYER = false
         const val DEFAULT_TRANSPARENT_BOTTOM_BAR = false
@@ -280,6 +285,8 @@ object Constants {
         const val MAX_BACKUP_GRID_SIZE = 200
         const val MIN_BACKUP_UI_HEIGHT = 1
         const val MAX_BACKUP_UI_HEIGHT = 200
+        const val MIN_BACKUP_HOME_BOTTOM_SPACING = 0
+        const val MAX_BACKUP_HOME_BOTTOM_SPACING = 24
         const val MIN_BACKUP_AUTO_HIDE_SECONDS = 1
         const val MAX_BACKUP_AUTO_HIDE_SECONDS = 300
         const val MAX_BACKUP_AUTO_DOWNLOAD_LIMIT = 100

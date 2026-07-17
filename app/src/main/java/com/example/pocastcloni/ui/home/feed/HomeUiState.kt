@@ -33,6 +33,7 @@ data class HomeUiState(
     val isRefreshing: Boolean = false,
     val progressBarHeight: Int = Constants.ViewModel.DEFAULT_PROGRESS_BAR_HEIGHT,
     val navBarHeight: Int = Constants.ViewModel.DEFAULT_NAV_BAR_HEIGHT,
+    val homeBottomSpacing: Int = Constants.Preferences.DEFAULT_HOME_BOTTOM_SPACING,
     val isPlayerVisible: Boolean = false,
     val userMessage: UiText? = null,
     // Batch-delete: store dialog state and the list of podcasts to delete

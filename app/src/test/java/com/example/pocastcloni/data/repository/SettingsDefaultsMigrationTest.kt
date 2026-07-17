@@ -8,6 +8,18 @@ import org.junit.Test
 
 class SettingsDefaultsMigrationTest {
     @Test
+    fun `invalid persisted home bottom spacing falls back to default`() {
+        listOf(-4, 2, 28).forEach { spacing ->
+            val preferences = mutablePreferencesOf(UserPreferenceKeys.HOME_BOTTOM_SPACING to spacing)
+
+            assertEquals(
+                Constants.Preferences.DEFAULT_HOME_BOTTOM_SPACING,
+                preferences.toUserSettings().homeBottomSpacing
+            )
+        }
+    }
+
+    @Test
     fun `fresh installation receives smart stream and six hours`() {
         val preferences = mutablePreferencesOf()
 
