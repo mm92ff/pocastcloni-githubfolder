@@ -28,7 +28,7 @@ class ManualFeedRefreshPlacementSourceTest {
     }
 
     @Test
-    fun `transparent emphasis is twelve percent and only manual full refresh opts in`() {
+    fun `transparent emphasis is twenty percent and only manual full refresh opts in`() {
         val sourceRoot = File("src/main/java/com/example/pocastcloni")
         val constants = File(sourceRoot, "util/Constants.kt").readText()
         val components = File(sourceRoot, "ui/settings/SettingsComponents.kt").readText()
@@ -39,7 +39,7 @@ class ManualFeedRefreshPlacementSourceTest {
                 .filter { it.isFile && it.extension == "kt" }
                 .joinToString("\n") { it.readText() }
 
-        assertTrue(constants.contains("SETTINGS_ACTION_CARD_TRANSPARENT_ALPHA = 0.12f"))
+        assertTrue(constants.contains("SETTINGS_ACTION_CARD_TRANSPARENT_ALPHA = 0.20f"))
         assertTrue(components.contains("emphasized: Boolean = false"))
         assertTrue(transparentDefaults.contains("transparentColor: Color = Color.Transparent"))
         assertTrue(components.contains("Constants.UI.SETTINGS_ACTION_CARD_TRANSPARENT_ALPHA"))
