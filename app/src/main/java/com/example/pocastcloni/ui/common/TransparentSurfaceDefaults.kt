@@ -19,17 +19,19 @@ object TransparentSurfaceDefaults {
     @Composable
     fun containerColor(
         transparent: Boolean,
-        filledColor: Color
-    ): Color = if (transparent) Color.Transparent else filledColor
+        filledColor: Color,
+        transparentColor: Color = Color.Transparent
+    ): Color = if (transparent) transparentColor else filledColor
 
     @Composable
     fun animatedContainerColor(
         transparent: Boolean,
         filledColor: Color,
-        label: String
+        label: String,
+        transparentColor: Color = Color.Transparent
     ): State<Color> =
         animateColorAsState(
-            targetValue = containerColor(transparent, filledColor),
+            targetValue = containerColor(transparent, filledColor, transparentColor),
             animationSpec = Motion.stateSpec(),
             label = label
         )

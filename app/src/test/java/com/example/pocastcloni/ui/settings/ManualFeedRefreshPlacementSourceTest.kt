@@ -16,7 +16,7 @@ class ManualFeedRefreshPlacementSourceTest {
                 .readText()
 
         assertTrue(automation.contains("ManualFullRefreshButton(onClick = onStartManualDownload)"))
-        assertTrue(automation.contains("SettingsCard(onClick = onClick)"))
+        assertTrue(automation.contains("SettingsCard(onClick = onClick, emphasized = true)"))
         assertTrue(automation.contains("imageVector = Icons.Default.CloudDownload"))
         assertTrue(automation.contains("tint = MaterialTheme.colorScheme.primary"))
         assertTrue(automation.contains("contentDescription = null"))
@@ -25,6 +25,25 @@ class ManualFeedRefreshPlacementSourceTest {
         assertFalse(downloads.contains("onStartManualDownload"))
         assertFalse(downloads.contains("settings_manual_full_refresh"))
         assertFalse(downloads.contains("CloudDownload"))
+    }
+
+    @Test
+    fun `transparent emphasis is twelve percent and only manual full refresh opts in`() {
+        val sourceRoot = File("src/main/java/com/example/pocastcloni")
+        val constants = File(sourceRoot, "util/Constants.kt").readText()
+        val components = File(sourceRoot, "ui/settings/SettingsComponents.kt").readText()
+        val transparentDefaults = File(sourceRoot, "ui/common/TransparentSurfaceDefaults.kt").readText()
+        val settingsSources =
+            File(sourceRoot, "ui/settings")
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .joinToString("\n") { it.readText() }
+
+        assertTrue(constants.contains("SETTINGS_ACTION_CARD_TRANSPARENT_ALPHA = 0.12f"))
+        assertTrue(components.contains("emphasized: Boolean = false"))
+        assertTrue(transparentDefaults.contains("transparentColor: Color = Color.Transparent"))
+        assertTrue(components.contains("Constants.UI.SETTINGS_ACTION_CARD_TRANSPARENT_ALPHA"))
+        assertTrue(Regex("emphasized = true").findAll(settingsSources).count() == 1)
     }
 
     @Test

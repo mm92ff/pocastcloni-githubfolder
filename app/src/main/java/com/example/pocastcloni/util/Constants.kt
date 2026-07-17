@@ -328,6 +328,7 @@ object Constants {
         const val EDIT_MODE_NON_SELECTED_ALPHA = 0.6f
         const val EDIT_MODE_NON_SELECTED_ALPHA_GRID = 0.5f
         const val SETTINGS_CARD_ALPHA = 0.6f
+        const val SETTINGS_ACTION_CARD_TRANSPARENT_ALPHA = 0.12f
         val INDICATOR_COLORS = listOf(0xFF4CAF50, 0xFF2196F3, 0xFFFFC107, 0xFFF44336, 0xFF9C27B0, 0xFF607D8B)
         const val CHECK_ICON_COLOR_WHITE = 0xFFFFFFFF
     }

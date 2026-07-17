@@ -68,6 +68,7 @@ fun SettingsSectionTitle(text: String) {
 @Composable
 fun SettingsCard(
     onClick: (() -> Unit)? = null,
+    emphasized: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val transparent = LocalTransparentSettingsCards.current
@@ -79,7 +80,13 @@ fun SettingsCard(
     val containerColor by TransparentSurfaceDefaults.animatedContainerColor(
         transparent = transparent,
         filledColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = Constants.UI.SETTINGS_CARD_ALPHA),
-        label = "settingsCardContainerColor"
+        label = "settingsCardContainerColor",
+        transparentColor =
+        if (emphasized) {
+            MaterialTheme.colorScheme.primary.copy(alpha = Constants.UI.SETTINGS_ACTION_CARD_TRANSPARENT_ALPHA)
+        } else {
+            Color.Transparent
+        }
     )
 
     Card(

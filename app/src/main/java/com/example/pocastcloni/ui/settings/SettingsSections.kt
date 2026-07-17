@@ -255,7 +255,7 @@ fun SectionAutomation(
 
 @Composable
 private fun ManualFullRefreshButton(onClick: () -> Unit) {
-    SettingsCard(onClick = onClick) {
+    SettingsCard(onClick = onClick, emphasized = true) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = Icons.Default.CloudDownload,
