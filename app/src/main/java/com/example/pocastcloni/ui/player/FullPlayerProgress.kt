@@ -24,8 +24,8 @@ import kotlinx.coroutines.flow.map
 import androidx.compose.foundation.layout.Column as LayoutColumn
 
 /**
- * Progress-Bereich: Bar + Time-Labels.
- * Die Abstände sind bewusst kompakt (Bar -> Labels eher klein).
+ * Progress area containing the bar and time labels.
+ * Spacing stays compact so the labels remain close to the bar.
  */
 @Composable
 fun FullPlayerProgressSection(
@@ -46,7 +46,7 @@ fun FullPlayerProgressSection(
             onSeekEnd = onSeekEnd
         )
 
-        // kompakter Abstand Bar -> TimeLabels
+        // Keep the time labels close to the progress bar.
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
 
         FullPlayerTimeLabels(playbackStateFlow = playbackStateFlow)

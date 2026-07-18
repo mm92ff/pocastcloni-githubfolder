@@ -65,16 +65,19 @@ fun SectionDownloadLocation(
         if (isGranted) onToggle(true)
     }
 
-    val locationDescription = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        "Android 10+: Files are saved to Android/data/\u2026/files/Downloads. No permission dialog required."
-    } else {
-        "Android 9 and below: Files are saved to the public Downloads folder. Storage access will be requested."
-    }
+    val locationDescription =
+        stringResource(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                R.string.settings_download_location_scoped_storage
+            } else {
+                R.string.settings_download_location_legacy_storage
+            }
+        )
 
-    SettingsSectionTitle("Download Location")
+    SettingsSectionTitle(stringResource(R.string.settings_section_download_location))
 
     SettingsSwitchCard(
-        title = "Save to Downloads folder",
+        title = stringResource(R.string.settings_save_to_downloads_folder),
         subtitle = locationDescription,
         checked = saveToDownloadsFolder,
         onCheckedChange = { enabled ->

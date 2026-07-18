@@ -36,8 +36,8 @@ import java.util.Locale
 
 /**
  * Phase-aware ProgressBar:
- * - High-frequency Werte (Position/Buffer/Duration) werden erst in der Draw-Phase gelesen.
- * - PointerInput nutzt IntSize -> width/height sind Int: daher immer sauber nach Float konvertieren.
+ * - High-frequency position, buffer and duration values are read during the draw phase.
+ * - Pointer input exposes `IntSize`, so dimensions are converted to `Float` explicitly.
  */
 @Composable
 fun CustomProgressBar(
@@ -100,7 +100,7 @@ fun CustomProgressBar(
                         isDragging = true
                         onSeekStart?.invoke()
 
-                        // pointerInput: size.width ist Int
+                        // Pointer input exposes width as an Int.
                         val width = size.width.toFloat().coerceAtLeast(1f)
                         dragProgress = (offset.x / width).coerceIn(0f, 1f)
                     },
@@ -190,7 +190,7 @@ fun CustomProgressBar(
 }
 
 /**
- * Backwards-compatible Overload (falls du noch Call-Sites hast, die Longs übergeben).
+ * Backwards-compatible overload for call sites that still provide `Long` values.
  */
 @Composable
 fun CustomProgressBar(

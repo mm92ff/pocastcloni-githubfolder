@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.backup.BackupJob
+import com.example.pocastcloni.domain.backup.BackupFailureReason
 import com.example.pocastcloni.domain.backup.BackupJobOperation
 import com.example.pocastcloni.domain.backup.BackupJobResult
 import com.example.pocastcloni.domain.backup.BackupJobScheduler
@@ -96,7 +97,7 @@ constructor(
             -> ImportUiState.Loading
             is BackupJobState.Succeeded -> result.toImportSuccessState()
             is BackupJobState.Failed ->
-                ImportUiState.Error(UiText.StringResource(R.string.import_error_message, message))
+                ImportUiState.Error(UiText.StringResource(reason.toImportErrorResource()))
             BackupJobState.Cancelled -> ImportUiState.Idle
         }
 
@@ -109,7 +110,7 @@ constructor(
             is BackupJobState.Succeeded ->
                 ExportUiState.Success(UiText.StringResource(R.string.export_success_message))
             is BackupJobState.Failed ->
-                ExportUiState.Error(UiText.StringResource(R.string.export_error_message, message))
+                ExportUiState.Error(UiText.StringResource(reason.toExportErrorResource()))
             BackupJobState.Cancelled -> ExportUiState.Idle
         }
 
@@ -124,6 +125,24 @@ constructor(
             )
         )
     }
+
+    private fun BackupFailureReason.toImportErrorResource(): Int =
+        when (this) {
+            BackupFailureReason.INVALID_BACKUP -> R.string.import_error_invalid_backup
+            BackupFailureReason.FILE_ACCESS -> R.string.import_error_file_access
+            BackupFailureReason.INVALID_REQUEST,
+            BackupFailureReason.UNKNOWN
+            -> R.string.import_error_message
+        }
+
+    private fun BackupFailureReason.toExportErrorResource(): Int =
+        when (this) {
+            BackupFailureReason.FILE_ACCESS -> R.string.export_error_file_access
+            BackupFailureReason.INVALID_REQUEST,
+            BackupFailureReason.INVALID_BACKUP,
+            BackupFailureReason.UNKNOWN
+            -> R.string.export_error_message
+        }
 
     private companion object {
         const val KEY_TRACKED_JOB_ID = "tracked_backup_job_id"

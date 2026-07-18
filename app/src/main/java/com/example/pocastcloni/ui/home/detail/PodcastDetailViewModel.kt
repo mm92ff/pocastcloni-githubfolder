@@ -102,8 +102,6 @@ constructor(
                 val newList =
                     episodes.map { entity ->
                         val presentation = EpisodePresentation.from(entity)
-                        // HINWEIS: Hier muss entity.toEpisodeUiModel den Parameter 'downloadProgress' akzeptieren.
-                        // Stelle sicher, dass du PodcastDetailModels.kt bzw. den Mapper aktualisiert hast.
                         presentation.toEpisodeUiModel(
                             podcastName = podcastTitle,
                             podcastImageUrl = podcastImageUrl,

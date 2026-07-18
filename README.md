@@ -134,8 +134,9 @@ Run the fast quality gates independently so a timeout is attributable to one too
 .\gradlew.bat --dependency-verification=strict :app:assembleReleaseSmoke
 ```
 
-The versioned release gate verifies the merged manifest allowlist, builds the unsigned
-release APK and records APK SHA-256/size plus R8 mapping path/size:
+The versioned release gate runs the debug unit suite, verifies the merged manifest
+allowlist, builds the unsigned release APK and records APK SHA-256/size plus R8 mapping
+path/size:
 
 ```powershell
 .\gradlew.bat --dependency-verification=strict :app:releaseGate
@@ -146,9 +147,8 @@ The generated APK, mapping and report stay below ignored `build/` directories. T
 unsigned `assembleRelease` output is not installable as a production update; use the
 local fail-closed signing helper for a distributable APK.
 
-The German resource catalog is intentionally partial and falls back to the complete
-English default catalog. `MissingTranslation` is therefore disabled explicitly; all
-other Lint errors remain fatal.
+Application-owned UI copy uses the complete English default resource catalog across
+all Android system locales. Android Lint keeps its standard translation checks enabled.
 
 On an emulator, run only the focused minified smoke package during normal development:
 
@@ -233,6 +233,15 @@ app/src/main/java/com/example/pocastcloni/
   and are therefore best-effort rather than a claimed support guarantee.
 
 ## Contributing
+
+### Language policy
+
+Application-owned UI copy, accessibility text, notifications, errors, code identifiers,
+comments, KDoc, logs, scripts and project documentation must be written in English.
+External podcast metadata, user input and protocol payloads may contain other languages.
+Non-English test fixtures are allowed only when language or Unicode content is explicitly
+the behavior under test, and the test purpose must be documented in English. Raw localized
+exception or server text must not be presented directly as application-owned UI copy.
 
 1. Fork the repository.
 2. Create a feature branch (`git checkout -b feature/my-feature`).

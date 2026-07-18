@@ -77,17 +77,3 @@ sealed class UiText {
         }
     }
 }
-
-/**
- * PRODUCTION-GRADE EXTENSION:
- * Converts nullable Strings or errors from the domain layer directly into UiText.
- * Prevents "null" from being displayed in the UI.
- */
-fun String?.asUiText(): UiText {
-    return if (this.isNullOrBlank()) {
-        // Fallback for null or empty values
-        UiText.DynamicString("")
-    } else {
-        UiText.DynamicString(this)
-    }
-}

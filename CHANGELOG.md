@@ -27,6 +27,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
   to no extra gap while preserving visible mini-player clearance.
 
 ### Changed
+- Application-owned UI copy, error messages and developer documentation now use
+  English consistently across Android system locales.
 - Android API 35 build support with Android 15 edge-to-edge behavior and
   background-work constraints.
 - Energy-efficient feed defaults for fresh installations.

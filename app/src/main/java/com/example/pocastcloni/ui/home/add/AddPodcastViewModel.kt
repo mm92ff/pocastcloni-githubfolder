@@ -123,11 +123,10 @@ constructor(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to toggle podcast subscription for %s", url)
-                val safeMessage = e.localizedMessage?.takeIf { it.isNotBlank() } ?: "unknown error"
                 _internalState.update {
                     it.copy(
                         addSuccess = false,
-                        searchError = UiText.StringResource(R.string.add_podcast_failure, safeMessage)
+                        searchError = UiText.StringResource(R.string.error_add_podcast_failed)
                     )
                 }
             }

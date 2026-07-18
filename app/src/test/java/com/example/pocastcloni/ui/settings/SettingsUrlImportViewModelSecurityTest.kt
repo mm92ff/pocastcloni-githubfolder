@@ -1,8 +1,11 @@
 package com.example.pocastcloni.ui.settings
 
+import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.usecase.podcast.AddPodcastFromUrlUseCase
+import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.util.MainDispatcherRule
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -98,5 +101,21 @@ class SettingsUrlImportViewModelSecurityTest {
         coVerify(exactly = 1) {
             addPodcast(url, allowInsecureHttp = true, allowLocalNetwork = true)
         }
+    }
+
+    @Test
+    fun `add failure does not expose localized exception text`() = runTest(dispatcher) {
+        val url = "https://example.com/feed.xml"
+        coEvery { addPodcast(url, false, false) } throws
+            IllegalStateException("Podcast konnte nicht hinzugefügt werden")
+        viewModel.onUrlChange(url)
+
+        viewModel.onAddPodcast()
+        advanceUntilIdle()
+
+        assertEquals(
+            UiText.StringResource(R.string.error_add_podcast_failed),
+            viewModel.uiState.value.message
+        )
     }
 }

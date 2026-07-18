@@ -21,7 +21,6 @@ sealed interface BackupResult {
     data class ImportSuccess(val result: ImportResult) : BackupResult
 }
 
-// Der Klassenname bleibt ManageBackupUseCase, wie in deiner Originaldatei definiert
 class ManageBackupUseCase
 @Inject
 constructor(
@@ -34,7 +33,6 @@ constructor(
             when (action) {
                 is BackupAction.Export -> {
                     val userSettings = userPreferencesRepository.userSettingsFlow.first()
-                    // Aufruf geht an das BackupRepository
                     backupRepository.exportBackup(BackupLocation(action.path), userSettings)
                     BackupResult.ExportSuccess
                 }

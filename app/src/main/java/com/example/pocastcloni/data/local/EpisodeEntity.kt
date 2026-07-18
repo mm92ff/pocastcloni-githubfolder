@@ -34,11 +34,11 @@ data class EpisodeEntity(
     val description: String,
     val pubDate: Date?,
     val link: String,
-    // RSS enclosure (Audio-Datei)
+    // RSS enclosure (audio file)
     val enclosureUrl: String,
     val type: String = "audio/mpeg",
     val fileSize: Long = 0,
-    // Status Felder
+    // Status fields
     val isPlayed: Boolean = false,
     val playbackPositionMs: Long = 0,
     val downloadStatus: DownloadStatus = DownloadStatus.NOT_DOWNLOADED,

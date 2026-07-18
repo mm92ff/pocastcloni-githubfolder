@@ -8,8 +8,6 @@ import com.example.pocastcloni.util.Constants
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
-// PlayerProgressUiState wurde entfernt, da er im Detail-Screen nicht mehr genutzt wird.
-
 @Immutable
 data class PlayerStatusUiState(
     val currentPlayingEpisodeId: Long? = null,

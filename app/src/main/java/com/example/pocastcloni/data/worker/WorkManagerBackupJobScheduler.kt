@@ -7,6 +7,7 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.pocastcloni.domain.backup.BackupJob
+import com.example.pocastcloni.domain.backup.BackupFailureReason
 import com.example.pocastcloni.domain.backup.BackupJobOperation
 import com.example.pocastcloni.domain.backup.BackupJobProgress
 import com.example.pocastcloni.domain.backup.BackupJobResult
@@ -75,10 +76,16 @@ constructor(
                 )
             WorkInfo.State.FAILED ->
                 BackupJobState.Failed(
-                    message = outputData.getString(BackupWorker.KEY_ERROR_MESSAGE).orEmpty()
+                    reason = outputData.toBackupFailureReason()
                 )
             WorkInfo.State.CANCELLED -> BackupJobState.Cancelled
         }
+
+    private fun Data.toBackupFailureReason(): BackupFailureReason {
+        val code = getString(BackupWorker.KEY_ERROR_CODE) ?: return BackupFailureReason.UNKNOWN
+        return enumValues<BackupFailureReason>().firstOrNull { it.name == code }
+            ?: BackupFailureReason.UNKNOWN
+    }
 
     private fun Data.toBackupJobResult(operation: BackupJobOperation): BackupJobResult? {
         if (operation != BackupJobOperation.IMPORT) return null

@@ -100,11 +100,13 @@
     <string name="settings_mark_as_played_percentage">At 95%</string>
 
     <string name="add_podcast_success">Podcast added successfully</string>
-    <string name="add_podcast_failure">Error: %1$s</string>
     <string name="import_success_message">Import successful: %1$d of %2$d podcasts imported. Favorites skipped: %3$d.</string>
-    <string name="import_error_message">Import failed: %1$s</string>
+    <string name="import_error_message">Import failed. Check the selected backup and try again.</string>
+    <string name="import_error_invalid_backup">The selected backup is invalid or unsupported.</string>
+    <string name="import_error_file_access">The selected backup could not be read.</string>
     <string name="export_success_message">Export successful.</string>
-    <string name="export_error_message">Export failed: %1$s</string>
+    <string name="export_error_message">Export failed. Check the destination and try again.</string>
+    <string name="export_error_file_access">The backup could not be written to the selected destination.</string>
     <string name="import_fallback_title">Imported Podcast</string>
     <string name="import_fallback_description" />
 
@@ -166,6 +168,10 @@
     <string name="settings_gradient_direction_bottom_right_to_top_left">Bottom Right to Top Left</string>
     <string name="settings_gradient_direction_top_right_to_bottom_left">Top Right to Bottom Left</string>
     <string name="settings_gradient_direction_bottom_left_to_top_right">Bottom Left to Top Right</string>
+    <string name="settings_design_preview_podcast_badge">AI</string>
+    <string name="settings_design_preview_podcast_title">Understanding AI</string>
+    <string name="settings_design_preview_episode_title">AI as a security risk</string>
+    <string name="settings_design_preview_episode_long_title">AI as a security risk - How chatbots ...</string>
     <string name="settings_transparent_search_cards">Transparent Cards</string>
     <string name="settings_transparent_search_cards_subtitle">Show search results and settings cards with only a border</string>
     <string name="settings_transparent_podcast_cards">Transparent Podcast Cards</string>
@@ -192,6 +198,10 @@
     <string name="settings_smart_stream_item_limit_warning">Limited mode stops early in feed order. Unsorted feeds or more new episodes than the limit can cause episodes to be missed.</string>
     <string name="settings_section_downloads_data">Downloads &amp; Data</string>
     <string name="settings_auto_download_limit">Auto-Download Limit</string>
+    <string name="settings_section_download_location">Download Location</string>
+    <string name="settings_save_to_downloads_folder">Save to Downloads folder</string>
+    <string name="settings_download_location_scoped_storage">Android 10+: Files are saved to Android/data/…/files/Downloads. No permission dialog required.</string>
+    <string name="settings_download_location_legacy_storage">Android 9 and below: Files are saved to the public Downloads folder. Storage access will be requested.</string>
     <string name="settings_manual_full_refresh">Refresh all feeds completely</string>
     <string name="settings_manual_full_refresh_subtitle">Ignores the feed read limit and downloads no audio.</string>
     <string name="settings_section_cleanup">Auto Cleanup</string>

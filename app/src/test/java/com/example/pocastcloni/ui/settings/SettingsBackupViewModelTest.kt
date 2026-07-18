@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.backup.BackupJob
+import com.example.pocastcloni.domain.backup.BackupFailureReason
 import com.example.pocastcloni.domain.backup.BackupJobOperation
 import com.example.pocastcloni.domain.backup.BackupJobResult
 import com.example.pocastcloni.domain.backup.BackupJobScheduler
@@ -77,6 +78,60 @@ class SettingsBackupViewModelTest {
     }
 
     @Test
+    fun `invalid backup maps to stable English resource without diagnostic arguments`() = runTest(dispatcher) {
+        val scheduler = FakeBackupJobScheduler()
+        val viewModel = SettingsBackupViewModel(scheduler, SavedStateHandle())
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            awaitItem()
+            viewModel.onEvent(SettingsUiEvent.ImportFullBackup("content://backup/import.json"))
+            val jobId = requireNotNull(scheduler.lastScheduledJobId)
+            scheduler.jobState.value =
+                listOf(
+                    BackupJob(
+                        id = jobId,
+                        operation = BackupJobOperation.IMPORT,
+                        state = BackupJobState.Failed(BackupFailureReason.INVALID_BACKUP)
+                    )
+                )
+
+            assertEquals(
+                ImportUiState.Error(
+                    UiText.StringResource(R.string.import_error_invalid_backup)
+                ),
+                awaitItem().importState
+            )
+        }
+    }
+
+    @Test
+    fun `unknown import failure maps to stable generic resource without arguments`() = runTest(dispatcher) {
+        val scheduler = FakeBackupJobScheduler()
+        val viewModel = SettingsBackupViewModel(scheduler, SavedStateHandle())
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            awaitItem()
+            viewModel.onEvent(SettingsUiEvent.ImportFullBackup("content://backup/import.json"))
+            val jobId = requireNotNull(scheduler.lastScheduledJobId)
+            scheduler.jobState.value =
+                listOf(
+                    BackupJob(
+                        id = jobId,
+                        operation = BackupJobOperation.IMPORT,
+                        state = BackupJobState.Failed(BackupFailureReason.UNKNOWN)
+                    )
+                )
+
+            assertEquals(
+                ImportUiState.Error(UiText.StringResource(R.string.import_error_message)),
+                awaitItem().importState
+            )
+        }
+    }
+
+    @Test
     fun `reset dismisses finished result without hiding a later job`() = runTest(dispatcher) {
         val scheduler = FakeBackupJobScheduler()
         val viewModel = SettingsBackupViewModel(scheduler, SavedStateHandle())
@@ -91,12 +146,12 @@ class SettingsBackupViewModelTest {
                     BackupJob(
                         id = firstJobId,
                         operation = BackupJobOperation.EXPORT,
-                        state = BackupJobState.Failed("disk full")
+                        state = BackupJobState.Failed(BackupFailureReason.FILE_ACCESS)
                     )
                 )
             assertEquals(
                 ExportUiState.Error(
-                    UiText.StringResource(R.string.export_error_message, "disk full")
+                    UiText.StringResource(R.string.export_error_file_access)
                 ),
                 awaitItem().exportState
             )

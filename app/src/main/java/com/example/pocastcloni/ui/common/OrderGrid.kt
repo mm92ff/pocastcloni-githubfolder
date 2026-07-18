@@ -78,7 +78,7 @@ fun <T> ReorderableLazyVerticalGrid(
                     val layoutInfo = state.layoutInfo
                     val viewportHeight = layoutInfo.viewportSize.height
 
-                    // Hit-Test: welche Kachel wurde "gegriffen"?
+                    // Hit test: identify which tile was grabbed.
                     val hitItem =
                         layoutInfo.visibleItemsInfo.firstOrNull { item ->
                             val left = item.offset.x
@@ -121,7 +121,7 @@ fun <T> ReorderableLazyVerticalGrid(
                         initialVisualY = initialY
                     )
 
-                    // Optional: Home kann hier Edit-Mode aktivieren (ohne extra Haptic)
+                    // Let Home enter edit mode without triggering another haptic event.
                     onDragStartIndexUpdated?.invoke(hitItem.index)
 
                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -146,7 +146,7 @@ fun <T> ReorderableLazyVerticalGrid(
                     val centerX = dragDropState.draggedVisualXRaw() + itemW / 2f
                     val centerY = dragDropState.draggedVisualYRaw() + itemH / 2f
 
-                    // Auto-Scroll (nur vertikal)
+                    // Auto-scroll vertically only.
                     run {
                         val viewportStart = layoutInfo.viewportStartOffset.toFloat()
                         val viewportEnd = layoutInfo.viewportEndOffset.toFloat()
@@ -189,7 +189,7 @@ fun <T> ReorderableLazyVerticalGrid(
                         }
                     }
 
-                    // Swap-Target im Grid finden (X + Y)
+                    // Find the grid swap target on both axes.
                     val targetItem =
                         layoutInfo.visibleItemsInfo.firstOrNull { item ->
                             if (item.index == draggedIndex) return@firstOrNull false

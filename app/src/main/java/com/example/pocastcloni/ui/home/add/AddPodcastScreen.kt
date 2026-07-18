@@ -77,7 +77,6 @@ fun AddPodcastScreen(
             Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                // vorher: PaddingLarge -> kompakter
                 .padding(horizontal = Dimens.PaddingMedium)
                 .padding(bottom = bottomPlayerPadding)
                 .imePadding()
@@ -92,14 +91,11 @@ fun AddPodcastScreen(
                         reverseLayout = true
                     )
                 }
-                // vorher: PaddingLarge
                 Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
                 SearchSection(uiState, viewModel, keyboardController)
             } else {
-                // vorher: PaddingLarge
                 Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
                 SearchSection(uiState, viewModel, keyboardController)
-                // vorher: PaddingLarge
                 Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
 
                 Box(modifier = Modifier.weight(Constants.Weights.FULL)) {

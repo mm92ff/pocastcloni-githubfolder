@@ -7,6 +7,7 @@ import androidx.work.Operation
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.pocastcloni.domain.backup.BackupJobOperation
+import com.example.pocastcloni.domain.backup.BackupFailureReason
 import com.example.pocastcloni.domain.backup.BackupJobProgress
 import com.example.pocastcloni.domain.backup.BackupJobResult
 import com.example.pocastcloni.domain.backup.BackupJobState
@@ -95,14 +96,35 @@ class WorkManagerBackupJobSchedulerTest {
         val workInfo = workInfo(
             state = WorkInfo.State.FAILED,
             tags = setOf(WorkManagerBackupJobScheduler.TAG_EXPORT),
-            output = Data.Builder().putString(BackupWorker.KEY_ERROR_MESSAGE, "disk full").build()
+            output =
+            Data.Builder()
+                .putString(BackupWorker.KEY_ERROR_CODE, BackupFailureReason.FILE_ACCESS.name)
+                .build()
         )
 
         val job = requireNotNull(scheduler.toBackupJob(workInfo))
 
         assertEquals(BackupJobOperation.EXPORT, job.operation)
-        assertEquals(BackupJobState.Failed("disk full"), job.state)
+        assertEquals(BackupJobState.Failed(BackupFailureReason.FILE_ACCESS), job.state)
         assertNull(job.progress)
+    }
+
+    @Test
+    fun `missing or unknown failure code maps to unknown and ignores localized legacy message`() {
+        listOf(
+            Data.Builder().putString("error_message", "Datei konnte nicht gelesen werden").build(),
+            Data.Builder().putString(BackupWorker.KEY_ERROR_CODE, "UNRECOGNIZED").build()
+        ).forEach { output ->
+            val workInfo = workInfo(
+                state = WorkInfo.State.FAILED,
+                tags = setOf(WorkManagerBackupJobScheduler.TAG_IMPORT),
+                output = output
+            )
+
+            val job = requireNotNull(scheduler.toBackupJob(workInfo))
+
+            assertEquals(BackupJobState.Failed(BackupFailureReason.UNKNOWN), job.state)
+        }
     }
 
     @Test

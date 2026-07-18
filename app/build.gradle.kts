@@ -89,11 +89,6 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    lint {
-        // German translations are intentionally partial; untranslated entries use the
-        // complete English default catalog. All code, manifest and resource errors remain fatal.
-        disable += "MissingTranslation"
-    }
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
 }
 
@@ -309,6 +304,6 @@ tasks.register("reportReleaseArtifacts") {
 
 tasks.register("releaseGate") {
     group = "verification"
-    description = "Runs release lint, manifest verification, assembly and artifact reporting."
-    dependsOn("lintRelease", "verifyReleaseManifest", "reportReleaseArtifacts")
+    description = "Runs unit tests, release lint, manifest verification, assembly and artifact reporting."
+    dependsOn("testDebugUnitTest", "lintRelease", "verifyReleaseManifest", "reportReleaseArtifacts")
 }

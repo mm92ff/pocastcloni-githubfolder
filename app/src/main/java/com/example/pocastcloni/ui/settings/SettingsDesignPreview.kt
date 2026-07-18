@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.AppColor
 import com.example.pocastcloni.domain.model.AppTheme
 import com.example.pocastcloni.domain.model.GradientDirection
@@ -190,7 +192,7 @@ private fun PreviewPodcastTile(
                         .background(MaterialTheme.colorScheme.primary)
                 ) {
                     Text(
-                        text = "KI",
+                        text = stringResource(R.string.settings_design_preview_podcast_badge),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary,
@@ -214,7 +216,7 @@ private fun PreviewPodcastTile(
         }
         Spacer(modifier = Modifier.height(Dimens.PaddingMicro))
         Text(
-            text = "KI verstehen",
+            text = stringResource(R.string.settings_design_preview_podcast_title),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
@@ -274,14 +276,14 @@ private fun PreviewEpisodeSummary(
             Spacer(modifier = Modifier.width(Dimens.PaddingSmall))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "KI als Sicherheitsrisiko",
+                    text = stringResource(R.string.settings_design_preview_episode_title),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "KI verstehen",
+                    text = stringResource(R.string.settings_design_preview_podcast_title),
                     style = MaterialTheme.typography.labelSmall,
                     color = TransparentSurfaceDefaults.secondaryTextColor(transparent),
                     maxLines = 1
@@ -332,13 +334,13 @@ private fun PreviewMiniPlayer(
                 Spacer(modifier = Modifier.width(Dimens.PaddingSmall))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "KI als Sicherheitsrisiko - Wie sich Chatbots ...",
+                        text = stringResource(R.string.settings_design_preview_episode_long_title),
                         style = MaterialTheme.typography.labelMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "KI verstehen",
+                        text = stringResource(R.string.settings_design_preview_podcast_title),
                         style = MaterialTheme.typography.labelSmall,
                         color = TransparentSurfaceDefaults.secondaryTextColor(transparent),
                         maxLines = 1

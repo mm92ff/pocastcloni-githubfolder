@@ -35,10 +35,17 @@ sealed interface BackupJobState {
     ) : BackupJobState
 
     data class Failed(
-        val message: String
+        val reason: BackupFailureReason
     ) : BackupJobState
 
     data object Cancelled : BackupJobState
+}
+
+enum class BackupFailureReason {
+    INVALID_REQUEST,
+    INVALID_BACKUP,
+    FILE_ACCESS,
+    UNKNOWN
 }
 
 data class BackupJobResult(
