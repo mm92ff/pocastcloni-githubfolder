@@ -29,6 +29,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
   to no extra gap while preserving visible mini-player clearance.
 
 ### Changed
+- The language selector keeps its globe and always displays `Language` so users can
+  find it after switching to an unfamiliar interface language.
 - English remains the complete default and fallback UI catalog while code, diagnostic
   logs and developer documentation remain consistently English.
 - Android API 35 build support with Android 15 edge-to-edge behavior and

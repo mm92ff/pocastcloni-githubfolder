@@ -213,7 +213,8 @@
     <string name="settings_export_backup">Export Backup</string>
     <string name="settings_import_backup">Import Backup</string>
     <string name="settings_section_interface">Interface</string>
-    <string name="settings_app_language">App language</string>
+    <!-- Kept in English so users can recover the language setting from an unfamiliar UI locale. -->
+    <string name="settings_app_language" translatable="false">Language</string>
     <string name="settings_app_language_dialog_title">Choose app language</string>
     <string name="settings_language_system_default">System default</string>
     <string name="settings_language_english" translatable="false">English</string>

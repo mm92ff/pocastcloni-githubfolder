@@ -33,11 +33,11 @@ class LanguageSettingsAndroidTest {
             }
         }
 
-        composeRule.onNodeWithText("App language")
+        composeRule.onNodeWithText("Language")
             .assertIsDisplayed()
             .assertHasClickAction()
         composeRule.onNodeWithText("English").assertIsDisplayed()
-        composeRule.onNodeWithText("App language").performClick()
+        composeRule.onNodeWithText("Language").performClick()
 
         composeRule.onNodeWithText("Choose app language").assertIsDisplayed()
         composeRule.onNode(optionMatcher("System default", selected = false)).assertIsNotSelected()
@@ -57,7 +57,7 @@ class LanguageSettingsAndroidTest {
             }
         }
 
-        composeRule.onNodeWithText("App language").performClick()
+        composeRule.onNodeWithText("Language").performClick()
         composeRule.onNodeWithText("Cancel").performClick()
 
         assertDialogIsClosed()
@@ -76,7 +76,7 @@ class LanguageSettingsAndroidTest {
             }
         }
 
-        composeRule.onNodeWithText("App language").performClick()
+        composeRule.onNodeWithText("Language").performClick()
         composeRule.onNode(optionMatcher("Deutsch", selected = false)).performClick()
 
         assertDialogIsClosed()
@@ -97,7 +97,7 @@ class LanguageSettingsAndroidTest {
             }
         }
 
-        composeRule.onNodeWithText("App language").performClick()
+        composeRule.onNodeWithText("Language").performClick()
         composeRule.onNode(optionMatcher("English", selected = true)).performClick()
 
         assertDialogIsClosed()

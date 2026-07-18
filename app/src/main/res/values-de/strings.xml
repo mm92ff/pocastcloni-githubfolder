@@ -211,7 +211,6 @@
     <string name="settings_export_backup">Sicherung exportieren</string>
     <string name="settings_import_backup">Sicherung importieren</string>
     <string name="settings_section_interface">Benutzeroberfläche</string>
-    <string name="settings_app_language">App-Sprache</string>
     <string name="settings_app_language_dialog_title">App-Sprache auswählen</string>
     <string name="settings_language_system_default">Systemstandard</string>
     <string name="settings_view_list">Listenansicht</string>

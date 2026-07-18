@@ -116,7 +116,9 @@ class LocalizedUiAndroidTest {
         assertLocalized(R.string.settings_tab_playback, "Playback", "Wiedergabe")
         assertLocalized(R.string.settings_tab_sync, "Sync", "Synchronisierung")
         assertLocalized(R.string.settings_tab_data, "Data", "Daten")
-        assertLocalized(R.string.settings_app_language, "App language", "App-Sprache")
+        assertEquals("Language", englishContext.getString(R.string.settings_app_language))
+        assertEquals("Language", germanContext.getString(R.string.settings_app_language))
+        assertEquals("Language", unsupportedContext.getString(R.string.settings_app_language))
         assertLocalized(
             R.string.settings_app_language_dialog_title,
             "Choose app language",
