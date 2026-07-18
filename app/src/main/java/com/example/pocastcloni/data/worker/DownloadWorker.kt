@@ -8,6 +8,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -92,13 +93,19 @@ constructor(
                 )
             if (!started) return Result.failure()
 
-            val podcastTitle = podcast?.title?.ifBlank { null } ?: context.getString(R.string.unknown_podcast_title)
-            val episodeTitle = episode.title.ifBlank { context.getString(R.string.no_episode_title) }
+            val localizedContext = ContextCompat.getContextForLanguage(context)
+            val podcastTitle =
+                podcast?.title?.ifBlank { null }
+                    ?: localizedContext.getString(R.string.unknown_podcast_title)
+            val episodeTitle = episode.title
             val mimeType = episode.type.ifBlank { DEFAULT_MIME_TYPE }
             val fileName =
                 createDownloadFileName(
                     podcastTitle = podcastTitle,
-                    episodeTitle = episodeTitle,
+                    episodeTitle =
+                    episodeTitle.ifBlank {
+                        localizedContext.getString(R.string.no_episode_title)
+                    },
                     mimeType = mimeType,
                     sourceUrl = url,
                     episodeId = episodeId
@@ -282,31 +289,40 @@ internal fun createDownloadForegroundInfo(
     episodeTitle: String,
     progressPercent: Int?
 ): ForegroundInfo {
+    val localizedContext = ContextCompat.getContextForLanguage(context)
+    val localizedEpisodeTitle =
+        episodeTitle.ifBlank { localizedContext.getString(R.string.no_episode_title) }
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         notificationManager.createNotificationChannel(
             NotificationChannel(
                 Constants.DOWNLOAD_NOTIFICATION_CHANNEL_ID,
-                context.getString(R.string.download_notification_channel_name),
+                localizedContext.getString(R.string.download_notification_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             )
         )
     }
     val progressText =
-        progressPercent?.let { context.getString(R.string.download_notification_progress, it) }
-            ?: context.getString(R.string.download_notification_starting)
+        progressPercent?.let { localizedContext.getString(R.string.download_notification_progress, it) }
+            ?: localizedContext.getString(R.string.download_notification_starting)
     val notification: Notification =
-        NotificationCompat.Builder(context, Constants.DOWNLOAD_NOTIFICATION_CHANNEL_ID)
+        NotificationCompat.Builder(localizedContext, Constants.DOWNLOAD_NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_download)
-            .setContentTitle(context.getString(R.string.download_notification_title))
-            .setContentText("$episodeTitle - $progressText")
+            .setContentTitle(localizedContext.getString(R.string.download_notification_title))
+            .setContentText(
+                localizedContext.getString(
+                    R.string.download_notification_content,
+                    localizedEpisodeTitle,
+                    progressText
+                )
+            )
             .setProgress(PROGRESS_PERCENT_MAX, progressPercent ?: 0, progressPercent == null)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
-                context.getString(R.string.cancel),
+                localizedContext.getString(R.string.cancel),
                 workManager.createCancelPendingIntent(workId)
             )
             .build()

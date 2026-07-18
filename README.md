@@ -147,8 +147,9 @@ The generated APK, mapping and report stay below ignored `build/` directories. T
 unsigned `assembleRelease` output is not installable as a production update; use the
 local fail-closed signing helper for a distributable APK.
 
-Application-owned UI copy uses the complete English default resource catalog across
-all Android system locales. Android Lint keeps its standard translation checks enabled.
+Application-owned UI copy uses a complete English default and fallback catalog. Approved
+locales provide complete translated UI catalogs, and Android Lint keeps its standard
+translation checks enabled.
 
 On an emulator, run only the focused minified smoke package during normal development:
 
@@ -236,12 +237,26 @@ app/src/main/java/com/example/pocastcloni/
 
 ### Language policy
 
-Application-owned UI copy, accessibility text, notifications, errors, code identifiers,
-comments, KDoc, logs, scripts and project documentation must be written in English.
-External podcast metadata, user input and protocol payloads may contain other languages.
-Non-English test fixtures are allowed only when language or Unicode content is explicitly
-the behavior under test, and the test purpose must be documented in English. Raw localized
-exception or server text must not be presented directly as application-owned UI copy.
+The complete default and fallback UI catalog is English. Approved locale resource catalogs
+may translate application-owned UI copy, accessibility text, notifications, and stable error
+messages. Code identifiers, comments, KDoc, logs, scripts, tests, changelog entries, and
+project documentation remain English. External podcast metadata, user input, and protocol
+payloads may contain other languages. Non-English test fixtures are allowed only when
+language or Unicode content is explicitly the behavior under test, and the test purpose must
+be documented in English. Raw localized exception or server text must not be presented
+directly as application-owned UI copy.
+
+To add another UI locale, provide a complete reviewed `values-<language>` catalog, add its
+BCP 47 tag to the packaged locale allowlist and `SupportedAppLanguage`, extend the resource
+parity and locale-matrix tests, and record the user-visible addition in `CHANGELOG.md`.
+Placeholders, XLIFF IDs, plurals, and string-array item counts must remain compatible with
+the English catalog. App language state stays in the AppCompat/platform locale store and is
+never added to podcast backups or general user settings.
+
+Run `scripts/verify_api35_locale_reboot.ps1 -Serial <isolated-api-35-emulator>` to verify the
+one-time AppCompat locale migration and the first UI render after a reboot. The script rebuilds
+and installs debug test artifacts, changes the target app's locale state, and reboots the named
+device, so never point it at a user-owned emulator or physical device.
 
 1. Fork the repository.
 2. Create a feature branch (`git checkout -b feature/my-feature`).

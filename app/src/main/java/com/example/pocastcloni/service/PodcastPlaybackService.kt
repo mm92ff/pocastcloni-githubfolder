@@ -1,9 +1,16 @@
 package com.example.pocastcloni.service
 
+import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
+import android.os.LocaleList
 import android.os.Process
 import androidx.annotation.OptIn
+import androidx.core.app.LocaleManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -31,6 +38,8 @@ import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.BufferMode
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.ui.main.MainActivity
+import com.example.pocastcloni.ui.locale.AppLocaleChangeListener
+import com.example.pocastcloni.ui.locale.AppLocaleChangeNotifier
 import com.example.pocastcloni.util.ConnectivityProvider
 import com.example.pocastcloni.util.Constants
 import dagger.hilt.android.AndroidEntryPoint
@@ -89,10 +98,15 @@ class PodcastPlaybackService : MediaSessionService() {
     }
 
     private var currentBufferMode: BufferMode? = null
+    private val appLocaleChangeListener =
+        AppLocaleChangeListener { languageTags ->
+            installLocalizedNotificationProvider(localizedContext(languageTags))
+        }
 
     override fun onCreate() {
         super.onCreate()
         serviceScope = CoroutineScope(dispatcherProvider.main + SupervisorJob())
+        AppLocaleChangeNotifier.addListener(appLocaleChangeListener)
 
         initializeStaticComponents()
         currentBufferMode = BufferMode.NORMAL
@@ -141,12 +155,40 @@ class PodcastPlaybackService : MediaSessionService() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
+        installLocalizedNotificationProvider(ContextCompat.getContextForLanguage(this))
+    }
+
+    private fun installLocalizedNotificationProvider(localizedContext: Context) {
         val notificationProvider =
-            DefaultMediaNotificationProvider.Builder(this)
+            DefaultMediaNotificationProvider.Builder(localizedContext)
                 .setChannelId(Constants.Notification.CHANNEL_PLAYBACK_ID)
                 .setChannelName(R.string.playback_channel_name)
                 .build()
         setMediaNotificationProvider(notificationProvider)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.getNotificationChannel(Constants.Notification.CHANNEL_PLAYBACK_ID)
+                ?.let { channel ->
+                    channel.name = localizedContext.getString(R.string.playback_channel_name)
+                    notificationManager.createNotificationChannel(channel)
+                }
+        }
+    }
+
+    private fun localizedContext(languageTags: String): Context {
+        val effectiveLanguageTags =
+            languageTags.ifEmpty {
+                LocaleManagerCompat.getSystemLocales(this).toLanguageTags()
+            }
+        val configuration = Configuration(resources.configuration)
+        configuration.setLocales(LocaleList.forLanguageTags(effectiveLanguageTags))
+        return createConfigurationContext(configuration)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        installLocalizedNotificationProvider(ContextCompat.getContextForLanguage(this))
     }
 
     /**
@@ -310,6 +352,7 @@ class PodcastPlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        AppLocaleChangeNotifier.removeListener(appLocaleChangeListener)
         if (this::mediaSession.isInitialized) {
             runCatching { mediaSession.release() }
         }

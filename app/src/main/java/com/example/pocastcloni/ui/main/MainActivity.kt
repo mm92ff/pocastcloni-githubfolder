@@ -1,9 +1,9 @@
 package com.example.pocastcloni.ui.main
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -40,21 +41,38 @@ import com.example.pocastcloni.ui.home.add.AddPodcastScreen
 import com.example.pocastcloni.ui.home.detail.PodcastDetailScreen
 import com.example.pocastcloni.ui.home.downloads.DownloadsScreen
 import com.example.pocastcloni.ui.home.feed.HomeScreen
+import com.example.pocastcloni.ui.locale.AppLocaleStartupAction
+import com.example.pocastcloni.ui.locale.awaitAppLocaleStartupAction
 import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.player.PlayerContainer
 import com.example.pocastcloni.ui.settings.SettingsScreen
 import com.example.pocastcloni.ui.theme.PocastCloniTheme
 import com.example.pocastcloni.ui.theme.isPocastCloniDarkTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
+    private var contentRendered = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        lifecycleScope.launch {
+            when (awaitAppLocaleStartupAction(this@MainActivity)) {
+                AppLocaleStartupAction.RENDER -> renderContent()
+                AppLocaleStartupAction.RECREATE -> recreate()
+            }
+        }
+    }
+
+    @Suppress("LongMethod")
+    private fun renderContent() {
+        if (contentRendered) return
+        contentRendered = true
         setContent {
             val viewModel: MainViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()

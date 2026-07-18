@@ -44,10 +44,14 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        resourceConfigurations += listOf("en", "de")
     }
     testBuildType = instrumentationBuildType
 
     buildTypes {
+        getByName("debug") {
+            isPseudoLocalesEnabled = true
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -81,6 +85,10 @@ android {
         buildConfig = true
     }
 
+    androidResources {
+        generateLocaleConfig = true
+    }
+
     composeOptions {
         kotlinCompilerExtensionVersion = libsCatalog.findVersion("compose-compiler").get().requiredVersion
     }
@@ -107,6 +115,7 @@ dependencies {
     // Core & Lifecycle
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

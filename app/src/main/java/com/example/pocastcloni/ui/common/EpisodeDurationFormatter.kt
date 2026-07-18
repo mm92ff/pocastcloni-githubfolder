@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 fun formatEpisodeDuration(
     context: Context,
     durationMs: Long,
-    locale: Locale = Locale.getDefault(Locale.Category.FORMAT)
+    locale: Locale
 ): String {
     if (durationMs <= 0L) return ""
 

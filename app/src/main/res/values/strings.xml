@@ -1,5 +1,5 @@
-<resources>
-    <string name="app_name">PocastCloni</string>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name" translatable="false">PocastCloni</string>
 
     <string name="title_add_podcast">Add Podcast</string>
     <string name="label_rss_url">RSS Feed URL</string>
@@ -26,8 +26,8 @@
     <string name="error_unknown">An unknown error occurred.</string>
     <string name="error_timeout">The operation timed out.</string>
     <string name="retry">Retry</string>
-    <string name="move_item_up">Move %1$s up</string>
-    <string name="move_item_down">Move %1$s down</string>
+    <string name="move_item_up">Move <xliff:g id="item_name">%1$s</xliff:g> up</string>
+    <string name="move_item_down">Move <xliff:g id="item_name">%1$s</xliff:g> down</string>
 
     <string name="home_title">My Podcasts</string>
     <string name="home_empty">No podcasts yet. Press +</string>
@@ -43,7 +43,7 @@
     <string name="desc_pause">Pause</string>
     <string name="desc_cover">Cover image</string>
     <string name="desc_reveal_bottom_bar">Show bottom navigation</string>
-    <string name="progress_position_description">Playback position %1$s of %2$s</string>
+    <string name="progress_position_description">Playback position <xliff:g id="position">%1$s</xliff:g> of <xliff:g id="duration">%2$s</xliff:g></string>
 
     <string name="detail_not_found">Podcast not found.</string>
     <string name="detail_unknown_author">Author unknown</string>
@@ -61,7 +61,7 @@
     <string name="settings_reset_zone_title">Reset database</string>
     <string name="settings_reset_zone_subtitle">Deletes everything except downloads</string>
     <string name="settings_color_strength">Color Strength</string>
-    <string name="settings_percentage">%1.0f %%</string>
+    <string name="settings_percentage"><xliff:g id="percentage">%1$.0f</xliff:g> %%</string>
     <string name="section_appearance">Appearance</string>
     <string name="label_theme">Theme</string>
     <string name="theme_system">System default</string>
@@ -74,7 +74,7 @@
     <string name="buffer_maximal">Maximal</string>
     <string name="label_buffer_whole">Preload whole episode</string>
     <string name="desc_buffer_whole">Prevents interruptions.</string>
-    <string name="label_update_interval">Update: Every %1$d hours</string>
+    <string name="label_update_interval">Update: Every <xliff:g id="hours">%1$d</xliff:g> hours</string>
     <string name="desc_update_interval">How often to check for new episodes in the background.</string>
     <string name="section_interface">Interface</string>
     <string name="label_view_mode">View</string>
@@ -93,23 +93,21 @@
     <string name="label_one_handed">One-handed mode</string>
     <string name="desc_one_handed">Lists start from the bottom (easier to reach).</string>
 
-    <string name="settings_unit_hours">%d hours</string>
-    <string name="settings_unit_episodes">The latest %d episodes</string>
-    <string name="settings_unit_dp">%d dp</string>
-    <string name="settings_unit_seconds">%d seconds</string>
+    <string name="settings_unit_hours"><xliff:g id="hours">%1$d</xliff:g> hours</string>
+    <string name="settings_unit_episodes">The latest <xliff:g id="episode_count">%1$d</xliff:g> episodes</string>
+    <string name="settings_unit_dp"><xliff:g id="density_pixels">%1$d</xliff:g> dp</string>
+    <string name="settings_unit_seconds"><xliff:g id="seconds">%1$d</xliff:g> seconds</string>
     <string name="settings_mark_as_played_percentage">At 95%</string>
 
     <string name="add_podcast_success">Podcast added successfully</string>
-    <string name="import_success_message">Import successful: %1$d of %2$d podcasts imported. Favorites skipped: %3$d.</string>
+    <!-- Counts are imported podcasts, total podcasts, and skipped favorites, in that order. -->
+    <string name="import_success_message">Import successful: <xliff:g id="imported_count">%1$d</xliff:g> of <xliff:g id="total_count">%2$d</xliff:g> podcasts imported. Favorites skipped: <xliff:g id="skipped_favorite_count">%3$d</xliff:g>.</string>
     <string name="import_error_message">Import failed. Check the selected backup and try again.</string>
     <string name="import_error_invalid_backup">The selected backup is invalid or unsupported.</string>
     <string name="import_error_file_access">The selected backup could not be read.</string>
     <string name="export_success_message">Export successful.</string>
     <string name="export_error_message">Export failed. Check the destination and try again.</string>
     <string name="export_error_file_access">The backup could not be written to the selected destination.</string>
-    <string name="import_fallback_title">Imported Podcast</string>
-    <string name="import_fallback_description" />
-
     <string name="nav_settings">Settings</string>
     <string name="nav_home">Home</string>
     <string name="nav_downloads">Downloads</string>
@@ -126,7 +124,9 @@
     <string name="download_notification_channel_name">Episode downloads</string>
     <string name="download_notification_title">Downloading episode</string>
     <string name="download_notification_starting">Starting</string>
-    <string name="download_notification_progress">%1$d%%</string>
+    <string name="download_notification_progress"><xliff:g id="progress_percentage">%1$d</xliff:g>%%</string>
+    <!-- Notification content combines an external episode title with localized download status. -->
+    <string name="download_notification_content"><xliff:g id="episode_title">%1$s</xliff:g> — <xliff:g id="download_status">%2$s</xliff:g></string>
     <string name="auto_download_enabled">Auto-download enabled</string>
     <string name="auto_download_disabled">Auto-download disabled</string>
     <string name="auto_download_new_episodes">Automatically download new episodes</string>
@@ -194,7 +194,7 @@
     <string name="settings_update_method_smart_stream_subtitle">Can stop RSS downloads early</string>
     <string name="settings_smart_stream_item_limit">Feed read limit</string>
     <string name="settings_smart_stream_item_limit_full">Full feed</string>
-    <string name="settings_smart_stream_item_limit_entries">%1$d entries</string>
+    <string name="settings_smart_stream_item_limit_entries"><xliff:g id="entry_count">%1$d</xliff:g> entries</string>
     <string name="settings_smart_stream_item_limit_warning">Limited mode stops early in feed order. Unsorted feeds or more new episodes than the limit can cause episodes to be missed.</string>
     <string name="settings_section_downloads_data">Downloads &amp; Data</string>
     <string name="settings_auto_download_limit">Auto-Download Limit</string>
@@ -213,6 +213,11 @@
     <string name="settings_export_backup">Export Backup</string>
     <string name="settings_import_backup">Import Backup</string>
     <string name="settings_section_interface">Interface</string>
+    <string name="settings_app_language">App language</string>
+    <string name="settings_app_language_dialog_title">Choose app language</string>
+    <string name="settings_language_system_default">System default</string>
+    <string name="settings_language_english" translatable="false">English</string>
+    <string name="settings_language_german" translatable="false">Deutsch</string>
     <string name="settings_view_list">List View</string>
     <string name="settings_tile_size">Tile Size</string>
     <string name="settings_show_titles">Show Titles</string>
@@ -267,10 +272,11 @@
     <string name="unknown_error_placeholder">Unknown</string>
     <string name="updating_all_feeds">Updating all feeds&#8230;</string>
     <plurals name="podcasts_updated_count">
-        <item quantity="one">%d podcast updated.</item>
-        <item quantity="other">%d podcasts updated.</item>
+        <item quantity="one"><xliff:g id="podcast_count">%1$d</xliff:g> podcast updated.</item>
+        <item quantity="other"><xliff:g id="podcast_count">%1$d</xliff:g> podcasts updated.</item>
     </plurals>
-    <string name="podcasts_partially_updated">Updated %1$d of %2$d podcasts. Some feeds failed.</string>
+    <!-- Counts are successfully updated podcasts followed by all attempted podcasts. -->
+    <string name="podcasts_partially_updated">Updated <xliff:g id="updated_count">%1$d</xliff:g> of <xliff:g id="total_count">%2$d</xliff:g> podcasts. Some feeds failed.</string>
     <string name="everything_up_to_date">Everything is up to date.</string>
     <string-array name="byte_units">
         <item>B</item>
@@ -280,11 +286,12 @@
         <item>TB</item>
     </string-array>
     <string name="duration_placeholder">-- min</string>
-    <string name="duration_hours_minutes">%1$sh %2$smin</string>
+    <!-- Duration components are hours followed by minutes. -->
+    <string name="duration_hours_minutes"><xliff:g id="hours">%1$s</xliff:g>h <xliff:g id="minutes">%2$s</xliff:g>min</string>
     <string name="duration_less_than_a_minute">&lt; 1 min</string>
     <plurals name="duration_minutes">
-        <item quantity="one">%s min</item>
-        <item quantity="other">%s min</item>
+        <item quantity="one"><xliff:g id="minute_count">%1$s</xliff:g> min</item>
+        <item quantity="other"><xliff:g id="minute_count">%1$s</xliff:g> min</item>
     </plurals>
     <string name="desc_podcast_cover">Podcast cover</string>
     <string name="title_auto_download">Auto download episodes</string>
@@ -295,10 +302,10 @@
     <string name="playback_unavailable_error">This episode is not available for playback yet. Refresh the podcast and try again.</string>
     <string name="refresh_error">Failed to refresh podcasts.</string>
 
-    <string name="duration_format_long">%1$dh %2$02dm</string>
-    <string name="duration_format_short">%1$dm</string>
-    <string name="episode_duration_hours_minutes">%1$sh %2$smin</string>
-    <string name="episode_duration_minutes">%1$s min</string>
+    <string name="duration_format_long"><xliff:g id="hours">%1$d</xliff:g>h <xliff:g id="minutes">%2$02d</xliff:g>m</string>
+    <string name="duration_format_short"><xliff:g id="minutes">%1$d</xliff:g>m</string>
+    <string name="episode_duration_hours_minutes"><xliff:g id="hours">%1$s</xliff:g>h <xliff:g id="minutes">%2$s</xliff:g>min</string>
+    <string name="episode_duration_minutes"><xliff:g id="minutes">%1$s</xliff:g> min</string>
     <string name="desc_delete_episode">Delete episode</string>
     <string name="cancel">Cancel</string>
     <string name="favorites">Favorites</string>
@@ -346,7 +353,7 @@
     <string name="desc_download_episode">Download episode</string>
 
     <string name="delete">Delete</string>
-    <string name="delete_multiple_count">Delete %d podcasts?</string>
+    <string name="delete_multiple_count">Delete <xliff:g id="podcast_count">%1$d</xliff:g> podcasts?</string>
     <string name="settings_layout_mode">View</string>
     <string name="layout_grid">Grid</string>
     <string name="layout_list">List</string>

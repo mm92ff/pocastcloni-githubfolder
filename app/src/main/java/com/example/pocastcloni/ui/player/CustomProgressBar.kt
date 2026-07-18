@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -31,8 +32,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.util.appFormatLocale
 import com.example.pocastcloni.util.formatTime
-import java.util.Locale
 
 /**
  * Phase-aware ProgressBar:
@@ -56,6 +57,7 @@ fun CustomProgressBar(
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(0f) }
     val stateDescriptionTemplate = stringResource(R.string.progress_position_description)
+    val formatLocale = LocalConfiguration.current.appFormatLocale()
 
     Box(
         modifier =
@@ -72,10 +74,10 @@ fun CustomProgressBar(
                     )
                 stateDescription =
                     String.format(
-                        Locale.getDefault(Locale.Category.FORMAT),
+                        formatLocale,
                         stateDescriptionTemplate,
-                        formatTime(safePosition),
-                        formatTime(safeDuration)
+                        formatTime(safePosition, formatLocale),
+                        formatTime(safeDuration, formatLocale)
                     )
                 setProgress { requestedPosition ->
                     if (safeDuration <= 0L || !requestedPosition.isFinite()) {

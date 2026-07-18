@@ -13,6 +13,9 @@ internal fun DesignSettingsContent(
     settings: SettingsUiState.Success,
     onEvent: (SettingsUiEvent) -> Unit
 ) {
+    DesignInterfaceSettings(settings = settings, onEvent = onEvent)
+    SettingsTabDivider()
+
     SectionAppearance(
         theme = settings.theme,
         appColor = settings.appColor,
@@ -129,8 +132,14 @@ internal fun DesignSettingsContent(
             }
         }
     )
-    SettingsTabDivider()
+}
 
+@Composable
+@Suppress("LongMethod")
+private fun DesignInterfaceSettings(
+    settings: SettingsUiState.Success,
+    onEvent: (SettingsUiEvent) -> Unit
+) {
     SectionInterface(
         layoutMode = settings.layoutMode,
         gridSize = settings.gridSize,

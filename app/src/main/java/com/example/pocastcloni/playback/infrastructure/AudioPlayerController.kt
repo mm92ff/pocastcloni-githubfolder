@@ -1,6 +1,5 @@
 package com.example.pocastcloni.playback.infrastructure
 
-import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -18,8 +17,8 @@ import com.example.pocastcloni.playback.api.PlayerScreenEvent
 import com.example.pocastcloni.playback.api.PlayerStatePort
 import com.example.pocastcloni.playback.api.PlayerUiState
 import com.example.pocastcloni.playback.api.PlayerVisibilityProvider
+import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.util.Constants
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -50,7 +49,6 @@ class AudioPlayerController
 @Inject
 @Suppress("LongParameterList")
 constructor(
-    @ApplicationContext private val context: Context,
     private val dispatcherProvider: DispatcherProvider,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val podcastQuery: PodcastQueryPort,
@@ -170,7 +168,7 @@ constructor(
                 candidate == null -> {
                     if (isCurrentLifecycle(connectGeneration)) {
                         _internalPlayerState.update {
-                            it.copy(error = context.getString(R.string.playback_failed_error))
+                            it.copy(error = UiText.StringResource(R.string.playback_failed_error))
                         }
                     }
                 }
@@ -395,8 +393,8 @@ constructor(
                 override fun onPlayerError(error: PlaybackException) {
                     Timber.e(error, "Player error code: ${error.errorCode}")
                     val errorString =
-                        mapper.mapError(error)?.let(context::getString)
-                            ?: context.getString(R.string.playback_failed_error)
+                        mapper.mapError(error)?.let(UiText::StringResource)
+                            ?: UiText.StringResource(R.string.playback_failed_error)
                     _internalPlayerState.update {
                         it.copy(isPlaying = false, isBuffering = false, error = errorString)
                     }
@@ -451,7 +449,7 @@ constructor(
     ) {
         Timber.w(error, "Playback could not be started")
         _internalPlayerState.update {
-            it.copy(error = context.getString(messageResource))
+            it.copy(error = UiText.StringResource(messageResource))
         }
     }
 

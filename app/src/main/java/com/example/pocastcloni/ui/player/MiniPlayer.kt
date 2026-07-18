@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -48,6 +49,7 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.ui.theme.Motion
+import com.example.pocastcloni.util.appFormatLocale
 import com.example.pocastcloni.util.formatTime
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -225,6 +227,7 @@ private fun MiniPlayerTimeOverlay(
     transparentBackground: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val formatLocale = LocalConfiguration.current.appFormatLocale()
     val secondsFlow =
         remember(playbackStateFlow) {
             playbackStateFlow
@@ -252,11 +255,11 @@ private fun MiniPlayerTimeOverlay(
         verticalAlignment = Alignment.CenterVertically
     ) {
         MiniPlayerTimeLabel(
-            text = formatTime(seconds.positionSec * 1000L),
+            text = formatTime(seconds.positionSec * 1000L, formatLocale),
             transparentBackground = transparentBackground
         )
         MiniPlayerTimeLabel(
-            text = formatTime(seconds.durationSec * 1000L),
+            text = formatTime(seconds.durationSec * 1000L, formatLocale),
             transparentBackground = transparentBackground
         )
     }

@@ -68,6 +68,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
 import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
@@ -145,8 +146,8 @@ class Sprint11SemanticsTest {
                     SemanticsProperties.StateDescription,
                     context.getString(
                         R.string.progress_position_description,
-                        formatTime(25_000L),
-                        formatTime(100_000L)
+                        formatTime(25_000L, Locale.getDefault(Locale.Category.FORMAT)),
+                        formatTime(100_000L, Locale.getDefault(Locale.Category.FORMAT))
                     )
                 )
             )
@@ -437,8 +438,6 @@ class Sprint11SemanticsTest {
             podcastUrl = "https://example.test/feed.xml",
             title = "Retained download",
             podcastTitle = "Sprint 11",
-            date = "Jun 25, 2026",
-            duration = "42 min",
             imageUrl = null,
             downloadStatus = DownloadStatusUiModel.DOWNLOADED,
             downloadProgress = 1f,
@@ -446,6 +445,8 @@ class Sprint11SemanticsTest {
             isFavorite = false,
             positionMs = 0L,
             description = null,
-            podcastImageUrl = null
+            podcastImageUrl = null,
+            pubDateEpochMs = Instant.parse("2026-06-25T10:30:00Z").toEpochMilli(),
+            durationMs = 42L * 60L * 1_000L
         )
 }

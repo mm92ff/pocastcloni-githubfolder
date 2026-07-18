@@ -17,7 +17,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.FeedUpdateMode
@@ -25,6 +24,7 @@ import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.Constants.SettingsDefaults
+import com.example.pocastcloni.util.appFormatLocale
 import com.example.pocastcloni.util.formatBytes
 import com.example.pocastcloni.util.formatDuration
 
@@ -316,7 +316,7 @@ fun SectionStatistics(
         when (statsState) {
             is StatisticsScreenUiState.Success -> {
                 if (statsState.statisticsStartedAt > 0L) {
-                    val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
+                    val formatLocale = context.appFormatLocale()
                     val dateFormat = remember(formatLocale) {
                         DateFormat.getDateInstance(DateFormat.MEDIUM, formatLocale)
                     }

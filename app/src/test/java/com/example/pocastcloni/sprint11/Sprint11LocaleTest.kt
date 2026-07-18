@@ -12,7 +12,10 @@ class Sprint11LocaleTest {
     @Test
     fun `clock output uses the format locale rather than US`() {
         withFormatLocale(Locale.forLanguageTag("ar-EG")) {
-            assertEquals("\u0660\u0661:\u0660\u0662", formatTime(62_000L))
+            assertEquals(
+                "\u0660\u0661:\u0660\u0662",
+                formatTime(62_000L, Locale.getDefault(Locale.Category.FORMAT))
+            )
         }
     }
 

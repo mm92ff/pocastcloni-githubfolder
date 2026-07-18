@@ -19,7 +19,7 @@ class EpisodeDateFormatterTest {
                 .toInstant()
                 .toEpochMilli()
 
-        assertEquals("25.06.2026", formatEpisodePublishDate(epochMs, zoneId, Locale.GERMANY))
+        assertEquals("25.06.2026", formatEpisodePublishDate(epochMs, Locale.GERMANY, zoneId))
     }
 
     @Test
@@ -30,11 +30,11 @@ class EpisodeDateFormatterTest {
                 .toInstant()
                 .toEpochMilli()
 
-        assertEquals("Jun 25, 2026", formatEpisodePublishDate(epochMs, zoneId, Locale.US))
+        assertEquals("Jun 25, 2026", formatEpisodePublishDate(epochMs, Locale.US, zoneId))
     }
 
     @Test
     fun `formatEpisodePublishDateOrNull hides missing dates`() {
-        assertNull(formatEpisodePublishDateOrNull(null, zoneId))
+        assertNull(formatEpisodePublishDateOrNull(null, Locale.US, zoneId))
     }
 }

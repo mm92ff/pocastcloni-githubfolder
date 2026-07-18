@@ -14,7 +14,7 @@ class EnglishSourcePolicyTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
-    fun `application has no localized values directories`() {
+    fun `application uses only approved localized values directories`() {
         val localizedDirectories =
             listOf(
                 repositoryRoot.resolve("app/src/main/res"),
@@ -24,8 +24,8 @@ class EnglishSourcePolicyTest {
                 .sorted()
 
         assertTrue(
-            "Localized values directories are not allowed: $localizedDirectories",
-            localizedDirectories.isEmpty()
+            "Unexpected localized values directories: $localizedDirectories",
+            localizedDirectories == APPROVED_LOCALIZED_VALUES_DIRECTORIES
         )
     }
 
@@ -219,6 +219,7 @@ class EnglishSourcePolicyTest {
             ).map(repositoryRoot::resolve).filter(File::isFile)
 
         return (sourceFiles + projectFiles + trackedScriptFiles())
+            .filterNot(::isApprovedLocaleResourceFile)
             .distinctBy { file -> file.canonicalPath }
             .sortedBy { file -> file.relativeTo(repositoryRoot).invariantSeparatorsPath }
     }
@@ -304,6 +305,11 @@ class EnglishSourcePolicyTest {
             .filter { file -> file.isDirectory && isLocalizedValuesDirectory(file.name) }
             .sortedBy(File::getName)
 
+    private fun isApprovedLocaleResourceFile(file: File): Boolean {
+        val relativePath = file.relativeTo(repositoryRoot).invariantSeparatorsPath
+        return APPROVED_LOCALIZED_RESOURCE_PREFIXES.any(relativePath::startsWith)
+    }
+
     private fun isLocalizedValuesDirectory(name: String): Boolean {
         if (!name.startsWith("values-")) return false
         val qualifiers = name.removePrefix("values-").split('-')
@@ -330,6 +336,10 @@ class EnglishSourcePolicyTest {
     }
 
     private companion object {
+        val APPROVED_LOCALIZED_VALUES_DIRECTORIES =
+            listOf("app/src/main/res/values-de")
+        val APPROVED_LOCALIZED_RESOURCE_PREFIXES =
+            APPROVED_LOCALIZED_VALUES_DIRECTORIES.map { directory -> "$directory/" }
         val SCANNED_EXTENSIONS = setOf("java", "kt", "kts", "md", "xml")
         val SCRIPT_EXTENSIONS = setOf("bat", "cmd", "ps1", "sh")
         val GERMAN_DIACRITIC = Regex("[\u00c4\u00d6\u00dc\u00e4\u00f6\u00fc\u00df]")

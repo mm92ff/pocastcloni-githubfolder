@@ -42,7 +42,7 @@ import com.example.pocastcloni.ui.common.formatEpisodeDuration
 import com.example.pocastcloni.ui.common.formatEpisodePublishDate
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.util.Constants
-import java.util.Locale
+import com.example.pocastcloni.util.appFormatLocale
 
 @Composable
 fun PodcastHeader(
@@ -129,22 +129,14 @@ fun EpisodeListItem(
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
+    val formatLocale = configuration.appFormatLocale()
     val displayDate =
-        remember(episode.pubDateEpochMs, episode.date, configuration, formatLocale) {
-            if (episode.pubDateEpochMs > 0L) {
-                formatEpisodePublishDate(episode.pubDateEpochMs, locale = formatLocale)
-            } else {
-                episode.date
-            }
+        remember(episode.pubDateEpochMs, configuration, formatLocale) {
+            episode.pubDateEpochMs?.let { formatEpisodePublishDate(it, locale = formatLocale) }
         }
     val displayDuration =
-        remember(episode.durationSeconds, episode.duration, configuration, formatLocale) {
-            if (episode.durationSeconds > 0L) {
-                formatEpisodeDuration(context, episode.durationSeconds, formatLocale)
-            } else {
-                episode.duration
-            }
+        remember(episode.durationMs, configuration, formatLocale) {
+            formatEpisodeDuration(context, episode.durationMs, formatLocale)
         }
     val titleColor = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     val metadataColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -173,19 +165,25 @@ fun EpisodeListItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = displayDate,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = metadataColor
-                )
-                Spacer(modifier = Modifier.width(Dimens.PaddingTiny))
-                Text(text = "·", style = MaterialTheme.typography.bodySmall, color = metadataColor)
-                Spacer(modifier = Modifier.width(Dimens.PaddingTiny))
-                Text(
-                    text = displayDuration,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = metadataColor
-                )
+                if (displayDate != null) {
+                    Text(
+                        text = displayDate,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = metadataColor
+                    )
+                }
+                if (displayDate != null && displayDuration.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(Dimens.PaddingTiny))
+                    Text(text = "·", style = MaterialTheme.typography.bodySmall, color = metadataColor)
+                    Spacer(modifier = Modifier.width(Dimens.PaddingTiny))
+                }
+                if (displayDuration.isNotEmpty()) {
+                    Text(
+                        text = displayDuration,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = metadataColor
+                    )
+                }
             }
 
             EpisodeActions(

@@ -8,8 +8,8 @@ import java.util.Locale
 
 fun formatEpisodePublishDate(
     epochMs: Long,
-    zoneId: ZoneId = ZoneId.systemDefault(),
-    locale: Locale = Locale.getDefault(Locale.Category.FORMAT)
+    locale: Locale,
+    zoneId: ZoneId = ZoneId.systemDefault()
 ): String =
     Instant.ofEpochMilli(epochMs)
         .atZone(zoneId)
@@ -17,6 +17,6 @@ fun formatEpisodePublishDate(
 
 fun formatEpisodePublishDateOrNull(
     epochMs: Long?,
-    zoneId: ZoneId = ZoneId.systemDefault(),
-    locale: Locale = Locale.getDefault(Locale.Category.FORMAT)
-): String? = epochMs?.let { formatEpisodePublishDate(it, zoneId, locale) }
+    locale: Locale,
+    zoneId: ZoneId = ZoneId.systemDefault()
+): String? = epochMs?.let { formatEpisodePublishDate(it, locale, zoneId) }

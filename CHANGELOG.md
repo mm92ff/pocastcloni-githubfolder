@@ -7,6 +7,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 ## [Unreleased]
 
 ### Added
+- Complete German UI localization and an app-language selector with system-default,
+  English and German choices.
 - Configurable Smart Stream feed-read limits from full-feed mode (`0`) through
   progressive presets up to `100`; manual full refresh bypasses the read limit
   without downloading episode audio.
@@ -27,8 +29,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
   to no extra gap while preserving visible mini-player clearance.
 
 ### Changed
-- Application-owned UI copy, error messages and developer documentation now use
-  English consistently across Android system locales.
+- English remains the complete default and fallback UI catalog while code, diagnostic
+  logs and developer documentation remain consistently English.
 - Android API 35 build support with Android 15 edge-to-edge behavior and
   background-work constraints.
 - Energy-efficient feed defaults for fresh installations.
@@ -47,6 +49,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Updated README to describe the current app feature set and local file policy.
 
 ### Fixed
+- Explicit app-language selections are applied on the first UI render after Android 13+
+  restores legacy AppCompat locale state during startup.
 - Home pull-to-refresh now honors the configured feed update mode and Smart
   Stream read limit.
 - Episode identity is scoped to its podcast feed, preventing collisions when

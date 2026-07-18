@@ -2,7 +2,6 @@ package com.example.pocastcloni.data.repository
 
 import android.content.Context
 import android.net.Uri
-import com.example.pocastcloni.R
 import com.example.pocastcloni.data.local.BackupData
 import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupFavorite
@@ -129,9 +128,8 @@ constructor(
                     }.orEmpty()
                     val stub = PodcastEntity(
                         rssUrl = backupPodcast.url,
-                        title = backupPodcast.title ?: context.getString(R.string.import_fallback_title),
-                        description = backupPodcast.description
-                            ?: context.getString(R.string.import_fallback_description),
+                        title = backupPodcast.title ?: backupPodcast.url,
+                        description = backupPodcast.description.orEmpty(),
                         imageUrl = safeImageUrl,
                         autoDownloadEnabled = backupPodcast.autoDownloadEnabled,
                         allowInsecureHttp = false,

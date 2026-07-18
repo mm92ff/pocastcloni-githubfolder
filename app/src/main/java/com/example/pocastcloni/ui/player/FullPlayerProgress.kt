@@ -14,9 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.util.appFormatLocale
 import com.example.pocastcloni.util.formatTime
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -103,6 +105,7 @@ private data class TimeSeconds(
 
 @Composable
 fun FullPlayerTimeLabels(playbackStateFlow: StateFlow<PlaybackState>) {
+    val formatLocale = LocalConfiguration.current.appFormatLocale()
     val secondsFlow =
         remember(playbackStateFlow) {
             playbackStateFlow
@@ -124,12 +127,12 @@ fun FullPlayerTimeLabels(playbackStateFlow: StateFlow<PlaybackState>) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = formatTime(seconds.positionSec * 1000L),
+            text = formatTime(seconds.positionSec * 1000L, formatLocale),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
         )
         Text(
-            text = formatTime(seconds.durationSec * 1000L),
+            text = formatTime(seconds.durationSec * 1000L, formatLocale),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
         )

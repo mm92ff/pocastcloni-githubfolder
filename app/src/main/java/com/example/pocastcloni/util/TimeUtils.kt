@@ -9,17 +9,19 @@ import java.util.concurrent.TimeUnit
 /**
  * Formats milliseconds into a MM:SS string.
  */
-fun formatTime(ms: Long): String {
+fun formatTime(
+    ms: Long,
+    locale: Locale
+): String {
     val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(ms)
     val minutes = totalSeconds / Constants.SECONDS_IN_MINUTE
     val seconds = totalSeconds % Constants.SECONDS_IN_MINUTE
 
-    return String.format(Locale.getDefault(Locale.Category.FORMAT), Constants.Format.TIME_FORMAT, minutes, seconds)
+    return String.format(locale, Constants.Format.TIME_FORMAT, minutes, seconds)
 }
 
 /**
  * Formats seconds into a human-readable string (e.g. "1h 45min").
- * The default locale is fine here since this is prose.
  */
 fun formatDuration(
     context: Context,
@@ -30,7 +32,7 @@ fun formatDuration(
     val hours = seconds / Constants.SECONDS_IN_HOUR
     val minutes = (seconds % Constants.SECONDS_IN_HOUR) / Constants.SECONDS_IN_MINUTE
     val numberFormat =
-        NumberFormat.getIntegerInstance(Locale.getDefault(Locale.Category.FORMAT)).apply {
+        NumberFormat.getIntegerInstance(context.appFormatLocale()).apply {
             isGroupingUsed = false
         }
 

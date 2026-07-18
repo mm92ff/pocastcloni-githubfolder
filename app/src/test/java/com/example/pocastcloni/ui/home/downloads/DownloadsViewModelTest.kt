@@ -52,8 +52,6 @@ class DownloadsViewModelTest {
         podcastUrl = "https://example.com/feed.rss",
         title = "Test Episode",
         podcastTitle = "Test Podcast",
-        date = "01.01.2024",
-        duration = "45m",
         imageUrl = null,
         downloadStatus = DownloadStatusUiModel.DOWNLOADED,
         downloadProgress = 1.0f,
@@ -61,7 +59,9 @@ class DownloadsViewModelTest {
         isFavorite = false,
         positionMs = 0L,
         description = null,
-        podcastImageUrl = null
+        podcastImageUrl = null,
+        pubDateEpochMs = null,
+        durationMs = 0L
     )
 
     @Before

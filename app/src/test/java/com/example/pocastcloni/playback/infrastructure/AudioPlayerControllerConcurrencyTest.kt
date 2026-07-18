@@ -1,6 +1,5 @@
 package com.example.pocastcloni.playback.infrastructure
 
-import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -15,6 +14,7 @@ import com.example.pocastcloni.domain.usecase.player.PlaybackUnavailableExceptio
 import com.example.pocastcloni.domain.usecase.player.PreparePlaybackUseCase
 import com.example.pocastcloni.playback.api.PlayerScreenEvent
 import com.example.pocastcloni.playback.api.PlayerUiState
+import com.example.pocastcloni.ui.UiText
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.clearMocks
@@ -63,7 +63,10 @@ class AudioPlayerControllerConcurrencyTest {
         }
         runCurrent()
 
-        assertEquals(PLAYBACK_UNAVAILABLE_MESSAGE, fixture.subject.playerState.value.error)
+        assertEquals(
+            UiText.StringResource(R.string.playback_unavailable_error),
+            fixture.subject.playerState.value.error
+        )
         verify(exactly = 0) { fixture.primary.controller.setMediaItem(any(), any<Long>()) }
     }
 
@@ -455,7 +458,6 @@ class AudioPlayerControllerConcurrencyTest {
         val mediaConnection = mockk<MediaControllerConnection>(relaxed = true)
         val podcastQuery = mockk<PodcastQueryPort>(relaxed = true)
         val preparePlayback = mockk<PreparePlaybackUseCase>()
-        val context = mockk<Context>(relaxed = true)
         val mappedEpisodeIds = mutableListOf<Long>()
         lateinit var disconnectListener: (MediaController) -> Unit
         val subject: AudioPlayerController
@@ -475,8 +477,6 @@ class AudioPlayerControllerConcurrencyTest {
             every { dispatcherProvider.io } returns dispatcher
             every { dispatcherProvider.default } returns dispatcher
             every { preferences.userSettingsFlow } returns flowOf(UserSettings())
-            every { context.getString(R.string.playback_unavailable_error) } returns PLAYBACK_UNAVAILABLE_MESSAGE
-            every { context.getString(R.string.playback_failed_error) } returns PLAYBACK_FAILED_MESSAGE
             every { mediaConnection.setOnDisconnected(any()) } answers {
                 disconnectListener = firstArg()
             }
@@ -498,7 +498,6 @@ class AudioPlayerControllerConcurrencyTest {
 
             subject =
                 AudioPlayerController(
-                    context = context,
                     dispatcherProvider = dispatcherProvider,
                     userPreferencesRepository = preferences,
                     podcastQuery = podcastQuery,
@@ -548,8 +547,6 @@ class AudioPlayerControllerConcurrencyTest {
         private const val THIRD_EPISODE_ID = 303L
         private const val CURRENT_POSITION_MS = 1_000L
         private const val STALE_SEEK_POSITION_MS = 45_000L
-        private const val PLAYBACK_UNAVAILABLE_MESSAGE = "Playback unavailable"
-        private const val PLAYBACK_FAILED_MESSAGE = "Playback failed"
         private const val THREAD_TIMEOUT_SECONDS = 5L
         private const val THREAD_TIMEOUT_MS = 5_000L
         private const val THREAD_COMPLETION_POLLS = 1_000

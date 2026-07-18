@@ -1,0 +1,356 @@
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="title_add_podcast">Podcast hinzufügen</string>
+    <string name="label_rss_url">RSS-Feed-URL</string>
+    <string name="btn_add">Hinzufügen</string>
+    <string name="subtitle_search">Oder suchen:</string>
+    <string name="label_search_term">Suchbegriff (z. B. Nachrichten)</string>
+    <string name="label_input">Eingabe</string>
+    <string name="error_add_url_empty">Bitte eine URL eingeben.</string>
+    <string name="error_add_url_invalid">Ungültige URL. Bitte http(s) verwenden.</string>
+    <string name="warning_add_url_http_confirmation">Dieser Feed verwendet unverschlüsseltes HTTP. Aktiviere ältere HTTP-Medien, bevor du ihn hinzufügst.</string>
+    <string name="allow_legacy_http_media">Ältere HTTP-Medien zulassen</string>
+    <string name="allow_legacy_http_media_subtitle">Erlaubt unverschlüsselte Feed-, Bild- und Audio-URLs für diesen Podcast.</string>
+    <string name="allow_local_network_feed">Feed im lokalen Netzwerk zulassen</string>
+    <string name="allow_local_network_feed_subtitle">Erlaubt diesem Podcast-Feed, eine private oder selbst gehostete Netzwerkadresse zu kontaktieren.</string>
+    <string name="warning_add_url_local_confirmation">Bestätige den Zugriff auf das lokale Netzwerk, bevor du diesen Feed hinzufügst.</string>
+
+    <string name="error_add_podcast_failed">Podcast konnte nicht geladen werden. Überprüfe die URL.</string>
+    <string name="error_add_general">Fehler beim Hinzufügen</string>
+    <string name="error_search_network">Suche fehlgeschlagen. Überprüfe deine Internetverbindung.</string>
+    <string name="unknown_collection">Unbekannt</string>
+    <string name="unknown_artist">Unbekannt</string>
+
+    <string name="error_network">Netzwerkfehler. Überprüfe deine Internetverbindung.</string>
+    <string name="error_unknown">Ein unbekannter Fehler ist aufgetreten.</string>
+    <string name="error_timeout">Zeitüberschreitung bei diesem Vorgang.</string>
+    <string name="retry">Erneut versuchen</string>
+    <string name="move_item_up"><xliff:g id="item_name">%1$s</xliff:g> nach oben verschieben</string>
+    <string name="move_item_down"><xliff:g id="item_name">%1$s</xliff:g> nach unten verschieben</string>
+
+    <string name="home_title">Meine Podcasts</string>
+    <string name="home_empty">Noch keine Podcasts. Drücke +</string>
+    <string name="desc_settings">Einstellungen</string>
+    <string name="desc_add">Hinzufügen</string>
+
+    <string name="desc_close">Schließen</string>
+    <string name="desc_play_pause">Wiedergabe/Pause</string>
+    <string name="desc_open_full_player">Vollbild-Player öffnen</string>
+    <string name="desc_rewind">10 Sekunden zurückspulen</string>
+    <string name="desc_fast_forward">30 Sekunden vorspulen</string>
+    <string name="desc_play">Wiedergeben</string>
+    <string name="desc_pause">Pause</string>
+    <string name="desc_cover">Coverbild</string>
+    <string name="desc_reveal_bottom_bar">Untere Navigation anzeigen</string>
+    <string name="progress_position_description">Wiedergabeposition <xliff:g id="position">%1$s</xliff:g> von <xliff:g id="duration">%2$s</xliff:g></string>
+
+    <string name="detail_not_found">Podcast nicht gefunden.</string>
+    <string name="detail_unknown_author">Autor unbekannt</string>
+    <string name="desc_back">Zurück</string>
+    <string name="status_loading">Wird geladen</string>
+    <string name="status_queued">In Warteschlange</string>
+    <string name="status_downloaded">Heruntergeladen</string>
+    <string name="status_error">Fehler</string>
+
+    <!-- Settings Screen -->
+    <string name="title_settings">Einstellungen</string>
+    <string name="settings_reset_dialog_title">App zurücksetzen?</string>
+    <string name="settings_reset_dialog_message">Alle Abonnements, Einstellungen, Wiedergabelisten und der Wiedergabeverlauf werden dauerhaft gelöscht.\n\nHinweis: Bereits heruntergeladene Episoden bleiben auf dem Gerät.</string>
+    <string name="settings_reset_dialog_confirm">Alles löschen</string>
+    <string name="settings_reset_zone_title">Datenbank zurücksetzen</string>
+    <string name="settings_reset_zone_subtitle">Löscht alles außer Downloads</string>
+    <string name="settings_color_strength">Farbstärke</string>
+    <string name="settings_percentage"><xliff:g id="percentage">%1$.0f</xliff:g> %%</string>
+    <string name="section_appearance">Darstellung</string>
+    <string name="label_theme">Designmodus</string>
+    <string name="theme_system">Systemstandard</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="label_accent_color">Akzentfarbe</string>
+    <string name="section_playback">Wiedergabe &amp; Netzwerk</string>
+    <string name="label_buffer_mode">Pufferstrategie</string>
+    <string name="buffer_normal">Standard</string>
+    <string name="buffer_maximal">Maximal</string>
+    <string name="label_buffer_whole">Ganze Episode vorladen</string>
+    <string name="desc_buffer_whole">Verhindert Unterbrechungen.</string>
+    <string name="label_update_interval">Aktualisierung: Alle <xliff:g id="hours">%1$d</xliff:g> Stunden</string>
+    <string name="desc_update_interval">Legt fest, wie oft im Hintergrund nach neuen Episoden gesucht wird.</string>
+    <string name="section_interface">Benutzeroberfläche</string>
+    <string name="label_view_mode">Ansicht</string>
+    <string name="view_mode_list">Liste</string>
+    <string name="view_mode_grid">Raster</string>
+
+    <string name="desc_new_episode_indicator">Neue Episoden verfügbar</string>
+
+    <string name="label_confirm_delete">Löschen bestätigen</string>
+    <string name="dialog_delete_title">Löschen?</string>
+    <string name="dialog_delete_download_msg">Diesen Download wirklich löschen?</string>
+    <string name="btn_confirm">Löschen</string>
+    <string name="btn_cancel">Abbrechen</string>
+    <string name="delete_podcast_icon">Löschen</string>
+
+    <string name="label_one_handed">Einhandmodus</string>
+    <string name="desc_one_handed">Listen beginnen unten und sind dadurch leichter erreichbar.</string>
+
+    <string name="settings_unit_hours"><xliff:g id="hours">%1$d</xliff:g> Stunden</string>
+    <string name="settings_unit_episodes">Die neuesten <xliff:g id="episode_count">%1$d</xliff:g> Episoden</string>
+    <string name="settings_unit_dp"><xliff:g id="density_pixels">%1$d</xliff:g> dp</string>
+    <string name="settings_unit_seconds"><xliff:g id="seconds">%1$d</xliff:g> Sekunden</string>
+    <string name="settings_mark_as_played_percentage">Bei 95 %</string>
+
+    <string name="add_podcast_success">Podcast erfolgreich hinzugefügt</string>
+    <!-- Counts are imported podcasts, total podcasts, and skipped favorites, in that order. -->
+    <string name="import_success_message">Import erfolgreich: <xliff:g id="imported_count">%1$d</xliff:g> von <xliff:g id="total_count">%2$d</xliff:g> Podcasts importiert. Übersprungene Favoriten: <xliff:g id="skipped_favorite_count">%3$d</xliff:g>.</string>
+    <string name="import_error_message">Import fehlgeschlagen. Überprüfe die ausgewählte Sicherung und versuche es erneut.</string>
+    <string name="import_error_invalid_backup">Die ausgewählte Sicherung ist ungültig oder wird nicht unterstützt.</string>
+    <string name="import_error_file_access">Die ausgewählte Sicherung konnte nicht gelesen werden.</string>
+    <string name="export_success_message">Export erfolgreich.</string>
+    <string name="export_error_message">Export fehlgeschlagen. Überprüfe das Ziel und versuche es erneut.</string>
+    <string name="export_error_file_access">Die Sicherung konnte nicht am ausgewählten Ziel gespeichert werden.</string>
+    <string name="nav_settings">Einstellungen</string>
+    <string name="nav_home">Start</string>
+    <string name="nav_downloads">Downloads</string>
+    <string name="nav_search">Suche</string>
+
+    <string name="edit">Bearbeiten</string>
+    <string name="done">Fertig</string>
+    <string name="mark_all_as_seen">Alle als gesehen markieren</string>
+    <string name="no_downloads">Keine Downloads verfügbar</string>
+    <string name="subscribed">Abonniert</string>
+    <string name="add">Hinzufügen</string>
+    <string name="download_started">Download gestartet</string>
+    <string name="download_removed">Download entfernt</string>
+    <string name="download_notification_channel_name">Episoden-Downloads</string>
+    <string name="download_notification_title">Episode wird heruntergeladen</string>
+    <string name="download_notification_starting">Wird gestartet</string>
+    <string name="download_notification_progress"><xliff:g id="progress_percentage">%1$d</xliff:g>%%</string>
+    <!-- Notification content combines an external episode title with localized download status. -->
+    <string name="download_notification_content"><xliff:g id="episode_title">%1$s</xliff:g> — <xliff:g id="download_status">%2$s</xliff:g></string>
+    <string name="auto_download_enabled">Automatischer Download aktiviert</string>
+    <string name="auto_download_disabled">Automatischer Download deaktiviert</string>
+    <string name="auto_download_new_episodes">Neue Episoden automatisch herunterladen</string>
+    <string name="mark_as_unplayed">Als nicht wiedergegeben markieren</string>
+    <string name="mark_as_played">Als wiedergegeben markieren</string>
+    <string name="description">Beschreibung</string>
+    <string name="close">Schließen</string>
+    <string name="importing_backup">Sicherung wird importiert&#8230;</string>
+    <string name="ok">OK</string>
+    <string name="import_complete">Import abgeschlossen</string>
+    <string name="exporting_backup">Sicherung wird exportiert&#8230;</string>
+    <string name="export_complete">Export abgeschlossen</string>
+    <string name="error">Fehler</string>
+    <string name="settings_tab_design">Design</string>
+    <string name="settings_tab_playback">Wiedergabe</string>
+    <string name="settings_tab_sync">Synchronisierung</string>
+    <string name="settings_tab_sync_storage">Synchronisierung &amp; Speicher</string>
+    <string name="settings_tab_data">Daten</string>
+    <string name="settings_section_design">Design</string>
+    <string name="settings_app_color">App-Farbe</string>
+    <string name="color_green">Grün</string>
+    <string name="color_red">Rot</string>
+    <string name="color_blue">Blau</string>
+    <string name="color_yellow">Gelb</string>
+    <string name="color_purple">Violett</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_turquoise">Türkis</string>
+    <string name="color_amber">Bernstein</string>
+    <string name="color_slate">Schiefergrau</string>
+    <string name="settings_gradient_background">Farbverlauf im Hintergrund</string>
+    <string name="settings_gradient_background_subtitle">Verlauf von Weiß oder Schwarz zur ausgewählten App-Farbe</string>
+    <string name="settings_gradient_strength">Verlaufsstärke</string>
+    <string name="settings_gradient_direction">Verlaufsrichtung</string>
+    <string name="settings_gradient_direction_top_to_bottom">Von oben nach unten</string>
+    <string name="settings_gradient_direction_bottom_to_top">Von unten nach oben</string>
+    <string name="settings_gradient_direction_left_to_right">Von links nach rechts</string>
+    <string name="settings_gradient_direction_right_to_left">Von rechts nach links</string>
+    <string name="settings_gradient_direction_top_left_to_bottom_right">Von links oben nach rechts unten</string>
+    <string name="settings_gradient_direction_bottom_right_to_top_left">Von rechts unten nach links oben</string>
+    <string name="settings_gradient_direction_top_right_to_bottom_left">Von rechts oben nach links unten</string>
+    <string name="settings_gradient_direction_bottom_left_to_top_right">Von links unten nach rechts oben</string>
+    <string name="settings_design_preview_podcast_badge">KI</string>
+    <string name="settings_design_preview_podcast_title">KI verstehen</string>
+    <string name="settings_design_preview_episode_title">KI als Sicherheitsrisiko</string>
+    <string name="settings_design_preview_episode_long_title">KI als Sicherheitsrisiko – Wie Chatbots ...</string>
+    <string name="settings_transparent_search_cards">Transparente Karten</string>
+    <string name="settings_transparent_search_cards_subtitle">Suchergebnisse und Einstellungskarten nur mit Rahmen anzeigen</string>
+    <string name="settings_transparent_podcast_cards">Transparente Podcast-Karten</string>
+    <string name="settings_transparent_podcast_cards_subtitle">Karten unter „Meine Podcasts“ nur mit Rahmen anzeigen</string>
+    <string name="settings_transparent_cards_rows">Transparente Karten &amp; Zeilen</string>
+    <string name="settings_transparent_cards_rows_subtitle">Karten und Episodenzeilen nur mit Rahmen anzeigen</string>
+    <string name="settings_transparent_episode_rows">Transparente Episodenzeilen</string>
+    <string name="settings_transparent_episode_rows_subtitle">Verlaufs- und Favoritenzeilen ohne gefüllten Hintergrund anzeigen</string>
+    <string name="settings_transparent_bottom_bar">Transparente untere Leiste</string>
+    <string name="settings_transparent_bottom_bar_subtitle">App-Hintergrund hinter der unteren Navigation anzeigen</string>
+    <string name="settings_section_automation">Automatisierung</string>
+    <string name="settings_auto_refresh_on_start">Beim Start automatisch aktualisieren</string>
+    <string name="settings_auto_refresh_on_start_subtitle">Aktualisiert die Feeds beim Öffnen der App</string>
+    <string name="settings_background_check">Prüfung im Hintergrund</string>
+    <string name="settings_background_check_subtitle">Sucht regelmäßig nach neuen Episoden</string>
+    <string name="settings_check_interval">Prüfintervall</string>
+    <string name="settings_update_method">Aktualisierungsmethode</string>
+    <string name="settings_update_method_full">Vollständig (stabil, lädt alles)</string>
+    <string name="settings_update_method_smart_stream">Smart Stream (schnell)</string>
+    <string name="settings_update_method_smart_stream_subtitle">Kann RSS-Downloads vorzeitig beenden</string>
+    <string name="settings_smart_stream_item_limit">Feed-Leselimit</string>
+    <string name="settings_smart_stream_item_limit_full">Vollständiger Feed</string>
+    <string name="settings_smart_stream_item_limit_entries"><xliff:g id="entry_count">%1$d</xliff:g> Einträge</string>
+    <string name="settings_smart_stream_item_limit_warning">Der begrenzte Modus beendet das Lesen frühzeitig in der Feed-Reihenfolge. Bei unsortierten Feeds oder mehr neuen Episoden als dem Limit können Episoden übersehen werden.</string>
+    <string name="settings_section_downloads_data">Downloads &amp; Daten</string>
+    <string name="settings_auto_download_limit">Limit für automatische Downloads</string>
+    <string name="settings_section_download_location">Download-Speicherort</string>
+    <string name="settings_save_to_downloads_folder">Im Download-Ordner speichern</string>
+    <string name="settings_download_location_scoped_storage">Android 10+: Dateien werden unter Android/data/…/files/Downloads gespeichert. Es ist kein Berechtigungsdialog erforderlich.</string>
+    <string name="settings_download_location_legacy_storage">Android 9 und älter: Dateien werden im öffentlichen Download-Ordner gespeichert. Der Speicherzugriff wird angefordert.</string>
+    <string name="settings_manual_full_refresh">Alle Feeds vollständig aktualisieren</string>
+    <string name="settings_manual_full_refresh_subtitle">Ignoriert das Feed-Leselimit und lädt keine Audiodateien herunter.</string>
+    <string name="settings_section_cleanup">Automatische Bereinigung</string>
+    <string name="settings_cleanup_enabled">Automatische Bereinigung aktivieren</string>
+    <string name="settings_cleanup_enabled_subtitle">Löscht wiedergegebene Episoden automatisch, wenn das Behaltelimit überschritten wird</string>
+    <string name="settings_cleanup_keep_limit">Behaltelimit (Episoden pro Podcast)</string>
+    <string name="settings_cleanup_interval">Bereinigungsintervall</string>
+    <string name="settings_section_backup_restore">Sichern &amp; Wiederherstellen</string>
+    <string name="settings_export_backup">Sicherung exportieren</string>
+    <string name="settings_import_backup">Sicherung importieren</string>
+    <string name="settings_section_interface">Benutzeroberfläche</string>
+    <string name="settings_app_language">App-Sprache</string>
+    <string name="settings_app_language_dialog_title">App-Sprache auswählen</string>
+    <string name="settings_language_system_default">Systemstandard</string>
+    <string name="settings_view_list">Listenansicht</string>
+    <string name="settings_tile_size">Kachelgröße</string>
+    <string name="settings_show_titles">Titel anzeigen</string>
+    <string name="settings_one_handed_mode">Einhandmodus</string>
+    <string name="settings_one_handed_mode_subtitle">Navigationsleiste am unteren Rand</string>
+    <string name="settings_bottom_bar_clean_mode">Aufgeräumter Modus</string>
+    <string name="settings_bottom_bar_clean_mode_subtitle">Untere Leiste ausblenden und durch Wischen nach oben einblenden</string>
+    <string name="settings_bottom_bar_auto_hide">Untere Leiste automatisch ausblenden</string>
+    <string name="settings_bottom_bar_auto_hide_subtitle">Untere Leiste nach kurzer Verzögerung wieder ausblenden</string>
+    <string name="settings_bottom_bar_auto_hide_delay">Verzögerung für automatisches Ausblenden</string>
+    <string name="settings_progress_bar_height">Höhe der Fortschrittsleiste</string>
+    <string name="settings_navigation_bar_height">Höhe der Navigationsleiste</string>
+    <string name="settings_home_bottom_spacing">Unterer Abstand auf der Startseite</string>
+    <string name="settings_confirm_delete">Löschen bestätigen</string>
+    <string name="settings_confirm_delete_subtitle">Vor dem Löschen um Bestätigung bitten</string>
+    <string name="settings_section_playback">Wiedergabe</string>
+    <string name="settings_mark_as_played_after">Als wiedergegeben markieren ab</string>
+    <string name="settings_mini_player_time_overlay">Zeitanzeige im Mini-Player</string>
+    <string name="settings_mini_player_time_overlay_subtitle">Vergangene und gesamte Zeit auf der Zeitleiste des Mini-Players anzeigen</string>
+    <string name="settings_transparent_mini_player">Transparenter Mini-Player</string>
+    <string name="settings_transparent_mini_player_subtitle">App-Hintergrund hinter dem Mini-Player anzeigen</string>
+    <string name="settings_buffer_mode">Puffermodus</string>
+    <string name="settings_buffer_mode_normal">Normal (Android-Standard)</string>
+    <string name="settings_buffer_mode_maximal">Maximal (großer Puffer)</string>
+    <string name="settings_buffer_whole_podcast_subtitle">Lädt die gesamte Episode in den Arbeitsspeicher (mit Vorsicht verwenden)</string>
+    <string name="settings_section_statistics">Statistik</string>
+    <string name="settings_statistics_downloads_wifi">Downloads (WLAN):</string>
+    <string name="settings_statistics_downloads_mobile">Downloads (Mobilfunk):</string>
+    <string name="settings_statistics_streaming_wifi">Streaming (WLAN):</string>
+    <string name="settings_statistics_streaming_mobile">Streaming (Mobilfunk):</string>
+    <string name="settings_statistics_upload">Upload:</string>
+    <string name="settings_statistics_running_since">Erfasst seit:</string>
+    <string name="settings_statistics_days_singular">Tag</string>
+    <string name="settings_statistics_days_plural">Tage</string>
+    <string name="settings_statistics_total_listening_time">Gesamte Wiedergabezeit:</string>
+    <string name="settings_statistics_total_episodes">Episoden insgesamt</string>
+    <string name="settings_statistics_episodes_in_progress">Begonnene Episoden</string>
+    <string name="settings_statistics_episodes_played">Wiedergegebene Episoden</string>
+    <string name="reset">Zurücksetzen</string>
+    <string name="episode_info_separator"> • </string>
+    <string name="no_description_available">Keine Beschreibung verfügbar.</string>
+    <string name="settings_notification_dot">Benachrichtigungspunkt</string>
+    <string name="settings_color">Farbe</string>
+    <string name="settings_size">Größe</string>
+    <string name="settings_border_width">Rahmenbreite</string>
+    <string name="settings_horizontal_offset">Horizontaler Versatz</string>
+    <string name="settings_vertical_offset">Vertikaler Versatz</string>
+    <string name="unknown_podcast_title">Unbekannter Podcast</string>
+    <string name="no_episode_title">Kein Titel</string>
+    <string name="download_item_separator"> • </string>
+    <string name="podcast_detail_title_placeholder" />
+    <string name="unknown_error_placeholder">Unbekannt</string>
+    <string name="updating_all_feeds">Alle Feeds werden aktualisiert&#8230;</string>
+    <plurals name="podcasts_updated_count">
+        <item quantity="one"><xliff:g id="podcast_count">%1$d</xliff:g> Podcast aktualisiert.</item>
+        <item quantity="other"><xliff:g id="podcast_count">%1$d</xliff:g> Podcasts aktualisiert.</item>
+    </plurals>
+    <!-- Counts are successfully updated podcasts followed by all attempted podcasts. -->
+    <string name="podcasts_partially_updated"><xliff:g id="updated_count">%1$d</xliff:g> von <xliff:g id="total_count">%2$d</xliff:g> Podcasts aktualisiert. Einige Feeds sind fehlgeschlagen.</string>
+    <string name="everything_up_to_date">Alles ist auf dem neuesten Stand.</string>
+    <string-array name="byte_units">
+        <item>B</item>
+        <item>KB</item>
+        <item>MB</item>
+        <item>GB</item>
+        <item>TB</item>
+    </string-array>
+    <string name="duration_placeholder">-- Min.</string>
+    <!-- Duration components are hours followed by minutes. -->
+    <string name="duration_hours_minutes"><xliff:g id="hours">%1$s</xliff:g> Std. <xliff:g id="minutes">%2$s</xliff:g> Min.</string>
+    <string name="duration_less_than_a_minute">&lt; 1 Min.</string>
+    <plurals name="duration_minutes">
+        <item quantity="one"><xliff:g id="minute_count">%1$s</xliff:g> Min.</item>
+        <item quantity="other"><xliff:g id="minute_count">%1$s</xliff:g> Min.</item>
+    </plurals>
+    <string name="desc_podcast_cover">Podcast-Cover</string>
+    <string name="title_auto_download">Episoden automatisch herunterladen</string>
+    <string name="desc_played">Episode wiedergegeben</string>
+    <string name="desc_download">Episode herunterladen</string>
+    <string name="reorder_error">Podcasts konnten nicht neu angeordnet werden.</string>
+    <string name="playback_failed_error">Wiedergabe fehlgeschlagen. Versuche es erneut.</string>
+    <string name="playback_unavailable_error">Diese Episode ist noch nicht zur Wiedergabe verfügbar. Aktualisiere den Podcast und versuche es erneut.</string>
+    <string name="refresh_error">Podcasts konnten nicht aktualisiert werden.</string>
+
+    <string name="duration_format_long"><xliff:g id="hours">%1$d</xliff:g> Std. <xliff:g id="minutes">%2$02d</xliff:g> Min.</string>
+    <string name="duration_format_short"><xliff:g id="minutes">%1$d</xliff:g> Min.</string>
+    <string name="episode_duration_hours_minutes"><xliff:g id="hours">%1$s</xliff:g> Std. <xliff:g id="minutes">%2$s</xliff:g> Min.</string>
+    <string name="episode_duration_minutes"><xliff:g id="minutes">%1$s</xliff:g> Min.</string>
+    <string name="desc_delete_episode">Episode löschen</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="favorites">Favoriten</string>
+    <string name="history">Verlauf</string>
+    <string name="favorites_empty">Noch keine Favoriten.</string>
+    <string name="favorites_sort_manual">Manuell</string>
+    <string name="favorites_sort_added">Hinzugefügt</string>
+    <string name="history_empty">Noch kein Wiedergabeverlauf.</string>
+    <string name="history_section_today">Heute</string>
+    <string name="history_section_yesterday">Gestern</string>
+    <string name="history_section_last_week">Letzte Woche</string>
+    <string name="history_section_last_month">Letzter Monat</string>
+    <string name="history_section_last_two_months">Vor 2 Monaten</string>
+    <string name="history_section_last_five_months">Vor 5 Monaten</string>
+    <string name="history_section_last_year">Vor 1 Jahr</string>
+    <string name="history_section_older">Älter</string>
+    <string name="clear_history">Verlauf löschen</string>
+    <string name="confirm_clear_history_title">Wiedergabeverlauf löschen?</string>
+    <string name="confirm_clear_history_message">Alle wiedergegebenen Episoden werden als nicht wiedergegeben markiert. Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="add_to_favorites">Zu Favoriten hinzufügen</string>
+    <string name="remove_from_favorites">Aus Favoriten entfernen</string>
+    <string name="cd_delete_episode">Episode löschen</string>
+    <string name="sync_notification_title">Podcasts werden aktualisiert</string>
+    <string name="sync_notification_content">Neue Episoden werden gesucht&#8230;</string>
+    <string name="sync_notification_channel_name">Podcast-Synchronisierung</string>
+
+    <string name="settings_statistics_error">Statistik konnte nicht geladen werden.</string>
+    <string name="generic_error_update_failed">Aktualisierung fehlgeschlagen.</string>
+    <string name="settings_error_load">Einstellungen konnten nicht geladen werden.</string>
+    <string name="settings_error_reset_stats">Statistik konnte nicht zurückgesetzt werden.</string>
+    <string name="settings_error_reset_app">App konnte nicht zurückgesetzt werden.</string>
+
+    <!-- Playback Service strings -->
+    <string name="playback_channel_name">Wiedergabe</string>
+    <string name="playback_channel_description">Zeigt die aktuelle Podcast-Episode an</string>
+    <string name="playing">Wiedergabe läuft</string>
+    <string name="error_no_internet">Keine Internetverbindung. Überprüfe dein Netzwerk.</string>
+    <string name="error_file_deleted">Die Datei wurde nicht gefunden oder gelöscht.</string>
+    <string name="error_decoder">Wiedergabefehler. Das Format wird nicht unterstützt.</string>
+    <string name="error_generic">Ein unbekannter Wiedergabefehler ist aufgetreten.</string>
+
+    <string name="desc_toggle_favorite">Als Favorit markieren/Markierung entfernen</string>
+    <string name="desc_toggle_played">Als wiedergegeben/nicht wiedergegeben markieren</string>
+    <string name="desc_episode_downloaded">Episode ist heruntergeladen</string>
+    <string name="desc_download_episode">Episode herunterladen</string>
+
+    <string name="delete">Löschen</string>
+    <string name="delete_multiple_count"><xliff:g id="podcast_count">%1$d</xliff:g> Podcasts löschen?</string>
+    <string name="settings_layout_mode">Ansicht</string>
+    <string name="layout_grid">Raster</string>
+    <string name="layout_list">Liste</string>
+</resources>

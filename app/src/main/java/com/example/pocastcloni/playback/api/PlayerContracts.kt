@@ -1,5 +1,6 @@
 package com.example.pocastcloni.playback.api
 
+import com.example.pocastcloni.ui.UiText
 import com.example.pocastcloni.util.Constants
 
 sealed interface PlayerScreenEvent {
@@ -30,7 +31,7 @@ data class PlayerUiState(
     val coverUrl: String = Constants.EMPTY_STRING,
     val currentEpisodeId: Long? = null,
     val currentPodcastUrl: String? = null,
-    val error: String? = null,
+    val error: UiText? = null,
     val isCurrentEpisodeFavorite: Boolean = false
 )
 

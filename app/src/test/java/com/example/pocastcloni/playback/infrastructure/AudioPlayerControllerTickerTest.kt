@@ -1,6 +1,5 @@
 package com.example.pocastcloni.playback.infrastructure
 
-import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -86,7 +85,6 @@ class AudioPlayerControllerTickerTest {
 
         val controller =
             AudioPlayerController(
-                context = mockk<Context>(relaxed = true),
                 dispatcherProvider = dispatcherProvider,
                 userPreferencesRepository = preferences,
                 podcastQuery = podcastQuery,

@@ -4,11 +4,6 @@ import androidx.compose.runtime.Immutable
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.domain.model.EpisodePresentation
 import com.example.pocastcloni.domain.model.EpisodeWithPodcastInfo
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.concurrent.TimeUnit
 
 @Immutable
 enum class DownloadStatusUiModel {
@@ -24,8 +19,6 @@ data class EpisodeUiModel(
     val podcastUrl: String,
     val title: String,
     val podcastTitle: String,
-    val date: String,
-    val duration: String,
     val imageUrl: String?,
     val downloadStatus: DownloadStatusUiModel,
     val downloadProgress: Float,
@@ -34,24 +27,9 @@ data class EpisodeUiModel(
     val positionMs: Long,
     val description: String?,
     val podcastImageUrl: String?,
-    val pubDateEpochMs: Long = 0L,
-    val durationSeconds: Long = 0L
+    val pubDateEpochMs: Long?,
+    val durationMs: Long
 )
-
-private fun formatDuration(durationMs: Long): String {
-    if (durationMs <= 0L) return ""
-    val hours = TimeUnit.MILLISECONDS.toHours(durationMs)
-    val minutes = TimeUnit.MILLISECONDS.toMinutes(durationMs) - TimeUnit.HOURS.toMinutes(hours)
-    return if (hours > 0) "%dh %02dm".format(hours, minutes) else "%dm".format(minutes)
-}
-
-private fun formatDate(epochMs: Long): String {
-    val instant = Instant.ofEpochMilli(epochMs)
-    val zonedDateTime = instant.atZone(ZoneId.systemDefault())
-    return DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-        .withLocale(java.util.Locale.getDefault(java.util.Locale.Category.FORMAT))
-        .format(zonedDateTime)
-}
 
 private fun EpisodePresentation.toDownloadStatusUiModel(): DownloadStatusUiModel {
     return when (this.downloadStatus) {
@@ -67,60 +45,77 @@ fun EpisodePresentation.toEpisodeUiModelCached(
     podcastImageUrl: String?,
     downloadProgress: Float
 ): EpisodeUiModel {
-    val epochMs = this.pubDateMs ?: 0L
+    val epochMs = this.pubDateMs
     val durationMs = this.durationMs
     val downloadStatusUiModel = this.toDownloadStatusUiModel()
 
     val currentProgress = downloadProgress
 
-    if (previous != null &&
-        previous.episodeId == this.episodeId &&
-        previous.guid == this.guid &&
-        previous.podcastUrl == this.podcastRssUrl &&
-        previous.title == this.title &&
-        previous.description == this.description &&
-        previous.podcastTitle == podcastName &&
-        previous.podcastImageUrl == podcastImageUrl &&
-        previous.imageUrl == podcastImageUrl &&
-        previous.pubDateEpochMs == epochMs &&
-        previous.durationSeconds == durationMs
-    ) {
-        val dynamicUnchanged =
-            previous.downloadStatus == downloadStatusUiModel &&
-                previous.downloadProgress == currentProgress &&
-                previous.isPlayed == this.isPlayed &&
-                previous.isFavorite == this.isFavorite &&
-                previous.positionMs == this.playbackPositionMs
+    if (previous != null) {
+        val identityUnchanged =
+            previous.episodeId == this.episodeId &&
+                previous.guid == this.guid &&
+                previous.podcastUrl == this.podcastRssUrl
+        val contentUnchanged =
+            previous.title == this.title &&
+                previous.description == this.description &&
+                previous.podcastTitle == podcastName
+        val mediaUnchanged =
+            previous.podcastImageUrl == podcastImageUrl &&
+                previous.imageUrl == podcastImageUrl &&
+                previous.pubDateEpochMs == epochMs &&
+                previous.durationMs == durationMs
 
-        if (dynamicUnchanged) return previous
+        if (identityUnchanged && contentUnchanged && mediaUnchanged) {
+            val dynamicUnchanged =
+                previous.downloadStatus == downloadStatusUiModel &&
+                    previous.downloadProgress == currentProgress &&
+                    previous.isPlayed == this.isPlayed &&
+                    previous.isFavorite == this.isFavorite &&
+                    previous.positionMs == this.playbackPositionMs
 
-        return previous.copy(
-            downloadStatus = downloadStatusUiModel,
-            downloadProgress = currentProgress,
-            isPlayed = this.isPlayed,
-            isFavorite = this.isFavorite,
-            positionMs = this.playbackPositionMs
-        )
+            if (dynamicUnchanged) return previous
+
+            return previous.copy(
+                downloadStatus = downloadStatusUiModel,
+                downloadProgress = currentProgress,
+                isPlayed = this.isPlayed,
+                isFavorite = this.isFavorite,
+                positionMs = this.playbackPositionMs
+            )
+        }
     }
 
+    return createEpisodeUiModel(
+        podcastName = podcastName,
+        podcastImageUrl = podcastImageUrl,
+        downloadProgress = currentProgress,
+        downloadStatus = downloadStatusUiModel
+    )
+}
+
+private fun EpisodePresentation.createEpisodeUiModel(
+    podcastName: String,
+    podcastImageUrl: String?,
+    downloadProgress: Float,
+    downloadStatus: DownloadStatusUiModel
+): EpisodeUiModel {
     return EpisodeUiModel(
         episodeId = this.episodeId,
         guid = this.guid,
         podcastUrl = this.podcastRssUrl,
         title = this.title,
         podcastTitle = podcastName,
-        date = formatDate(epochMs),
-        duration = formatDuration(durationMs),
         imageUrl = podcastImageUrl,
-        downloadStatus = downloadStatusUiModel,
-        downloadProgress = currentProgress,
+        downloadStatus = downloadStatus,
+        downloadProgress = downloadProgress,
         isPlayed = this.isPlayed,
         isFavorite = this.isFavorite,
         positionMs = this.playbackPositionMs,
         description = this.description,
         podcastImageUrl = podcastImageUrl,
-        pubDateEpochMs = epochMs,
-        durationSeconds = durationMs // Note: this field stores milliseconds; the name is kept for consistency.
+        pubDateEpochMs = pubDateMs,
+        durationMs = durationMs
     )
 }
 

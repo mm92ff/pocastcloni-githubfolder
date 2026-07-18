@@ -6,7 +6,8 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
-import androidx.core.app.NotificationCompat // Critical Import for setOngoing
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -76,11 +77,10 @@ constructor(
 
     private fun createForegroundInfo(): ForegroundInfo {
         val channelId = "sync_channel"
-        // Use fallbacks if strings are missing to prevent compile errors,
-        // but YOU SHOULD add these to strings.xml.
-        val title = context.getString(R.string.sync_notification_title)
-        val content = context.getString(R.string.sync_notification_content)
-        val channelName = context.getString(R.string.sync_notification_channel_name)
+        val localizedContext = ContextCompat.getContextForLanguage(context)
+        val title = localizedContext.getString(R.string.sync_notification_title)
+        val content = localizedContext.getString(R.string.sync_notification_content)
+        val channelName = localizedContext.getString(R.string.sync_notification_channel_name)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel =
@@ -94,11 +94,10 @@ constructor(
         }
 
         val notification: Notification =
-            NotificationCompat.Builder(context, channelId)
+            NotificationCompat.Builder(localizedContext, channelId)
                 .setContentTitle(title)
                 .setTicker(title)
                 .setContentText(content)
-                // Use a standard Android icon to fix the "Unresolved Reference" immediately
                 .setSmallIcon(android.R.drawable.ic_popup_sync)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)

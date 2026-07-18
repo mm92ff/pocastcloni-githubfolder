@@ -156,9 +156,9 @@ fun FullPlayerScreen(
                         onCollapse = onCollapse
                     )
 
-                    playerState.error?.let { msg ->
+                    playerState.error?.let { message ->
                         Spacer(modifier = Modifier.height(Dimens.PaddingMedium))
-                        FullPlayerErrorBanner(message = msg)
+                        FullPlayerErrorBanner(message = message.asString())
                     }
                 }
 

@@ -132,46 +132,85 @@ class EnglishUiLanguageAndroidTest {
     }
 
     @Test
-    fun germanConfigurationFallsBackToEnglishDefaults() {
+    fun germanConfigurationUsesGermanResources() {
         val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
         val configuration = Configuration(targetContext.resources.configuration).apply {
             setLocale(Locale.GERMANY)
         }
         val germanContext = targetContext.createConfigurationContext(configuration)
 
-        assertEquals("1h 05min", formatEpisodeDuration(germanContext, 3_900_000L, Locale.GERMANY))
-        assertEquals("5 min", formatEpisodeDuration(germanContext, 300_000L, Locale.GERMANY))
+        // Exact German fixtures prove that the supported locale resolves its own catalog.
+        assertEquals("1 Std. 05 Min.", formatEpisodeDuration(germanContext, 3_900_000L, Locale.GERMANY))
+        assertEquals("5 Min.", formatEpisodeDuration(germanContext, 300_000L, Locale.GERMANY))
         assertEquals(
-            "Can stop RSS downloads early",
+            "Kann RSS-Downloads vorzeitig beenden",
             germanContext.getString(R.string.settings_update_method_smart_stream_subtitle)
         )
-        assertEquals("Feed read limit", germanContext.getString(R.string.settings_smart_stream_item_limit))
-        assertEquals("Full feed", germanContext.getString(R.string.settings_smart_stream_item_limit_full))
-        assertEquals("10 entries", germanContext.getString(R.string.settings_smart_stream_item_limit_entries, 10))
+        assertEquals("Feed-Leselimit", germanContext.getString(R.string.settings_smart_stream_item_limit))
         assertEquals(
-            "Limited mode stops early in feed order. Unsorted feeds or more new episodes than the limit can cause episodes to be missed.",
+            "Vollst\u00e4ndiger Feed",
+            germanContext.getString(R.string.settings_smart_stream_item_limit_full)
+        )
+        assertEquals(
+            "10 Eintr\u00e4ge",
+            germanContext.getString(R.string.settings_smart_stream_item_limit_entries, 10)
+        )
+        assertEquals(
+            "Der begrenzte Modus beendet das Lesen fr\u00fchzeitig in der Feed-Reihenfolge. " +
+                "Bei unsortierten Feeds oder mehr neuen Episoden als dem Limit k\u00f6nnen " +
+                "Episoden \u00fcbersehen werden.",
             germanContext.getString(R.string.settings_smart_stream_item_limit_warning)
         )
         assertEquals(
-            "Refresh all feeds completely",
+            "Alle Feeds vollst\u00e4ndig aktualisieren",
             germanContext.getString(R.string.settings_manual_full_refresh)
         )
         assertEquals(
-            "Ignores the feed read limit and downloads no audio.",
+            "Ignoriert das Feed-Leselimit und l\u00e4dt keine Audiodateien herunter.",
             germanContext.getString(R.string.settings_manual_full_refresh_subtitle)
         )
-        assertEquals("Could not load podcast. Check the URL.", germanContext.getString(R.string.error_add_podcast_failed))
         assertEquals(
-            "The selected backup is invalid or unsupported.",
+            "Podcast kon" + "nte nicht geladen werden. \u00dcberpr\u00fcfe die URL.",
+            germanContext.getString(R.string.error_add_podcast_failed)
+        )
+        assertEquals(
+            "Die ausgew\u00e4hlte Sicherung ist ung\u00fcltig oder wird nicht unterst\u00fctzt.",
             germanContext.getString(R.string.import_error_invalid_backup)
         )
         assertEquals(
-            "Download Location",
+            "Download-Speicherort",
             germanContext.getString(R.string.settings_section_download_location)
         )
         assertEquals(
-            "Save to Downloads folder",
+            "Im Download-Ordner speichern",
             germanContext.getString(R.string.settings_save_to_downloads_folder)
+        )
+    }
+
+    @Test
+    fun unsupportedConfigurationFallsBackToEnglishDefaults() {
+        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val configuration = Configuration(targetContext.resources.configuration).apply {
+            setLocale(Locale.forLanguageTag("fr-FR"))
+        }
+        val unsupportedContext = targetContext.createConfigurationContext(configuration)
+
+        assertEquals(
+            "Can stop RSS downloads early",
+            unsupportedContext.getString(R.string.settings_update_method_smart_stream_subtitle)
+        )
+        assertEquals("Feed read limit", unsupportedContext.getString(R.string.settings_smart_stream_item_limit))
+        assertEquals(
+            "Refresh all feeds completely",
+            unsupportedContext.getString(R.string.settings_manual_full_refresh)
+        )
+        assertEquals(
+            "Could not load podcast. Check the URL.",
+            unsupportedContext.getString(R.string.error_add_podcast_failed)
+        )
+        assertEquals(
+            "The selected backup is invalid or unsupported.",
+            unsupportedContext.getString(R.string.import_error_invalid_backup)
         )
     }
 }

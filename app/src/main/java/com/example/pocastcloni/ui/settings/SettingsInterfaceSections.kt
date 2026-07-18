@@ -56,6 +56,10 @@ fun SectionInterface(
 ) {
     SettingsSectionTitle(stringResource(R.string.settings_section_interface))
 
+    AppLanguageSettings()
+
+    Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+
     SettingsCard {
         Text(stringResource(R.string.settings_layout_mode), style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))

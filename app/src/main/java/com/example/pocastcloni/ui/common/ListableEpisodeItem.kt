@@ -29,7 +29,7 @@ import coil.compose.AsyncImage
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.ui.theme.Dimens
-import java.util.Locale
+import com.example.pocastcloni.util.appFormatLocale
 
 @Composable
 fun ListableEpisodeItem(
@@ -42,7 +42,7 @@ fun ListableEpisodeItem(
     onImageClick: (() -> Unit)? = null // Optional callback for image click
 ) {
     val configuration = LocalConfiguration.current
-    val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
+    val formatLocale = configuration.appFormatLocale()
     val publishDate =
         remember(showPublishDate, episode.pubDateMs, configuration, formatLocale) {
             if (showPublishDate) {
