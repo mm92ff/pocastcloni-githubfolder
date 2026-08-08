@@ -199,6 +199,7 @@ private fun MiniPlayerProgressBar(
                 height = progressBarHeight,
                 color = MaterialTheme.colorScheme.primary,
                 onSeek = onSeekWrapped,
+                isSeekable = playbackStateState.value.isSeekable,
                 modifier = Modifier.height(progressBarHeight),
                 trackColor = trackColor,
                 bufferedColor = bufferedColor.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),

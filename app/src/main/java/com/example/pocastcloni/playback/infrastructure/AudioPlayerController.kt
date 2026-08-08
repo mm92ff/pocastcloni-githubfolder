@@ -28,6 +28,7 @@ import timber.log.Timber
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 
 /**
  * Coordinates player commands, observable state, and controller-bound background work.
@@ -44,7 +45,7 @@ import javax.inject.Singleton
  * activation; it remains reusable so a later user-initiated [play] can open the current generation.
  */
 @Singleton
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LargeClass")
 class AudioPlayerController
 @Inject
 @Suppress("LongParameterList")
@@ -107,8 +108,13 @@ constructor(
             .shareIn(controllerScope, SharingStarted.Eagerly, replay = 1)
 
     // Seek State
-    @Volatile private var isUserSeeking: Boolean = false
-    private var pendingSeek: SeekSnapshot? = null
+    private val seekLock = Any()
+    private val seekGeneration = AtomicLong(0L)
+
+    @Volatile
+    private var pendingSeek: SeekTransaction? = null
+
+    private var seekConfirmationJob: Job? = null
     private var progressJob: Job? = null
     private var foregroundJob: Job? = null
     private var favoriteStatusJob: Job? = null
@@ -351,13 +357,24 @@ constructor(
             )
         }
 
-        if (updateUi && !isUserSeeking) {
+        if (updateUi) {
             _internalPlaybackState.update {
-                it.copy(
-                    currentPositionMs = currentPositionMs,
-                    bufferedPositionMs = player.bufferedPosition,
-                    durationMs = durationMs
-                )
+                if (pendingSeek == null) {
+                    it.copy(
+                        currentPositionMs = currentPositionMs,
+                        bufferedPositionMs = player.bufferedPosition,
+                        durationMs = durationMs,
+                        isSeekable = isSeekCommandAvailable(player),
+                        isSeekPending = false
+                    )
+                } else {
+                    it.copy(
+                        bufferedPositionMs = player.bufferedPosition,
+                        durationMs = durationMs,
+                        isSeekable = isSeekCommandAvailable(player),
+                        isSeekPending = true
+                    )
+                }
             }
         }
     }
@@ -382,6 +399,9 @@ constructor(
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     _internalPlayerState.update { it.copy(isBuffering = playbackState == Player.STATE_BUFFERING) }
+                    if (playbackState == Player.STATE_READY) {
+                        launchOnMedia { confirmPendingSeekFromPlayer(mediaController) }
+                    }
                     requestTickerReconciliation()
                 }
 
@@ -401,18 +421,47 @@ constructor(
                     requestTickerReconciliation()
                 }
 
+                override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
+                    val isSeekable =
+                        availableCommands.contains(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    if (isSeekable) {
+                        _internalPlaybackState.update { it.copy(isSeekable = true) }
+                    } else {
+                        cancelPendingSeekAndPublishActual(mediaController)
+                    }
+                }
+
+                override fun onPositionDiscontinuity(
+                    oldPosition: Player.PositionInfo,
+                    newPosition: Player.PositionInfo,
+                    reason: Int
+                ) {
+                    if (
+                        reason == Player.DISCONTINUITY_REASON_SEEK ||
+                        reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
+                    ) {
+                        completePendingSeekFromDiscontinuity(
+                            mediaController = mediaController,
+                            confirmedPositionMs = newPosition.positionMs,
+                            reason = reason
+                        )
+                    }
+                }
+
                 override fun onMediaItemTransition(
                     mediaItem: MediaItem?,
                     reason: Int
                 ) {
                     mediaStateRevision.incrementAndGet()
-                    pendingSeek = null
-                    isUserSeeking = false
+                    cancelPendingSeekAndPublishActual(mediaController)
                     analyticsHandler.onMediaItemTransition()
                     controllerScope.launch { syncCurrentEpisodeUi() }
                 }
             }
         controllerListener = listener
+        _internalPlaybackState.update {
+            it.copy(isSeekable = isSeekCommandAvailable(mediaController))
+        }
         launchOnMedia { runCatching { mediaController.addListener(listener) } }
         startFavoriteStatusLoop()
     }
@@ -458,6 +507,7 @@ constructor(
             playCommitMutex.withLock {
                 playRequestGeneration.incrementAndGet()
             }
+        controller?.let(::cancelPendingSeekAndPublishActual)
         val playbackInfo = preparePlaybackUseCase(episodeId)
         var preparedRequest: PreparedPlayRequest? = null
         if (playRequestGeneration.get() == requestGeneration) {
@@ -566,64 +616,360 @@ constructor(
                 launchOnMedia {
                     controller?.let { it.seekTo(it.currentPosition + Constants.PlayerDefaults.FORWARD_INTERVAL_MS) }
                 }
-            is PlayerScreenEvent.SeekTo -> {
-                val pos = event.positionMs.coerceAtLeast(0L)
-                _internalPlaybackState.update { it.copy(currentPositionMs = pos) }
-                if (isUserSeeking) {
-                    pendingSeek = pendingSeek?.copy(targetPositionMs = pos)
-                } else {
-                    val snapshot = currentSeekSnapshot(pos)
-                    if (snapshot != null) launchOnMedia { finishSeek(snapshot) }
-                }
-            }
-            PlayerScreenEvent.SeekStarted -> {
-                isUserSeeking = true
-                pendingSeek = currentSeekSnapshot(_internalPlaybackState.value.currentPositionMs)
-            }
-            PlayerScreenEvent.SeekFinished -> {
-                val snapshot = pendingSeek
-                pendingSeek = null
-                isUserSeeking = false
-                if (snapshot != null) launchOnMedia { finishSeek(snapshot) }
-            }
+            is PlayerScreenEvent.SeekTo -> handleSeekTo(event.positionMs)
+            PlayerScreenEvent.SeekStarted -> startSeekGesture()
+            PlayerScreenEvent.SeekFinished -> finishSeekGesture()
             else -> Unit
         }
     }
 
-    private fun currentSeekSnapshot(targetPositionMs: Long): SeekSnapshot? {
+    private fun startSeekGesture() {
         val currentController = controller
-        val episodeId = currentController?.currentMediaItem?.mediaId?.toLongOrNull()
-        return if (currentController != null && episodeId != null) {
-            SeekSnapshot(
-                controller = currentController,
-                episodeId = episodeId,
-                requestGeneration = playRequestGeneration.get(),
-                mediaRevision = mediaStateRevision.get(),
-                targetPositionMs = targetPositionMs.coerceAtLeast(0L)
-            )
-        } else {
-            null
+        if (currentController == null || !isSeekCommandAvailable(currentController)) {
+            currentController?.let(::cancelPendingSeekAndPublishActual)
+            return
+        }
+
+        val transaction =
+            createSeekTransaction(
+                mediaController = currentController,
+                targetPositionMs = _internalPlaybackState.value.currentPositionMs,
+                phase = SeekPhase.GESTURE_ACTIVE,
+                hasTarget = false
+            ) ?: return
+        replacePendingSeek(transaction)
+        _internalPlaybackState.update {
+            it.copy(isSeekable = true, isSeekPending = true)
         }
     }
 
-    private fun finishSeek(snapshot: SeekSnapshot) {
+    @Suppress("ReturnCount")
+    private fun handleSeekTo(requestedPositionMs: Long) {
         val currentController = controller ?: return
-        val seekContextChanged =
-            listOf(
-                currentController !== snapshot.controller,
-                playRequestGeneration.get() != snapshot.requestGeneration,
-                mediaStateRevision.get() != snapshot.mediaRevision,
-                currentController.currentMediaItem?.mediaId?.toLongOrNull() != snapshot.episodeId
-            ).any { it }
-        if (seekContextChanged) return
-        currentController.seekTo(snapshot.targetPositionMs)
-        markPlaybackSnapshotDirty()
-        flushCurrentPlaybackSnapshot(
-            player = currentController,
-            episodeId = snapshot.episodeId,
-            positionMs = snapshot.targetPositionMs
+        if (!isSeekCommandAvailable(currentController)) {
+            cancelPendingSeekAndPublishActual(currentController)
+            return
+        }
+
+        val targetPositionMs = clampSeekTarget(currentController, requestedPositionMs)
+        val gestureUpdate =
+            synchronized(seekLock) {
+                pendingSeek
+                    ?.takeIf {
+                        it.phase == SeekPhase.GESTURE_ACTIVE &&
+                            isCurrentSeekContext(it, currentController)
+                    }
+                    ?.copy(targetPositionMs = targetPositionMs, hasTarget = true)
+                    ?.also { pendingSeek = it }
+            }
+
+        if (gestureUpdate != null) {
+            _internalPlaybackState.update {
+                it.copy(
+                    currentPositionMs = targetPositionMs,
+                    isSeekable = true,
+                    isSeekPending = true
+                )
+            }
+            return
+        }
+
+        val directSeek =
+            createSeekTransaction(
+                mediaController = currentController,
+                targetPositionMs = targetPositionMs,
+                phase = SeekPhase.AWAITING_CONFIRMATION,
+                hasTarget = true
+            ) ?: return
+        replacePendingSeek(directSeek)
+        _internalPlaybackState.update {
+            it.copy(
+                currentPositionMs = targetPositionMs,
+                isSeekable = true,
+                isSeekPending = true
+            )
+        }
+        launchOnMedia { dispatchSeek(directSeek) }
+    }
+
+    private fun finishSeekGesture() {
+        var shouldRestoreActual = false
+        val transaction =
+            synchronized(seekLock) {
+                val active = pendingSeek
+                when {
+                    active?.phase != SeekPhase.GESTURE_ACTIVE -> null
+                    !active.hasTarget -> {
+                        pendingSeek = null
+                        seekConfirmationJob?.cancel()
+                        seekConfirmationJob = null
+                        shouldRestoreActual = true
+                        null
+                    }
+                    else ->
+                        active.copy(phase = SeekPhase.AWAITING_CONFIRMATION)
+                            .also { pendingSeek = it }
+                }
+            }
+        if (shouldRestoreActual) {
+            controller?.let(::publishActualPlaybackPosition)
+        } else if (transaction != null) {
+            launchOnMedia { dispatchSeek(transaction) }
+        }
+    }
+
+    private fun createSeekTransaction(
+        mediaController: MediaController,
+        targetPositionMs: Long,
+        phase: SeekPhase,
+        hasTarget: Boolean
+    ): SeekTransaction? {
+        val episodeId = mediaController.currentMediaItem?.mediaId?.toLongOrNull() ?: return null
+        return SeekTransaction(
+            controller = mediaController,
+            episodeId = episodeId,
+            requestGeneration = playRequestGeneration.get(),
+            mediaRevision = mediaStateRevision.get(),
+            generation = seekGeneration.incrementAndGet(),
+            targetPositionMs = clampSeekTarget(mediaController, targetPositionMs),
+            phase = phase,
+            hasTarget = hasTarget
         )
     }
+
+    private fun replacePendingSeek(transaction: SeekTransaction) {
+        synchronized(seekLock) {
+            seekConfirmationJob?.cancel()
+            seekConfirmationJob = null
+            pendingSeek = transaction
+        }
+    }
+
+    @Suppress("ReturnCount")
+    private fun dispatchSeek(transaction: SeekTransaction) {
+        val currentController = controller
+        if (
+            currentController == null ||
+            !isCurrentSeekContext(transaction, currentController) ||
+            !isSeekCommandAvailable(currentController)
+        ) {
+            cancelPendingSeekAndPublishActual(
+                mediaController = currentController ?: transaction.controller,
+                expectedGeneration = transaction.generation
+            )
+            return
+        }
+
+        val issuedTransaction =
+            synchronized(seekLock) {
+                pendingSeek
+                    ?.takeIf {
+                        it.generation == transaction.generation &&
+                            it.phase == SeekPhase.AWAITING_CONFIRMATION
+                    }
+                    ?.copy(commandIssued = true)
+                    ?.also { pendingSeek = it }
+            } ?: return
+
+        val positionBeforeSeekMs = currentController.currentPosition.coerceAtLeast(0L)
+        try {
+            currentController.seekTo(issuedTransaction.targetPositionMs)
+        } catch (error: IllegalStateException) {
+            Timber.w(error, "Timeline seek command failed")
+            cancelPendingSeekAndPublishActual(currentController, issuedTransaction.generation)
+            return
+        }
+
+        if (positionsRepresentSamePoint(positionBeforeSeekMs, issuedTransaction.targetPositionMs)) {
+            completeSeek(currentController, issuedTransaction.generation, positionBeforeSeekMs)
+        } else {
+            scheduleSeekConfirmationTimeout(issuedTransaction)
+        }
+    }
+
+    private fun scheduleSeekConfirmationTimeout(transaction: SeekTransaction) {
+        val timeoutJob =
+            launchOnMedia {
+                delay(SEEK_CONFIRMATION_TIMEOUT_MS)
+                val currentController = controller
+                if (currentController != null) {
+                    cancelPendingSeekAndPublishActual(currentController, transaction.generation)
+                } else {
+                    clearPendingSeek(transaction.generation)
+                }
+            }
+        synchronized(seekLock) {
+            if (pendingSeek?.generation == transaction.generation) {
+                seekConfirmationJob?.cancel()
+                seekConfirmationJob = timeoutJob
+            } else {
+                timeoutJob.cancel()
+            }
+        }
+    }
+
+    private fun completePendingSeekFromDiscontinuity(
+        mediaController: MediaController,
+        confirmedPositionMs: Long,
+        reason: Int
+    ) {
+        val transaction = pendingSeek ?: return
+        if (
+            isIssuedSeekForCurrentContext(transaction, mediaController) &&
+            positionsMatchDiscontinuity(
+                confirmedPositionMs = confirmedPositionMs,
+                requestedPositionMs = transaction.targetPositionMs,
+                reason = reason
+            )
+        ) {
+            completeSeek(mediaController, transaction.generation, confirmedPositionMs)
+        }
+    }
+
+    private fun confirmPendingSeekFromPlayer(mediaController: MediaController) {
+        val transaction = pendingSeek ?: return
+        val actualPositionMs = mediaController.currentPosition.coerceAtLeast(0L)
+        if (
+            isIssuedSeekForCurrentContext(transaction, mediaController) &&
+            positionsConfirmSameSeek(actualPositionMs, transaction.targetPositionMs)
+        ) {
+            completeSeek(mediaController, transaction.generation, actualPositionMs)
+        }
+    }
+
+    private fun completeSeek(
+        mediaController: MediaController,
+        expectedGeneration: Long,
+        confirmedPositionMs: Long
+    ) {
+        val completed =
+            synchronized(seekLock) {
+                pendingSeek
+                    ?.takeIf {
+                        it.generation == expectedGeneration &&
+                            it.commandIssued &&
+                            isCurrentSeekContext(it, mediaController)
+                    }
+                    ?.also {
+                        pendingSeek = null
+                        seekConfirmationJob?.cancel()
+                        seekConfirmationJob = null
+                    }
+            } ?: return
+        val safePositionMs = clampSeekTarget(mediaController, confirmedPositionMs)
+        _internalPlaybackState.update {
+            if (pendingSeek == null) {
+                it.copy(
+                    currentPositionMs = safePositionMs,
+                    bufferedPositionMs = mediaController.bufferedPosition,
+                    durationMs = mediaController.duration.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                    isSeekable = isSeekCommandAvailable(mediaController),
+                    isSeekPending = false
+                )
+            } else {
+                it
+            }
+        }
+        markPlaybackSnapshotDirty()
+        flushCurrentPlaybackSnapshot(
+            player = mediaController,
+            episodeId = completed.episodeId,
+            positionMs = safePositionMs
+        )
+    }
+
+    private fun cancelPendingSeekAndPublishActual(
+        mediaController: MediaController,
+        expectedGeneration: Long? = null
+    ) {
+        val cleared = clearPendingSeek(expectedGeneration)
+        if (cleared || expectedGeneration == null) publishActualPlaybackPosition(mediaController)
+    }
+
+    private fun clearPendingSeek(expectedGeneration: Long? = null): Boolean =
+        synchronized(seekLock) {
+            if (expectedGeneration != null && pendingSeek?.generation != expectedGeneration) {
+                false
+            } else {
+                val hadPendingSeek = pendingSeek != null
+                pendingSeek = null
+                seekConfirmationJob?.cancel()
+                seekConfirmationJob = null
+                hadPendingSeek
+            }
+        }
+
+    private fun publishActualPlaybackPosition(mediaController: MediaController) {
+        if (controller !== mediaController) return
+        _internalPlaybackState.update {
+            if (pendingSeek == null) {
+                it.copy(
+                    currentPositionMs = mediaController.currentPosition.coerceAtLeast(0L),
+                    bufferedPositionMs = mediaController.bufferedPosition,
+                    durationMs = mediaController.duration.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                    isSeekable = isSeekCommandAvailable(mediaController),
+                    isSeekPending = false
+                )
+            } else {
+                it
+            }
+        }
+    }
+
+    private fun clampSeekTarget(
+        mediaController: MediaController,
+        requestedPositionMs: Long
+    ): Long {
+        val durationMs =
+            mediaController.duration.takeIf { it > 0L }
+                ?: _internalPlaybackState.value.durationMs.takeIf { it > 0L }
+        val nonNegativePositionMs = requestedPositionMs.coerceAtLeast(0L)
+        return durationMs?.let { nonNegativePositionMs.coerceAtMost(it) } ?: nonNegativePositionMs
+    }
+
+    private fun isCurrentSeekContext(
+        transaction: SeekTransaction,
+        mediaController: MediaController
+    ): Boolean =
+        controller === mediaController &&
+            transaction.controller === mediaController &&
+            playRequestGeneration.get() == transaction.requestGeneration &&
+            mediaStateRevision.get() == transaction.mediaRevision &&
+            mediaController.currentMediaItem?.mediaId?.toLongOrNull() == transaction.episodeId
+
+    private fun isIssuedSeekForCurrentContext(
+        transaction: SeekTransaction,
+        mediaController: MediaController
+    ): Boolean =
+        transaction.phase == SeekPhase.AWAITING_CONFIRMATION &&
+            transaction.commandIssued &&
+            isCurrentSeekContext(transaction, mediaController)
+
+    private fun isSeekCommandAvailable(mediaController: MediaController): Boolean =
+        runCatching {
+            mediaController.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+        }.getOrDefault(false)
+
+    private fun positionsRepresentSamePoint(
+        actualPositionMs: Long,
+        requestedPositionMs: Long
+    ): Boolean = abs(actualPositionMs - requestedPositionMs) <= SAME_POSITION_TOLERANCE_MS
+
+    private fun positionsConfirmSameSeek(
+        actualPositionMs: Long,
+        requestedPositionMs: Long
+    ): Boolean = abs(actualPositionMs - requestedPositionMs) <= SEEK_CONFIRMATION_TOLERANCE_MS
+
+    private fun positionsMatchDiscontinuity(
+        confirmedPositionMs: Long,
+        requestedPositionMs: Long,
+        reason: Int
+    ): Boolean =
+        (
+            reason == Player.DISCONTINUITY_REASON_SEEK ||
+                reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
+            ) &&
+            abs(confirmedPositionMs - requestedPositionMs) <= SEEK_DISCONTINUITY_MATCH_TOLERANCE_MS
 
     private suspend fun syncCurrentEpisodeUi() {
         controller?.let { capturedController ->
@@ -729,8 +1075,10 @@ constructor(
         mediaScope?.cancel()
         mediaScope = null
         mediaDispatcher = null
-        pendingSeek = null
-        isUserSeeking = false
+        clearPendingSeek()
+        _internalPlaybackState.update {
+            it.copy(isSeekable = false, isSeekPending = false)
+        }
         _internalPlayerState.update { it.copy(isPlaying = false, isBuffering = false) }
     }
 }
@@ -792,13 +1140,22 @@ private data class PreparedPlayRequest(
     val startPositionMs: Long
 )
 
-private data class SeekSnapshot(
+private data class SeekTransaction(
     val controller: MediaController,
     val episodeId: Long,
     val requestGeneration: Long,
     val mediaRevision: Long,
-    val targetPositionMs: Long
+    val generation: Long,
+    val targetPositionMs: Long,
+    val phase: SeekPhase,
+    val hasTarget: Boolean,
+    val commandIssued: Boolean = false
 )
+
+private enum class SeekPhase {
+    GESTURE_ACTIVE,
+    AWAITING_CONFIRMATION
+}
 
 private data class TerminalPlaybackSnapshot(
     val episodeId: Long,
@@ -818,3 +1175,7 @@ internal fun playbackTickIntervalMs(
 
 private const val FOREGROUND_TICK_INTERVAL_MS = 500L
 private const val BACKGROUND_TICK_INTERVAL_MS = 5_000L
+private const val SEEK_CONFIRMATION_TIMEOUT_MS = 5_000L
+private const val SAME_POSITION_TOLERANCE_MS = 250L
+private const val SEEK_CONFIRMATION_TOLERANCE_MS = 2_000L
+private const val SEEK_DISCONTINUITY_MATCH_TOLERANCE_MS = 10_000L

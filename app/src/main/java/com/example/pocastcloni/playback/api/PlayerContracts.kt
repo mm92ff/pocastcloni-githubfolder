@@ -38,5 +38,7 @@ data class PlayerUiState(
 data class PlaybackState(
     val currentPositionMs: Long = 0,
     val bufferedPositionMs: Long = 0,
-    val durationMs: Long = 0
+    val durationMs: Long = 0,
+    val isSeekable: Boolean = false,
+    val isSeekPending: Boolean = false
 )

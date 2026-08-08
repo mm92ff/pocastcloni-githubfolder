@@ -51,6 +51,9 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Updated README to describe the current app feature set and local file policy.
 
 ### Fixed
+- Timeline taps, drags and accessibility seeks now remain at the requested
+  position until Media3 confirms the result, reject non-seekable media and
+  persist only the confirmed playback position.
 - Explicit app-language selections are applied on the first UI render after Android 13+
   restores legacy AppCompat locale state during startup.
 - Home pull-to-refresh now honors the configured feed update mode and Smart

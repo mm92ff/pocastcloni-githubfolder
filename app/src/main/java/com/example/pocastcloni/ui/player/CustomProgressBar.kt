@@ -24,6 +24,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -40,6 +41,7 @@ import com.example.pocastcloni.util.formatTime
  * - High-frequency position, buffer and duration values are read during the draw phase.
  * - Pointer input exposes `IntSize`, so dimensions are converted to `Float` explicitly.
  */
+@Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
 @Composable
 fun CustomProgressBar(
     currentPositionMs: () -> Long,
@@ -48,6 +50,7 @@ fun CustomProgressBar(
     height: Dp,
     color: Color,
     onSeek: (Long) -> Unit,
+    isSeekable: Boolean = true,
     modifier: Modifier = Modifier,
     trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     bufferedColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
@@ -65,6 +68,7 @@ fun CustomProgressBar(
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .semantics {
+                if (!isSeekable) disabled()
                 val safeDuration = durationMs().coerceAtLeast(0L)
                 val safePosition = currentPositionMs().coerceIn(0L, safeDuration)
                 progressBarRangeInfo =
@@ -80,19 +84,21 @@ fun CustomProgressBar(
                         formatTime(safeDuration, formatLocale)
                     )
                 setProgress { requestedPosition ->
-                    if (safeDuration <= 0L || !requestedPosition.isFinite()) {
+                    if (!isSeekable || safeDuration <= 0L || !requestedPosition.isFinite()) {
                         false
                     } else {
+                        onSeekStart?.invoke()
                         onSeek(requestedPosition.toLong().coerceIn(0L, safeDuration))
+                        onSeekEnd?.invoke()
                         true
                     }
                 }
             }
-            .pointerInput(Unit) {
+            .pointerInput(isSeekable) {
                 var seekGestureActive = false
                 detectHorizontalDragGestures(
                     onDragStart = { offset ->
-                        if (durationMs() <= 0L) {
+                        if (!isSeekable || durationMs() <= 0L) {
                             seekGestureActive = false
                             isDragging = false
                             return@detectHorizontalDragGestures
@@ -133,15 +139,17 @@ fun CustomProgressBar(
                     }
                 )
             }
-            .pointerInput(Unit) {
+            .pointerInput(isSeekable) {
                 detectTapGestures { offset ->
                     val duration = durationMs().coerceAtLeast(0L)
-                    if (duration <= 0L) return@detectTapGestures
+                    if (!isSeekable || duration <= 0L) return@detectTapGestures
 
                     val width = size.width.toFloat().coerceAtLeast(1f)
                     val tapProgress = (offset.x / width).coerceIn(0f, 1f)
                     val newPosition = (tapProgress.toDouble() * duration.toDouble()).toLong()
+                    onSeekStart?.invoke()
                     onSeek(newPosition)
+                    onSeekEnd?.invoke()
                 }
             },
         contentAlignment = Alignment.Center
@@ -194,6 +202,7 @@ fun CustomProgressBar(
 /**
  * Backwards-compatible overload for call sites that still provide `Long` values.
  */
+@Suppress("LongParameterList")
 @Composable
 fun CustomProgressBar(
     currentPositionMs: Long,
@@ -202,6 +211,7 @@ fun CustomProgressBar(
     height: Dp,
     color: Color,
     onSeek: (Long) -> Unit,
+    isSeekable: Boolean = true,
     modifier: Modifier = Modifier,
     trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     bufferedColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
@@ -219,6 +229,7 @@ fun CustomProgressBar(
         height = height,
         color = color,
         onSeek = onSeek,
+        isSeekable = isSeekable,
         modifier = modifier,
         trackColor = trackColor,
         bufferedColor = bufferedColor,

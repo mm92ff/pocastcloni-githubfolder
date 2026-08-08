@@ -91,6 +91,7 @@ fun FullPlayerProgressBar(
         height = progressBarHeight,
         color = MaterialTheme.colorScheme.primary,
         onSeek = onSeekWrapped,
+        isSeekable = playbackStateState.value.isSeekable,
         trackColor = Color.Transparent,
         bufferedColor = MaterialTheme.colorScheme.onBackground.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),
         onSeekStart = onSeekStart,
