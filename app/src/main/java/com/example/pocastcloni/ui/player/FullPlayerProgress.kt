@@ -76,21 +76,13 @@ fun FullPlayerProgressBar(
     val bufferedPositionProvider = remember(playbackStateState) { { playbackStateState.value.bufferedPositionMs } }
     val durationProvider = remember(playbackStateState) { { playbackStateState.value.durationMs } }
 
-    val onSeekWrapped: (Long) -> Unit =
-        remember(onSeek, smoothState) {
-            { newPos ->
-                smoothState.jumpTo(newPos)
-                onSeek(newPos)
-            }
-        }
-
     CustomProgressBar(
         currentPositionMs = currentPositionProvider,
         bufferedPositionMs = bufferedPositionProvider,
         durationMs = durationProvider,
         height = progressBarHeight,
         color = MaterialTheme.colorScheme.primary,
-        onSeek = onSeekWrapped,
+        onSeek = onSeek,
         isSeekable = playbackStateState.value.isSeekable,
         trackColor = Color.Transparent,
         bufferedColor = MaterialTheme.colorScheme.onBackground.copy(alpha = Dimens.PROGRESS_BAR_BUFFERED_ALPHA),

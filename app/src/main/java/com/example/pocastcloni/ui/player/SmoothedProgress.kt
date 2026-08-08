@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.flow.StateFlow
@@ -15,8 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 
 data class SmoothedProgressState(
-    val currentPosition: State<Long>,
-    val jumpTo: (Long) -> Unit
+    val currentPosition: State<Long>
 )
 
 /**
@@ -24,7 +22,7 @@ data class SmoothedProgressState(
  *
  * Fixes:
  * - No "fast-forward" after Pause/Resume: the time base is reset at the start of each loop.
- * - jumpTo() sets the time base in the next frame (compatible with withFrameNanos time base).
+ * - Pending-state transitions reset the smoothing base even when the numeric position is unchanged.
  */
 @Composable
 fun rememberSmoothedProgressState(
@@ -38,24 +36,26 @@ fun rememberSmoothedProgressState(
     // UI state (read during the Draw phase)
     val smoothedMs = remember { mutableLongStateOf(0L) }
 
-    // Signal: time base should be reset in the next frame (e.g. after jumpTo)
-    val needsTimebaseReset = remember { mutableStateOf(false) }
-
     // 1) Sync with real player events (tick, seek-complete, track-change)
     LaunchedEffect(playbackStateFlow) {
         playbackStateFlow
-            .map { it.currentPositionMs to it.durationMs }
+            .map { state ->
+                ProgressSnapshot(
+                    positionMs = state.currentPositionMs,
+                    durationMs = state.durationMs,
+                    isSeekPending = state.isSeekPending
+                )
+            }
             .distinctUntilChanged()
-            .collect { (pos, dur) ->
-                val clampedDur = dur.coerceAtLeast(0L)
-                val clampedPos = pos.coerceAtLeast(0L).coerceIn(0L, clampedDur)
+            .collect { snapshot ->
+                val clampedDur = snapshot.durationMs.coerceAtLeast(0L)
+                val clampedPos = snapshot.positionMs.coerceAtLeast(0L).coerceIn(0L, clampedDur)
 
                 latestDurationMs.longValue = clampedDur
                 basePositionMs.longValue = clampedPos
 
                 // Reset time base so prediction starts from "now" (prevents drift / jumps)
                 baseTimeNanos.longValue = withFrameNanos { it }
-                needsTimebaseReset.value = false
 
                 // Reset to the real position
                 smoothedMs.longValue = clampedPos
@@ -73,7 +73,6 @@ fun rememberSmoothedProgressState(
         basePositionMs.longValue = pos
         baseTimeNanos.longValue = now
         smoothedMs.longValue = pos
-        needsTimebaseReset.value = false
 
         if (!isPlaying) return@LaunchedEffect
 
@@ -86,38 +85,19 @@ fun rememberSmoothedProgressState(
                 continue
             }
 
-            // If jumpTo() was called: reset the time base in the frame context
-            if (needsTimebaseReset.value) {
-                baseTimeNanos.longValue = frameTime
-                needsTimebaseReset.value = false
-            }
-
             val elapsedMs = ((frameTime - baseTimeNanos.longValue).coerceAtLeast(0L)) / 1_000_000L
             val predicted = basePositionMs.longValue + elapsedMs
             smoothedMs.longValue = predicted.coerceIn(0L, currentDur)
         }
     }
 
-    // 3) Jump function for immediate UI feedback on user seek
-    val jumpTo: (Long) -> Unit =
-        remember {
-            { newPos ->
-                val dur = latestDurationMs.longValue
-                val clamped = if (dur > 0L) newPos.coerceIn(0L, dur) else newPos.coerceAtLeast(0L)
-
-                // Update base position immediately
-                basePositionMs.longValue = clamped
-                smoothedMs.longValue = clamped
-
-                // Reset time base in the next frame (aligned with withFrameNanos time base)
-                needsTimebaseReset.value = true
-            }
-        }
-
-    return remember(smoothedMs, jumpTo) {
-        SmoothedProgressState(
-            currentPosition = smoothedMs,
-            jumpTo = jumpTo
-        )
+    return remember(smoothedMs) {
+        SmoothedProgressState(currentPosition = smoothedMs)
     }
 }
+
+private data class ProgressSnapshot(
+    val positionMs: Long,
+    val durationMs: Long,
+    val isSeekPending: Boolean
+)

@@ -179,15 +179,6 @@ private fun MiniPlayerProgressBar(
         label = "miniPlayerProgressBufferedColor"
     )
 
-    // 4. Seek wrapper for immediate visual feedback
-    val onSeekWrapped: (Long) -> Unit =
-        remember(onSeek, smoothState) {
-            { newPos ->
-                smoothState.jumpTo(newPos)
-                onSeek(newPos)
-            }
-        }
-
     // Only render when duration is known to avoid flickering during load
     if (hasDurationState.value) {
         Box(modifier = modifier) {
@@ -198,7 +189,7 @@ private fun MiniPlayerProgressBar(
                 durationMs = durationProvider,
                 height = progressBarHeight,
                 color = MaterialTheme.colorScheme.primary,
-                onSeek = onSeekWrapped,
+                onSeek = onSeek,
                 isSeekable = playbackStateState.value.isSeekable,
                 modifier = Modifier.height(progressBarHeight),
                 trackColor = trackColor,

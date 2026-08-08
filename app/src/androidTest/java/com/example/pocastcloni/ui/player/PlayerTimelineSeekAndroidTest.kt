@@ -5,15 +5,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.down
+import androidx.compose.ui.test.moveTo
+import androidx.compose.ui.test.cancel
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.pocastcloni.playback.api.PlaybackState
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -101,6 +108,68 @@ class PlayerTimelineSeekAndroidTest {
             assertFalse(accepted)
             assertEquals(emptyList<String>(), events)
         }
+    }
+
+    @Test
+    fun cancelledDragClosesLifecycleWithoutSeekTarget() {
+        val events = mutableListOf<String>()
+        setTimelineContent(
+            onSeekStart = { events += "start" },
+            onSeek = { events += "seek:$it" },
+            onSeekEnd = { events += "end" }
+        )
+
+        composeRule.onNodeWithTag(TIMELINE_TAG).performTouchInput {
+            down(centerLeft)
+            moveTo(center)
+            cancel()
+        }
+
+        composeRule.runOnIdle {
+            assertEquals(listOf("start", "end"), events)
+        }
+    }
+
+    @Test
+    fun capabilityLossBeforeControllerAcceptanceKeepsAuthoritativePosition() {
+        val playbackState =
+            MutableStateFlow(
+                PlaybackState(
+                    currentPositionMs = 120_000L,
+                    bufferedPositionMs = 700_000L,
+                    durationMs = 1_200_000L,
+                    isSeekable = true
+                )
+            )
+        composeRule.setContent {
+            MaterialTheme {
+                FullPlayerProgressBar(
+                    playbackStateFlow = playbackState,
+                    isPlaying = false,
+                    progressBarHeight = 4.dp,
+                    onSeek = {},
+                    onSeekStart = {
+                        playbackState.value = playbackState.value.copy(isSeekable = false)
+                    },
+                    onSeekEnd = {}
+                )
+            }
+        }
+        val timeline =
+            composeRule.onNode(
+                SemanticsMatcher.keyIsDefined(SemanticsActions.SetProgress)
+            )
+
+        timeline.performSemanticsAction(SemanticsActions.SetProgress) { action ->
+            action(600_000f)
+        }
+
+        val rangeInfo =
+            composeRule.onNode(
+                SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
+            ).fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo]
+        assertEquals(120_000f, rangeInfo.current, 1f)
+        assertFalse(playbackState.value.isSeekable)
     }
 
     private fun setTimelineContent(

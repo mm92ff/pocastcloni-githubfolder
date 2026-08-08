@@ -384,7 +384,7 @@ class PodcastPlaybackService : MediaSessionService() {
                         appPackageName = packageName,
                         appUid = Process.myUid()
                     ),
-                    availableCommands = player.availableCommands
+                    trustedCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
                 )
             if (availablePlayerCommands == null) {
                 Timber.w("Rejected untrusted media controller")
@@ -407,10 +407,10 @@ internal fun isMediaControllerAllowed(
 
 internal fun mediaControllerCommands(
     isTrusted: Boolean,
-    availableCommands: Player.Commands
+    trustedCommands: Player.Commands
 ): Player.Commands? {
     if (!isTrusted) return null
-    return availableCommands
+    return trustedCommands
 }
 
 @OptIn(UnstableApi::class)

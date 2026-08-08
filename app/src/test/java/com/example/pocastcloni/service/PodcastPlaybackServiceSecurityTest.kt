@@ -13,21 +13,21 @@ class PodcastPlaybackServiceSecurityTest {
     fun `untrusted media controllers are rejected without commands`() {
         val commands = mediaControllerCommands(
             isTrusted = false,
-            availableCommands = mockk()
+            trustedCommands = mockk()
         )
 
         assertNull(commands)
     }
 
     @Test
-    fun `trusted media controllers receive exactly the player available commands`() {
-        val availableCommands = mockk<Player.Commands>()
+    fun `trusted media controllers receive the full dynamically intersected command set`() {
+        val trustedCommands = mockk<Player.Commands>()
         val commands = mediaControllerCommands(
             isTrusted = true,
-            availableCommands = availableCommands
+            trustedCommands = trustedCommands
         )
 
-        assertSame(availableCommands, commands)
+        assertSame(trustedCommands, commands)
     }
 
     @Test

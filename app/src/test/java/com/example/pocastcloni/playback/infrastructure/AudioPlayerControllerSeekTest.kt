@@ -174,6 +174,174 @@ class AudioPlayerControllerSeekTest {
     }
 
     @Test
+    fun `nearby stale discontinuity cannot settle newer target`() = runTest {
+        val fixture = Fixture(this)
+        fixture.connect()
+        val olderTargetMs = 600_000L
+        val newerTargetMs = 605_000L
+
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(olderTargetMs))
+        runCurrent()
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(newerTargetMs))
+        runCurrent()
+
+        fixture.confirmSeek(olderTargetMs)
+        runCurrent()
+
+        assertEquals(newerTargetMs, fixture.subject.playbackState.value.currentPositionMs)
+        assertTrue(fixture.subject.playbackState.value.isSeekPending)
+        verify(exactly = 0) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, olderTargetMs) }
+
+        fixture.confirmSeek(newerTargetMs)
+        runCurrent()
+
+        assertFalse(fixture.subject.playbackState.value.isSeekPending)
+        verify(exactly = 1) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, newerTargetMs) }
+        fixture.release()
+    }
+
+    @Test
+    fun `buffering seek settles only after ready with authoritative position`() = runTest {
+        val fixture = Fixture(this)
+        fixture.connect()
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(SEEK_TARGET_MS))
+        runCurrent()
+
+        fixture.setPlaybackState(Player.STATE_BUFFERING)
+        fixture.confirmSeek(CONFIRMED_POSITION_MS)
+        runCurrent()
+
+        assertTrue(fixture.subject.playbackState.value.isSeekPending)
+        verify(exactly = 0) {
+            fixture.analytics.saveProgressBestEffort(EPISODE_ID, CONFIRMED_POSITION_MS)
+        }
+
+        val readyPositionMs = CONFIRMED_POSITION_MS + 250L
+        fixture.currentPositionMs = readyPositionMs
+        fixture.setPlaybackState(Player.STATE_READY)
+        runCurrent()
+
+        assertEquals(readyPositionMs, fixture.subject.playbackState.value.currentPositionMs)
+        assertFalse(fixture.subject.playbackState.value.isSeekPending)
+        verify(exactly = 1) {
+            fixture.analytics.saveProgressBestEffort(EPISODE_ID, readyPositionMs)
+        }
+        fixture.release()
+    }
+
+    @Test
+    fun `pause during pending seek flushes only authoritative position`() = runTest {
+        val fixture = Fixture(this)
+        fixture.connect()
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(SEEK_TARGET_MS))
+        runCurrent()
+
+        fixture.subject.pause()
+        runCurrent()
+
+        verify(exactly = 0) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, SEEK_TARGET_MS) }
+        verify(atMost = 1) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, INITIAL_POSITION_MS) }
+        fixture.release()
+    }
+
+    @Test
+    fun `release during pending seek cancels timeout and flushes only authoritative position`() = runTest {
+        val fixture = Fixture(this)
+        fixture.connect()
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(SEEK_TARGET_MS))
+        runCurrent()
+
+        fixture.release()
+        advanceTimeBy(SEEK_TIMEOUT_MS + 1L)
+        runCurrent()
+
+        verify(exactly = 0) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, SEEK_TARGET_MS) }
+        verify(atMost = 1) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, INITIAL_POSITION_MS) }
+    }
+
+    @Test
+    fun `disconnect during pending seek cancels timeout and flushes only authoritative position`() = runTest {
+        val fixture = Fixture(this)
+        fixture.connect()
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(SEEK_TARGET_MS))
+        runCurrent()
+
+        fixture.disconnect()
+        runCurrent()
+        advanceTimeBy(SEEK_TIMEOUT_MS + 1L)
+        runCurrent()
+
+        verify(exactly = 0) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, SEEK_TARGET_MS) }
+        verify(atMost = 1) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, INITIAL_POSITION_MS) }
+        fixture.release()
+    }
+
+    @Test
+    fun `delayed transition from previous media item cannot cancel current seek`() = runTest {
+        val fixture = Fixture(this)
+        fixture.connect()
+        fixture.setCurrentMediaItem(NEW_EPISODE_ID)
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(SEEK_TARGET_MS))
+        runCurrent()
+
+        fixture.emitMediaTransition(EPISODE_ID)
+        runCurrent()
+
+        assertTrue(fixture.subject.playbackState.value.isSeekPending)
+        assertEquals(SEEK_TARGET_MS, fixture.subject.playbackState.value.currentPositionMs)
+
+        fixture.confirmSeek(SEEK_TARGET_MS)
+        runCurrent()
+        verify(exactly = 1) {
+            fixture.analytics.saveProgressBestEffort(NEW_EPISODE_ID, SEEK_TARGET_MS)
+        }
+        fixture.release()
+    }
+
+    @Test
+    fun `current media transition cancels seek with new item position`() = runTest {
+        val fixture = Fixture(this)
+        fixture.connect()
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(SEEK_TARGET_MS))
+        runCurrent()
+
+        val newItemPositionMs = 5_000L
+        fixture.currentPositionMs = newItemPositionMs
+        fixture.setCurrentMediaItem(NEW_EPISODE_ID)
+        fixture.emitMediaTransition(NEW_EPISODE_ID)
+        runCurrent()
+
+        assertFalse(fixture.subject.playbackState.value.isSeekPending)
+        assertEquals(newItemPositionMs, fixture.subject.playbackState.value.currentPositionMs)
+        verify(exactly = 0) { fixture.analytics.saveProgressBestEffort(EPISODE_ID, SEEK_TARGET_MS) }
+        fixture.release()
+    }
+
+    @Test
+    fun `delayed command callback from previous controller cannot cancel current seek`() = runTest {
+        val fixture = Fixture(this)
+        fixture.connect()
+        fixture.disconnectAndReconnect()
+        runCurrent()
+        fixture.subject.onEvent(PlayerScreenEvent.SeekTo(SEEK_TARGET_MS))
+        runCurrent()
+
+        fixture.emitOldControllerCommandsUnavailable()
+        runCurrent()
+
+        assertTrue(fixture.subject.playbackState.value.isSeekPending)
+        assertTrue(fixture.subject.playbackState.value.isSeekable)
+        verify(exactly = 1) { fixture.replacementController.seekTo(SEEK_TARGET_MS) }
+
+        fixture.confirmSeek(SEEK_TARGET_MS)
+        runCurrent()
+        verify(exactly = 1) {
+            fixture.analytics.saveProgressBestEffort(EPISODE_ID, SEEK_TARGET_MS)
+        }
+        fixture.release()
+    }
+
+    @Test
     fun `seek target is clamped to known duration`() = runTest {
         val fixture = Fixture(this)
         fixture.connect()
@@ -196,16 +364,22 @@ class AudioPlayerControllerSeekTest {
         private val podcastQuery = mockk<PodcastQueryPort>(relaxed = true)
         private val preparePlayback = mockk<PreparePlaybackUseCase>()
         private val mapper = mockk<MediaStateMapper>(relaxed = true)
-        private val listeners = mutableListOf<Player.Listener>()
+        private val activeListeners = mutableMapOf<MediaController, Player.Listener>()
+        private val allListeners = mutableMapOf<MediaController, Player.Listener>()
         private var currentMediaItem: MediaItem? = null
+        private var connectionController: MediaController
         private var isPlaying = false
         private var isSeekable = initiallySeekable
+        private var playbackState = Player.STATE_READY
+        private lateinit var disconnectCallback: (MediaController) -> Unit
         var currentPositionMs = INITIAL_POSITION_MS
         val controller = mockk<MediaController>(relaxed = true)
+        val replacementController = mockk<MediaController>(relaxed = true)
         val analytics = mockk<PlaybackAnalyticsHandler>(relaxed = true)
         val subject: AudioPlayerController
 
         init {
+            connectionController = controller
             val dispatcherProvider = mockk<DispatcherProvider>()
             val preferences = mockk<UserPreferencesRepository>()
             val foreground = object : AppForegroundMonitor {
@@ -217,7 +391,10 @@ class AudioPlayerControllerSeekTest {
             every { dispatcherProvider.io } returns dispatcher
             every { dispatcherProvider.default } returns dispatcher
             every { preferences.userSettingsFlow } returns flowOf(UserSettings())
-            coEvery { mediaConnection.connect() } returns controller
+            every { mediaConnection.setOnDisconnected(any()) } answers {
+                disconnectCallback = firstArg()
+            }
+            coEvery { mediaConnection.connect() } answers { connectionController }
             every { podcastQuery.isFavorite(any()) } returns flowOf(false)
             coEvery { podcastQuery.getEpisode(any()) } returns null
             coEvery { podcastQuery.getPodcast(any()) } returns null
@@ -229,26 +406,8 @@ class AudioPlayerControllerSeekTest {
             every { mapper.mapToUiState(any(), any(), any(), any()) } answers {
                 arg<PlayerUiState>(3)
             }
-            every { controller.currentMediaItem } answers { currentMediaItem }
-            every { controller.currentPosition } answers { currentPositionMs }
-            every { controller.bufferedPosition } answers { currentPositionMs }
-            every { controller.duration } returns DURATION_MS
-            every { controller.isPlaying } answers { isPlaying }
-            every { controller.playbackState } returns Player.STATE_READY
-            every {
-                controller.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-            } answers { isSeekable }
-            every { controller.addListener(any()) } answers {
-                listeners += firstArg<Player.Listener>()
-            }
-            every { controller.removeListener(any()) } answers {
-                listeners -= firstArg<Player.Listener>()
-            }
-            every { controller.setMediaItem(any(), any<Long>()) } answers {
-                currentMediaItem = firstArg()
-            }
-            every { controller.play() } answers { isPlaying = true }
-            every { controller.pause() } answers { isPlaying = false }
+            stubController(controller)
+            stubController(replacementController)
 
             subject =
                 AudioPlayerController(
@@ -283,11 +442,16 @@ class AudioPlayerControllerSeekTest {
             currentPositionMs = positionMs
             val oldPosition = positionInfo(INITIAL_POSITION_MS)
             val newPosition = positionInfo(positionMs)
-            listeners.single().onPositionDiscontinuity(
+            activeListener().onPositionDiscontinuity(
                 oldPosition,
                 newPosition,
                 reason
             )
+        }
+
+        fun setPlaybackState(value: Int) {
+            playbackState = value
+            activeListener().onPlaybackStateChanged(value)
         }
 
         fun setSeekable(value: Boolean) {
@@ -296,16 +460,75 @@ class AudioPlayerControllerSeekTest {
             every {
                 commands.contains(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
             } returns value
-            listeners.single().onAvailableCommandsChanged(commands)
+            activeListener().onAvailableCommandsChanged(commands)
+        }
+
+        fun setCurrentMediaItem(episodeId: Long) {
+            currentMediaItem = MediaItem.Builder().setMediaId(episodeId.toString()).build()
+        }
+
+        fun emitMediaTransition(episodeId: Long) {
+            activeListener().onMediaItemTransition(
+                MediaItem.Builder().setMediaId(episodeId.toString()).build(),
+                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
+            )
+        }
+
+        fun disconnect() {
+            disconnectCallback(controller)
+        }
+
+        fun disconnectAndReconnect() {
+            connectionController = replacementController
+            disconnectCallback(controller)
+        }
+
+        fun emitOldControllerCommandsUnavailable() {
+            val commands = mockk<Player.Commands>()
+            every {
+                commands.contains(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            } returns false
+            requireNotNull(allListeners[controller]).onAvailableCommandsChanged(commands)
         }
 
         fun release() {
             subject.releaseResources()
         }
+
+        private fun activeListener(): Player.Listener =
+            requireNotNull(activeListeners[connectionController])
+
+        private fun stubController(mediaController: MediaController) {
+            every { mediaController.currentMediaItem } answers { currentMediaItem }
+            every { mediaController.currentPosition } answers { currentPositionMs }
+            every { mediaController.bufferedPosition } answers { currentPositionMs }
+            every { mediaController.duration } returns DURATION_MS
+            every { mediaController.isPlaying } answers { isPlaying }
+            every { mediaController.playbackState } answers { playbackState }
+            every { mediaController.isCurrentMediaItemSeekable } answers { isSeekable }
+            every {
+                mediaController.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            } answers { isSeekable }
+            every { mediaController.addListener(any()) } answers {
+                val listener = firstArg<Player.Listener>()
+                activeListeners[mediaController] = listener
+                allListeners[mediaController] = listener
+            }
+            every { mediaController.removeListener(any()) } answers {
+                activeListeners.remove(mediaController)
+                Unit
+            }
+            every { mediaController.setMediaItem(any(), any<Long>()) } answers {
+                currentMediaItem = firstArg()
+            }
+            every { mediaController.play() } answers { isPlaying = true }
+            every { mediaController.pause() } answers { isPlaying = false }
+        }
     }
 
     private companion object {
         private const val EPISODE_ID = 101L
+        private const val NEW_EPISODE_ID = 202L
         private const val INITIAL_POSITION_MS = 120_000L
         private const val SEEK_TARGET_MS = 600_000L
         private const val CONFIRMED_POSITION_MS = 599_500L

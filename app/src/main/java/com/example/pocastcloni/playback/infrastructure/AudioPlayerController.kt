@@ -3,6 +3,7 @@ package com.example.pocastcloni.playback.infrastructure
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
@@ -113,6 +114,9 @@ constructor(
 
     @Volatile
     private var pendingSeek: SeekTransaction? = null
+
+    @Volatile
+    private var lastAuthoritativePositionMs: Long = 0L
 
     private var seekConfirmationJob: Job? = null
     private var progressJob: Job? = null
@@ -311,14 +315,20 @@ constructor(
     private fun flushCurrentPlaybackSnapshot(
         player: MediaController? = controller,
         episodeId: Long? = player?.currentMediaItem?.mediaId?.toLongOrNull(),
-        positionMs: Long? = player?.currentPosition
+        positionMs: Long? = null
     ) {
-        if (episodeId == null || episodeId <= 0L || positionMs == null) return
+        val resolvedPositionMs =
+            positionMs
+                ?: pendingSeek
+                    ?.takeIf { transaction -> player != null && isCurrentSeekContext(transaction, player) }
+                    ?.authoritativePositionMs
+                ?: player?.currentPosition
+        if (episodeId == null || episodeId <= 0L || resolvedPositionMs == null) return
         val snapshot =
             synchronized(flushLock) {
                 TerminalPlaybackSnapshot(
                     episodeId = episodeId,
-                    positionMs = positionMs.coerceAtLeast(0L),
+                    positionMs = resolvedPositionMs.coerceAtLeast(0L),
                     revision = flushRevision
                 ).also { candidate ->
                     if (candidate == lastFlushedSnapshot) return
@@ -344,12 +354,16 @@ constructor(
         val durationMs = player.duration.takeIf { it > 0 } ?: 0L
         val currentPositionMs = player.currentPosition.coerceAtLeast(0L)
         val isPlaying = player.isPlaying && player.playbackState == Player.STATE_READY
+        val activeSeek = pendingSeek
+        val analyticsPositionMs = activeSeek?.authoritativePositionMs ?: currentPositionMs
+
+        if (activeSeek == null) lastAuthoritativePositionMs = currentPositionMs
 
         if (settings != null && deltaMs > 0L) {
             markPlaybackSnapshotDirty()
             analyticsHandler.onTick(
                 episodeId = player.currentMediaItem?.mediaId?.toLongOrNull(),
-                currentPositionMs = currentPositionMs,
+                currentPositionMs = analyticsPositionMs,
                 durationMs = durationMs,
                 deltaMs = deltaMs,
                 isPlaying = isPlaying || countAsPlaying,
@@ -398,6 +412,7 @@ constructor(
         val listener =
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (controller !== mediaController) return
                     _internalPlayerState.update { it.copy(isBuffering = playbackState == Player.STATE_BUFFERING) }
                     if (playbackState == Player.STATE_READY) {
                         launchOnMedia { confirmPendingSeekFromPlayer(mediaController) }
@@ -406,11 +421,13 @@ constructor(
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (controller !== mediaController) return
                     _internalPlayerState.update { it.copy(isPlaying = isPlaying) }
                     requestTickerReconciliation()
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
+                    if (controller !== mediaController) return
                     Timber.e(error, "Player error code: ${error.errorCode}")
                     val errorString =
                         mapper.mapError(error)?.let(UiText::StringResource)
@@ -422,8 +439,8 @@ constructor(
                 }
 
                 override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
-                    val isSeekable =
-                        availableCommands.contains(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    if (controller !== mediaController) return
+                    val isSeekable = isSeekCommandAvailable(mediaController, availableCommands)
                     if (isSeekable) {
                         _internalPlaybackState.update { it.copy(isSeekable = true) }
                     } else {
@@ -436,6 +453,7 @@ constructor(
                     newPosition: Player.PositionInfo,
                     reason: Int
                 ) {
+                    if (controller !== mediaController) return
                     if (
                         reason == Player.DISCONTINUITY_REASON_SEEK ||
                         reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
@@ -448,12 +466,33 @@ constructor(
                     }
                 }
 
+                override fun onTimelineChanged(
+                    timeline: Timeline,
+                    reason: Int
+                ) {
+                    if (controller !== mediaController) return
+                    if (isSeekCommandAvailable(mediaController)) {
+                        _internalPlaybackState.update { it.copy(isSeekable = true) }
+                    } else {
+                        cancelPendingSeekAndPublishActual(mediaController)
+                    }
+                }
+
                 override fun onMediaItemTransition(
                     mediaItem: MediaItem?,
                     reason: Int
                 ) {
+                    if (
+                        controller !== mediaController ||
+                        mediaItem?.mediaId != mediaController.currentMediaItem?.mediaId
+                    ) {
+                        return
+                    }
                     mediaStateRevision.incrementAndGet()
-                    cancelPendingSeekAndPublishActual(mediaController)
+                    cancelPendingSeekAndPublishActual(
+                        mediaController = mediaController,
+                        queryControllerPosition = true
+                    )
                     analyticsHandler.onMediaItemTransition()
                     controllerScope.launch { syncCurrentEpisodeUi() }
                 }
@@ -681,7 +720,7 @@ constructor(
                 phase = SeekPhase.AWAITING_CONFIRMATION,
                 hasTarget = true
             ) ?: return
-        replacePendingSeek(directSeek)
+        val installedSeek = replacePendingSeek(directSeek)
         _internalPlaybackState.update {
             it.copy(
                 currentPositionMs = targetPositionMs,
@@ -689,7 +728,7 @@ constructor(
                 isSeekPending = true
             )
         }
-        launchOnMedia { dispatchSeek(directSeek) }
+        launchOnMedia { dispatchSeek(installedSeek) }
     }
 
     private fun finishSeekGesture() {
@@ -732,18 +771,32 @@ constructor(
             mediaRevision = mediaStateRevision.get(),
             generation = seekGeneration.incrementAndGet(),
             targetPositionMs = clampSeekTarget(mediaController, targetPositionMs),
+            authoritativePositionMs =
+            pendingSeek?.authoritativePositionMs ?: lastAuthoritativePositionMs,
             phase = phase,
             hasTarget = hasTarget
         )
     }
 
-    private fun replacePendingSeek(transaction: SeekTransaction) {
+    private fun replacePendingSeek(transaction: SeekTransaction): SeekTransaction =
         synchronized(seekLock) {
             seekConfirmationJob?.cancel()
             seekConfirmationJob = null
-            pendingSeek = transaction
+            val previous = pendingSeek
+            val inheritedSupersededSeeks = previous?.supersededSeeks.orEmpty()
+            val newlySupersededSeek =
+                previous
+                    ?.takeIf { it.commandIssued }
+                    ?.let { SupersededSeek(it.generation, it.targetPositionMs) }
+            transaction
+                .copy(
+                    authoritativePositionMs =
+                    previous?.authoritativePositionMs ?: transaction.authoritativePositionMs,
+                    supersededSeeks =
+                    (inheritedSupersededSeeks + listOfNotNull(newlySupersededSeek))
+                        .takeLast(MAX_SUPERSEDED_SEEKS)
+                ).also { pendingSeek = it }
         }
-    }
 
     @Suppress("ReturnCount")
     private fun dispatchSeek(transaction: SeekTransaction) {
@@ -771,7 +824,6 @@ constructor(
                     ?.also { pendingSeek = it }
             } ?: return
 
-        val positionBeforeSeekMs = currentController.currentPosition.coerceAtLeast(0L)
         try {
             currentController.seekTo(issuedTransaction.targetPositionMs)
         } catch (error: IllegalStateException) {
@@ -780,8 +832,17 @@ constructor(
             return
         }
 
-        if (positionsRepresentSamePoint(positionBeforeSeekMs, issuedTransaction.targetPositionMs)) {
-            completeSeek(currentController, issuedTransaction.generation, positionBeforeSeekMs)
+        if (
+            positionsRepresentSamePoint(
+                issuedTransaction.authoritativePositionMs,
+                issuedTransaction.targetPositionMs
+            )
+        ) {
+            completeSeek(
+                currentController,
+                issuedTransaction.generation,
+                issuedTransaction.authoritativePositionMs
+            )
         } else {
             scheduleSeekConfirmationTimeout(issuedTransaction)
         }
@@ -793,7 +854,11 @@ constructor(
                 delay(SEEK_CONFIRMATION_TIMEOUT_MS)
                 val currentController = controller
                 if (currentController != null) {
-                    cancelPendingSeekAndPublishActual(currentController, transaction.generation)
+                    cancelPendingSeekAndPublishActual(
+                        mediaController = currentController,
+                        expectedGeneration = transaction.generation,
+                        queryControllerPosition = true
+                    )
                 } else {
                     clearPendingSeek(transaction.generation)
                 }
@@ -813,28 +878,69 @@ constructor(
         confirmedPositionMs: Long,
         reason: Int
     ) {
-        val transaction = pendingSeek ?: return
-        if (
-            isIssuedSeekForCurrentContext(transaction, mediaController) &&
-            positionsMatchDiscontinuity(
-                confirmedPositionMs = confirmedPositionMs,
-                requestedPositionMs = transaction.targetPositionMs,
-                reason = reason
+        val settlingTransaction =
+            synchronized(seekLock) {
+                val transaction = pendingSeek ?: return@synchronized null
+                if (
+                    !isIssuedSeekForCurrentContext(transaction, mediaController) ||
+                    !isSeekDiscontinuityReason(reason)
+                ) {
+                    return@synchronized null
+                }
+
+                val currentDistanceMs =
+                    abs(confirmedPositionMs - transaction.targetPositionMs)
+                val closestSupersededSeek =
+                    transaction.supersededSeeks
+                        .minByOrNull { superseded ->
+                            abs(confirmedPositionMs - superseded.targetPositionMs)
+                        }?.takeIf { superseded ->
+                            val distanceMs =
+                                abs(confirmedPositionMs - superseded.targetPositionMs)
+                            distanceMs <= SEEK_DISCONTINUITY_MATCH_TOLERANCE_MS &&
+                                distanceMs < currentDistanceMs
+                        }
+
+                if (closestSupersededSeek != null) {
+                    pendingSeek =
+                        transaction.copy(
+                            supersededSeeks =
+                            transaction.supersededSeeks - closestSupersededSeek
+                        )
+                    return@synchronized null
+                }
+
+                if (currentDistanceMs > SEEK_DISCONTINUITY_MATCH_TOLERANCE_MS) {
+                    return@synchronized null
+                }
+
+                transaction
+                    .copy(
+                        phase = SeekPhase.SETTLING,
+                        confirmedPositionMs = confirmedPositionMs
+                    ).also { pendingSeek = it }
+            } ?: return
+
+        if (mediaController.playbackState != Player.STATE_BUFFERING) {
+            completeSeek(
+                mediaController = mediaController,
+                expectedGeneration = settlingTransaction.generation,
+                confirmedPositionMs = confirmedPositionMs
             )
-        ) {
-            completeSeek(mediaController, transaction.generation, confirmedPositionMs)
         }
     }
 
     private fun confirmPendingSeekFromPlayer(mediaController: MediaController) {
         val transaction = pendingSeek ?: return
-        val actualPositionMs = mediaController.currentPosition.coerceAtLeast(0L)
         if (
-            isIssuedSeekForCurrentContext(transaction, mediaController) &&
-            positionsConfirmSameSeek(actualPositionMs, transaction.targetPositionMs)
+            transaction.phase != SeekPhase.SETTLING ||
+            transaction.confirmedPositionMs == null ||
+            !isIssuedSeekForCurrentContext(transaction, mediaController)
         ) {
-            completeSeek(mediaController, transaction.generation, actualPositionMs)
+            return
         }
+        val actualPositionMs = mediaController.currentPosition.coerceAtLeast(0L)
+        completeSeek(mediaController, transaction.generation, actualPositionMs)
     }
 
     private fun completeSeek(
@@ -857,6 +963,7 @@ constructor(
                     }
             } ?: return
         val safePositionMs = clampSeekTarget(mediaController, confirmedPositionMs)
+        lastAuthoritativePositionMs = safePositionMs
         _internalPlaybackState.update {
             if (pendingSeek == null) {
                 it.copy(
@@ -880,31 +987,53 @@ constructor(
 
     private fun cancelPendingSeekAndPublishActual(
         mediaController: MediaController,
-        expectedGeneration: Long? = null
+        expectedGeneration: Long? = null,
+        queryControllerPosition: Boolean = false
     ) {
         val cleared = clearPendingSeek(expectedGeneration)
-        if (cleared || expectedGeneration == null) publishActualPlaybackPosition(mediaController)
+        if (cleared != null || expectedGeneration == null) {
+            val positionMs =
+                if (queryControllerPosition) {
+                    mediaController.currentPosition.coerceAtLeast(0L)
+                } else {
+                    cleared?.authoritativePositionMs
+                        ?: mediaController.currentPosition.coerceAtLeast(0L)
+                }
+            publishPlaybackPosition(mediaController, positionMs)
+        }
     }
 
-    private fun clearPendingSeek(expectedGeneration: Long? = null): Boolean =
+    private fun clearPendingSeek(expectedGeneration: Long? = null): SeekTransaction? =
         synchronized(seekLock) {
             if (expectedGeneration != null && pendingSeek?.generation != expectedGeneration) {
-                false
+                null
             } else {
-                val hadPendingSeek = pendingSeek != null
+                val cleared = pendingSeek
                 pendingSeek = null
                 seekConfirmationJob?.cancel()
                 seekConfirmationJob = null
-                hadPendingSeek
+                cleared
             }
         }
 
     private fun publishActualPlaybackPosition(mediaController: MediaController) {
-        if (controller !== mediaController) return
+        publishPlaybackPosition(
+            mediaController = mediaController,
+            positionMs = mediaController.currentPosition.coerceAtLeast(0L)
+        )
+    }
+
+    private fun publishPlaybackPosition(
+        mediaController: MediaController,
+        positionMs: Long
+    ) {
+        if (controller !== mediaController || pendingSeek != null) return
+        val safePositionMs = clampSeekTarget(mediaController, positionMs)
+        lastAuthoritativePositionMs = safePositionMs
         _internalPlaybackState.update {
             if (pendingSeek == null) {
                 it.copy(
-                    currentPositionMs = mediaController.currentPosition.coerceAtLeast(0L),
+                    currentPositionMs = safePositionMs,
                     bufferedPositionMs = mediaController.bufferedPosition,
                     durationMs = mediaController.duration.takeIf { duration -> duration > 0L } ?: it.durationMs,
                     isSeekable = isSeekCommandAvailable(mediaController),
@@ -941,13 +1070,22 @@ constructor(
         transaction: SeekTransaction,
         mediaController: MediaController
     ): Boolean =
-        transaction.phase == SeekPhase.AWAITING_CONFIRMATION &&
+        (
+            transaction.phase == SeekPhase.AWAITING_CONFIRMATION ||
+                transaction.phase == SeekPhase.SETTLING
+            ) &&
             transaction.commandIssued &&
             isCurrentSeekContext(transaction, mediaController)
 
-    private fun isSeekCommandAvailable(mediaController: MediaController): Boolean =
+    private fun isSeekCommandAvailable(
+        mediaController: MediaController,
+        availableCommands: Player.Commands? = null
+    ): Boolean =
         runCatching {
-            mediaController.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            val commandAvailable =
+                availableCommands?.contains(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    ?: mediaController.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            commandAvailable && mediaController.isCurrentMediaItemSeekable
         }.getOrDefault(false)
 
     private fun positionsRepresentSamePoint(
@@ -955,21 +1093,9 @@ constructor(
         requestedPositionMs: Long
     ): Boolean = abs(actualPositionMs - requestedPositionMs) <= SAME_POSITION_TOLERANCE_MS
 
-    private fun positionsConfirmSameSeek(
-        actualPositionMs: Long,
-        requestedPositionMs: Long
-    ): Boolean = abs(actualPositionMs - requestedPositionMs) <= SEEK_CONFIRMATION_TOLERANCE_MS
-
-    private fun positionsMatchDiscontinuity(
-        confirmedPositionMs: Long,
-        requestedPositionMs: Long,
-        reason: Int
-    ): Boolean =
-        (
-            reason == Player.DISCONTINUITY_REASON_SEEK ||
-                reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
-            ) &&
-            abs(confirmedPositionMs - requestedPositionMs) <= SEEK_DISCONTINUITY_MATCH_TOLERANCE_MS
+    private fun isSeekDiscontinuityReason(reason: Int): Boolean =
+        reason == Player.DISCONTINUITY_REASON_SEEK ||
+            reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
 
     private suspend fun syncCurrentEpisodeUi() {
         controller?.let { capturedController ->
@@ -1147,14 +1273,23 @@ private data class SeekTransaction(
     val mediaRevision: Long,
     val generation: Long,
     val targetPositionMs: Long,
+    val authoritativePositionMs: Long,
     val phase: SeekPhase,
     val hasTarget: Boolean,
-    val commandIssued: Boolean = false
+    val commandIssued: Boolean = false,
+    val confirmedPositionMs: Long? = null,
+    val supersededSeeks: List<SupersededSeek> = emptyList()
+)
+
+private data class SupersededSeek(
+    val generation: Long,
+    val targetPositionMs: Long
 )
 
 private enum class SeekPhase {
     GESTURE_ACTIVE,
-    AWAITING_CONFIRMATION
+    AWAITING_CONFIRMATION,
+    SETTLING
 }
 
 private data class TerminalPlaybackSnapshot(
@@ -1177,5 +1312,5 @@ private const val FOREGROUND_TICK_INTERVAL_MS = 500L
 private const val BACKGROUND_TICK_INTERVAL_MS = 5_000L
 private const val SEEK_CONFIRMATION_TIMEOUT_MS = 5_000L
 private const val SAME_POSITION_TOLERANCE_MS = 250L
-private const val SEEK_CONFIRMATION_TOLERANCE_MS = 2_000L
-private const val SEEK_DISCONTINUITY_MATCH_TOLERANCE_MS = 10_000L
+private const val SEEK_DISCONTINUITY_MATCH_TOLERANCE_MS = 2_000L
+private const val MAX_SUPERSEDED_SEEKS = 8
