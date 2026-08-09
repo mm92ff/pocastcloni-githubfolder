@@ -51,6 +51,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Updated README to describe the current app feature set and local file policy.
 
 ### Fixed
+- Cached podcast covers now appear reliably after cold starts and remain visible
+  while Home performs background refresh work.
 - Timeline taps, drags and accessibility seeks now remain at the requested
   position until Media3 confirms the result, reject non-seekable media and
   persist only the confirmed playback position.

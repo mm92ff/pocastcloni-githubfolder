@@ -178,9 +178,23 @@ constructor(
             )
         }
 
+    /**
+     * Starts preference collection with the ViewModel so a slow first DataStore read cannot hold back
+     * an already available Room podcast list. The persisted value normally wins before Room emits;
+     * until then the same defaults used by [HomeUiState] keep the first state deterministic.
+     */
+    private val userSettingsState: StateFlow<UserSettings> =
+        getUserSettings()
+            .distinctUntilChanged()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = UserSettings()
+            )
+
     private val homeConfigurationFlow: Flow<HomeConfigurationState> =
         combine(
-            getUserSettings(),
+            userSettingsState,
             _editState,
             _showDeleteConfirmation
         ) { settings, editState, showDeleteConfirmation ->

@@ -117,6 +117,65 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `stored podcasts do not wait for first settings emission`() = runTest(testDispatcher) {
+        val podcastsFlow = MutableStateFlow(listOf(testPodcast))
+        val settingsFlow = MutableSharedFlow<UserSettings>()
+        recreateViewModel(
+            podcastsFlow = podcastsFlow,
+            settingsFlow = settingsFlow,
+            playerState = MutableStateFlow(PlayerUiState(currentEpisodeId = null, isPlaying = false))
+        )
+        val stateCollector =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.uiState.collect()
+            }
+
+        runCurrent()
+
+        assertEquals(listOf(testPodcast), viewModel.uiState.value.podcasts)
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertEquals(LayoutMode.GRID, viewModel.uiState.value.layoutMode)
+
+        settingsFlow.emit(UserSettings(layoutMode = LayoutMode.LIST, gridSize = 181))
+        runCurrent()
+
+        assertEquals(listOf(testPodcast), viewModel.uiState.value.podcasts)
+        assertEquals(LayoutMode.LIST, viewModel.uiState.value.layoutMode)
+        assertEquals(181, viewModel.uiState.value.gridSize)
+        stateCollector.cancel()
+    }
+
+    @Test
+    fun `startup refresh keeps stored podcasts visible while suspended`() = runTest(testDispatcher) {
+        val refreshResult = CompletableDeferred<PodcastUpdateSummary>()
+        coEvery { refreshPodcasts(forceFull = false) } coAnswers { refreshResult.await() }
+        recreateViewModel(
+            podcastsFlow = MutableStateFlow(listOf(testPodcast)),
+            settingsFlow = flowOf(UserSettings(autoRefreshOnStart = true)),
+            playerState = MutableStateFlow(PlayerUiState(currentEpisodeId = null, isPlaying = false))
+        )
+        val stateCollector =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.uiState.collect()
+            }
+        runCurrent()
+
+        viewModel.autoRefreshOnStartIfEnabled()
+        runCurrent()
+
+        assertTrue(viewModel.isAutoRefreshing.value)
+        assertEquals(listOf(testPodcast), viewModel.uiState.value.podcasts)
+        assertFalse(viewModel.uiState.value.isLoading)
+
+        refreshResult.complete(PodcastUpdateSummary(totalCount = 1, successfulCount = 1, failureCount = 0))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isAutoRefreshing.value)
+        assertEquals(listOf(testPodcast), viewModel.uiState.value.podcasts)
+        stateCollector.cancel()
+    }
+
+    @Test
     fun `enterEditMode sets isEditMode and initial selection`() = runTest(testDispatcher) {
         viewModel.uiState.test {
             awaitItem() // initial loading

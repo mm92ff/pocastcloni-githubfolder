@@ -10,15 +10,20 @@ import java.io.Closeable
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicInteger
 
 internal class BenchmarkFeedServer : Closeable {
     private val server = MockWebServer()
+    private val coverRequests = AtomicInteger(0)
 
     val feedUrl: HttpUrl
         get() = server.url(FEED_PATH).newBuilder().host(LOOPBACK_ADDRESS).build()
 
     val requestCount: Int
         get() = server.requestCount
+
+    val coverRequestCount: Int
+        get() = coverRequests.get()
 
     fun start() {
         server.start()
@@ -30,13 +35,17 @@ internal class BenchmarkFeedServer : Closeable {
     }
 
     private inner class FeedDispatcher : Dispatcher() {
-        override fun dispatch(request: RecordedRequest): MockResponse =
-            when (request.path) {
+        override fun dispatch(request: RecordedRequest): MockResponse {
+            return when (request.path) {
                 FEED_PATH -> response("application/rss+xml", feedXml())
-                COVER_PATH -> response("image/png", TINY_PNG)
+                COVER_PATH -> {
+                    coverRequests.incrementAndGet()
+                    response("image/png", TINY_PNG)
+                }
                 AUDIO_PATH -> response("audio/wav", SILENT_WAV)
                 else -> MockResponse().setResponseCode(404)
             }
+        }
     }
 
     private fun feedXml(): String {

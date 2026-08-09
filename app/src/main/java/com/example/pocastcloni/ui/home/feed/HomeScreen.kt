@@ -43,10 +43,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.Coil
-import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.size.Precision
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.LayoutMode
 import com.example.pocastcloni.domain.model.Podcast
@@ -57,7 +53,6 @@ import com.example.pocastcloni.ui.home.common.PodcastItem
 import com.example.pocastcloni.ui.player.MiniPlayerLayoutDefaults
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.ui.theme.Motion
-import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -300,32 +295,6 @@ private fun PodcastListContent(
     val podcasts = uiState.podcasts
     val layoutMode = uiState.layoutMode
     val commonModifier = Modifier.fillMaxSize()
-    val context = LocalContext.current
-    val podcastImageUrls =
-        remember(podcasts) {
-            podcasts
-                .map { it.imageUrl.trim() }
-                .filter { it.isNotBlank() }
-                .distinct()
-        }
-
-    LaunchedEffect(podcastImageUrls) {
-        val imageLoader = Coil.imageLoader(context)
-        podcastImageUrls.forEach { url ->
-            imageLoader.enqueue(
-                ImageRequest.Builder(context)
-                    .data(url)
-                    .size(Constants.Image.IMAGE_SIZE_GRID)
-                    .precision(Precision.EXACT)
-                    .memoryCacheKey("$url#${Constants.Image.IMAGE_SIZE_GRID}")
-                    .diskCacheKey(url)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .networkCachePolicy(CachePolicy.ENABLED)
-                    .build()
-            )
-        }
-    }
 
     val bottomPadding =
         homeGridBottomPadding(

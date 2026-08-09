@@ -5,7 +5,9 @@ import coil.ImageLoader
 import coil.decode.SvgDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.example.pocastcloni.BuildConfig
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.home.common.PodcastCoverEventListenerFactory
 import com.example.pocastcloni.util.Constants
 import dagger.Module
 import dagger.Provides
@@ -23,10 +25,13 @@ object AppModule {
     @Singleton
     fun provideImageLoader(
         @ApplicationContext context: Context,
-        @Named("ApprovedMediaClient") okHttpClient: OkHttpClient
+        @Named("ImageMediaClient") okHttpClient: OkHttpClient
     ): ImageLoader {
         return ImageLoader.Builder(context)
             .okHttpClient(okHttpClient)
+            // Podcast cover URLs are the cache version; unchanged URLs should remain offline-first
+            // even when their origin omits HTTP freshness headers.
+            .respectCacheHeaders(false)
             .components {
                 add(SvgDecoder.Factory())
             }
@@ -41,6 +46,7 @@ object AppModule {
                     .maxSizePercent(0.02)
                     .build()
             }
+            .eventListenerFactory(PodcastCoverEventListenerFactory(enabled = BuildConfig.DEBUG))
             // Shows a placeholder if loading fails
             .error(R.drawable.ic_launcher_foreground)
             .fallback(R.drawable.ic_launcher_foreground)

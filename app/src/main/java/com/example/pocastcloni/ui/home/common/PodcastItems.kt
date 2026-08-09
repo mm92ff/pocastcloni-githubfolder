@@ -42,9 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
-import coil.request.CachePolicy
 import coil.request.ImageRequest
-import coil.size.Precision
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
@@ -66,29 +64,11 @@ data class PodcastIndicatorStyle(
 @Composable
 private fun rememberPodcastImageRequest(
     url: String,
-    size: Int
-): ImageRequest {
+    size: PodcastCoverSize
+): ImageRequest? {
     val context = LocalContext.current
     return remember(url, context, size) {
-        val stableUrl = url.takeIf { it.isNotBlank() }
-        ImageRequest.Builder(context)
-            .data(stableUrl)
-            .crossfade(true)
-            .placeholder(R.drawable.ic_launcher_foreground)
-            .error(R.drawable.ic_launcher_foreground)
-            .fallback(R.drawable.ic_launcher_foreground)
-            .size(size)
-            .precision(Precision.EXACT)
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .networkCachePolicy(CachePolicy.ENABLED)
-            .apply {
-                if (stableUrl != null) {
-                    memoryCacheKey("$stableUrl#$size")
-                    diskCacheKey(stableUrl)
-                }
-            }
-            .build()
+        PodcastCoverRequestFactory.create(context, url, size)
     }
 }
 
@@ -227,7 +207,7 @@ fun PodcastItem(
                     modifier = Modifier.padding(Dimens.PaddingSmall),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, Constants.Image.IMAGE_SIZE_LIST)
+                    val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, PodcastCoverSize.LIST)
 
                     AsyncImage(
                         model = imageRequest,
@@ -314,7 +294,7 @@ fun PodcastGridItem(
                     elevation = CardDefaults.cardElevation(defaultElevation = Dimens.PaddingSmall),
                     modifier = Modifier.border(borderWidth, borderColor, RoundedCornerShape(Dimens.RoundedCornerLarge))
                 ) {
-                    val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, Constants.Image.IMAGE_SIZE_GRID)
+                    val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, PodcastCoverSize.GRID)
 
                     AsyncImage(
                         model = imageRequest,

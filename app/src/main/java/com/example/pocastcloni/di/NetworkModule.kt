@@ -165,6 +165,20 @@ abstract class NetworkModule {
                 .build()
         }
 
+        /**
+         * Keeps the approved-origin security policy while making Coil the sole image disk-cache
+         * owner. The shared approved client retains its HTTP cache for playback consumers.
+         */
+        @Provides
+        @Singleton
+        @Named("ImageMediaClient")
+        fun provideImageMediaClient(
+            @Named("ApprovedMediaClient") approvedMediaClient: OkHttpClient
+        ): OkHttpClient =
+            approvedMediaClient.newBuilder()
+                .cache(null)
+                .build()
+
         @Provides
         @Singleton
         @Named("RssRetrofit")
