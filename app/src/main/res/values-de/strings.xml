@@ -143,6 +143,8 @@
     <string name="settings_tab_sync">Synchronisierung</string>
     <string name="settings_tab_sync_storage">Synchronisierung &amp; Speicher</string>
     <string name="settings_tab_data">Daten</string>
+    <string name="settings_section_app_information">App-Information</string>
+    <string name="settings_app_version">Version</string>
     <string name="settings_section_design">Design</string>
     <string name="settings_app_color">App-Farbe</string>
     <string name="color_green">Grün</string>

@@ -1,5 +1,6 @@
 package com.example.pocastcloni.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.pocastcloni.BuildConfig
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.theme.Dimens
 
@@ -26,6 +28,9 @@ internal fun DataSettingsContent(
     onExportClick: () -> Unit,
     onImportClick: () -> Unit
 ) {
+    AppInformationSection()
+    SettingsTabDivider()
+
     SettingsStatisticsSectionSmart()
     SettingsTabDivider()
 
@@ -47,6 +52,32 @@ internal fun DataSettingsContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+internal fun AppInformationSection() {
+    val versionValue =
+        stringResource(
+            R.string.settings_app_version_value,
+            BuildConfig.VERSION_NAME,
+            BuildConfig.VERSION_CODE
+        )
+
+    SettingsSectionTitle(stringResource(R.string.settings_section_app_information))
+    SettingsCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(stringResource(R.string.settings_app_version))
+            Text(
+                text = versionValue,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

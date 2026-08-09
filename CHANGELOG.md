@@ -20,6 +20,7 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Episode publish dates in history and favorites rows.
 - Mini-player timeline time overlay setting.
 - Four-tab Settings layout: Design, Playback, Sync and Data.
+- The Data settings tab now shows the installed app version and version code.
 - Bottom bar clean mode with swipe reveal, auto-hide and configurable delay.
 - Swipe navigation between Settings, Home, Downloads and Search.
 - Gradient background option with adjustable strength.
