@@ -68,6 +68,9 @@ workflow/
 docs_context/
 governance/
 docs/
+!docs/
+docs/*
+!docs/VERSIONING.md
 plans/
 IterationManager.ps1
 select_profile.ps1

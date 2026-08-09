@@ -74,6 +74,9 @@ Latest release:
 
 ## Build
 
+Before changing packaged application content or producing a signed APK, follow
+the tracked [application versioning policy](docs/VERSIONING.md).
+
 ### Prerequisites
 
 - Android Studio
