@@ -55,6 +55,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Updated README to describe the current app feature set and local file policy.
 
 ### Fixed
+- Mini-player artwork stays associated with the active podcast during episode
+  switches instead of retaining a previous podcast's memory-cached cover.
 - Podcast covers remain available after Android or device-vendor cache cleanup;
   failed and interrupted replacements keep the last valid artwork visible.
 - Cached podcast covers now appear reliably after cold starts and remain visible

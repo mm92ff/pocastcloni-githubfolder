@@ -31,7 +31,7 @@ constructor(
             val states = coverStateDao.getAllStates()
             states.forEach { state ->
                 val fileName = state.thumbnailFileName ?: return@forEach
-                if (thumbnailStore.validFile(fileName) == null) {
+                if (thumbnailStore.validFileForPodcast(state.podcastRssUrl, fileName) == null) {
                     coverStateDao.clearMissingFile(state.podcastRssUrl, fileName)
                 }
             }

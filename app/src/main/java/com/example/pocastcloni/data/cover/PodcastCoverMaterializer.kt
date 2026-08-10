@@ -83,7 +83,11 @@ constructor(
         latestSourceUrl: String,
         claimedFileName: String?
     ): PodcastCoverMaterializationResult {
-        thumbnailStore.validFile(claimedFileName)?.let { file ->
+        val activeFileName =
+            coverStateDao.getState(podcastRssUrl)
+                ?.thumbnailFileName
+                ?.takeIf { it == claimedFileName }
+        thumbnailStore.validFileForPodcast(podcastRssUrl, activeFileName)?.let { file ->
             return PodcastCoverMaterializationResult.Available(
                 file,
                 PodcastCoverMaterializationSource.PERSISTENT
@@ -114,7 +118,7 @@ constructor(
         val podcast = podcastDao.getPodcastByUrl(podcastRssUrl) ?: return PodcastCoverMaterializationResult.NoSource
         ensureState(podcastRssUrl, podcast.imageUrl)
         val state = coverStateDao.getState(podcastRssUrl) ?: return PodcastCoverMaterializationResult.NoSource
-        val activeFile = thumbnailStore.validFile(state.thumbnailFileName)
+        val activeFile = thumbnailStore.validFileForPodcast(podcastRssUrl, state.thumbnailFileName)
         if (state.thumbnailFileName != null && activeFile == null) {
             coverStateDao.clearMissingFile(podcastRssUrl, state.thumbnailFileName)
         }
@@ -321,7 +325,7 @@ constructor(
         val identicalPromotion =
             state.contentSha256 == published.contentSha256 &&
                 state.thumbnailFileName != null &&
-                thumbnailStore.validFile(state.thumbnailFileName) != null
+                thumbnailStore.validFileForPodcast(podcastRssUrl, state.thumbnailFileName) != null
         val updated =
             if (identicalPromotion) {
                 coverStateDao.promoteIdenticalThumbnail(
@@ -351,7 +355,7 @@ constructor(
             thumbnailStore.deleteFile(state.thumbnailFileName)
         }
         val activeName = if (identicalPromotion) state.thumbnailFileName else published.fileName
-        val activeFile = checkNotNull(thumbnailStore.validFile(activeName))
+        val activeFile = checkNotNull(thumbnailStore.validFileForPodcast(podcastRssUrl, activeName))
         return PodcastCoverMaterializationResult.Available(activeFile, source)
     }
 

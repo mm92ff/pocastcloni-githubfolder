@@ -6,6 +6,7 @@ import androidx.media3.session.MediaController
 import com.example.pocastcloni.R
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.model.Episode
+import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.repository.UserSettings
@@ -186,6 +187,39 @@ class AudioPlayerControllerConcurrencyTest {
 
         assertFalse(fixture.mappedEpisodeIds.contains(FIRST_EPISODE_ID))
         assertTrue(fixture.mappedEpisodeIds.contains(SECOND_EPISODE_ID))
+    }
+
+    @Test
+    fun `podcast switch never combines the new rss url with the previous cover`() = runTest {
+        val fixture = Fixture(this)
+        val firstPodcast = podcast(FIRST_EPISODE_ID, "science-weekly.webp")
+        val secondPodcast = podcast(SECOND_EPISODE_ID, "cybernation.webp")
+        fixture.stubPodcastPlayback(FIRST_EPISODE_ID, firstPodcast)
+        fixture.stubPodcastPlayback(SECOND_EPISODE_ID, secondPodcast)
+        val observedStates = mutableListOf<PlayerUiState>()
+        val collector =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                fixture.subject.playerState.collect { state -> observedStates += state }
+            }
+        runCurrent()
+
+        fixture.subject.play(FIRST_EPISODE_ID)
+        runCurrent()
+        fixture.subject.play(SECOND_EPISODE_ID)
+        runCurrent()
+
+        val current = fixture.subject.playerState.value
+        assertEquals(secondPodcast.rssUrl, current.currentPodcastUrl)
+        assertEquals(secondPodcast.imageUrl, current.coverUrl)
+        assertEquals(secondPodcast.coverFileName, current.coverFileName)
+        assertEquals(secondPodcast.coverRevision, current.coverRevision)
+        assertFalse(
+            observedStates.any { state ->
+                state.currentPodcastUrl == secondPodcast.rssUrl &&
+                    state.coverFileName == firstPodcast.coverFileName
+            }
+        )
+        collector.cancel()
     }
 
     @Test
@@ -462,6 +496,16 @@ class AudioPlayerControllerConcurrencyTest {
         lateinit var disconnectListener: (MediaController) -> Unit
         val subject: AudioPlayerController
 
+        fun stubPodcastPlayback(
+            episodeId: Long,
+            podcast: Podcast
+        ) {
+            val episode = episode(episodeId)
+            coEvery { preparePlayback(episodeId) } returns
+                PlayEpisodeResult(episode, 0L, podcast, episode.enclosureUrl)
+            coEvery { podcastQuery.getPodcast(podcast.rssUrl) } returns podcast
+        }
+
         init {
             val dispatcherProvider = mockk<DispatcherProvider>()
             val preferences = mockk<UserPreferencesRepository>()
@@ -581,6 +625,19 @@ class AudioPlayerControllerConcurrencyTest {
                 link = "",
                 enclosureUrl = "https://example.com/$episodeId/audio.mp3",
                 episodeId = episodeId
+            )
+
+        private fun podcast(
+            episodeId: Long,
+            coverFileName: String
+        ): Podcast =
+            Podcast(
+                rssUrl = "https://example.com/$episodeId/feed.xml",
+                title = "Podcast $episodeId",
+                description = "",
+                imageUrl = "https://example.com/$episodeId/cover.webp",
+                coverFileName = coverFileName,
+                coverRevision = 1L
             )
     }
 }

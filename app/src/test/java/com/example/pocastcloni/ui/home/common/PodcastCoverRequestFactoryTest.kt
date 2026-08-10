@@ -79,15 +79,41 @@ class PodcastCoverRequestFactoryTest {
         assertEquals(
             PodcastCoverRequestFactory.persistentIdentity(
                 before.rssUrl,
+                before.coverFileName,
                 before.coverRevision,
                 PodcastCoverSize.GRID
             ),
             PodcastCoverRequestFactory.persistentIdentity(
                 after.rssUrl,
+                after.coverFileName,
                 after.coverRevision,
                 PodcastCoverSize.GRID
             )
         )
+    }
+
+    @Test
+    fun `changed thumbnail file invalidates memory identity even when revision is unchanged`() {
+        val first =
+            requireNotNull(
+                PodcastCoverRequestFactory.persistentIdentity(
+                    rssUrl = "https://example.test/feed.xml",
+                    thumbnailFileName = "first.webp",
+                    thumbnailRevision = 1L,
+                    size = PodcastCoverSize.LIST
+                )
+            )
+        val second =
+            requireNotNull(
+                PodcastCoverRequestFactory.persistentIdentity(
+                    rssUrl = "https://example.test/feed.xml",
+                    thumbnailFileName = "second.webp",
+                    thumbnailRevision = 1L,
+                    size = PodcastCoverSize.LIST
+                )
+            )
+
+        assertNotEquals(first.memoryCacheKey, second.memoryCacheKey)
     }
 
     private companion object {

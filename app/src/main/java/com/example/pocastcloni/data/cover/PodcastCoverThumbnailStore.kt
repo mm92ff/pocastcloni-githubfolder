@@ -66,6 +66,22 @@ constructor(
     suspend fun validFile(fileName: String?): File? =
         withContext(dispatcherProvider.io) { validFileBlocking(fileName) }
 
+    suspend fun validFileForPodcast(
+        podcastRssUrl: String,
+        fileName: String?
+    ): File? =
+        withContext(dispatcherProvider.io) {
+            validFileForPodcastBlocking(podcastRssUrl, fileName)
+        }
+
+    fun validFileForPodcastBlocking(
+        podcastRssUrl: String,
+        fileName: String?
+    ): File? {
+        if (!isOwnedByPodcast(podcastRssUrl, fileName)) return null
+        return validFileBlocking(fileName)
+    }
+
     @Suppress("ReturnCount")
     fun validFileBlocking(fileName: String?): File? {
         if (fileName == null || !FINAL_FILE_PATTERN.matches(fileName)) return null
@@ -84,6 +100,16 @@ constructor(
     suspend fun readArtworkBytes(fileName: String?): ByteArray? =
         withContext(dispatcherProvider.io) {
             validFileBlocking(fileName)?.takeIf { it.length() <= MAX_ARTWORK_BYTES }?.readBytes()
+        }
+
+    suspend fun readArtworkBytes(
+        podcastRssUrl: String,
+        fileName: String?
+    ): ByteArray? =
+        withContext(dispatcherProvider.io) {
+            validFileForPodcastBlocking(podcastRssUrl, fileName)
+                ?.takeIf { it.length() <= MAX_ARTWORK_BYTES }
+                ?.readBytes()
         }
 
     suspend fun deleteFile(fileName: String?) =
@@ -260,6 +286,15 @@ constructor(
         if (fileName == null || !FINAL_FILE_PATTERN.matches(fileName)) return null
         val root = ensureDirectory().canonicalFile
         return root.resolve(fileName).canonicalFile.takeIf { it.parentFile == root }
+    }
+
+    private fun isOwnedByPodcast(
+        podcastRssUrl: String,
+        fileName: String?
+    ): Boolean {
+        if (fileName == null || !FINAL_FILE_PATTERN.matches(fileName)) return false
+        val podcastHash = podcastRssUrl.sha256().take(PODCAST_HASH_CHARS)
+        return fileName.startsWith("$podcastHash-")
     }
 
     private fun ensureDirectory(): File = directory.apply {

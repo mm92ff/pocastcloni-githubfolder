@@ -41,16 +41,19 @@ internal data class PodcastCoverRequestTag(
 internal object PodcastCoverRequestFactory {
     fun persistentIdentity(
         rssUrl: String,
+        thumbnailFileName: String?,
         thumbnailRevision: Long,
         size: PodcastCoverSize
     ): PersistentPodcastCoverIdentity? {
         val normalizedRssUrl = rssUrl.trim().takeIf(String::isNotEmpty) ?: return null
-        val diagnosticId = normalizedRssUrl.sha256Prefix()
+        val rssDigest = normalizedRssUrl.sha256Hex()
+        val diagnosticId = rssDigest.take(DIAGNOSTIC_HASH_CHARS)
+        val fileIdentity = thumbnailFileName?.trim()?.takeIf(String::isNotEmpty) ?: PENDING_FILE_IDENTITY
         return PersistentPodcastCoverIdentity(
             diagnosticId = diagnosticId,
             thumbnailRevision = thumbnailRevision,
             pixelSize = size.pixels,
-            memoryCacheKey = "cover:$diagnosticId:$thumbnailRevision:${size.pixels}"
+            memoryCacheKey = "cover:$rssDigest:$thumbnailRevision:$fileIdentity:${size.pixels}"
         )
     }
 
@@ -76,7 +79,7 @@ internal object PodcastCoverRequestFactory {
         thumbnailRevision: Long,
         size: PodcastCoverSize
     ): ImageRequest? {
-        val persistentIdentity = persistentIdentity(rssUrl, thumbnailRevision, size)
+        val persistentIdentity = persistentIdentity(rssUrl, thumbnailFileName, thumbnailRevision, size)
         val normalizedRssUrl = rssUrl.trim()
         val normalizedSourceUrl = sourceUrl.trim().takeIf(String::isNotEmpty)
         if (persistentIdentity == null || normalizedSourceUrl == null) return null
@@ -139,11 +142,13 @@ internal object PodcastCoverRequestFactory {
     }
 }
 
-private fun String.sha256Prefix(): String =
+private fun String.sha256Hex(): String =
     MessageDigest.getInstance("SHA-256")
         .digest(toByteArray(Charsets.UTF_8))
-        .take(DIAGNOSTIC_HASH_BYTES)
         .joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
 
-private const val DIAGNOSTIC_HASH_BYTES = 6
+private fun String.sha256Prefix(): String = sha256Hex().take(DIAGNOSTIC_HASH_CHARS)
+
+private const val DIAGNOSTIC_HASH_CHARS = 12
 private const val BYTE_MASK = 0xff
+private const val PENDING_FILE_IDENTITY = "pending"

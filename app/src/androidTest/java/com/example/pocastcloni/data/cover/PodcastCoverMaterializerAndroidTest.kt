@@ -28,6 +28,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 @RunWith(AndroidJUnit4::class)
@@ -70,6 +71,7 @@ class PodcastCoverMaterializerAndroidTest {
     @After
     fun tearDown() = runBlocking {
         store.deletePodcastFiles(feedUrl)
+        store.deletePodcastFiles(FOREIGN_FEED_URL)
         diskCache.clear()
         context.cacheDir.resolve(TEST_DISK_CACHE).deleteRecursively()
         database.close()
@@ -193,6 +195,30 @@ class PodcastCoverMaterializerAndroidTest {
         assertArrayEquals(firstBytes, store.readArtworkBytes(failedState.thumbnailFileName))
     }
 
+    @Test
+    fun displayResolutionRejectsAValidFileOwnedByAnotherPodcast() = runBlocking {
+        val sourceUrl = server.url("/cover.png").toString()
+        insertPodcast(sourceUrl)
+        server.enqueue(imageResponse(Color.RED, "first-etag"))
+        materializer.materialize(feedUrl)
+        val expectedState = requireNotNull(database.podcastCoverStateDao().getState(feedUrl))
+        val foreign =
+            store.publish(
+                FOREIGN_FEED_URL,
+                ByteArrayInputStream(createPng(Color.BLUE))
+            )
+
+        val result = materializer.resolveForDisplay(feedUrl, sourceUrl, foreign.fileName)
+
+        assertTrue(result is PodcastCoverMaterializationResult.Available)
+        assertEquals(
+            expectedState.thumbnailFileName,
+            (result as PodcastCoverMaterializationResult.Available).file.name
+        )
+        assertNotEquals(foreign.fileName, result.file.name)
+        assertEquals(1, server.requestCount)
+    }
+
     private suspend fun insertPodcast(sourceUrl: String) {
         database.podcastDao().insertPodcast(
             PodcastEntity(
@@ -229,5 +255,6 @@ class PodcastCoverMaterializerAndroidTest {
     private companion object {
         const val TEST_DISK_CACHE = "podcast-cover-materializer-test"
         const val LAST_MODIFIED = "Mon, 10 Aug 2026 12:00:00 GMT"
+        const val FOREIGN_FEED_URL = "https://instrumentation.example/foreign-feed.xml"
     }
 }

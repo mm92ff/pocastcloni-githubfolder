@@ -8,6 +8,7 @@ import androidx.media3.session.MediaController
 import com.example.pocastcloni.R
 import com.example.pocastcloni.data.cover.PodcastCoverThumbnailStore
 import com.example.pocastcloni.di.DispatcherProvider
+import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
 import com.example.pocastcloni.domain.usecase.player.PlaybackUnavailableException
@@ -570,7 +571,10 @@ constructor(
         val capturedController = controller ?: return
         val capturedEpisodeId = capturedController.currentMediaItem?.mediaId ?: return
         val capturedGeneration = playRequestGeneration.get()
-        val artworkData = withContext(dispatcherProvider.io) { store.readArtworkBytes(podcast.coverFileName) } ?: return
+        val artworkData =
+            withContext(dispatcherProvider.io) {
+                store.readArtworkBytes(podcast.rssUrl, podcast.coverFileName)
+            } ?: return
         if (
             controller !== capturedController ||
             capturedController.currentMediaItem?.mediaId != capturedEpisodeId ||
@@ -628,12 +632,14 @@ constructor(
                     withContext(dispatcherProvider.io) {
                         podcastQuery.getPodcast(it.rssUrl)
                     }
-                }
+                }?.takeIf { it.rssUrl == episode.podcastRssUrl }
             if (playRequestGeneration.get() == requestGeneration) {
                 val artworkData =
                     podcastCoverThumbnailStore?.let { store ->
                         withContext(dispatcherProvider.io) {
-                            store.readArtworkBytes(podcast?.coverFileName)
+                            podcast?.let {
+                                store.readArtworkBytes(it.rssUrl, it.coverFileName)
+                            }
                         }
                     }
                 connectInternal(userInitiated = true)
@@ -645,6 +651,7 @@ constructor(
                             controller = connectedController,
                             episodeId = episode.episodeId,
                             podcastRssUrl = episode.podcastRssUrl,
+                            podcast = podcast,
                             mediaItem = mapper.mapToMediaItem(
                                 episode,
                                 podcast,
@@ -662,17 +669,6 @@ constructor(
     private suspend fun commitPlayRequest(request: PreparedPlayRequest) {
         playCommitMutex.withLock {
             if (!isCurrentPlayRequest(request)) return@withLock
-            _internalPlayerState.update { current ->
-                if (isCurrentPlayRequest(request)) {
-                    current.copy(
-                        currentPodcastUrl = request.podcastRssUrl,
-                        error = null
-                    )
-                } else {
-                    current
-                }
-            }
-
             val currentId = request.controller.currentMediaItem?.mediaId
             if (currentId == request.episodeId.toString()) {
                 if (!request.controller.isPlaying) {
@@ -686,6 +682,19 @@ constructor(
                     request.controller.prepare()
                     request.controller.play()
                     reconcileTicker()
+                }
+            }
+            _internalPlayerState.update { current ->
+                if (isCurrentPlayRequest(request)) {
+                    current.copy(
+                        currentPodcastUrl = request.podcastRssUrl,
+                        coverUrl = request.podcast?.imageUrl.orEmpty(),
+                        coverFileName = request.podcast?.coverFileName,
+                        coverRevision = request.podcast?.coverRevision ?: 0L,
+                        error = null
+                    )
+                } else {
+                    current
                 }
             }
         }
@@ -1349,6 +1358,7 @@ private data class PreparedPlayRequest(
     val controller: MediaController,
     val episodeId: Long,
     val podcastRssUrl: String,
+    val podcast: Podcast?,
     val mediaItem: MediaItem,
     val startPositionMs: Long
 )

@@ -9,6 +9,7 @@ import com.example.pocastcloni.di.DefaultDispatcherProvider
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,6 +49,15 @@ class PodcastCoverThumbnailStoreAndroidTest {
         }
     }
 
+    @Test
+    fun publishedFileCanOnlyBeReadForItsOwningPodcast() = runBlocking {
+        val published = store.publish(TEST_RSS_URL, ByteArrayInputStream(createPng(200, 200)))
+
+        assertNotNull(store.validFileForPodcast(TEST_RSS_URL, published.fileName))
+        assertNull(store.validFileForPodcast(OTHER_RSS_URL, published.fileName))
+        assertNull(store.readArtworkBytes(OTHER_RSS_URL, published.fileName))
+    }
+
     private fun createPng(
         width: Int,
         height: Int
@@ -62,5 +72,6 @@ class PodcastCoverThumbnailStoreAndroidTest {
 
     private companion object {
         const val TEST_RSS_URL = "https://instrumentation.example/cover-store-feed.xml"
+        const val OTHER_RSS_URL = "https://instrumentation.example/other-feed.xml"
     }
 }
