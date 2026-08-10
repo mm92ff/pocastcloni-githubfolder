@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.work.WorkManager
 import coil.ImageLoader
 import coil.annotation.ExperimentalCoilApi
+import com.example.pocastcloni.data.cover.PodcastCoverFileLifecycleLock
+import com.example.pocastcloni.data.cover.PodcastCoverThumbnailStore
 import com.example.pocastcloni.data.cache.MediaCacheProvider
 import com.example.pocastcloni.data.repository.AppResetMarkerStore
 import com.example.pocastcloni.domain.repository.AppResetGateway
@@ -38,7 +40,9 @@ constructor(
     private val markerStore: AppResetMarkerStore,
     private val schedulingCoordinator: AppSchedulingCoordinator,
     private val playbackResetPort: PlaybackResetPort,
-    @ApplicationContext private val context: Context
+    private val podcastCoverThumbnailStore: PodcastCoverThumbnailStore? = null,
+    @ApplicationContext private val context: Context,
+    private val podcastCoverFileLifecycleLock: PodcastCoverFileLifecycleLock? = null
 ) : AppResetGateway {
     override suspend fun runResetAndReconcile(
         clearSettings: suspend () -> Unit,
@@ -97,6 +101,16 @@ constructor(
                 mediaCacheClosed = true
             }
             runResetStep("clear database") { resetDatabase() }
+            runResetStep("clear persistent podcast covers") {
+                podcastCoverThumbnailStore?.let { store ->
+                    val lifecycleLock = podcastCoverFileLifecycleLock
+                    if (lifecycleLock == null) {
+                        store.clearAll()
+                    } else {
+                        lifecycleLock.withLock { store.clearAll() }
+                    }
+                }
+            }
             runResetStep("clear Coil memory cache") { imageLoader.memoryCache?.clear() }
             runResetStep("clear Coil disk cache") { imageLoader.diskCache?.clear() }
             runResetStep("evict default HTTP cache") { okHttpClient.cache?.evictAll() }

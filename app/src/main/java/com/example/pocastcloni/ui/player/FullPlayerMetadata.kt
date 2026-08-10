@@ -21,12 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
+import com.example.pocastcloni.ui.home.common.PodcastCoverRequestFactory
+import com.example.pocastcloni.ui.home.common.PodcastCoverSize
 import com.example.pocastcloni.ui.theme.Dimens
 
 private const val TITLE_MAX_LINES = 2
@@ -45,6 +48,24 @@ fun FullPlayerMetadataFlexibleCover(
     onEvent: (PlayerScreenEvent) -> Unit,
     onCollapse: () -> Unit
 ) {
+    val context = LocalContext.current
+    val coverRequest =
+        remember(
+            context,
+            playerState.currentPodcastUrl,
+            playerState.coverUrl,
+            playerState.coverFileName,
+            playerState.coverRevision
+        ) {
+            PodcastCoverRequestFactory.create(
+                context = context,
+                rssUrl = playerState.currentPodcastUrl.orEmpty(),
+                sourceUrl = playerState.coverUrl,
+                thumbnailFileName = playerState.coverFileName,
+                thumbnailRevision = playerState.coverRevision,
+                size = PodcastCoverSize.GRID
+            )
+        }
     // BoxWithConstraints provides 'maxHeight', which comes from the parent via weight.
     // This value is stable regardless of the actual text height inside.
     BoxWithConstraints(modifier = modifier) {
@@ -81,7 +102,7 @@ fun FullPlayerMetadataFlexibleCover(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = playerState.coverUrl.ifBlank { android.R.drawable.ic_menu_gallery },
+                    model = coverRequest ?: R.drawable.ic_podcast_placeholder,
                     contentDescription = stringResource(R.string.desc_cover),
                     modifier =
                     Modifier

@@ -1,14 +1,18 @@
 package com.example.pocastcloni.data.repository
 
 import androidx.room.withTransaction
+import com.example.pocastcloni.data.cover.PodcastCoverRefreshScheduler
 import com.example.pocastcloni.data.local.AppDatabase
 import com.example.pocastcloni.data.local.PodcastDao
+import com.example.pocastcloni.data.local.PodcastCoverStateDao
 import com.example.pocastcloni.data.local.PodcastFeedUpdate
 import com.example.pocastcloni.domain.model.Episode
 import com.example.pocastcloni.domain.model.FeedPodcastUpdate
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.domain.repository.FeedSyncStore
 import java.util.Date
+import kotlinx.coroutines.CancellationException
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,8 +25,13 @@ class RoomFeedSyncPersistence
 @Inject
 constructor(
     private val database: AppDatabase,
-    private val podcastDao: PodcastDao
+    private val podcastDao: PodcastDao,
+    private val podcastCoverStateDao: PodcastCoverStateDao? = null,
+    private val podcastCoverRefreshScheduler: PodcastCoverRefreshScheduler? = null
 ) : FeedSyncStore {
+    private val coverStateDao: PodcastCoverStateDao
+        get() = podcastCoverStateDao ?: database.podcastCoverStateDao()
+
     override suspend fun getPodcastForSync(url: String): Podcast? =
         podcastDao.getPodcastByUrl(url)?.toDomain()
 
@@ -53,7 +62,7 @@ constructor(
                 eTagHeader = update.eTagHeader
             )
 
-        database.withTransaction {
+        val coverCandidateChanged = database.withTransaction {
             if (newPodcast == null) {
                 check(podcastDao.updatePodcastFromFeed(entityUpdate) == 1) {
                     "Feed update referenced a missing podcast"
@@ -61,13 +70,20 @@ constructor(
             } else {
                 podcastDao.insertPodcast(newPodcast.copy(hasNewEpisodes = false).toEntity())
             }
+            val candidateChanged = coverStateDao.observeFeedCandidate(
+                rssUrl = update.rssUrl,
+                sourceUrl = update.imageUrl,
+                observedAt = update.lastRefreshed.time
+            )
             val insertResults = podcastDao.upsertEpisodesEfficient(episodes.map { it.toEntity() })
             if (insertResults.any { it != ON_CONFLICT_IGNORED }) {
                 check(podcastDao.markPodcastHasNewEpisodes(update.rssUrl) == 1) {
                     "Feed update could not mark its inserted episodes as new"
                 }
             }
+            candidateChanged
         }
+        scheduleCoverRefreshBestEffort(update.rssUrl, replaceExisting = coverCandidateChanged)
         return readAutoDownloadEnabled(update.rssUrl)
     }
 
@@ -80,6 +96,7 @@ constructor(
                 "Feed refresh referenced a missing podcast"
             }
         }
+        scheduleCoverRefreshBestEffort(rssUrl, replaceExisting = false)
         return readAutoDownloadEnabled(rssUrl)
     }
 
@@ -99,6 +116,20 @@ constructor(
         checkNotNull(podcastDao.getPodcastAutoDownloadEnabled(rssUrl)) {
             "Feed persistence could not read the committed podcast"
         }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun scheduleCoverRefreshBestEffort(
+        rssUrl: String,
+        replaceExisting: Boolean
+    ) {
+        try {
+            podcastCoverRefreshScheduler?.enqueue(rssUrl, replaceExisting = replaceExisting)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.w(error, "Persistent podcast cover work could not be scheduled")
+        }
+    }
 
     private companion object {
         const val ON_CONFLICT_IGNORED = -1L

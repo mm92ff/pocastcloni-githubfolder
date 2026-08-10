@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -47,6 +48,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.common.TransparentSurfaceDefaults
+import com.example.pocastcloni.ui.home.common.PodcastCoverRequestFactory
+import com.example.pocastcloni.ui.home.common.PodcastCoverSize
 import com.example.pocastcloni.ui.theme.Dimens
 import com.example.pocastcloni.ui.theme.Motion
 import com.example.pocastcloni.util.appFormatLocale
@@ -285,6 +288,24 @@ private fun MiniPlayerContent(
     onCoverClick: () -> Unit,
     transparentBackground: Boolean
 ) {
+    val context = LocalContext.current
+    val coverRequest =
+        remember(
+            context,
+            playerState.currentPodcastUrl,
+            playerState.coverUrl,
+            playerState.coverFileName,
+            playerState.coverRevision
+        ) {
+            PodcastCoverRequestFactory.create(
+                context = context,
+                rssUrl = playerState.currentPodcastUrl.orEmpty(),
+                sourceUrl = playerState.coverUrl,
+                thumbnailFileName = playerState.coverFileName,
+                thumbnailRevision = playerState.coverRevision,
+                size = PodcastCoverSize.LIST
+            )
+        }
     val titleColor by TransparentSurfaceDefaults.animatedContentColor(
         transparent = transparentBackground,
         filledColor = MaterialTheme.colorScheme.onSurface,
@@ -302,9 +323,8 @@ private fun MiniPlayerContent(
             .padding(horizontal = Dimens.PaddingVerySmall, vertical = Dimens.PaddingVerySmall),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // TODO: Replace android.R.drawable.ic_menu_gallery with a proper drawable resource from the project.
         AsyncImage(
-            model = playerState.coverUrl.ifBlank { android.R.drawable.ic_menu_gallery },
+            model = coverRequest ?: R.drawable.ic_podcast_placeholder,
             contentDescription = stringResource(R.string.desc_cover),
             modifier =
             Modifier

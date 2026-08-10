@@ -6,6 +6,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import com.example.pocastcloni.R
+import com.example.pocastcloni.data.cover.PodcastCoverThumbnailStore
 import com.example.pocastcloni.di.DispatcherProvider
 import com.example.pocastcloni.domain.repository.PodcastQueryPort
 import com.example.pocastcloni.domain.repository.UserPreferencesRepository
@@ -61,7 +62,8 @@ constructor(
     private val foregroundMonitor: AppForegroundMonitor,
     private val monotonicClock: MonotonicClock,
     private val mediaDispatcherFactory: MediaDispatcherFactory,
-    private val preparePlaybackUseCase: PreparePlaybackUseCase
+    private val preparePlaybackUseCase: PreparePlaybackUseCase,
+    private val podcastCoverThumbnailStore: PodcastCoverThumbnailStore? = null
 ) : PlaybackStarter, PlayerCommandPort, PlayerStatePort, PlayerVisibilityProvider {
     // --- Scope ---
     private val controllerScope = CoroutineScope(dispatcherProvider.main + SupervisorJob())
@@ -122,6 +124,7 @@ constructor(
     private var progressJob: Job? = null
     private var foregroundJob: Job? = null
     private var favoriteStatusJob: Job? = null
+    private var coverStatusJob: Job? = null
     private val tickerLifecycle = PlaybackTickerLifecycle(monotonicClock)
     private val flushLock = Any()
     private var flushRevision = 0L
@@ -503,6 +506,7 @@ constructor(
         }
         launchOnMedia { runCatching { mediaController.addListener(listener) } }
         startFavoriteStatusLoop()
+        startCoverStatusLoop()
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -528,6 +532,74 @@ constructor(
             reportPlaybackStartFailure(error, R.string.playback_unavailable_error)
         } catch (error: Exception) {
             reportPlaybackStartFailure(error, R.string.playback_failed_error)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun startCoverStatusLoop() {
+        if (podcastCoverThumbnailStore == null) return
+        coverStatusJob?.cancel()
+        coverStatusJob =
+            _internalPlayerState
+                .map { state -> state.currentPodcastUrl }
+                .distinctUntilChanged()
+                .flatMapLatest { rssUrl ->
+                    if (rssUrl == null) flowOf(null) else podcastQuery.getPodcastFlow(rssUrl)
+                }
+                .filterNotNull()
+                .distinctUntilChangedBy { podcast -> podcast.coverFileName to podcast.coverRevision }
+                .onEach { podcast -> publishCurrentCoverRevision(podcast) }
+                .launchIn(controllerScope)
+    }
+
+    @Suppress("CyclomaticComplexMethod", "ComplexCondition", "ReturnCount")
+    private suspend fun publishCurrentCoverRevision(podcast: com.example.pocastcloni.domain.model.Podcast) {
+        if (_internalPlayerState.value.currentPodcastUrl != podcast.rssUrl) return
+        _internalPlayerState.update { current ->
+            if (current.currentPodcastUrl == podcast.rssUrl) {
+                current.copy(
+                    coverUrl = podcast.imageUrl,
+                    coverFileName = podcast.coverFileName,
+                    coverRevision = podcast.coverRevision
+                )
+            } else {
+                current
+            }
+        }
+        val store = podcastCoverThumbnailStore ?: return
+        val capturedController = controller ?: return
+        val capturedEpisodeId = capturedController.currentMediaItem?.mediaId ?: return
+        val capturedGeneration = playRequestGeneration.get()
+        val artworkData = withContext(dispatcherProvider.io) { store.readArtworkBytes(podcast.coverFileName) } ?: return
+        if (
+            controller !== capturedController ||
+            capturedController.currentMediaItem?.mediaId != capturedEpisodeId ||
+            playRequestGeneration.get() != capturedGeneration ||
+            _internalPlayerState.value.currentPodcastUrl != podcast.rssUrl ||
+            _internalPlayerState.value.coverRevision != podcast.coverRevision
+        ) {
+            return
+        }
+        val index = capturedController.currentMediaItemIndex
+        if (index < 0) return
+        val currentItem = capturedController.currentMediaItem ?: return
+        val metadata =
+            currentItem.mediaMetadata.buildUpon()
+                .setArtworkData(artworkData, androidx.media3.common.MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                .build()
+        withContext(mediaDispatcherOrFallback()) {
+            if (
+                controller === capturedController &&
+                capturedController.currentMediaItem?.mediaId == capturedEpisodeId &&
+                playRequestGeneration.get() == capturedGeneration &&
+                _internalPlayerState.value.currentPodcastUrl == podcast.rssUrl &&
+                _internalPlayerState.value.coverRevision == podcast.coverRevision
+            ) {
+                capturedController.replaceMediaItem(
+                    index,
+                    currentItem.buildUpon().setMediaMetadata(metadata).build()
+                )
+            }
         }
     }
 
@@ -558,6 +630,12 @@ constructor(
                     }
                 }
             if (playRequestGeneration.get() == requestGeneration) {
+                val artworkData =
+                    podcastCoverThumbnailStore?.let { store ->
+                        withContext(dispatcherProvider.io) {
+                            store.readArtworkBytes(podcast?.coverFileName)
+                        }
+                    }
                 connectInternal(userInitiated = true)
                 val connectedController = controller
                 if (playRequestGeneration.get() == requestGeneration && connectedController != null) {
@@ -567,7 +645,12 @@ constructor(
                             controller = connectedController,
                             episodeId = episode.episodeId,
                             podcastRssUrl = episode.podcastRssUrl,
-                            mediaItem = mapper.mapToMediaItem(episode, podcast, playbackInfo.playUri),
+                            mediaItem = mapper.mapToMediaItem(
+                                episode,
+                                podcast,
+                                playbackInfo.playUri,
+                                artworkData
+                            ),
                             startPositionMs = playbackInfo.startPosition
                         )
                 }
@@ -1183,6 +1266,8 @@ constructor(
             foregroundJob = null
             favoriteStatusJob?.cancel()
             favoriteStatusJob = null
+            coverStatusJob?.cancel()
+            coverStatusJob = null
             val ctrl = controller
             if (ctrl != null) cleanupController(ctrl)
             mediaConnection.release()
@@ -1196,6 +1281,8 @@ constructor(
         }
         controller = null
         controllerListener = null
+        coverStatusJob?.cancel()
+        coverStatusJob = null
         progressJob?.cancel()
         progressJob = null
         mediaScope?.cancel()

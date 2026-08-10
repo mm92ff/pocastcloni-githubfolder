@@ -7,11 +7,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.pocastcloni.data.remote.RssItem
 import com.example.pocastcloni.data.repository.toDomain
 import com.example.pocastcloni.data.repository.toEpisodeEntity
+import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.playback.infrastructure.MediaStateMapper
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.Date
@@ -99,6 +102,22 @@ class EpisodeIdentityAndroidTest {
         assertEquals("101", firstMediaId)
         assertEquals("202", secondMediaId)
         assertNotEquals(firstMediaId, secondMediaId)
+    }
+
+    @Test
+    fun mediaMetadataUsesBoundedArtworkBytesWithoutPrivateFileUri() {
+        val mapper = MediaStateMapper()
+        val artwork = byteArrayOf(1, 2, 3, 4)
+        val mediaItem =
+            mapper.mapToMediaItem(
+                episode = episode(FEED_A, "A").copy(episodeId = 101L).toDomain(),
+                podcast = Podcast(FEED_A, "Podcast", "", "https://example.com/cover.png"),
+                playUri = "https://example.com/episode.mp3",
+                artworkData = artwork
+            )
+
+        assertNull(mediaItem.mediaMetadata.artworkUri)
+        assertArrayEquals(artwork, mediaItem.mediaMetadata.artworkData)
     }
 
     private fun podcast(feedUrl: String) = PodcastEntity(

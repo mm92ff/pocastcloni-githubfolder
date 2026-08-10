@@ -1,9 +1,12 @@
+@file:Suppress("TooManyFunctions")
+
 package com.example.pocastcloni.data.repository
 
 import com.example.pocastcloni.data.local.DownloadStatus
 import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.EpisodeWithPodcastLite
 import com.example.pocastcloni.data.local.PodcastEntity
+import com.example.pocastcloni.data.local.PodcastWithCover
 import com.example.pocastcloni.data.remote.RssItem
 import com.example.pocastcloni.data.remote.ItunesPodcastDto
 import com.example.pocastcloni.domain.model.Episode
@@ -39,6 +42,12 @@ fun PodcastEntity.toDomain(): Podcast {
         allowLocalNetwork = this.allowLocalNetwork
     )
 }
+
+fun PodcastWithCover.toDomain(): Podcast =
+    podcast.toDomain().copy(
+        coverFileName = coverFileName,
+        coverRevision = coverRevision
+    )
 
 fun Podcast.toEntity(): PodcastEntity {
     return PodcastEntity(
@@ -126,6 +135,8 @@ fun EpisodeWithPodcastLite.toPodcastDomain(): Podcast? {
         rssUrl = lite.rssUrl,
         title = lite.title,
         imageUrl = lite.imageUrl,
+        coverFileName = lite.coverFileName,
+        coverRevision = lite.coverRevision,
         description = "",
         lastRefreshed = Date(System.currentTimeMillis()),
         autoDownloadEnabled = false,

@@ -29,6 +29,8 @@ data class PlayerUiState(
     val currentEpisodeTitle: String = Constants.EMPTY_STRING,
     val currentEpisodeSubtitle: String = Constants.EMPTY_STRING,
     val coverUrl: String = Constants.EMPTY_STRING,
+    val coverFileName: String? = null,
+    val coverRevision: Long = 0L,
     val currentEpisodeId: Long? = null,
     val currentPodcastUrl: String? = null,
     val error: UiText? = null,

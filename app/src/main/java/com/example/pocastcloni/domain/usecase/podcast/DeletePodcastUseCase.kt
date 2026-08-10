@@ -18,5 +18,6 @@ constructor(
         removalGateway.cancelActiveDownloads(episodes)
         podcastCommands.deletePodcast(podcast)
         removalGateway.deleteDownloadedFiles(episodes)
+        removalGateway.deletePodcastCover(podcast.rssUrl)
     }
 }

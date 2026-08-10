@@ -13,6 +13,7 @@ object AppDatabaseMigrations {
     private const val SCHEMA_VERSION_14 = 14
     private const val SCHEMA_VERSION_15 = 15
     private const val SCHEMA_VERSION_16 = 16
+    private const val SCHEMA_VERSION_17 = 17
 
     private val createEpisodesV15Sql =
         """
@@ -143,6 +144,46 @@ object AppDatabaseMigrations {
         }
     }
 
+    internal val MIGRATION_16_17 = object : Migration(SCHEMA_VERSION_16, SCHEMA_VERSION_17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `podcast_cover_state` (
+                    `podcastRssUrl` TEXT NOT NULL,
+                    `activeSourceUrl` TEXT,
+                    `pendingSourceUrl` TEXT,
+                    `pendingFirstSeenAt` INTEGER,
+                    `thumbnailFileName` TEXT,
+                    `thumbnailRevision` INTEGER NOT NULL,
+                    `lastSuccessfulCheckAt` INTEGER,
+                    `contentSha256` TEXT,
+                    `eTag` TEXT,
+                    `lastModified` TEXT,
+                    `failureCount` INTEGER NOT NULL,
+                    `nextRetryAt` INTEGER,
+                    PRIMARY KEY(`podcastRssUrl`),
+                    FOREIGN KEY(`podcastRssUrl`) REFERENCES `podcasts`(`rssUrl`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO `podcast_cover_state` (
+                    `podcastRssUrl`, `activeSourceUrl`, `pendingSourceUrl`,
+                    `pendingFirstSeenAt`, `thumbnailFileName`, `thumbnailRevision`,
+                    `lastSuccessfulCheckAt`, `contentSha256`, `eTag`, `lastModified`,
+                    `failureCount`, `nextRetryAt`
+                )
+                SELECT `rssUrl`, NULL, NULLIF(trim(`imageUrl`), ''),
+                    CAST(strftime('%s', 'now') AS INTEGER) * 1000,
+                    NULL, 0, NULL, NULL, NULL, NULL, 0, NULL
+                FROM `podcasts`
+                """.trimIndent()
+            )
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Best-effort legacy migrations (v1–v9 → v10).
     // Authentic schemas/DB fixtures for these versions are not tracked, so they are not
@@ -206,7 +247,8 @@ object AppDatabaseMigrations {
         MIGRATION_12_13,
         MIGRATION_13_14,
         MIGRATION_14_15,
-        MIGRATION_15_16
+        MIGRATION_15_16,
+        MIGRATION_16_17
     )
 
     val ALL_MIGRATIONS: Array<Migration> = legacyMigrations + incrementalMigrations

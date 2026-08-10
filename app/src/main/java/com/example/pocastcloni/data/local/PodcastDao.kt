@@ -16,7 +16,15 @@ import java.util.Date
 data class PodcastLite(
     val rssUrl: String,
     val title: String,
-    val imageUrl: String
+    val imageUrl: String,
+    val coverFileName: String?,
+    val coverRevision: Long
+)
+
+data class PodcastWithCover(
+    @Embedded val podcast: PodcastEntity,
+    val coverFileName: String?,
+    val coverRevision: Long
 )
 
 data class EpisodeWithPodcastLite(
@@ -187,6 +195,18 @@ interface PodcastDao {
     @Query("SELECT * FROM podcasts ORDER BY sortOrder ASC, rssUrl ASC")
     fun getAllPodcastsFlow(): Flow<List<PodcastEntity>>
 
+    @Query(
+        """
+        SELECT p.*,
+               c.thumbnailFileName AS coverFileName,
+               COALESCE(c.thumbnailRevision, 0) AS coverRevision
+        FROM podcasts p
+        LEFT JOIN podcast_cover_state c ON c.podcastRssUrl = p.rssUrl
+        ORDER BY p.sortOrder ASC, p.rssUrl ASC
+        """
+    )
+    fun getAllPodcastsWithCoverFlow(): Flow<List<PodcastWithCover>>
+
     @Query("SELECT rssUrl FROM podcasts ORDER BY rssUrl ASC")
     suspend fun getAllPodcastUrls(): List<String>
 
@@ -199,8 +219,32 @@ interface PodcastDao {
     @Query("SELECT * FROM podcasts WHERE rssUrl = :rssUrl")
     fun getPodcastFlow(rssUrl: String): Flow<PodcastEntity?>
 
+    @Query(
+        """
+        SELECT p.*,
+               c.thumbnailFileName AS coverFileName,
+               COALESCE(c.thumbnailRevision, 0) AS coverRevision
+        FROM podcasts p
+        LEFT JOIN podcast_cover_state c ON c.podcastRssUrl = p.rssUrl
+        WHERE p.rssUrl = :rssUrl
+        """
+    )
+    fun getPodcastWithCoverFlow(rssUrl: String): Flow<PodcastWithCover?>
+
     @Query("SELECT * FROM podcasts WHERE rssUrl = :rssUrl")
     suspend fun getPodcastByUrl(rssUrl: String): PodcastEntity?
+
+    @Query(
+        """
+        SELECT p.*,
+               c.thumbnailFileName AS coverFileName,
+               COALESCE(c.thumbnailRevision, 0) AS coverRevision
+        FROM podcasts p
+        LEFT JOIN podcast_cover_state c ON c.podcastRssUrl = p.rssUrl
+        WHERE p.rssUrl = :rssUrl
+        """
+    )
+    suspend fun getPodcastWithCoverByUrl(rssUrl: String): PodcastWithCover?
 
     @Query("SELECT rssUrl FROM podcasts ORDER BY rssUrl ASC")
     fun getSubscribedUrlsFlow(): Flow<List<String>>
@@ -329,9 +373,12 @@ interface PodcastDao {
             e.*,
             p.rssUrl AS podcast_rssUrl,
             p.title AS podcast_title,
-            p.imageUrl AS podcast_imageUrl
+            p.imageUrl AS podcast_imageUrl,
+            c.thumbnailFileName AS podcast_coverFileName,
+            COALESCE(c.thumbnailRevision, 0) AS podcast_coverRevision
         FROM episodes e
         LEFT JOIN podcasts p ON p.rssUrl = e.podcastRssUrl
+        LEFT JOIN podcast_cover_state c ON c.podcastRssUrl = p.rssUrl
         WHERE e.downloadStatus IN (:statuses)
         ORDER BY e.pubDate DESC, e.episodeId DESC
         """
@@ -431,9 +478,12 @@ interface PodcastDao {
             e.*,
             p.rssUrl AS podcast_rssUrl,
             p.title AS podcast_title,
-            p.imageUrl AS podcast_imageUrl
+            p.imageUrl AS podcast_imageUrl,
+            c.thumbnailFileName AS podcast_coverFileName,
+            COALESCE(c.thumbnailRevision, 0) AS podcast_coverRevision
         FROM episodes e
         LEFT JOIN podcasts p ON p.rssUrl = e.podcastRssUrl
+        LEFT JOIN podcast_cover_state c ON c.podcastRssUrl = p.rssUrl
         WHERE e.isFavorite = 1
         ORDER BY e.favoriteTimestamp DESC, e.favoriteAddedAt DESC, e.podcastRssUrl ASC, e.guid ASC
         """
@@ -585,9 +635,12 @@ interface PodcastDao {
             e.*,
             p.rssUrl AS podcast_rssUrl,
             p.title AS podcast_title,
-            p.imageUrl AS podcast_imageUrl
+            p.imageUrl AS podcast_imageUrl,
+            c.thumbnailFileName AS podcast_coverFileName,
+            COALESCE(c.thumbnailRevision, 0) AS podcast_coverRevision
         FROM episodes e
         LEFT JOIN podcasts p ON p.rssUrl = e.podcastRssUrl
+        LEFT JOIN podcast_cover_state c ON c.podcastRssUrl = p.rssUrl
         WHERE e.isPlayed = 1
         ORDER BY e.datePlayed DESC, e.episodeId DESC
         """
@@ -600,9 +653,12 @@ interface PodcastDao {
             e.*,
             p.rssUrl AS podcast_rssUrl,
             p.title AS podcast_title,
-            p.imageUrl AS podcast_imageUrl
+            p.imageUrl AS podcast_imageUrl,
+            c.thumbnailFileName AS podcast_coverFileName,
+            COALESCE(c.thumbnailRevision, 0) AS podcast_coverRevision
         FROM episodes e
         LEFT JOIN podcasts p ON p.rssUrl = e.podcastRssUrl
+        LEFT JOIN podcast_cover_state c ON c.podcastRssUrl = p.rssUrl
         WHERE e.playbackPositionMs > 0
           AND e.isPlayed = 0
         ORDER BY e.datePlayed DESC, e.pubDate DESC, e.episodeId DESC

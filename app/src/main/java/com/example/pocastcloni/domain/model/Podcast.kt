@@ -17,7 +17,9 @@ data class Podcast(
     val latestEpisodeDate: Date? = null,
     val isLatestEpisodePlayed: Boolean? = null,
     val allowInsecureHttp: Boolean = false,
-    val allowLocalNetwork: Boolean = false
+    val allowLocalNetwork: Boolean = false,
+    val coverFileName: String? = null,
+    val coverRevision: Long = 0L
 ) {
     companion object {
         const val DEFAULT_SORT_ORDER = -1L

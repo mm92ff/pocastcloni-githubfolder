@@ -11,7 +11,6 @@ import com.example.pocastcloni.domain.model.Episode
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.playback.api.PlayerUiState
 import com.example.pocastcloni.util.Constants
-import com.example.pocastcloni.util.shouldUseLocalNetworkForResource
 import javax.inject.Inject
 
 class MediaStateMapper
@@ -20,26 +19,21 @@ constructor() {
     fun mapToMediaItem(
         episode: Episode,
         podcast: Podcast?,
-        playUri: String
+        playUri: String,
+        artworkData: ByteArray? = null
     ): MediaItem {
-        val artworkUri = podcast?.imageUrl
-            ?.takeIf { imageUrl ->
-                imageUrl.isNotBlank() && !shouldUseLocalNetworkForResource(
-                    podcast.rssUrl,
-                    imageUrl,
-                    podcast.allowLocalNetwork
-                )
-            }
-            ?.toUri()
+        val metadata =
+            MediaMetadata.Builder()
+                .setTitle(episode.title)
+                .setArtist(podcast?.title ?: Constants.EMPTY_STRING)
+        artworkData?.let { bytes ->
+            metadata.setArtworkData(bytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+        }
         return MediaItem.Builder()
             .setMediaId(episode.episodeId.toString())
             .setUri(playUri.toUri())
             .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(episode.title)
-                    .setArtist(podcast?.title ?: Constants.EMPTY_STRING)
-                    .setArtworkUri(artworkUri)
-                    .build()
+                metadata.build()
             )
             .build()
     }
@@ -69,6 +63,8 @@ constructor() {
             currentEpisodeTitle = title,
             currentEpisodeSubtitle = subtitle,
             coverUrl = cover,
+            coverFileName = podcast?.coverFileName,
+            coverRevision = podcast?.coverRevision ?: 0L,
             currentPodcastUrl = episode?.podcastRssUrl ?: currentState.currentPodcastUrl
         )
     }

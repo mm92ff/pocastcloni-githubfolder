@@ -7,6 +7,7 @@ The format is based on Keep a Changelog and this project follows a beta release 
 ## [Unreleased]
 
 ### Added
+- A manual podcast-cover refresh action in the Data settings tab.
 - Complete German UI localization and an app-language selector with system-default,
   English and German choices.
 - Configurable Smart Stream feed-read limits from full-feed mode (`0`) through
@@ -30,6 +31,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
   to no extra gap while preserving visible mini-player clearance.
 
 ### Changed
+- Subscribed podcast covers are stored as bounded persistent thumbnails and are
+  checked for updates at most weekly unless missing, damaged or manually refreshed.
 - The language selector keeps its globe and always displays `Language` so users can
   find it after switching to an unfamiliar interface language.
 - English remains the complete default and fallback UI catalog while code, diagnostic
@@ -52,6 +55,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Updated README to describe the current app feature set and local file policy.
 
 ### Fixed
+- Podcast covers remain available after Android or device-vendor cache cleanup;
+  failed and interrupted replacements keep the last valid artwork visible.
 - Cached podcast covers now appear reliably after cold starts and remain visible
   while Home performs background refresh work.
 - Timeline taps, drags and accessibility seeks now remain at the requested

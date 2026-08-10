@@ -41,18 +41,36 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.ui.common.formatEpisodeDuration
 import com.example.pocastcloni.ui.common.formatEpisodePublishDate
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.home.common.PodcastCoverRequestFactory
+import com.example.pocastcloni.ui.home.common.PodcastCoverSize
 import com.example.pocastcloni.util.Constants
 import com.example.pocastcloni.util.appFormatLocale
 
 @Composable
+@Suppress("LongParameterList", "LongMethod")
 fun PodcastHeader(
+    podcastRssUrl: String,
     imageUrl: String?,
+    coverFileName: String?,
+    coverRevision: Long,
     title: String,
     description: String,
     isAutoDownloadEnabled: Boolean,
     onToggleAutoDownload: (Boolean) -> Unit,
     onShowPodcastDescription: () -> Unit
 ) {
+    val context = LocalContext.current
+    val coverRequest =
+        remember(podcastRssUrl, imageUrl, coverFileName, coverRevision, context) {
+            PodcastCoverRequestFactory.create(
+                context = context,
+                rssUrl = podcastRssUrl,
+                sourceUrl = imageUrl.orEmpty(),
+                thumbnailFileName = coverFileName,
+                thumbnailRevision = coverRevision,
+                size = PodcastCoverSize.GRID
+            )
+        }
     val contentColor = MaterialTheme.colorScheme.onBackground
     val secondaryContentColor = contentColor.copy(alpha = 0.78f)
 
@@ -67,7 +85,7 @@ fun PodcastHeader(
             verticalAlignment = Alignment.Top
         ) {
             AsyncImage(
-                model = imageUrl,
+                model = coverRequest,
                 contentDescription = stringResource(R.string.desc_podcast_cover),
                 modifier =
                 Modifier

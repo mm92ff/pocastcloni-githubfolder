@@ -7,6 +7,8 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.example.pocastcloni.domain.model.Podcast
+import java.util.Date
 
 class PodcastCoverRequestFactoryTest {
     @Test
@@ -60,6 +62,32 @@ class PodcastCoverRequestFactoryTest {
         assertTrue(identity.diagnosticId.all { character -> character.isDigit() || character in 'a'..'f' })
         assertFalse(identity.diagnosticId.contains("example"))
         assertFalse(identity.diagnosticId.contains("cover"))
+    }
+
+    @Test
+    fun `podcast metadata refresh does not change persistent cover identity`() {
+        val before = Podcast(
+            rssUrl = "https://example.test/feed.xml",
+            title = "Before",
+            description = "Description",
+            imageUrl = COVER_URL,
+            lastRefreshed = Date(1L),
+            coverRevision = 4L
+        )
+        val after = before.copy(title = "After", lastRefreshed = Date(2L))
+
+        assertEquals(
+            PodcastCoverRequestFactory.persistentIdentity(
+                before.rssUrl,
+                before.coverRevision,
+                PodcastCoverSize.GRID
+            ),
+            PodcastCoverRequestFactory.persistentIdentity(
+                after.rssUrl,
+                after.coverRevision,
+                PodcastCoverSize.GRID
+            )
+        )
     }
 
     private companion object {

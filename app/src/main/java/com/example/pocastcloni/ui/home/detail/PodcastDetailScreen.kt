@@ -144,7 +144,10 @@ fun PodcastDetailScreen(
                 ) {
                     item {
                         PodcastHeader(
+                            podcastRssUrl = state.podcastRssUrl,
                             imageUrl = state.podcastImageUrl,
+                            coverFileName = state.podcastCoverFileName,
+                            coverRevision = state.podcastCoverRevision,
                             title = state.podcastTitle,
                             description = state.podcastDescription,
                             isAutoDownloadEnabled = state.isAutoDownloadEnabled,

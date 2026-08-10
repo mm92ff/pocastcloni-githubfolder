@@ -3,6 +3,7 @@ package com.example.pocastcloni
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.pocastcloni.data.local.PodcastDao
+import com.example.pocastcloni.data.cover.PodcastCoverMaintenance
 import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import com.example.pocastcloni.data.repository.BackupImportRecovery
 import com.example.pocastcloni.data.worker.AppSchedulingCoordinator
@@ -45,6 +46,7 @@ class AppInitializerTest {
     private val resetApp = mockk<ResetAppUseCase>()
     private val localRegistry = mockk<LocalNetworkAccessRegistry>(relaxed = true)
     private val schedulingCoordinator = mockk<AppSchedulingCoordinator>(relaxed = true)
+    private val podcastCoverMaintenance = mockk<PodcastCoverMaintenance>(relaxed = true)
 
     @Suppress("LongMethod")
     @Test
@@ -152,6 +154,7 @@ class AppInitializerTest {
         coVerify(exactly = 1) { recovery.recoverInterruptedImport() }
         coVerify(exactly = 1) { resetApp.resumeIfPending() }
         coVerify(exactly = 1) { repository.reconcileEpisodeStorage(any(), any()) }
+        coVerify(exactly = 1) { podcastCoverMaintenance.reconcileAndSchedule() }
         verify(exactly = 1) { localRegistry.replaceApprovedFeeds(emptyList()) }
         coVerify(exactly = 1) {
             schedulingCoordinator.applyObservedCleanupSettings(any(), any())
@@ -181,6 +184,26 @@ class AppInitializerTest {
         coVerify(exactly = 0) { schedulingCoordinator.applyObservedBackgroundSettings(any(), any()) }
         coVerify(exactly = 0) { schedulingCoordinator.applyObservedCleanupSettings(any(), any()) }
         verify(exactly = 0) { localRegistry.replaceApprovedFeeds(any()) }
+    }
+
+    @Test
+    fun `cover reconciliation failure does not block core observers`() = runTest(dispatcher) {
+        every { dispatcherProvider.io } returns dispatcher
+        every { preferences.userSettingsFlow } returns flowOf(UserSettings())
+        every { podcastDao.getApprovedLocalFeedUrlsFlow() } returns flowOf(emptyList())
+        every { workManager.getWorkInfosByTag(Constants.DOWNLOAD_WORKER_TAG) } returns
+            Futures.immediateFuture(emptyList<WorkInfo>())
+        coEvery { recovery.recoverInterruptedImport() } returns Unit
+        coEvery { resetApp.resumeIfPending() } returns false
+        coEvery { repository.reconcileEpisodeStorage(any(), any()) } returns 0
+        coEvery { podcastCoverMaintenance.reconcileAndSchedule() } throws IOException("cover storage unavailable")
+
+        initializer(backgroundScope).initialize()
+        runCurrent()
+
+        verify(exactly = 1) { localRegistry.replaceApprovedFeeds(emptyList()) }
+        coVerify(exactly = 1) { schedulingCoordinator.applyObservedCleanupSettings(any(), any()) }
+        coVerify(exactly = 1) { schedulingCoordinator.applyObservedBackgroundSettings(any(), any()) }
     }
 
     @Test
@@ -277,6 +300,7 @@ class AppInitializerTest {
             backupImportRecovery = recovery,
             resetAppUseCase = resetApp,
             localNetworkAccessRegistry = localRegistry,
-            schedulingCoordinator = schedulingCoordinator
+            schedulingCoordinator = schedulingCoordinator,
+            podcastCoverMaintenance = podcastCoverMaintenance
         )
 }

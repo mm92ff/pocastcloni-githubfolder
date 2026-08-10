@@ -23,11 +23,11 @@ internal class PodcastQueryAdapter(
 ) : PodcastQueryPort {
     override fun getAllPodcastsFlow(): Flow<List<Podcast>> =
         RetryingDataFlow.bounded(
-            podcastDao.getAllPodcastsFlow().map { podcasts ->
-                podcasts.map { entity ->
-                    entity.toDomain().copy(
-                        hasNewEpisodes = entity.hasNewEpisodes,
-                        isLatestEpisodePlayed = entity.isLatestEpisodePlayed
+            podcastDao.getAllPodcastsWithCoverFlow().map { podcasts ->
+                podcasts.map { row ->
+                    row.toDomain().copy(
+                        hasNewEpisodes = row.podcast.hasNewEpisodes,
+                        isLatestEpisodePlayed = row.podcast.isLatestEpisodePlayed
                     )
                 }
             }
@@ -39,7 +39,7 @@ internal class PodcastQueryAdapter(
         ).flowOn(dispatcherProvider.io)
 
     override fun getPodcastFlow(rssUrl: String): Flow<Podcast?> =
-        RetryingDataFlow.bounded(podcastDao.getPodcastFlow(rssUrl).map { it?.toDomain() })
+        RetryingDataFlow.bounded(podcastDao.getPodcastWithCoverFlow(rssUrl).map { it?.toDomain() })
             .flowOn(dispatcherProvider.io)
 
     override fun getSubscribedUrlsFlow(): Flow<List<String>> =
@@ -100,7 +100,7 @@ internal class PodcastQueryAdapter(
         ).flowOn(dispatcherProvider.io)
 
     override suspend fun getPodcast(rssUrl: String): Podcast? =
-        withContext(dispatcherProvider.io) { podcastDao.getPodcastByUrl(rssUrl)?.toDomain() }
+        withContext(dispatcherProvider.io) { podcastDao.getPodcastWithCoverByUrl(rssUrl)?.toDomain() }
 
     override suspend fun getEpisode(episodeId: Long): Episode? =
         withContext(dispatcherProvider.io) { podcastDao.getEpisodeById(episodeId)?.toDomain() }

@@ -25,9 +25,12 @@ data class SettingsUiModel(
 
 @Immutable
 data class PodcastDetailContent(
+    val rssUrl: String = "",
     val title: String = "",
     val description: String = "",
     val imageUrl: String? = null,
+    val coverFileName: String? = null,
+    val coverRevision: Long = 0L,
     val autoDownloadEnabled: Boolean = false,
     val episodes: ImmutableList<EpisodeUiModel> = persistentListOf(),
     val error: UiText? = null
@@ -39,6 +42,9 @@ data class PodcastDetailUiState(
     val podcastTitle: String = "",
     val podcastDescription: String = "",
     val podcastImageUrl: String? = null,
+    val podcastCoverFileName: String? = null,
+    val podcastCoverRevision: Long = 0L,
+    val podcastRssUrl: String = "",
     val isAutoDownloadEnabled: Boolean = false,
     val episodes: ImmutableList<EpisodeUiModel> = persistentListOf(),
     val isLoading: Boolean = false,

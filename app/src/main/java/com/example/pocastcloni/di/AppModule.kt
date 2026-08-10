@@ -7,6 +7,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.example.pocastcloni.BuildConfig
 import com.example.pocastcloni.R
+import com.example.pocastcloni.data.cover.PodcastCoverFetcherFactory
 import com.example.pocastcloni.ui.home.common.PodcastCoverEventListenerFactory
 import com.example.pocastcloni.util.Constants
 import dagger.Module
@@ -23,9 +24,21 @@ import javax.inject.Named
 object AppModule {
     @Provides
     @Singleton
+    fun provideImageDiskCache(
+        @ApplicationContext context: Context
+    ): DiskCache =
+        DiskCache.Builder()
+            .directory(context.cacheDir.resolve(Constants.Cache.IMAGE_CACHE_DIR))
+            .maxSizePercent(0.02)
+            .build()
+
+    @Provides
+    @Singleton
     fun provideImageLoader(
         @ApplicationContext context: Context,
-        @Named("ImageMediaClient") okHttpClient: OkHttpClient
+        @Named("ImageMediaClient") okHttpClient: OkHttpClient,
+        imageDiskCache: DiskCache,
+        podcastCoverFetcherFactory: PodcastCoverFetcherFactory
     ): ImageLoader {
         return ImageLoader.Builder(context)
             .okHttpClient(okHttpClient)
@@ -33,6 +46,7 @@ object AppModule {
             // even when their origin omits HTTP freshness headers.
             .respectCacheHeaders(false)
             .components {
+                add(podcastCoverFetcherFactory)
                 add(SvgDecoder.Factory())
             }
             .memoryCache {
@@ -41,15 +55,12 @@ object AppModule {
                     .build()
             }
             .diskCache {
-                DiskCache.Builder()
-                    .directory(context.cacheDir.resolve(Constants.Cache.IMAGE_CACHE_DIR))
-                    .maxSizePercent(0.02)
-                    .build()
+                imageDiskCache
             }
             .eventListenerFactory(PodcastCoverEventListenerFactory(enabled = BuildConfig.DEBUG))
             // Shows a placeholder if loading fails
-            .error(R.drawable.ic_launcher_foreground)
-            .fallback(R.drawable.ic_launcher_foreground)
+            .error(R.drawable.ic_podcast_placeholder)
+            .fallback(R.drawable.ic_podcast_placeholder)
             .build()
     }
 }

@@ -3,6 +3,8 @@ package com.example.pocastcloni.data.worker
 import android.content.Context
 import androidx.core.net.toUri
 import androidx.work.WorkManager
+import com.example.pocastcloni.data.cover.PodcastCoverRefreshScheduler
+import com.example.pocastcloni.data.cover.PodcastCoverThumbnailStore
 import com.example.pocastcloni.domain.model.DownloadStatus
 import com.example.pocastcloni.domain.model.Episode
 import com.example.pocastcloni.domain.repository.PodcastRemovalGateway
@@ -17,7 +19,9 @@ import javax.inject.Singleton
 class AndroidPodcastRemovalGateway
 @Inject
 constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val podcastCoverRefreshScheduler: PodcastCoverRefreshScheduler,
+    private val podcastCoverThumbnailStore: PodcastCoverThumbnailStore
 ) : PodcastRemovalGateway {
     private val workManager = WorkManager.getInstance(context)
 
@@ -47,5 +51,10 @@ constructor(
                     Timber.w(error, "Failed to delete file after podcast removal: %s", path)
                 }
             }
+    }
+
+    override suspend fun deletePodcastCover(podcastRssUrl: String) {
+        podcastCoverRefreshScheduler.cancel(podcastRssUrl)
+        podcastCoverThumbnailStore.deletePodcastFiles(podcastRssUrl)
     }
 }

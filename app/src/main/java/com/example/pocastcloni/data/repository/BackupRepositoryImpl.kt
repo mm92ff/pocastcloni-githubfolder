@@ -2,6 +2,7 @@ package com.example.pocastcloni.data.repository
 
 import android.content.Context
 import android.net.Uri
+import com.example.pocastcloni.data.cover.PodcastCoverRefreshScheduler
 import com.example.pocastcloni.data.local.BackupData
 import com.example.pocastcloni.data.local.BackupEpisodeState
 import com.example.pocastcloni.data.local.BackupFavorite
@@ -12,6 +13,7 @@ import com.example.pocastcloni.data.local.EpisodeEntity
 import com.example.pocastcloni.data.local.FavoriteOrderUpdate
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.local.PodcastEntity
+import com.example.pocastcloni.data.local.PodcastCoverStateDao
 import com.example.pocastcloni.data.local.PodcastSortUpdate
 import com.example.pocastcloni.data.local.settingsForRestore
 import com.example.pocastcloni.data.manager.PodcastBackupHelper
@@ -49,6 +51,7 @@ import javax.inject.Singleton
 @Singleton
 class BackupRepositoryImpl
 @Inject
+@Suppress("LongParameterList")
 constructor(
     private val podcastDao: PodcastDao,
     private val backupHelper: PodcastBackupHelper,
@@ -60,7 +63,9 @@ constructor(
     private val backupImportRecovery: BackupImportRecovery,
     private val importCoordinator: BackupImportCoordinator,
     private val postImportSyncScheduler: BackupPostImportSyncScheduler,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val podcastCoverStateDao: PodcastCoverStateDao? = null,
+    private val podcastCoverRefreshScheduler: PodcastCoverRefreshScheduler? = null
 ) : BackupRepository {
     override suspend fun exportBackup(
         location: BackupLocation,
@@ -139,7 +144,12 @@ constructor(
                         eTagHeader = null,
                         lastRefreshed = Date(0)
                     )
-                    insertPodcastStubPreservingExisting(podcastDao, stub)
+                    val persistedPodcast = insertPodcastStubPreservingExisting(podcastDao, stub) ?: stub
+                    podcastCoverStateDao?.observeFeedCandidate(
+                        rssUrl = backupPodcast.url,
+                        sourceUrl = persistedPodcast.imageUrl,
+                        observedAt = System.currentTimeMillis()
+                    )
                     if (backupData.version >= 2) {
                         podcastDao.updateAutoDownloadEnabled(
                             backupPodcast.url,
@@ -170,6 +180,7 @@ constructor(
         }
 
         if (importedPodcasts.isNotEmpty()) {
+            scheduleCoverRepairBestEffort()
             try {
                 postImportSyncScheduler.schedule()
             } catch (error: CancellationException) {
@@ -183,6 +194,16 @@ constructor(
             total = total,
             skippedFavorites = restoreResult.requestedFavorites - restoreResult.restoredFavorites
         )
+    }
+
+    private suspend fun scheduleCoverRepairBestEffort() {
+        try {
+            podcastCoverRefreshScheduler?.enqueueAll()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.w(error, "Could not schedule post-import podcast cover repair")
+        }
     }
 
     private suspend fun rollbackInterruptedImport(

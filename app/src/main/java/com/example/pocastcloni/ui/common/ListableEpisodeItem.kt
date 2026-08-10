@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,8 @@ import coil.compose.AsyncImage
 import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.model.Podcast
 import com.example.pocastcloni.ui.theme.Dimens
+import com.example.pocastcloni.ui.home.common.PodcastCoverRequestFactory
+import com.example.pocastcloni.ui.home.common.PodcastCoverSize
 import com.example.pocastcloni.util.appFormatLocale
 
 @Composable
@@ -42,6 +45,7 @@ fun ListableEpisodeItem(
     onImageClick: (() -> Unit)? = null // Optional callback for image click
 ) {
     val configuration = LocalConfiguration.current
+    val context = LocalContext.current
     val formatLocale = configuration.appFormatLocale()
     val publishDate =
         remember(showPublishDate, episode.pubDateMs, configuration, formatLocale) {
@@ -82,8 +86,18 @@ fun ListableEpisodeItem(
                 .padding(horizontal = Dimens.PaddingLarge, vertical = Dimens.PaddingSmall),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val coverModel =
+                remember(context, podcast, episode.podcastImageUrl) {
+                    podcast?.let { subscribedPodcast ->
+                        PodcastCoverRequestFactory.create(
+                            context,
+                            subscribedPodcast,
+                            PodcastCoverSize.LIST
+                        )
+                    } ?: episode.podcastImageUrl.orEmpty()
+                }
             AsyncImage(
-                model = episode.podcastImageUrl ?: podcast?.imageUrl ?: "",
+                model = coverModel,
                 contentDescription = null,
                 modifier =
                 Modifier

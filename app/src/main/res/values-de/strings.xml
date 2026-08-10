@@ -143,6 +143,14 @@
     <string name="settings_tab_sync">Synchronisierung</string>
     <string name="settings_tab_sync_storage">Synchronisierung &amp; Speicher</string>
     <string name="settings_tab_data">Daten</string>
+    <string name="settings_section_podcast_covers">Podcast-Titelbilder</string>
+    <string name="settings_cover_refresh">Podcast-Titelbilder aktualisieren</string>
+    <string name="settings_cover_refresh_running">Podcast-Titelbilder werden aktualisiert…</string>
+    <string name="settings_cover_refresh_subtitle">Prüft jetzt alle abonnierten Titelbilder. Vorhandene Bilder bleiben bei einem Fehler sichtbar.</string>
+    <string name="settings_cover_refresh_success"><xliff:g id="refreshed_count">%1$d</xliff:g> Podcast-Titelbilder wurden aktualisiert.</string>
+    <string name="settings_cover_refresh_partial"><xliff:g id="refreshed_count">%1$d</xliff:g> von <xliff:g id="total_count">%2$d</xliff:g> Podcast-Titelbildern wurden aktualisiert.</string>
+    <string name="settings_cover_refresh_failed">Podcast-Titelbilder konnten nicht aktualisiert werden.</string>
+    <string name="settings_cover_refresh_empty">Es gibt keine abonnierten Podcast-Titelbilder zum Aktualisieren.</string>
     <string name="settings_section_app_information">App-Information</string>
     <string name="settings_app_version">Version</string>
     <string name="settings_section_design">Design</string>

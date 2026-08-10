@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +32,9 @@ internal fun DataSettingsContent(
     AppInformationSection()
     SettingsTabDivider()
 
+    PodcastCoverMaintenanceSection()
+    SettingsTabDivider()
+
     SettingsStatisticsSectionSmart()
     SettingsTabDivider()
 
@@ -52,6 +56,50 @@ internal fun DataSettingsContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PodcastCoverMaintenanceSection(
+    viewModel: PodcastCoverSettingsViewModel = hiltViewModel()
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    SettingsSectionTitle(stringResource(R.string.settings_section_podcast_covers))
+    SettingsCard(
+        onClick = if (state.isRefreshing) null else viewModel::refreshCovers
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.width(Dimens.PaddingMedium))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(
+                        if (state.isRefreshing) {
+                            R.string.settings_cover_refresh_running
+                        } else {
+                            R.string.settings_cover_refresh
+                        }
+                    )
+                )
+                Text(
+                    stringResource(R.string.settings_cover_refresh_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        state.message?.let { message ->
+            Spacer(modifier = androidx.compose.ui.Modifier.width(Dimens.PaddingSmall))
+            Text(
+                message.asString(context),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

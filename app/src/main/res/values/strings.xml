@@ -145,6 +145,14 @@
     <string name="settings_tab_sync">Sync</string>
     <string name="settings_tab_sync_storage">Sync &amp; Storage</string>
     <string name="settings_tab_data">Data</string>
+    <string name="settings_section_podcast_covers">Podcast covers</string>
+    <string name="settings_cover_refresh">Refresh podcast covers</string>
+    <string name="settings_cover_refresh_running">Refreshing podcast covers…</string>
+    <string name="settings_cover_refresh_subtitle">Checks all subscribed covers now. Existing covers remain visible if an update fails.</string>
+    <string name="settings_cover_refresh_success">Refreshed <xliff:g id="refreshed_count">%1$d</xliff:g> podcast covers.</string>
+    <string name="settings_cover_refresh_partial">Refreshed <xliff:g id="refreshed_count">%1$d</xliff:g> of <xliff:g id="total_count">%2$d</xliff:g> podcast covers.</string>
+    <string name="settings_cover_refresh_failed">Podcast covers could not be refreshed.</string>
+    <string name="settings_cover_refresh_empty">There are no subscribed podcast covers to refresh.</string>
     <string name="settings_section_app_information">App Information</string>
     <string name="settings_app_version">Version</string>
     <string name="settings_app_version_value" translatable="false"><xliff:g id="version_name">%1$s</xliff:g> (<xliff:g id="version_code">%2$d</xliff:g>)</string>

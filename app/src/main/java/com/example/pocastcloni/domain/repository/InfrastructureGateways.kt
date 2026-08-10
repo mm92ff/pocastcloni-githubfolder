@@ -15,6 +15,8 @@ interface PodcastRemovalGateway {
     suspend fun cancelActiveDownloads(episodes: List<Episode>)
 
     suspend fun deleteDownloadedFiles(episodes: List<Episode>)
+
+    suspend fun deletePodcastCover(podcastRssUrl: String)
 }
 
 interface LocalNetworkApprovalPort {

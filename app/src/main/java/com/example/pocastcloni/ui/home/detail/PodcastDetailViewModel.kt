@@ -110,9 +110,12 @@ constructor(
                     }.toImmutableList()
 
                 PodcastDetailContent(
+                    rssUrl = podcast.rssUrl,
                     title = podcastTitle,
                     description = podcast.description.stripHtml(),
                     imageUrl = podcastImageUrl,
+                    coverFileName = podcast.coverFileName,
+                    coverRevision = podcast.coverRevision,
                     autoDownloadEnabled = podcast.autoDownloadEnabled,
                     episodes = newList,
                     error = null
@@ -164,6 +167,9 @@ constructor(
                 podcastTitle = details.title,
                 podcastDescription = details.description,
                 podcastImageUrl = details.imageUrl,
+                podcastCoverFileName = details.coverFileName,
+                podcastCoverRevision = details.coverRevision,
+                podcastRssUrl = details.rssUrl,
                 isAutoDownloadEnabled = details.autoDownloadEnabled,
                 episodes = details.episodes,
                 isLoading = contentLoad.loading,

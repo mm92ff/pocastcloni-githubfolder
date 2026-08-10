@@ -12,6 +12,7 @@ import coil.annotation.ExperimentalCoilApi
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.example.pocastcloni.data.cache.MediaCacheProvider
+import com.example.pocastcloni.data.cover.PodcastCoverThumbnailStore
 import com.example.pocastcloni.data.repository.AppResetMarkerStore
 import com.example.pocastcloni.data.worker.AppSchedulingCoordinator
 import com.example.pocastcloni.data.worker.AndroidAppResetGateway
@@ -79,6 +80,7 @@ class ResetAppUseCaseTest {
     private val context = mockk<Context>()
     private val workManager = mockk<WorkManager>()
     private val playbackResetPort = mockk<PlaybackResetPort>(relaxed = true)
+    private val podcastCoverThumbnailStore = mockk<PodcastCoverThumbnailStore>(relaxed = true)
     private val cancelOperation = mockk<Operation>()
     private val scheduleOperation = mockk<Operation>(relaxed = true)
 
@@ -249,6 +251,7 @@ class ResetAppUseCaseTest {
         coVerify(exactly = 1) { maintenance.resetDatabase() }
         verify(exactly = 1) { workManager.cancelAllWork() }
         coVerify(exactly = 1) { playbackResetPort.stopAndReleaseForReset() }
+        coVerify(exactly = 1) { podcastCoverThumbnailStore.clearAll() }
         verify(exactly = 1) { context.stopService(any()) }
         assertTrue(!markerStore.isPending())
         verifyOrder {
@@ -368,6 +371,7 @@ class ResetAppUseCaseTest {
                 markerStore = markerStore,
                 schedulingCoordinator = schedulingCoordinator,
                 playbackResetPort = playbackResetPort,
+                podcastCoverThumbnailStore = podcastCoverThumbnailStore,
                 context = context
             ),
             dispatcherProvider = dispatcherProvider

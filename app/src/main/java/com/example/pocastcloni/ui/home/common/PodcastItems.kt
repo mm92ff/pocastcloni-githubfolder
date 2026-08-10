@@ -63,12 +63,12 @@ data class PodcastIndicatorStyle(
 
 @Composable
 private fun rememberPodcastImageRequest(
-    url: String,
+    podcast: Podcast,
     size: PodcastCoverSize
 ): ImageRequest? {
     val context = LocalContext.current
-    return remember(url, context, size) {
-        PodcastCoverRequestFactory.create(context, url, size)
+    return remember(podcast.rssUrl, podcast.imageUrl, podcast.coverFileName, podcast.coverRevision, context, size) {
+        PodcastCoverRequestFactory.create(context, podcast, size)
     }
 }
 
@@ -207,7 +207,7 @@ fun PodcastItem(
                     modifier = Modifier.padding(Dimens.PaddingSmall),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, PodcastCoverSize.LIST)
+                    val imageRequest = rememberPodcastImageRequest(podcast, PodcastCoverSize.LIST)
 
                     AsyncImage(
                         model = imageRequest,
@@ -294,7 +294,7 @@ fun PodcastGridItem(
                     elevation = CardDefaults.cardElevation(defaultElevation = Dimens.PaddingSmall),
                     modifier = Modifier.border(borderWidth, borderColor, RoundedCornerShape(Dimens.RoundedCornerLarge))
                 ) {
-                    val imageRequest = rememberPodcastImageRequest(podcast.imageUrl, PodcastCoverSize.GRID)
+                    val imageRequest = rememberPodcastImageRequest(podcast, PodcastCoverSize.GRID)
 
                     AsyncImage(
                         model = imageRequest,

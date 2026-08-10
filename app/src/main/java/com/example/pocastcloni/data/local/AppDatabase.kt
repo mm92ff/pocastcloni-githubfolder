@@ -10,6 +10,7 @@ import com.example.pocastcloni.util.Constants
 @Database(
     entities = [
         PodcastEntity::class,
+        PodcastCoverStateEntity::class,
         EpisodeEntity::class,
         EpisodeFts::class,
         BackupImportJournalEntity::class
@@ -20,6 +21,8 @@ import com.example.pocastcloni.util.Constants
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao
+
+    abstract fun podcastCoverStateDao(): PodcastCoverStateDao
 
     abstract fun backupImportJournalDao(): BackupImportJournalDao
 

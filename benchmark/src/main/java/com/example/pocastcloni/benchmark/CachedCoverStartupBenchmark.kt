@@ -28,7 +28,7 @@ class CachedCoverStartupBenchmark {
     }
 
     @Test
-    fun cachedCoverColdStartupDoesNotRequestCoverAgain() {
+    fun persistentCoverColdStartupSurvivesOrdinaryCacheCleanup() {
         BenchmarkFeedServer().use { server ->
             server.start()
             var fixturePrepared = false
@@ -46,6 +46,7 @@ class CachedCoverStartupBenchmark {
                         journey.resetAndStart()
                         journey.importFixture(server.feedUrl.toString())
                         cachedCoverRequestCount = waitForStableCoverRequestCount(server)
+                        clearTargetCache()
                         fixturePrepared = true
                     }
                     pressHome()
@@ -61,6 +62,16 @@ class CachedCoverStartupBenchmark {
                 )
             }
         }
+    }
+
+    private fun clearTargetCache() {
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        device.executeShellCommand("am force-stop $TARGET_PACKAGE")
+        val output =
+            device.executeShellCommand(
+                "run-as $TARGET_PACKAGE sh -c 'rm -rf cache && mkdir cache'"
+            )
+        check(output.isBlank()) { "Target cache cleanup failed: $output" }
     }
 
     private fun waitForStableCoverRequestCount(server: BenchmarkFeedServer): Int {

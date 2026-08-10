@@ -337,6 +337,7 @@ class LocalizationResourcePolicyTest {
         return ResourceCatalog(strings, plurals, arrays)
     }
 
+    @Suppress("NestedBlockDepth")
     private fun placeholderWrappers(file: File): Map<String, Map<String, List<String>>> {
         val factory = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = true
@@ -351,13 +352,15 @@ class LocalizationResourcePolicyTest {
         for (index in 0 until root.childNodes.length) {
             val element = root.childNodes.item(index) as? Element ?: continue
             val name = element.getAttribute("name")
-            when (element.tagName) {
-                "string" -> values[name] = element
-                "plurals" -> childElements(element, "item").forEach { item ->
-                    values["$name[${item.getAttribute("quantity")}]"] = item
-                }
-                "string-array" -> childElements(element, "item").forEachIndexed { itemIndex, item ->
-                    values["$name[$itemIndex]"] = item
+            if (element.getAttribute("translatable") != "false") {
+                when (element.tagName) {
+                    "string" -> values[name] = element
+                    "plurals" -> childElements(element, "item").forEach { item ->
+                        values["$name[${item.getAttribute("quantity")}]"] = item
+                    }
+                    "string-array" -> childElements(element, "item").forEachIndexed { itemIndex, item ->
+                        values["$name[$itemIndex]"] = item
+                    }
                 }
             }
         }

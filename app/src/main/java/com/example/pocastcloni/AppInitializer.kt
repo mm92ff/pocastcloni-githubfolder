@@ -1,6 +1,7 @@
 package com.example.pocastcloni
 
 import androidx.work.WorkManager
+import com.example.pocastcloni.data.cover.PodcastCoverMaintenance
 import com.example.pocastcloni.data.local.PodcastDao
 import com.example.pocastcloni.data.remote.LocalNetworkAccessRegistry
 import com.example.pocastcloni.data.repository.BackupImportRecovery
@@ -33,8 +34,9 @@ import javax.inject.Singleton
  *
  * [initialize] claims startup atomically and is at-most-once for this singleton instance. A
  * single coordinator repairs interrupted backup imports, resumes a pending reset, and reconciles
- * episode storage in that order. An ordinary phase failure is logged without skipping later
- * cleanup phases, but all three phases must succeed before the long-lived observers are started.
+ * episode storage, and persistent cover storage in that order. An ordinary phase failure is logged
+ * without skipping later cleanup phases. Core recovery phases must succeed before long-lived
+ * observers are started; cover repair remains best-effort and never blocks feed scheduling.
  *
  * The owned scope follows application-scope cancellation. Its [SupervisorJob] keeps observer
  * failures independent, while [CancellationException] is always propagated and prevents any
@@ -55,7 +57,8 @@ constructor(
     private val backupImportRecovery: BackupImportRecovery,
     private val resetAppUseCase: ResetAppUseCase,
     private val localNetworkAccessRegistry: LocalNetworkAccessRegistry,
-    private val schedulingCoordinator: AppSchedulingCoordinator
+    private val schedulingCoordinator: AppSchedulingCoordinator,
+    private val podcastCoverMaintenance: PodcastCoverMaintenance? = null
 ) {
     private val initialized = AtomicBoolean(false)
     private val startupCompletion = CompletableDeferred<Unit>()
@@ -81,6 +84,9 @@ constructor(
                     runStartupOperation("reconcile local episode storage state") {
                         reconcileEpisodeStorage()
                     }
+                runStartupOperation("reconcile persistent podcast covers") {
+                    podcastCoverMaintenance?.reconcileAndSchedule()
+                }
                 if (recoverySucceeded && resetSucceeded && reconciliationSucceeded) {
                     startLongLivedObservers()
                 }

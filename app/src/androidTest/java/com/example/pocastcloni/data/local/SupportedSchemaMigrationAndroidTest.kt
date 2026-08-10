@@ -72,6 +72,17 @@ class SupportedSchemaMigrationAndroidTest(
             assertTrue(cursor.moveToFirst())
             assertEquals(0, cursor.getInt(0))
         }
+        migrated.query(
+            "SELECT activeSourceUrl, pendingSourceUrl, thumbnailFileName, thumbnailRevision " +
+                "FROM podcast_cover_state WHERE podcastRssUrl = ?",
+            arrayOf(FEED_URL)
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertTrue(cursor.isNull(0))
+            assertEquals("http://legacy.example/cover.png", cursor.getString(1))
+            assertTrue(cursor.isNull(2))
+            assertEquals(0L, cursor.getLong(3))
+        }
         migrated.query("PRAGMA index_list(`episodes`)").use { cursor ->
             val nameIndex = cursor.getColumnIndexOrThrow("name")
             val uniqueIndex = cursor.getColumnIndexOrThrow("unique")
@@ -108,8 +119,13 @@ class SupportedSchemaMigrationAndroidTest(
                 put("latestEpisodeGuid", EPISODE_GUID)
                 put("latestEpisodePubDate", 1_700_000_100_000L)
                 put("isLatestEpisodePlayed", 1)
-                put("lastModifiedHeader", "legacy-last-modified")
-                put("eTagHeader", "legacy-etag")
+                if (startVersion < 16) {
+                    put("lastModifiedHeader", "legacy-last-modified")
+                    put("eTagHeader", "legacy-etag")
+                } else {
+                    putNull("lastModifiedHeader")
+                    putNull("eTagHeader")
+                }
                 if ("allowInsecureHttp" in podcastColumns) put("allowInsecureHttp", 1)
                 if ("allowLocalNetwork" in podcastColumns) put("allowLocalNetwork", 0)
             }
