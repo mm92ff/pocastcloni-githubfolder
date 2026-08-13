@@ -54,11 +54,10 @@ synchronisation.
 
 Latest published release:
 
-- [pocastcloni_v3.60-beta.apk](https://github.com/mm92ff/pocastcloni-githubfolder/releases/download/v3.60-beta/pocastcloni_v3.60-beta.apk)
+- [pocastcloni-3.69-beta-p30-signed.apk](https://github.com/mm92ff/pocastcloni-githubfolder/releases/download/v3.69-beta/pocastcloni-3.69-beta-p30-signed.apk)
 
-The repository currently contains development version `3.68-dev` (version code
-`36800`). Development builds are not published as release assets automatically;
-the Data settings tab shows the exact version installed on a device.
+The release uses version name `3.69-beta` and version code `36900`. The Data
+settings tab shows the exact version installed on a device.
 
 ## Requirements
 

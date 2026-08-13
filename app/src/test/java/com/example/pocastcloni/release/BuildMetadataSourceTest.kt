@@ -15,8 +15,8 @@ class BuildMetadataSourceTest {
         }
         val appBuild = rootFile("app/build.gradle.kts").readText()
 
-        assertEquals("36800", properties.getProperty("appVersionCode"))
-        assertEquals("3.68-dev", properties.getProperty("appVersionName"))
+        assertEquals("36900", properties.getProperty("appVersionCode"))
+        assertEquals("3.69-beta", properties.getProperty("appVersionName"))
         assertTrue(appBuild.contains("providers.gradleProperty(\"appVersionCode\")"))
         assertTrue(appBuild.contains("providers.gradleProperty(\"appVersionName\")"))
         assertFalse(appBuild.contains("versionCode = 1\n"))

@@ -6,6 +6,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 
 ## [Unreleased]
 
+## [v3.69-beta] - 2026-08-13
+
 ### Added
 - A manual podcast-cover refresh action in the Data settings tab.
 - Complete German UI localization and an app-language selector with system-default,
@@ -45,7 +47,7 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Energy-efficient feed defaults for fresh installations.
 - Portable backup and restore now preserve podcast ordering, favorites, played
   state, playback progress, episode media metadata and the Smart Stream limit.
-- Room schema version 16 with explicit migration coverage.
+- Room schema version 17 with explicit migration coverage.
 - Downloads now use resumable, storage-aware transfers and recover interrupted
   or pending MediaStore publication.
 - Playback now uses a bounded media cache with lifecycle-aware progress and
@@ -103,4 +105,3 @@ The format is based on Keep a Changelog and this project follows a beta release 
 
 ### Changed
 - Release asset naming aligned to `v3.51-beta`.
-
