@@ -145,6 +145,11 @@ class UserPreferencesRepositoryImpl private constructor(
         editPreferences { it[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = seconds }
     }
 
+    override suspend fun updateBottomBarRevealHandleHeight(heightDp: Int) {
+        requireValidBottomBarRevealHandleHeight(heightDp)
+        editPreferences { it[Keys.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT] = heightDp }
+    }
+
     override suspend fun updateGradientBackgroundEnabled(enabled: Boolean) {
         editPreferences { it[Keys.GRADIENT_BACKGROUND_ENABLED] = enabled }
     }
@@ -249,6 +254,7 @@ class UserPreferencesRepositoryImpl private constructor(
     override suspend fun restoreSettingsOrThrow(settings: UserSettings) {
         requireValidSmartStreamItemLimit(settings.smartStreamItemLimit)
         requireValidHomeBottomSpacing(settings.homeBottomSpacing)
+        requireValidBottomBarRevealHandleHeight(settings.bottomBarRevealHandleHeight)
         editPreferences { prefs ->
             prefs[Keys.THEME] = settings.theme.name
             prefs[Keys.APP_COLOR] = settings.appColor.name
@@ -270,6 +276,7 @@ class UserPreferencesRepositoryImpl private constructor(
             prefs[Keys.BOTTOM_BAR_CLEAN_MODE_ENABLED] = settings.bottomBarCleanModeEnabled
             prefs[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] = settings.bottomBarAutoHideEnabled
             prefs[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] = settings.bottomBarAutoHideDelaySeconds
+            prefs[Keys.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT] = settings.bottomBarRevealHandleHeight
             prefs[Keys.GRADIENT_BACKGROUND_ENABLED] = settings.gradientBackgroundEnabled
             prefs[Keys.GRADIENT_BACKGROUND_STRENGTH] = settings.gradientBackgroundStrength
             prefs[Keys.GRADIENT_BACKGROUND_DIRECTION] = settings.gradientBackgroundDirection.name
@@ -333,4 +340,13 @@ private fun requireValidHomeBottomSpacing(spacingDp: Int) {
             spacingDp <= Constants.SettingsDefaults.MAX_HOME_BOTTOM_SPACING_DP.toInt() &&
             spacingDp % Constants.SettingsDefaults.HOME_BOTTOM_SPACING_STEP_DP == 0
     ) { "Home bottom spacing must be a multiple of 4 between 0 and 24 dp." }
+}
+
+private fun requireValidBottomBarRevealHandleHeight(heightDp: Int) {
+    val minimum = Constants.SettingsDefaults.MIN_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP.toInt()
+    val maximum = Constants.SettingsDefaults.MAX_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP.toInt()
+    val step = Constants.SettingsDefaults.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_STEP_DP
+    require(heightDp in minimum..maximum && (heightDp - minimum) % step == 0) {
+        "Bottom bar reveal handle height must be a multiple of 4 between 48 and 120 dp."
+    }
 }

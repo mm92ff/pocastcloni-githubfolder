@@ -148,6 +148,7 @@ private fun DesignInterfaceSettings(
         bottomBarCleanModeEnabled = settings.bottomBarCleanModeEnabled,
         bottomBarAutoHideEnabled = settings.bottomBarAutoHideEnabled,
         bottomBarAutoHideDelaySeconds = settings.bottomBarAutoHideDelaySeconds,
+        bottomBarRevealHandleHeight = settings.bottomBarRevealHandleHeight,
         progressBarHeight = settings.progressBarHeight,
         navBarHeight = settings.navBarHeight,
         homeBottomSpacing = settings.homeBottomSpacing,
@@ -199,6 +200,17 @@ private fun DesignInterfaceSettings(
             {
                     seconds: Int ->
                 onEvent(SettingsUiEvent.UpdateSetting(UpdateUserSettingAction.SetBottomBarAutoHideDelay(seconds)))
+            }
+        },
+        onSetBottomBarRevealHandleHeight =
+        remember(onEvent) {
+            {
+                    heightDp: Int ->
+                onEvent(
+                    SettingsUiEvent.UpdateSetting(
+                        UpdateUserSettingAction.SetBottomBarRevealHandleHeight(heightDp)
+                    )
+                )
             }
         },
         onSetProgressBarHeight =

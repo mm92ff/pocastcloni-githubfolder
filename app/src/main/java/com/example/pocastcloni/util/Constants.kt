@@ -82,6 +82,9 @@ object Constants {
         const val MAX_NAV_BAR_HEIGHT_DP = 120f
         const val MIN_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 2f
         const val MAX_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 30f
+        const val MIN_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP = 48f
+        const val MAX_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP = 120f
+        const val BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_STEP_DP = 4
         const val MIN_MARK_PLAYED_DURATION_SECONDS = 0f
         const val MAX_MARK_PLAYED_DURATION_SECONDS = 30f
         const val MIN_CLEANUP_KEEP_LIMIT = 10f
@@ -185,6 +188,7 @@ object Constants {
         const val KEY_BOTTOM_BAR_CLEAN_MODE_ENABLED = "bottom_bar_clean_mode_enabled"
         const val KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED = "bottom_bar_auto_hide_enabled"
         const val KEY_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = "bottom_bar_auto_hide_delay_seconds"
+        const val KEY_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT = "bottom_bar_reveal_handle_height"
         const val KEY_GRADIENT_BACKGROUND_ENABLED = "gradient_background_enabled"
         const val KEY_GRADIENT_BACKGROUND_STRENGTH = "gradient_background_strength"
         const val KEY_GRADIENT_BACKGROUND_DIRECTION = "gradient_background_direction"
@@ -217,6 +221,7 @@ object Constants {
         const val DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED = false
         const val DEFAULT_BOTTOM_BAR_AUTO_HIDE_ENABLED = false
         const val DEFAULT_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 5
+        const val DEFAULT_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT = 48
         const val DEFAULT_GRADIENT_BACKGROUND_ENABLED = false
         const val DEFAULT_GRADIENT_BACKGROUND_STRENGTH = 1.0f
         const val DEFAULT_GRADIENT_BACKGROUND_DIRECTION = "TOP_TO_BOTTOM"
@@ -290,6 +295,8 @@ object Constants {
         const val MAX_BACKUP_HOME_BOTTOM_SPACING = 24
         const val MIN_BACKUP_AUTO_HIDE_SECONDS = 1
         const val MAX_BACKUP_AUTO_HIDE_SECONDS = 300
+        const val MIN_BACKUP_REVEAL_HANDLE_HEIGHT = 48
+        const val MAX_BACKUP_REVEAL_HANDLE_HEIGHT = 120
         const val MAX_BACKUP_AUTO_DOWNLOAD_LIMIT = 100
         const val MIN_BACKUP_BACKGROUND_INTERVAL_HOURS = 1
         const val MAX_BACKUP_BACKGROUND_INTERVAL_HOURS = 168

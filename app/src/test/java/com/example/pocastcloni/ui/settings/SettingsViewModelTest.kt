@@ -55,6 +55,7 @@ class SettingsViewModelTest {
         bottomBarCleanModeEnabled = true,
         bottomBarAutoHideEnabled = true,
         bottomBarAutoHideDelaySeconds = 7,
+        bottomBarRevealHandleHeight = 84,
         gradientBackgroundEnabled = true,
         gradientBackgroundStrength = 0.6f,
         transparentSearchCards = true,
@@ -155,6 +156,16 @@ class SettingsViewModelTest {
             val success = state.settings as? SettingsUiState.Success ?: return@test
             assertTrue(success.bottomBarAutoHideEnabled)
             assertEquals(7, success.bottomBarAutoHideDelaySeconds)
+        }
+    }
+
+    @Test
+    fun `uiState maps bottomBarRevealHandleHeight from UserSettings`() = runTest(testDispatcher) {
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            val success = state.settings as? SettingsUiState.Success ?: return@test
+            assertEquals(84, success.bottomBarRevealHandleHeight)
         }
     }
 
@@ -362,6 +373,15 @@ class SettingsViewModelTest {
     fun `SetBottomBarAutoHideDelay action is debounced`() = runTest(testDispatcher) {
         advanceUntilIdle() // let the SharedFlow collector start
         val action = UpdateUserSettingAction.SetBottomBarAutoHideDelay(10)
+        viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
+        advanceUntilIdle()
+        coVerify { updateUserSettings(action) }
+    }
+
+    @Test
+    fun `SetBottomBarRevealHandleHeight action is debounced`() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        val action = UpdateUserSettingAction.SetBottomBarRevealHandleHeight(96)
         viewModel.onEvent(SettingsUiEvent.UpdateSetting(action))
         advanceUntilIdle()
         coVerify { updateUserSettings(action) }

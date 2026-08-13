@@ -374,7 +374,7 @@ internal fun validateBackupSettings(settings: UserSettings) {
     require(settings.gridSize in limits.MIN_BACKUP_GRID_SIZE..limits.MAX_BACKUP_GRID_SIZE)
     require(settings.progressBarHeight in limits.MIN_BACKUP_UI_HEIGHT..limits.MAX_BACKUP_UI_HEIGHT)
     require(settings.navBarHeight in limits.MIN_BACKUP_UI_HEIGHT..limits.MAX_BACKUP_UI_HEIGHT)
-    validateHomeBottomSpacing(settings.homeBottomSpacing)
+    validateBottomBarLayoutSettings(settings)
     require(
         settings.bottomBarAutoHideDelaySeconds in
             limits.MIN_BACKUP_AUTO_HIDE_SECONDS..limits.MAX_BACKUP_AUTO_HIDE_SECONDS
@@ -426,10 +426,17 @@ internal fun validateBackupSettings(settings: UserSettings) {
     )
 }
 
-private fun validateHomeBottomSpacing(spacingDp: Int) {
+private fun validateBottomBarLayoutSettings(settings: UserSettings) {
     val limits = Constants.SecurityLimits
     require(
-        spacingDp in limits.MIN_BACKUP_HOME_BOTTOM_SPACING..limits.MAX_BACKUP_HOME_BOTTOM_SPACING &&
-            spacingDp % Constants.SettingsDefaults.HOME_BOTTOM_SPACING_STEP_DP == 0
+        settings.homeBottomSpacing in
+            limits.MIN_BACKUP_HOME_BOTTOM_SPACING..limits.MAX_BACKUP_HOME_BOTTOM_SPACING &&
+            settings.homeBottomSpacing % Constants.SettingsDefaults.HOME_BOTTOM_SPACING_STEP_DP == 0
+    )
+    require(
+        settings.bottomBarRevealHandleHeight in
+            limits.MIN_BACKUP_REVEAL_HANDLE_HEIGHT..limits.MAX_BACKUP_REVEAL_HANDLE_HEIGHT &&
+            (settings.bottomBarRevealHandleHeight - limits.MIN_BACKUP_REVEAL_HANDLE_HEIGHT) %
+            Constants.SettingsDefaults.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_STEP_DP == 0
     )
 }

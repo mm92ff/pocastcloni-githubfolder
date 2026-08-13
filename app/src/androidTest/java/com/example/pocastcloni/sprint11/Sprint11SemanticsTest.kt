@@ -98,6 +98,21 @@ class Sprint11SemanticsTest {
     }
 
     @Test
+    fun revealHandle_usesConfiguredTouchHeight() {
+        composeRule.setContent {
+            MaterialTheme {
+                BottomBarRevealHandle(
+                    onReveal = {},
+                    handleHeight = 96.dp
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription(context.getString(R.string.desc_reveal_bottom_bar))
+            .assertHeightIsEqualTo(96.dp)
+    }
+
+    @Test
     fun searchButton_keepsItsNameWhileLoading() {
         composeRule.setContent {
             MaterialTheme {

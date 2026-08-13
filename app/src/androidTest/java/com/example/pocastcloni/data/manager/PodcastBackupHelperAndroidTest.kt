@@ -76,6 +76,7 @@ class PodcastBackupHelperAndroidTest {
                     bottomBarCleanModeEnabled = true,
                     bottomBarAutoHideEnabled = true,
                     bottomBarAutoHideDelaySeconds = 9,
+                    bottomBarRevealHandleHeight = 84,
                     gradientBackgroundEnabled = true,
                     gradientBackgroundStrength = 0.8f,
                     gradientBackgroundDirection = GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT,

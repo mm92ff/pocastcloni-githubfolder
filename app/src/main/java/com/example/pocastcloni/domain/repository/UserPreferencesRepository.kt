@@ -53,6 +53,8 @@ interface UserPreferencesRepository {
 
     suspend fun updateBottomBarAutoHideDelaySeconds(seconds: Int)
 
+    suspend fun updateBottomBarRevealHandleHeight(heightDp: Int)
+
     suspend fun updateGradientBackgroundEnabled(enabled: Boolean)
 
     suspend fun updateGradientBackgroundStrength(strength: Float)

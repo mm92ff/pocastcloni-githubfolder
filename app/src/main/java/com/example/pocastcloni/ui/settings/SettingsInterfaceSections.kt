@@ -38,6 +38,7 @@ fun SectionInterface(
     bottomBarCleanModeEnabled: Boolean,
     bottomBarAutoHideEnabled: Boolean,
     bottomBarAutoHideDelaySeconds: Int,
+    bottomBarRevealHandleHeight: Int,
     progressBarHeight: Int,
     navBarHeight: Int,
     homeBottomSpacing: Int,
@@ -49,6 +50,7 @@ fun SectionInterface(
     onToggleBottomBarCleanMode: (Boolean) -> Unit,
     onToggleBottomBarAutoHide: (Boolean) -> Unit,
     onSetBottomBarAutoHideDelay: (Int) -> Unit,
+    onSetBottomBarRevealHandleHeight: (Int) -> Unit,
     onSetProgressBarHeight: (Int) -> Unit,
     onSetNavBarHeight: (Int) -> Unit,
     onSetHomeBottomSpacing: (Int) -> Unit,
@@ -140,6 +142,25 @@ fun SectionInterface(
     )
 
     if (bottomBarCleanModeEnabled) {
+        Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
+        SettingsSliderCard(
+            title = stringResource(R.string.settings_bottom_bar_reveal_handle_height),
+            value = bottomBarRevealHandleHeight,
+            valueRange =
+            with(SettingsDefaults) {
+                MIN_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP..MAX_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP
+            },
+            steps =
+            with(SettingsDefaults) {
+                (
+                    (MAX_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP - MIN_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP) /
+                        BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_STEP_DP - 1
+                    ).toInt()
+            },
+            onValueChangeFinished = onSetBottomBarRevealHandleHeight,
+            valueDisplay = { Text(stringResource(R.string.settings_unit_dp, it)) }
+        )
+
         Spacer(modifier = Modifier.height(Dimens.PaddingVerySmall))
         SettingsSwitchCard(
             title = stringResource(R.string.settings_bottom_bar_auto_hide),

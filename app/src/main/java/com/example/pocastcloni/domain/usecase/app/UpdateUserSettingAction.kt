@@ -44,6 +44,8 @@ sealed interface UpdateUserSettingAction {
 
     data class SetBottomBarAutoHideDelay(val seconds: Int) : UpdateUserSettingAction
 
+    data class SetBottomBarRevealHandleHeight(val heightDp: Int) : UpdateUserSettingAction
+
     data class ToggleGradientBackground(val enabled: Boolean) : UpdateUserSettingAction
 
     data class SetGradientBackgroundStrength(val strength: Float) : UpdateUserSettingAction

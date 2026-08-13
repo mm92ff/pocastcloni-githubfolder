@@ -96,6 +96,7 @@ sealed interface SettingsUiState {
         val bottomBarCleanModeEnabled: Boolean = Constants.Preferences.DEFAULT_BOTTOM_BAR_CLEAN_MODE_ENABLED,
         val bottomBarAutoHideEnabled: Boolean = Constants.Preferences.DEFAULT_BOTTOM_BAR_AUTO_HIDE_ENABLED,
         val bottomBarAutoHideDelaySeconds: Int = Constants.Preferences.DEFAULT_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS,
+        val bottomBarRevealHandleHeight: Int = Constants.Preferences.DEFAULT_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT,
         val gradientBackgroundEnabled: Boolean = Constants.Preferences.DEFAULT_GRADIENT_BACKGROUND_ENABLED,
         val gradientBackgroundStrength: Float = Constants.Preferences.DEFAULT_GRADIENT_BACKGROUND_STRENGTH,
         val gradientBackgroundDirection: GradientDirection = GradientDirection.TOP_TO_BOTTOM,

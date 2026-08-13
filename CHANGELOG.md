@@ -23,6 +23,7 @@ The format is based on Keep a Changelog and this project follows a beta release 
 - Four-tab Settings layout: Design, Playback, Sync and Data.
 - The Data settings tab now shows the installed app version and version code.
 - Bottom bar clean mode with swipe reveal, auto-hide and configurable delay.
+- Configurable bottom-bar reveal touch height for easier one-handed access.
 - Swipe navigation between Settings, Home, Downloads and Search.
 - Gradient background option with adjustable strength.
 - Transparent search/settings cards and transparent history/favorites rows.

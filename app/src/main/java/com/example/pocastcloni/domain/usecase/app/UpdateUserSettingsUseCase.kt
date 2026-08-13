@@ -36,6 +36,7 @@ constructor(
                 is ToggleBottomBarCleanMode -> repository.updateBottomBarCleanModeEnabled(action.enabled)
                 is ToggleBottomBarAutoHide -> repository.updateBottomBarAutoHideEnabled(action.enabled)
                 is SetBottomBarAutoHideDelay -> repository.updateBottomBarAutoHideDelaySeconds(action.seconds)
+                is SetBottomBarRevealHandleHeight -> repository.updateBottomBarRevealHandleHeight(action.heightDp)
                 is ToggleGradientBackground -> repository.updateGradientBackgroundEnabled(action.enabled)
                 is SetGradientBackgroundStrength -> repository.updateGradientBackgroundStrength(action.strength)
                 is SetGradientBackgroundDirection -> repository.updateGradientBackgroundDirection(action.direction)

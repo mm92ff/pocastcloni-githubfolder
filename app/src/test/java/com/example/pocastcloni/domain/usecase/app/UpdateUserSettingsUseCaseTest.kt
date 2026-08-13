@@ -154,6 +154,12 @@ class UpdateUserSettingsUseCaseTest {
     }
 
     @Test
+    fun `SetBottomBarRevealHandleHeight calls updateBottomBarRevealHandleHeight`() = runTest(testDispatcher) {
+        useCase(SetBottomBarRevealHandleHeight(84))
+        coVerify { repository.updateBottomBarRevealHandleHeight(84) }
+    }
+
+    @Test
     fun `ToggleGradientBackground calls updateGradientBackgroundEnabled`() = runTest(testDispatcher) {
         useCase(ToggleGradientBackground(true))
         coVerify { repository.updateGradientBackgroundEnabled(true) }

@@ -83,6 +83,14 @@ internal fun Preferences.toUserSettings(): UserSettings {
         this[Keys.BOTTOM_BAR_AUTO_HIDE_ENABLED] ?: defaultSettings.bottomBarAutoHideEnabled,
         bottomBarAutoHideDelaySeconds =
         this[Keys.BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS] ?: defaultSettings.bottomBarAutoHideDelaySeconds,
+        bottomBarRevealHandleHeight =
+        this[Keys.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT]
+            ?.takeIf { height ->
+                val minimum = Constants.SettingsDefaults.MIN_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP.toInt()
+                val maximum = Constants.SettingsDefaults.MAX_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP.toInt()
+                height in minimum..maximum &&
+                    (height - minimum) % Constants.SettingsDefaults.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_STEP_DP == 0
+            } ?: defaultSettings.bottomBarRevealHandleHeight,
         gradientBackgroundEnabled = this[Keys.GRADIENT_BACKGROUND_ENABLED] ?: defaultSettings.gradientBackgroundEnabled,
         gradientBackgroundStrength = this[Keys.GRADIENT_BACKGROUND_STRENGTH] ?: defaultSettings.gradientBackgroundStrength,
         gradientBackgroundDirection = gradientDirection,

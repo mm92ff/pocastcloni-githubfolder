@@ -29,6 +29,8 @@ internal object UserPreferenceKeys {
     val BOTTOM_BAR_AUTO_HIDE_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_ENABLED)
     val BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS =
         intPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS)
+    val BOTTOM_BAR_REVEAL_HANDLE_HEIGHT =
+        intPreferencesKey(Constants.Preferences.KEY_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT)
     val GRADIENT_BACKGROUND_ENABLED = booleanPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_ENABLED)
     val GRADIENT_BACKGROUND_STRENGTH = floatPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_STRENGTH)
     val GRADIENT_BACKGROUND_DIRECTION = stringPreferencesKey(Constants.Preferences.KEY_GRADIENT_BACKGROUND_DIRECTION)

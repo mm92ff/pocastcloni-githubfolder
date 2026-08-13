@@ -52,10 +52,10 @@ import com.example.pocastcloni.R
 import com.example.pocastcloni.domain.repository.UserSettings
 import com.example.pocastcloni.ui.navigation.Screen
 import com.example.pocastcloni.ui.theme.Motion
+import com.example.pocastcloni.util.Constants
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
-private val BottomBarHandleHeight = 48.dp
 private val BottomBarHandleWidth = 44.dp
 private val BottomBarHandleThickness = 4.dp
 private val BottomBarSwipeThreshold = 48.dp
@@ -137,6 +137,7 @@ internal fun CleanModeBottomBarHost(
                 autoHideTimerKey++
             },
             bottomInset = navigationBarInset,
+            handleHeight = userSettings.bottomBarRevealHandleHeight.dp,
             modifier =
             Modifier
                 .bottomBarSwipeGesture(
@@ -155,14 +156,20 @@ internal fun CleanModeBottomBarHost(
 internal fun BottomBarRevealHandle(
     onReveal: () -> Unit,
     modifier: Modifier = Modifier,
-    bottomInset: Dp = 0.dp
+    bottomInset: Dp = 0.dp,
+    handleHeight: Dp = Constants.Preferences.DEFAULT_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT.dp
 ) {
     val label = stringResource(R.string.desc_reveal_bottom_bar)
+    val safeHandleHeight =
+        handleHeight.coerceIn(
+            Constants.SettingsDefaults.MIN_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP.dp,
+            Constants.SettingsDefaults.MAX_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP.dp
+        )
     Box(
         modifier =
         modifier
             .fillMaxWidth()
-            .height(BottomBarHandleHeight + bottomInset)
+            .height(safeHandleHeight + bottomInset)
             .padding(bottom = bottomInset)
             .clickable(
                 role = Role.Button,

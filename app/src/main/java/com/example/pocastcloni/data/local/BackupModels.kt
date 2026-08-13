@@ -97,6 +97,11 @@ private fun UserSettings.mergeSurfaceSettings(
         "bottomBarAutoHideDelaySeconds",
         bottomBarAutoHideDelaySeconds,
         current.bottomBarAutoHideDelaySeconds
+    ),
+    bottomBarRevealHandleHeight = fields.importedValue(
+        "bottomBarRevealHandleHeight",
+        bottomBarRevealHandleHeight,
+        current.bottomBarRevealHandleHeight
     )
 )
 

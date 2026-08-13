@@ -233,6 +233,7 @@
     <string name="settings_bottom_bar_auto_hide">Untere Leiste automatisch ausblenden</string>
     <string name="settings_bottom_bar_auto_hide_subtitle">Untere Leiste nach kurzer Verzögerung wieder ausblenden</string>
     <string name="settings_bottom_bar_auto_hide_delay">Verzögerung für automatisches Ausblenden</string>
+    <string name="settings_bottom_bar_reveal_handle_height">Höhe des Einblendbereichs</string>
     <string name="settings_progress_bar_height">Höhe der Fortschrittsleiste</string>
     <string name="settings_navigation_bar_height">Höhe der Navigationsleiste</string>
     <string name="settings_home_bottom_spacing">Unterer Abstand auf der Startseite</string>

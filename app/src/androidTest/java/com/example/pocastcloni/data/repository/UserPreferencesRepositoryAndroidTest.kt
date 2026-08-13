@@ -69,6 +69,7 @@ class UserPreferencesRepositoryAndroidTest {
                 bottomBarCleanModeEnabled = true,
                 bottomBarAutoHideEnabled = true,
                 bottomBarAutoHideDelaySeconds = 9,
+                bottomBarRevealHandleHeight = 84,
                 gradientBackgroundEnabled = true,
                 gradientBackgroundStrength = 0.8f,
                 gradientBackgroundDirection = GradientDirection.BOTTOM_LEFT_TO_TOP_RIGHT,
@@ -125,6 +126,10 @@ class UserPreferencesRepositoryAndroidTest {
                     },
                     async(Dispatchers.Default) {
                         startGate.await()
+                        repository.updateBottomBarRevealHandleHeight(96)
+                    },
+                    async(Dispatchers.Default) {
+                        startGate.await()
                         repository.updateGradientBackgroundStrength(0.75f)
                     }
                 ).also { startGate.complete(Unit) }.awaitAll()
@@ -135,6 +140,7 @@ class UserPreferencesRepositoryAndroidTest {
             assertEquals(91, persisted.navBarHeight)
             assertEquals(12, persisted.progressBarHeight)
             assertEquals(20, persisted.homeBottomSpacing)
+            assertEquals(96, persisted.bottomBarRevealHandleHeight)
             assertEquals(0.75f, persisted.gradientBackgroundStrength)
         }
     }

@@ -466,6 +466,16 @@ class PodcastBackupHelperParsingTest {
     }
 
     @Test
+    fun exportBackupJson_writesBottomBarRevealHandleHeight() {
+        val json =
+            objectMapper.writeValueAsString(
+                BackupData(settings = UserSettings(bottomBarRevealHandleHeight = 84))
+            )
+
+        assertTrue(json.contains("\"bottomBarRevealHandleHeight\":84"))
+    }
+
+    @Test
     fun exportBackupJson_writesGradientBackgroundSetting() {
         val backupData =
             BackupData(
@@ -617,6 +627,19 @@ class PodcastBackupHelperParsingTest {
         val restored = result.settingsForRestore(UserSettings(homeBottomSpacing = 16))
 
         assertEquals(16, restored?.homeBottomSpacing)
+    }
+
+    @Test
+    fun parseBackupJson_missingRevealHandleHeightDoesNotClobberCurrentValue() {
+        val result =
+            parseBackupJson(
+                """{"settings":{"bottomBarCleanModeEnabled":true}}""",
+                objectMapper
+            )
+
+        val restored = result.settingsForRestore(UserSettings(bottomBarRevealHandleHeight = 92))
+
+        assertEquals(92, restored?.bottomBarRevealHandleHeight)
     }
 
     @Test
