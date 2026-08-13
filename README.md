@@ -6,25 +6,34 @@ synchronisation.
 
 ## Features
 
-- **Podcast Library** - Add podcasts by RSS URL or iTunes search, reorder
-  subscriptions, inspect podcast details, and mark all new episodes as seen.
-- **Playback** - Mini player and full player with play/pause, seek, skip,
-  progress tracking, background playback, and notification support.
-- **Downloads & Sync** - Stream episodes, download episodes locally, optionally
-  save files to Android's Downloads folder, run background feed checks, and use
-  smart or full RSS refresh modes.
+- **Podcast Library & Covers** - Add podcasts by RSS URL or iTunes search,
+  reorder subscriptions, inspect podcast details, and mark all new episodes as
+  seen. Previously loaded cover art is retained as bounded persistent
+  thumbnails, checked for updates at most weekly, and can be refreshed manually.
+- **Playback** - Mini player and full player with play/pause, transactional
+  timeline seeking, skip controls, progress tracking, background playback,
+  notification support, and an optional mini-player time overlay.
+- **Downloads & Sync** - Stream episodes, resume interrupted downloads, recover
+  incomplete MediaStore publication, optionally save files to Android's
+  Downloads folder, and run background feed checks. Smart Stream read limits
+  range from full-feed mode (`0`) through progressive presets up to `100`, while
+  manual full refresh always reads the complete feed without downloading audio.
 - **Auto Download & Cleanup** - Per-podcast auto-download, global download
   limits, retry handling for transient failures, and automatic cleanup of played
   downloaded episodes.
 - **History & Favorites** - Playback history and favorites with date grouping,
   publication dates, manual favorite ordering, and added-date sorting.
 - **Customisation** - Light, Dark, and System themes; custom accent colour;
-  optional gradient background; transparent cards and episode rows; one-handed
-  layout; bottom bar clean mode with swipe reveal and auto-hide delay.
-- **Settings** - Tabbed Settings screen for Design, Playback, Sync, and Data.
-- **Backup & Restore** - Export and import podcast order and auto-download
-  choices, favorites and their manual order, playback history and progress, and
-  all current user settings.
+  optional gradient background; transparent mini player, cards, bottom bar, and
+  episode rows; one-handed layout; swipe navigation; and bottom bar Clean Mode
+  with auto-hide, configurable delay, and a 24-120 dp reveal touch area.
+- **Languages** - Complete English default/fallback UI plus German, selectable
+  independently from the device language or inherited from the system.
+- **Settings** - Tabbed Settings screen for Design, Playback, Sync, and Data,
+  including manual cover refresh and installed app version information.
+- **Backup & Restore** - Portable JSON backups preserve subscription order and
+  auto-download choices, favorites and manual ordering, playback history and
+  progress, episode media metadata, and backup-supported user settings.
 - **Statistics** - Listening and download statistics with reset actions.
 
 ## Screenshots
@@ -43,17 +52,21 @@ synchronisation.
 
 ## Download
 
-Latest release:
+Latest published release:
 
 - [pocastcloni_v3.60-beta.apk](https://github.com/mm92ff/pocastcloni-githubfolder/releases/download/v3.60-beta/pocastcloni_v3.60-beta.apk)
+
+The repository currently contains development version `3.68-dev` (version code
+`36800`). Development builds are not published as release assets automatically;
+the Data settings tab shows the exact version installed on a device.
 
 ## Requirements
 
 | Item | Version |
 |---|---|
 | Android | 8.0 (API 26) and higher |
-| Target SDK | 34 |
-| Compile SDK | 34 |
+| Target SDK | 35 |
+| Compile SDK | 35 |
 | JDK | 17 |
 
 ## Tech Stack
@@ -63,14 +76,14 @@ Latest release:
 | UI | Jetpack Compose, Material 3, Navigation Compose |
 | Architecture | Domain / Data / UI layers, ViewModel, StateFlow |
 | Media | Media3 ExoPlayer, MediaSession, foreground playback service |
-| Database | Room with exported migration schemas |
+| Database | Room schema 17 with exported migration schemas |
 | Preferences | DataStore Preferences |
 | Networking | Retrofit, OkHttp, streaming XmlPullParser, Jackson JSON |
-| Images | Coil Compose, Coil SVG |
+| Images | Coil Compose, Coil SVG, persistent bounded WebP thumbnails |
 | Background Work | WorkManager with Hilt workers |
 | Dependency Injection | Hilt |
 | Logging | Timber |
-| Quality | Detekt, ktlint, JUnit 4, MockK, Turbine, AndroidX tests |
+| Quality | Detekt, ktlint, Android Lint, JUnit 4, MockK, Turbine, AndroidX tests, Macrobenchmark, Perfetto |
 
 ## Build
 
@@ -81,7 +94,7 @@ the tracked [application versioning policy](docs/VERSIONING.md).
 
 - Android Studio
 - JDK 17
-- Android SDK 34
+- Android SDK 35
 
 ### Clone & Run
 
@@ -110,15 +123,17 @@ Windows:
 ### Run Checks
 
 ```bash
-./gradlew testDebugUnitTest
-./gradlew detekt
+./gradlew :app:testDebugUnitTest
+./gradlew :app:compileDebugAndroidTestKotlin
+./gradlew :app:ktlintCheck :app:detekt :app:lintDebug
 ```
 
 Windows:
 
 ```powershell
-.\gradlew.bat testDebugUnitTest
-.\gradlew.bat detekt
+.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:compileDebugAndroidTestKotlin
+.\gradlew.bat :app:ktlintCheck :app:detekt :app:lintDebug
 ```
 
 ### Release Gates
@@ -129,22 +144,25 @@ offline R8 and device smoke tests, never for distribution.
 
 Run the fast quality gates independently so a timeout is attributable to one tool:
 
-```powershell
-.\gradlew.bat --dependency-verification=strict :app:testDebugUnitTest
-.\gradlew.bat --dependency-verification=strict :app:detekt
-.\gradlew.bat --dependency-verification=strict :app:ktlintCheck
-.\gradlew.bat --dependency-verification=strict :app:lintRelease
-.\gradlew.bat --dependency-verification=strict :app:assembleReleaseSmoke
+```bash
+./gradlew --dependency-verification=strict :app:testDebugUnitTest
+./gradlew --dependency-verification=strict :app:detekt
+./gradlew --dependency-verification=strict :app:ktlintCheck
+./gradlew --dependency-verification=strict :app:lintRelease
+./gradlew --dependency-verification=strict :app:assembleReleaseSmoke
 ```
 
 The versioned release gate runs the debug unit suite, verifies the merged manifest
 allowlist, builds the unsigned release APK and records APK SHA-256/size plus R8 mapping
 path/size:
 
-```powershell
-.\gradlew.bat --dependency-verification=strict :app:releaseGate
-Get-Content app\build\reports\release-gate\release-artifacts.properties
+```bash
+./gradlew --dependency-verification=strict :app:releaseGate
+cat app/build/reports/release-gate/release-artifacts.properties
 ```
+
+On Windows, replace `./gradlew` with `.\gradlew.bat` and use `Get-Content`
+instead of `cat` for the generated report.
 
 The generated APK, mapping and report stay below ignored `build/` directories. The
 unsigned `assembleRelease` output is not installable as a production update; use the
@@ -196,6 +214,7 @@ app/src/main/java/com/example/pocastcloni/
 ├── data/       # Room entities, DAO, repositories, RSS/search APIs, workers
 ├── domain/     # Models, repository interfaces, player contracts, use cases
 ├── di/         # Hilt modules
+├── playback/   # Media3 controller infrastructure and playback contracts
 ├── service/    # PodcastPlaybackService
 ├── ui/         # Compose screens, player UI, settings, theme, navigation
 └── util/       # Constants, formatting, HTML, network and time helpers
@@ -213,9 +232,22 @@ app/src/main/java/com/example/pocastcloni/
 | `FOREGROUND_SERVICE_DATA_SYNC` | Feed sync foreground service type on newer Android versions |
 | `POST_NOTIFICATIONS` | Show playback and foreground-service notifications |
 
+## Security & Privacy
+
+- HTTPS is the default. Cleartext HTTP feeds and local/private network origins
+  require explicit per-podcast approval.
+- RSS bodies and redirects, backups, artwork, and downloads are processed with
+  bounded size, count, and storage limits.
+- Media-session commands are accepted only from trusted controllers.
+- Backup imports are validated before mutation and use rollback-safe recovery.
+- Persistent cover thumbnails are derived files stored in the app's
+  `noBackupFilesDir`; they are not exported in Android backups and can be rebuilt
+  from podcast metadata.
+
 ## Notes
 
-- RSS feed parsing supports smart stream updates and full refresh mode.
+- RSS feed parsing supports configurable Smart Stream limits and manual full
+  refresh. Normal feed refresh never downloads episode audio by itself.
 - On Android 10 and newer, saving to the public Downloads folder uses
   MediaStore.
 - Episode download work requires a connected network. `CONNECTED` intentionally
@@ -223,15 +255,21 @@ app/src/main/java/com/example/pocastcloni/
   other system constraints such as low storage.
 - Downloaded episodes fall back to streaming when the local file is missing.
 - The bottom navigation can be hidden in Clean Mode and revealed with an upward
-  swipe.
-- Backups are JSON-based. Version 2 stores portable library state: podcast
+  swipe or tap. The reveal touch area is configurable from 24 to 120 dp in 4 dp
+  steps; the default remains 48 dp.
+- Cover loading prefers memory, then the persistent thumbnail, then the network,
+  and finally a neutral placeholder. Missing or damaged thumbnails are repaired
+  immediately; normal validation is limited to once per week.
+- Backups are JSON-based. Version 3 stores portable library state: podcast
   ordering and per-podcast auto-download, feed-scoped favorite/history/progress
-  state, favorite added time and manual order, and all current user settings.
+  state, favorite added time and manual order, episode media metadata, and
+  backup-supported user settings.
 - Local download paths and download status are device-specific and are never
-  exported or overwritten during restore. Version 1 object backups and legacy
-  JSON arrays of podcast URLs remain importable.
+  exported or overwritten during restore. App-language selection and persistent
+  cover thumbnails are also device-specific. Version 1 and 2 object backups and
+  legacy JSON arrays of podcast URLs remain importable.
 - Guaranteed in-place database upgrades start at release `v3.51-beta` (Room schema
-  10). Authentic schemas 10 through 16 are tracked and migrated to the current schema
+  10). Authentic schemas 10 through 17 are tracked and migrated to the current schema
   in parameterized tests. Recovery migrations for schemas 1 through 9 remain in the
   app, but those versions have no authentic tracked release schema or database fixture
   and are therefore best-effort rather than a claimed support guarantee.
