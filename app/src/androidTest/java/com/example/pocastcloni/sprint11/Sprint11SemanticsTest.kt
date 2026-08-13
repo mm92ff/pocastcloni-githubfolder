@@ -103,13 +103,13 @@ class Sprint11SemanticsTest {
             MaterialTheme {
                 BottomBarRevealHandle(
                     onReveal = {},
-                    handleHeight = 96.dp
+                    handleHeight = 24.dp
                 )
             }
         }
 
         composeRule.onNodeWithContentDescription(context.getString(R.string.desc_reveal_bottom_bar))
-            .assertHeightIsEqualTo(96.dp)
+            .assertHeightIsEqualTo(24.dp)
     }
 
     @Test

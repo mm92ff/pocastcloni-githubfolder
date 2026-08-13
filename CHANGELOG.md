@@ -32,6 +32,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
   to no extra gap while preserving visible mini-player clearance.
 
 ### Changed
+- The configurable bottom-bar reveal touch height now supports values as low as
+  24 dp while retaining 48 dp as the default.
 - Subscribed podcast covers are stored as bounded persistent thumbnails and are
   checked for updates at most weekly unless missing, damaged or manually refreshed.
 - The language selector keeps its globe and always displays `Language` so users can

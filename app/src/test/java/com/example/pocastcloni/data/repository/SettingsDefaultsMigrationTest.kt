@@ -9,14 +9,14 @@ import org.junit.Test
 class SettingsDefaultsMigrationTest {
     @Test
     fun `persisted reveal handle height accepts supported steps and rejects invalid values`() {
-        listOf(48, 84, 120).forEach { height ->
+        listOf(24, 48, 84, 120).forEach { height ->
             val preferences =
                 mutablePreferencesOf(UserPreferenceKeys.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT to height)
 
             assertEquals(height, preferences.toUserSettings().bottomBarRevealHandleHeight)
         }
 
-        listOf(47, 50, 124).forEach { height ->
+        listOf(23, 26, 124).forEach { height ->
             val preferences =
                 mutablePreferencesOf(UserPreferenceKeys.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT to height)
 

@@ -82,7 +82,7 @@ object Constants {
         const val MAX_NAV_BAR_HEIGHT_DP = 120f
         const val MIN_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 2f
         const val MAX_BOTTOM_BAR_AUTO_HIDE_DELAY_SECONDS = 30f
-        const val MIN_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP = 48f
+        const val MIN_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP = 24f
         const val MAX_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP = 120f
         const val BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_STEP_DP = 4
         const val MIN_MARK_PLAYED_DURATION_SECONDS = 0f
@@ -295,7 +295,7 @@ object Constants {
         const val MAX_BACKUP_HOME_BOTTOM_SPACING = 24
         const val MIN_BACKUP_AUTO_HIDE_SECONDS = 1
         const val MAX_BACKUP_AUTO_HIDE_SECONDS = 300
-        const val MIN_BACKUP_REVEAL_HANDLE_HEIGHT = 48
+        const val MIN_BACKUP_REVEAL_HANDLE_HEIGHT = 24
         const val MAX_BACKUP_REVEAL_HANDLE_HEIGHT = 120
         const val MAX_BACKUP_AUTO_DOWNLOAD_LIMIT = 100
         const val MIN_BACKUP_BACKGROUND_INTERVAL_HOURS = 1

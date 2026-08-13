@@ -347,6 +347,6 @@ private fun requireValidBottomBarRevealHandleHeight(heightDp: Int) {
     val maximum = Constants.SettingsDefaults.MAX_BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_DP.toInt()
     val step = Constants.SettingsDefaults.BOTTOM_BAR_REVEAL_HANDLE_HEIGHT_STEP_DP
     require(heightDp in minimum..maximum && (heightDp - minimum) % step == 0) {
-        "Bottom bar reveal handle height must be a multiple of 4 between 48 and 120 dp."
+        "Bottom bar reveal handle height must be a multiple of 4 between 24 and 120 dp."
     }
 }
