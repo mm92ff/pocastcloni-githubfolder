@@ -46,7 +46,7 @@ dependencies {
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
     implementation("androidx.benchmark:benchmark-macro-junit4:1.4.1")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
-    implementation("androidx.tracing:tracing-perfetto:1.0.0")
-    implementation("androidx.tracing:tracing-perfetto-binary:1.0.0")
+    implementation("androidx.tracing:tracing-perfetto:1.0.1")
+    implementation("androidx.tracing:tracing-perfetto-binary:1.0.1")
     implementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
