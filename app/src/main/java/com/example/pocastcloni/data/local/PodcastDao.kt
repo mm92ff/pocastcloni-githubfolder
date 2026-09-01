@@ -265,6 +265,24 @@ interface PodcastDao {
     @Query("UPDATE podcasts SET isLatestEpisodePlayed = :isPlayed WHERE rssUrl = :rssUrl")
     suspend fun updateLatestEpisodePlayedFlag(rssUrl: String, isPlayed: Boolean): Int
 
+    /** Clears stale badges whose canonically latest episode is already played. */
+    @Query(
+        """
+        UPDATE podcasts
+        SET hasNewEpisodes = 0,
+            isLatestEpisodePlayed = 1
+        WHERE hasNewEpisodes = 1
+          AND (
+              SELECT isPlayed
+              FROM episodes
+              WHERE podcastRssUrl = podcasts.rssUrl
+              ORDER BY pubDate DESC, episodeId DESC
+              LIMIT 1
+          ) = 1
+        """
+    )
+    suspend fun reconcilePlayedLatestEpisodeBadges(): Int
+
     // --- EPISODES ---
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
@@ -579,6 +597,31 @@ interface PodcastDao {
         datePlayed: Date
     ): Int
 
+    /** Writes played state and reconciles the owning podcast badge in one Room transaction. */
+    @Transaction
+    suspend fun markEpisodePlayedAndReconcileBadge(
+        episodeId: Long,
+        isPlayed: Boolean,
+        datePlayed: Date?
+    ): Int {
+        val episode = getEpisodeById(episodeId) ?: return 0
+        return writeEpisodePlayedAndReconcileBadge(episode, isPlayed, datePlayed)
+    }
+
+    /** Re-reads and toggles stored played state together with badge reconciliation. */
+    @Transaction
+    suspend fun toggleEpisodePlayedAndReconcileBadge(
+        episodeId: Long,
+        datePlayed: Date
+    ): Int {
+        val episode = getEpisodeById(episodeId) ?: return 0
+        return writeEpisodePlayedAndReconcileBadge(
+            episode = episode,
+            isPlayed = !episode.isPlayed,
+            datePlayed = datePlayed
+        )
+    }
+
     @Query("UPDATE episodes SET downloadStatus = :status, downloadPath = :path WHERE episodeId = :episodeId")
     suspend fun updateDownloadStatus(
         episodeId: Long,
@@ -691,4 +734,24 @@ interface PodcastDao {
 
     @Query("SELECT COUNT(guid) FROM episodes WHERE playbackPositionMs > 0 AND isPlayed = 0")
     fun getEpisodesInProgressCount(): Flow<Int>
+}
+
+private suspend fun PodcastDao.writeEpisodePlayedAndReconcileBadge(
+    episode: EpisodeEntity,
+    isPlayed: Boolean,
+    datePlayed: Date?
+): Int {
+    val changedRows =
+        if (isPlayed) {
+            markEpisodePlayedIfNeeded(episode.episodeId, datePlayed ?: Date())
+        } else {
+            markEpisodePlayed(episode.episodeId, false, null)
+        }
+
+    val rssUrl = episode.podcastRssUrl
+    if (rssUrl.isNotBlank() && getLatestEpisodeGuid(rssUrl) == episode.guid) {
+        updatePodcastNewFlag(rssUrl, hasNew = !isPlayed)
+        updateLatestEpisodePlayedFlag(rssUrl, isPlayed)
+    }
+    return changedRows
 }

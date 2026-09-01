@@ -31,6 +31,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
 import java.io.IOException
 
@@ -47,6 +48,11 @@ class AppInitializerTest {
     private val localRegistry = mockk<LocalNetworkAccessRegistry>(relaxed = true)
     private val schedulingCoordinator = mockk<AppSchedulingCoordinator>(relaxed = true)
     private val podcastCoverMaintenance = mockk<PodcastCoverMaintenance>(relaxed = true)
+
+    @Before
+    fun setup() {
+        coEvery { podcastDao.reconcilePlayedLatestEpisodeBadges() } returns 0
+    }
 
     @Suppress("LongMethod")
     @Test
@@ -73,6 +79,12 @@ class AppInitializerTest {
             delay(10)
             events += "reconciliation finished"
             0
+        }
+        coEvery { podcastDao.reconcilePlayedLatestEpisodeBadges() } coAnswers {
+            events += "badge reconciliation started"
+            delay(10)
+            events += "badge reconciliation finished"
+            1
         }
         every { localRegistry.replaceApprovedFeeds(any()) } answers {
             events += "local feed observer"
@@ -122,14 +134,20 @@ class AppInitializerTest {
                 "reset started",
                 "reset finished",
                 "reconciliation started",
-                "reconciliation finished"
+                "reconciliation finished",
+                "badge reconciliation started"
             ),
-            events.take(6)
+            events
         )
+
+        advanceTimeBy(10)
+        runCurrent()
+
         assertEquals(
             setOf("local feed observer", "cleanup observer", "background observer"),
-            events.drop(6).toSet()
+            events.drop(8).toSet()
         )
+        assertEquals("badge reconciliation finished", events[7])
     }
 
     @Test
@@ -154,6 +172,7 @@ class AppInitializerTest {
         coVerify(exactly = 1) { recovery.recoverInterruptedImport() }
         coVerify(exactly = 1) { resetApp.resumeIfPending() }
         coVerify(exactly = 1) { repository.reconcileEpisodeStorage(any(), any()) }
+        coVerify(exactly = 1) { podcastDao.reconcilePlayedLatestEpisodeBadges() }
         coVerify(exactly = 1) { podcastCoverMaintenance.reconcileAndSchedule() }
         verify(exactly = 1) { localRegistry.replaceApprovedFeeds(emptyList()) }
         coVerify(exactly = 1) {
@@ -201,6 +220,29 @@ class AppInitializerTest {
         initializer(backgroundScope).initialize()
         runCurrent()
 
+        verify(exactly = 1) { localRegistry.replaceApprovedFeeds(emptyList()) }
+        coVerify(exactly = 1) { schedulingCoordinator.applyObservedCleanupSettings(any(), any()) }
+        coVerify(exactly = 1) { schedulingCoordinator.applyObservedBackgroundSettings(any(), any()) }
+    }
+
+    @Test
+    fun `badge reconciliation failure does not block later startup`() = runTest(dispatcher) {
+        every { dispatcherProvider.io } returns dispatcher
+        every { preferences.userSettingsFlow } returns flowOf(UserSettings())
+        every { podcastDao.getApprovedLocalFeedUrlsFlow() } returns flowOf(emptyList())
+        every { workManager.getWorkInfosByTag(Constants.DOWNLOAD_WORKER_TAG) } returns
+            Futures.immediateFuture(emptyList<WorkInfo>())
+        coEvery { recovery.recoverInterruptedImport() } returns Unit
+        coEvery { resetApp.resumeIfPending() } returns false
+        coEvery { repository.reconcileEpisodeStorage(any(), any()) } returns 0
+        coEvery { podcastDao.reconcilePlayedLatestEpisodeBadges() } throws
+            IOException("badge reconciliation unavailable")
+
+        initializer(backgroundScope).initialize()
+        runCurrent()
+
+        coVerify(exactly = 1) { podcastDao.reconcilePlayedLatestEpisodeBadges() }
+        coVerify(exactly = 1) { podcastCoverMaintenance.reconcileAndSchedule() }
         verify(exactly = 1) { localRegistry.replaceApprovedFeeds(emptyList()) }
         coVerify(exactly = 1) { schedulingCoordinator.applyObservedCleanupSettings(any(), any()) }
         coVerify(exactly = 1) { schedulingCoordinator.applyObservedBackgroundSettings(any(), any()) }

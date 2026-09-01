@@ -75,11 +75,23 @@ constructor(
                 sourceUrl = update.imageUrl,
                 observedAt = update.lastRefreshed.time
             )
-            val insertResults = podcastDao.upsertEpisodesEfficient(episodes.map { it.toEntity() })
-            if (insertResults.any { it != ON_CONFLICT_IGNORED }) {
+            val episodeEntities = episodes.map { it.toEntity() }
+            val insertResults = podcastDao.upsertEpisodesEfficient(episodeEntities)
+            val insertedGuids =
+                episodeEntities.indices
+                    .asSequence()
+                    .filter { insertResults[it] != ON_CONFLICT_IGNORED }
+                    .map { episodeEntities[it].guid }
+                    .toSet()
+            val insertedLatestEpisode =
+                newPodcast == null &&
+                    insertedGuids.isNotEmpty() &&
+                    podcastDao.getLatestEpisodeGuid(update.rssUrl) in insertedGuids
+            if (insertedLatestEpisode) {
                 check(podcastDao.markPodcastHasNewEpisodes(update.rssUrl) == 1) {
-                    "Feed update could not mark its inserted episodes as new"
+                    "Feed update could not mark its inserted latest episode as new"
                 }
+                podcastDao.updateLatestEpisodePlayedFlag(update.rssUrl, isPlayed = false)
             }
             candidateChanged
         }

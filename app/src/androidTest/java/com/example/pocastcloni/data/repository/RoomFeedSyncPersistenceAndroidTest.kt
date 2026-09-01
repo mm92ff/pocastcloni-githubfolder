@@ -16,8 +16,14 @@ import com.example.pocastcloni.domain.model.FeedPodcastUpdate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -56,7 +62,9 @@ class RoomFeedSyncPersistenceAndroidTest {
             newPodcast = null,
             episodes = listOf(
                 refreshedEpisode().toDomain(),
-                episode(guid = "new-guid", title = "New episode", episodeId = 0L).toDomain()
+                episode(guid = "new-guid", title = "New episode", episodeId = 0L)
+                    .copy(pubDate = Date(3_000L))
+                    .toDomain()
             )
         )
 
@@ -234,6 +242,21 @@ class RoomFeedSyncPersistenceAndroidTest {
     }
 
     @Test
+    fun duplicateSyncBeforeMarkAllAsSeenStaysCleared() = runBlocking {
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
+        dao.insertEpisode(episode(episodeId = 0L, userState = false))
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes = listOf(refreshedEpisode().toDomain())
+        )
+        dao.markAllAsSeen()
+
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+    }
+
+    @Test
     fun markAllAsSeenDoesNotChangeEpisodePlaybackStateOrHistory() = runBlocking {
         dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
         dao.insertEpisodes(
@@ -249,6 +272,482 @@ class RoomFeedSyncPersistenceAndroidTest {
         val episodes = dao.getEpisodesForPodcastSync(FEED_URL)
         assertTrue(episodes.all { !it.isPlayed && it.datePlayed == null })
         assertTrue(dao.getPlaybackHistory().first().isEmpty())
+    }
+
+    @Test
+    fun olderBackfillDoesNotReactivateClearedBadge() = runBlocking {
+        dao.insertPodcast(podcast())
+        dao.insertEpisode(
+            episode(guid = "played-latest", episodeId = 0L)
+                .copy(pubDate = Date(3_000L))
+        )
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "older-backfill-a", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(1_000L))
+                    .toDomain(),
+                episode(guid = "older-backfill-b", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(2_000L))
+                    .toDomain()
+            )
+        )
+
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        assertEquals("played-latest", dao.getLatestEpisodeGuid(FEED_URL))
+    }
+
+    @Test
+    fun olderBackfillPreservesActiveBadge() = runBlocking {
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
+        dao.insertEpisode(
+            episode(guid = "current-latest", episodeId = 0L, userState = false)
+                .copy(pubDate = Date(3_000L))
+        )
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "older-backfill", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(1_000L))
+                    .toDomain()
+            )
+        )
+
+        assertTrue(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        assertEquals("current-latest", dao.getLatestEpisodeGuid(FEED_URL))
+    }
+
+    @Test
+    fun duplicateOnlySyncPreservesActiveBadge() = runBlocking {
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
+        dao.insertEpisode(episode(episodeId = 0L, userState = false))
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes = listOf(refreshedEpisode().toDomain())
+        )
+
+        assertTrue(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        assertEquals(1, dao.getEpisodesForPodcastSync(FEED_URL).size)
+    }
+
+    @Test
+    fun metadataReorderWithoutInsertDoesNotCreateBadge() = runBlocking {
+        dao.insertPodcast(podcast())
+        dao.insertEpisodes(
+            listOf(
+                episode(guid = "reordered", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(1_000L)),
+                episode(guid = "previous-latest", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(2_000L))
+            )
+        )
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "reordered", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(3_000L))
+                    .toDomain()
+            )
+        )
+
+        assertEquals("reordered", dao.getLatestEpisodeGuid(FEED_URL))
+        assertEquals(2, dao.getEpisodesForPodcastSync(FEED_URL).size)
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+    }
+
+    @Test
+    fun genuinelyNewerInsertActivatesBadge() = runBlocking {
+        dao.insertPodcast(podcast())
+        dao.insertEpisode(
+            episode(guid = "old-latest", episodeId = 0L)
+                .copy(pubDate = Date(1_000L))
+        )
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "new-latest", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(3_000L))
+                    .toDomain(),
+                episode(guid = "older-in-same-sync", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(500L))
+                    .toDomain()
+            )
+        )
+
+        assertTrue(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        assertEquals("new-latest", dao.getLatestEpisodeGuid(FEED_URL))
+        assertEquals(false, dao.getPodcastByUrl(FEED_URL)!!.isLatestEpisodePlayed)
+    }
+
+    @Test
+    fun equalDatedInsertedEpisodeUsesEpisodeIdTieBreaker() = runBlocking {
+        dao.insertPodcast(podcast())
+        dao.insertEpisode(
+            episode(guid = "equal-date-existing", episodeId = 0L)
+                .copy(pubDate = Date(2_000L))
+        )
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "equal-date-inserted", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(2_000L))
+                    .toDomain()
+            )
+        )
+
+        assertEquals("equal-date-inserted", dao.getLatestEpisodeGuid(FEED_URL))
+        assertTrue(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+    }
+
+    @Test
+    fun nullDatedInsertedEpisodeUsesEpisodeIdTieBreaker() = runBlocking {
+        dao.insertPodcast(podcast())
+        dao.insertEpisode(
+            episode(guid = "undated-existing", episodeId = 0L)
+                .copy(pubDate = null)
+        )
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "undated-inserted", episodeId = 0L, userState = false)
+                    .copy(pubDate = null)
+                    .toDomain()
+            )
+        )
+
+        assertEquals("undated-inserted", dao.getLatestEpisodeGuid(FEED_URL))
+        assertTrue(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+    }
+
+    @Test
+    fun playingInsertedLatestClearsBadgeEndToEnd() = runBlocking {
+        dao.insertPodcast(podcast())
+        dao.insertEpisode(
+            episode(guid = "previous-latest", episodeId = 0L)
+                .copy(pubDate = Date(1_000L))
+        )
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "new-latest", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(3_000L))
+                    .toDomain()
+            )
+        )
+        val latestId = dao.getEpisodeByFeedAndGuid(FEED_URL, "new-latest")!!.episodeId
+
+        dao.markEpisodePlayedAndReconcileBadge(latestId, true, Date(4_000L))
+
+        assertTrue(dao.getEpisodeById(latestId)!!.isPlayed)
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        assertFalse(dao.getAllPodcastsWithCoverFlow().first().single().toDomain().hasNewEpisodes)
+    }
+
+    @Test
+    fun homeQueryFlowEmitsClearedActiveClearedForNewLatestLifecycle() = runBlocking {
+        withTimeout(5_000L) {
+            dao.insertPodcast(podcast())
+            dao.insertEpisode(
+                episode(guid = "previous-latest", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(1_000L))
+            )
+            val initialObserved = CompletableDeferred<Unit>()
+            val activeObserved = CompletableDeferred<Unit>()
+            val clearedObserved = CompletableDeferred<Unit>()
+            val emissions = async {
+                dao.getAllPodcastsWithCoverFlow()
+                    .map { rows -> rows.single().toDomain().hasNewEpisodes }
+                    .distinctUntilChanged()
+                    .onEach { hasNewEpisodes ->
+                        when {
+                            hasNewEpisodes -> activeObserved.complete(Unit)
+                            initialObserved.isCompleted -> clearedObserved.complete(Unit)
+                            else -> initialObserved.complete(Unit)
+                        }
+                    }
+                    .take(3)
+                    .toList()
+            }
+            initialObserved.await()
+
+            persistence.persistFeedUpdate(
+                update = feedUpdate(),
+                newPodcast = null,
+                episodes =
+                listOf(
+                    episode(guid = "new-latest", episodeId = 0L, userState = false)
+                        .copy(pubDate = Date(3_000L))
+                        .toDomain()
+                )
+            )
+            activeObserved.await()
+
+            val latestId = dao.getEpisodeByFeedAndGuid(FEED_URL, "new-latest")!!.episodeId
+            dao.markEpisodePlayedAndReconcileBadge(latestId, true, Date(4_000L))
+            clearedObserved.await()
+
+            assertEquals(listOf(false, true, false), emissions.await())
+        }
+    }
+
+    @Test
+    fun initialSubscriptionHistoryDoesNotActivateBadge() = runBlocking {
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = podcast().copy(hasNewEpisodes = true).toDomain(),
+            episodes =
+            listOf(
+                episode(guid = "initial-latest", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(3_000L))
+                    .toDomain(),
+                episode(guid = "initial-older", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(1_000L))
+                    .toDomain()
+            )
+        )
+
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        assertEquals(2, dao.getEpisodesForPodcastSync(FEED_URL).size)
+    }
+
+    @Test
+    fun playedLatestFollowedByConcurrentOlderBackfillStaysCleared() = runBlocking {
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
+        dao.insertEpisode(
+            episode(guid = "latest", episodeId = 0L, userState = false)
+                .copy(pubDate = Date(3_000L))
+        )
+        val latestId = dao.getEpisodeByFeedAndGuid(FEED_URL, "latest")!!.episodeId
+        val transactionEntered = CompletableDeferred<Unit>()
+        val releaseTransaction = CompletableDeferred<Unit>()
+        val playedWrite = async(start = CoroutineStart.UNDISPATCHED) {
+            database.withTransaction {
+                transactionEntered.complete(Unit)
+                releaseTransaction.await()
+                dao.markEpisodePlayedAndReconcileBadge(latestId, true, Date(4_000L))
+            }
+        }
+        transactionEntered.await()
+        val backfillWrite = async(start = CoroutineStart.UNDISPATCHED) {
+            persistence.persistFeedUpdate(
+                update = feedUpdate(),
+                newPodcast = null,
+                episodes =
+                listOf(
+                    episode(guid = "older", episodeId = 0L, userState = false)
+                        .copy(pubDate = Date(1_000L))
+                        .toDomain()
+                )
+            )
+        }
+
+        releaseTransaction.complete(Unit)
+        playedWrite.await()
+        backfillWrite.await()
+
+        assertTrue(dao.getEpisodeById(latestId)!!.isPlayed)
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+    }
+
+    @Test
+    fun olderBackfillBeforePlayingLatestStaysCleared() = runBlocking {
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
+        dao.insertEpisode(
+            episode(guid = "latest", episodeId = 0L, userState = false)
+                .copy(pubDate = Date(3_000L))
+        )
+
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "older", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(1_000L))
+                    .toDomain()
+            )
+        )
+        val latestId = dao.getEpisodeByFeedAndGuid(FEED_URL, "latest")!!.episodeId
+        dao.markEpisodePlayedAndReconcileBadge(latestId, true, Date(4_000L))
+
+        assertTrue(dao.getEpisodeById(latestId)!!.isPlayed)
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+    }
+
+    @Test
+    fun startupReconciliationRacingDuplicateSyncCannotReactivateBadge() = runBlocking {
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
+        dao.insertEpisode(
+            episode(guid = "played-latest", episodeId = 0L, userState = true)
+                .copy(pubDate = Date(3_000L))
+        )
+        val transactionEntered = CompletableDeferred<Unit>()
+        val releaseTransaction = CompletableDeferred<Unit>()
+        val reconciliation = async(start = CoroutineStart.UNDISPATCHED) {
+            database.withTransaction {
+                transactionEntered.complete(Unit)
+                releaseTransaction.await()
+                dao.reconcilePlayedLatestEpisodeBadges()
+            }
+        }
+        transactionEntered.await()
+        val duplicateSync = async(start = CoroutineStart.UNDISPATCHED) {
+            persistence.persistFeedUpdate(
+                update = feedUpdate(),
+                newPodcast = null,
+                episodes =
+                listOf(
+                    episode(guid = "played-latest", episodeId = 0L, userState = false)
+                        .copy(pubDate = Date(3_000L))
+                        .toDomain()
+                )
+            )
+        }
+
+        releaseTransaction.complete(Unit)
+        assertEquals(1, reconciliation.await())
+        duplicateSync.await()
+
+        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        assertTrue(dao.getEpisodeByFeedAndGuid(FEED_URL, "played-latest")!!.isPlayed)
+    }
+
+    @Test
+    fun playedOldLatestFollowedByConcurrentNewerInsertStaysActive() = runBlocking {
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
+        dao.insertEpisode(
+            episode(guid = "old-latest", episodeId = 0L, userState = false)
+                .copy(pubDate = Date(2_000L))
+        )
+        val oldLatestId = dao.getEpisodeByFeedAndGuid(FEED_URL, "old-latest")!!.episodeId
+        val transactionEntered = CompletableDeferred<Unit>()
+        val releaseTransaction = CompletableDeferred<Unit>()
+        val playedWrite = async(start = CoroutineStart.UNDISPATCHED) {
+            database.withTransaction {
+                transactionEntered.complete(Unit)
+                releaseTransaction.await()
+                dao.markEpisodePlayedAndReconcileBadge(oldLatestId, true, Date(3_000L))
+            }
+        }
+        transactionEntered.await()
+        val newerWrite = async(start = CoroutineStart.UNDISPATCHED) {
+            persistence.persistFeedUpdate(
+                update = feedUpdate(),
+                newPodcast = null,
+                episodes =
+                listOf(
+                    episode(guid = "new-latest", episodeId = 0L, userState = false)
+                        .copy(pubDate = Date(4_000L))
+                        .toDomain()
+                )
+            )
+        }
+
+        releaseTransaction.complete(Unit)
+        playedWrite.await()
+        newerWrite.await()
+
+        assertTrue(dao.getEpisodeById(oldLatestId)!!.isPlayed)
+        assertEquals("new-latest", dao.getLatestEpisodeGuid(FEED_URL))
+        assertTrue(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+    }
+
+    @Test
+    fun latePlayedCallbackForOlderEpisodeCannotClearNewerBadge() = runBlocking {
+        dao.insertPodcast(podcast())
+        dao.insertEpisode(
+            episode(guid = "old-latest", episodeId = 0L, userState = false)
+                .copy(pubDate = Date(2_000L))
+        )
+        val oldLatestId = dao.getEpisodeByFeedAndGuid(FEED_URL, "old-latest")!!.episodeId
+        persistence.persistFeedUpdate(
+            update = feedUpdate(),
+            newPodcast = null,
+            episodes =
+            listOf(
+                episode(guid = "new-latest", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(4_000L))
+                    .toDomain()
+            )
+        )
+
+        dao.markEpisodePlayedAndReconcileBadge(oldLatestId, true, Date(5_000L))
+
+        assertEquals("new-latest", dao.getLatestEpisodeGuid(FEED_URL))
+        assertTrue(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+    }
+
+    @Test
+    fun processReopenAndStartupRepairPreserveHomeDomainInvariant() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val databaseName = "podcast-badge-lifecycle-test"
+        context.deleteDatabase(databaseName)
+        var fileDatabase = Room.databaseBuilder(context, AppDatabase::class.java, databaseName).build()
+
+        try {
+            var fileDao = fileDatabase.podcastDao()
+            val filePersistence = RoomFeedSyncPersistence(fileDatabase, fileDao)
+            fileDao.insertPodcast(podcast())
+            fileDao.insertEpisode(
+                episode(guid = "previous-latest", episodeId = 0L, userState = false)
+                    .copy(pubDate = Date(1_000L))
+            )
+            filePersistence.persistFeedUpdate(
+                update = feedUpdate(),
+                newPodcast = null,
+                episodes =
+                listOf(
+                    episode(guid = "new-latest", episodeId = 0L, userState = false)
+                        .copy(pubDate = Date(3_000L))
+                        .toDomain()
+                )
+            )
+            assertTrue(
+                fileDao.getAllPodcastsWithCoverFlow().first().single().toDomain().hasNewEpisodes
+            )
+
+            val latestId = fileDao.getEpisodeByFeedAndGuid(FEED_URL, "new-latest")!!.episodeId
+            fileDao.markEpisodePlayedAndReconcileBadge(latestId, true, Date(4_000L))
+            assertFalse(
+                fileDao.getAllPodcastsWithCoverFlow().first().single().toDomain().hasNewEpisodes
+            )
+
+            fileDao.updatePodcastNewFlag(FEED_URL, hasNew = true)
+            fileDatabase.close()
+            fileDatabase = Room.databaseBuilder(context, AppDatabase::class.java, databaseName).build()
+            fileDao = fileDatabase.podcastDao()
+
+            assertEquals(1, fileDao.reconcilePlayedLatestEpisodeBadges())
+            assertTrue(fileDao.getEpisodeById(latestId)!!.isPlayed)
+            assertFalse(
+                fileDao.getAllPodcastsWithCoverFlow().first().single().toDomain().hasNewEpisodes
+            )
+        } finally {
+            if (fileDatabase.isOpen) fileDatabase.close()
+            context.deleteDatabase(databaseName)
+        }
     }
 
     private fun podcast() = PodcastEntity(

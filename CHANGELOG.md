@@ -6,6 +6,10 @@ The format is based on Keep a Changelog and this project follows a beta release 
 
 ## [Unreleased]
 
+### Fixed
+- New-episode badges now ignore older feed backfills, clear atomically when the
+  latest episode is played, and repair stale played-latest badges on startup.
+
 ## [v3.69-beta] - 2026-08-13
 
 ### Added
