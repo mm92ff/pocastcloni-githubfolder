@@ -75,24 +75,11 @@ constructor(
                 sourceUrl = update.imageUrl,
                 observedAt = update.lastRefreshed.time
             )
-            val episodeEntities = episodes.map { it.toEntity() }
-            val insertResults = podcastDao.upsertEpisodesEfficient(episodeEntities)
-            val insertedGuids =
-                episodeEntities.indices
-                    .asSequence()
-                    .filter { insertResults[it] != ON_CONFLICT_IGNORED }
-                    .map { episodeEntities[it].guid }
-                    .toSet()
-            val insertedLatestEpisode =
-                newPodcast == null &&
-                    insertedGuids.isNotEmpty() &&
-                    podcastDao.getLatestEpisodeGuid(update.rssUrl) in insertedGuids
-            if (insertedLatestEpisode) {
-                check(podcastDao.markPodcastHasNewEpisodes(update.rssUrl) == 1) {
-                    "Feed update could not mark its inserted latest episode as new"
-                }
-                podcastDao.updateLatestEpisodePlayedFlag(update.rssUrl, isPlayed = false)
-            }
+            podcastDao.upsertEpisodesEfficient(episodes.map { it.toEntity() })
+            podcastDao.reconcilePodcastLatestEpisodeBadge(
+                rssUrl = update.rssUrl,
+                acknowledgeCurrentEpisode = newPodcast != null
+            )
             candidateChanged
         }
         scheduleCoverRefreshBestEffort(update.rssUrl, replaceExisting = coverCandidateChanged)
@@ -141,9 +128,5 @@ constructor(
         } catch (error: Exception) {
             Timber.w(error, "Persistent podcast cover work could not be scheduled")
         }
-    }
-
-    private companion object {
-        const val ON_CONFLICT_IGNORED = -1L
     }
 }

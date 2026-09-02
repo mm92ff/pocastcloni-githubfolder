@@ -96,10 +96,7 @@ class EpisodeIdentityMigrationTest {
 
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = Room.databaseBuilder(context, AppDatabase::class.java, FALLBACK_DATABASE_NAME)
-            .addMigrations(
-                AppDatabaseMigrations.MIGRATION_14_15,
-                AppDatabaseMigrations.MIGRATION_15_16
-            )
+            .addMigrations(*AppDatabaseMigrations.ALL_MIGRATIONS)
             .build()
         try {
             val incoming = RssItem(
@@ -147,10 +144,7 @@ class EpisodeIdentityMigrationTest {
             context,
             AppDatabase::class.java,
             BLANK_FALLBACK_DATABASE_NAME
-        ).addMigrations(
-            AppDatabaseMigrations.MIGRATION_14_15,
-            AppDatabaseMigrations.MIGRATION_15_16
-        ).build()
+        ).addMigrations(*AppDatabaseMigrations.ALL_MIGRATIONS).build()
         try {
             val incoming = listOf(
                 RssItem(

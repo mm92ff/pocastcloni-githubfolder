@@ -85,8 +85,8 @@ constructor(
                     runStartupOperation("reconcile local episode storage state") {
                         reconcileEpisodeStorage()
                     }
-                runStartupOperation("reconcile played latest episode badges") {
-                    reconcilePlayedLatestEpisodeBadges()
+                runStartupOperation("reconcile latest episode badges") {
+                    reconcileLatestEpisodeBadges()
                 }
                 runStartupOperation("reconcile persistent podcast covers") {
                     podcastCoverMaintenance?.reconcileAndSchedule()
@@ -168,8 +168,8 @@ constructor(
         }
     }
 
-    private suspend fun reconcilePlayedLatestEpisodeBadges() {
-        val correctedPodcasts = podcastDao.reconcilePlayedLatestEpisodeBadges()
+    private suspend fun reconcileLatestEpisodeBadges() {
+        val correctedPodcasts = podcastDao.reconcileLatestEpisodeBadges()
         if (correctedPodcasts > 0) {
             Timber.i("Reconciled %d stale new-episode badges on startup.", correctedPodcasts)
         }

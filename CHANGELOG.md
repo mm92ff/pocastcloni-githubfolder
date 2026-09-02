@@ -7,6 +7,8 @@ The format is based on Keep a Changelog and this project follows a beta release 
 ## [Unreleased]
 
 ### Fixed
+- Podcast notification dots now use a persistent last-seen episode baseline, including a one-time
+  upgrade repair for existing subscriptions whose latest episode is still unplayed.
 - New-episode badges now ignore older feed backfills, clear atomically when the
   latest episode is played, and repair stale played-latest badges on startup.
 

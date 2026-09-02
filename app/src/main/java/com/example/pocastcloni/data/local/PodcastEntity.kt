@@ -18,6 +18,7 @@ data class PodcastEntity(
     val sortOrder: Long = Constants.Database.DEFAULT_SORT_ORDER,
     // Denormalized fields for faster UI queries
     val hasNewEpisodes: Boolean = false,
+    val lastSeenEpisodeGuid: String? = null,
     val latestEpisodeGuid: String? = null,
     val latestEpisodePubDate: Date? = null,
     val isLatestEpisodePlayed: Boolean? = null,

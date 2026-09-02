@@ -157,12 +157,16 @@ class PodcastBadgeConsistencyAndroidTest {
     }
 
     @Test
-    fun startupReconciliationOnlyClearsBadgesWithPlayedLatestEpisodes() = runBlocking {
+    fun startupReconciliationUsesPlayedAndSeenStateAndClearsEmptyPodcasts() = runBlocking {
         dao.insertPodcasts(
             listOf(
                 podcast(FEED_A, hasNewEpisodes = true),
                 podcast(FEED_B, hasNewEpisodes = true),
-                podcast(FEED_C, hasNewEpisodes = false),
+                podcast(
+                    FEED_C,
+                    hasNewEpisodes = false,
+                    lastSeenEpisodeGuid = "seen-unplayed"
+                ),
                 podcast(FEED_D, hasNewEpisodes = true)
             )
         )
@@ -174,12 +178,37 @@ class PodcastBadgeConsistencyAndroidTest {
             )
         )
 
-        assertEquals(1, dao.reconcilePlayedLatestEpisodeBadges())
-        assertFalse(dao.getPodcastByUrl(FEED_A)!!.hasNewEpisodes)
-        assertTrue(dao.getPodcastByUrl(FEED_B)!!.hasNewEpisodes)
-        assertFalse(dao.getPodcastByUrl(FEED_C)!!.hasNewEpisodes)
-        assertTrue(dao.getPodcastByUrl(FEED_D)!!.hasNewEpisodes)
-        assertEquals(0, dao.reconcilePlayedLatestEpisodeBadges())
+        assertEquals(4, dao.reconcileLatestEpisodeBadges())
+        val played = dao.getPodcastByUrl(FEED_A)!!
+        assertFalse(played.hasNewEpisodes)
+        assertEquals("played-latest", played.lastSeenEpisodeGuid)
+        assertEquals(true, played.isLatestEpisodePlayed)
+        val unseen = dao.getPodcastByUrl(FEED_B)!!
+        assertTrue(unseen.hasNewEpisodes)
+        assertNull(unseen.lastSeenEpisodeGuid)
+        assertEquals(false, unseen.isLatestEpisodePlayed)
+        val acknowledged = dao.getPodcastByUrl(FEED_C)!!
+        assertFalse(acknowledged.hasNewEpisodes)
+        assertEquals("seen-unplayed", acknowledged.lastSeenEpisodeGuid)
+        assertEquals(false, acknowledged.isLatestEpisodePlayed)
+        val empty = dao.getPodcastByUrl(FEED_D)!!
+        assertFalse(empty.hasNewEpisodes)
+        assertNull(empty.lastSeenEpisodeGuid)
+        assertNull(empty.isLatestEpisodePlayed)
+        assertEquals(0, dao.reconcileLatestEpisodeBadges())
+    }
+
+    @Test
+    fun unplayedLatestWithoutSeenBaselineActivatesMissingBadge() = runBlocking {
+        dao.insertPodcast(podcast(FEED_A, hasNewEpisodes = false))
+        dao.insertEpisode(episode(FEED_A, "unseen-latest", Date(2_000L)))
+
+        assertEquals(1, dao.reconcileLatestEpisodeBadges())
+
+        val storedPodcast = dao.getPodcastByUrl(FEED_A)!!
+        assertTrue(storedPodcast.hasNewEpisodes)
+        assertNull(storedPodcast.lastSeenEpisodeGuid)
+        assertEquals(false, storedPodcast.isLatestEpisodePlayed)
     }
 
     @Test
@@ -222,7 +251,7 @@ class PodcastBadgeConsistencyAndroidTest {
             fileDao.insertEpisode(
                 episode(FEED_A, "played-latest", Date(2_000L), isPlayed = true)
             )
-            assertEquals(1, fileDao.reconcilePlayedLatestEpisodeBadges())
+            assertEquals(1, fileDao.reconcileLatestEpisodeBadges())
             fileDatabase.close()
 
             fileDatabase = Room.databaseBuilder(context, AppDatabase::class.java, databaseName).build()
@@ -236,15 +265,45 @@ class PodcastBadgeConsistencyAndroidTest {
         }
     }
 
+    @Test
+    fun acknowledgedUnplayedLatestStaysClearedAfterDatabaseReopen() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val databaseName = "podcast-badge-seen-reopen-test"
+        context.deleteDatabase(databaseName)
+        var fileDatabase = Room.databaseBuilder(context, AppDatabase::class.java, databaseName).build()
+
+        try {
+            var fileDao = fileDatabase.podcastDao()
+            fileDao.insertPodcast(podcast(FEED_A, hasNewEpisodes = true))
+            fileDao.insertEpisode(episode(FEED_A, "unplayed-latest", Date(2_000L)))
+            assertEquals(1, fileDao.markAllAsSeen())
+            fileDatabase.close()
+
+            fileDatabase = Room.databaseBuilder(context, AppDatabase::class.java, databaseName).build()
+            fileDao = fileDatabase.podcastDao()
+
+            assertEquals(0, fileDao.reconcileLatestEpisodeBadges())
+            val storedPodcast = fileDao.getPodcastByUrl(FEED_A)!!
+            assertFalse(storedPodcast.hasNewEpisodes)
+            assertEquals("unplayed-latest", storedPodcast.lastSeenEpisodeGuid)
+            assertFalse(fileDao.getEpisodeByFeedAndGuid(FEED_A, "unplayed-latest")!!.isPlayed)
+        } finally {
+            if (fileDatabase.isOpen) fileDatabase.close()
+            context.deleteDatabase(databaseName)
+        }
+    }
+
     private fun podcast(
         rssUrl: String,
-        hasNewEpisodes: Boolean
+        hasNewEpisodes: Boolean,
+        lastSeenEpisodeGuid: String? = null
     ) = PodcastEntity(
         rssUrl = rssUrl,
         title = rssUrl,
         description = "Description",
         imageUrl = "https://example.com/cover.jpg",
-        hasNewEpisodes = hasNewEpisodes
+        hasNewEpisodes = hasNewEpisodes,
+        lastSeenEpisodeGuid = lastSeenEpisodeGuid
     )
 
     private fun episode(

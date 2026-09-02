@@ -51,7 +51,7 @@ class AppInitializerTest {
 
     @Before
     fun setup() {
-        coEvery { podcastDao.reconcilePlayedLatestEpisodeBadges() } returns 0
+        coEvery { podcastDao.reconcileLatestEpisodeBadges() } returns 0
     }
 
     @Suppress("LongMethod")
@@ -80,7 +80,7 @@ class AppInitializerTest {
             events += "reconciliation finished"
             0
         }
-        coEvery { podcastDao.reconcilePlayedLatestEpisodeBadges() } coAnswers {
+        coEvery { podcastDao.reconcileLatestEpisodeBadges() } coAnswers {
             events += "badge reconciliation started"
             delay(10)
             events += "badge reconciliation finished"
@@ -172,7 +172,7 @@ class AppInitializerTest {
         coVerify(exactly = 1) { recovery.recoverInterruptedImport() }
         coVerify(exactly = 1) { resetApp.resumeIfPending() }
         coVerify(exactly = 1) { repository.reconcileEpisodeStorage(any(), any()) }
-        coVerify(exactly = 1) { podcastDao.reconcilePlayedLatestEpisodeBadges() }
+        coVerify(exactly = 1) { podcastDao.reconcileLatestEpisodeBadges() }
         coVerify(exactly = 1) { podcastCoverMaintenance.reconcileAndSchedule() }
         verify(exactly = 1) { localRegistry.replaceApprovedFeeds(emptyList()) }
         coVerify(exactly = 1) {
@@ -235,13 +235,13 @@ class AppInitializerTest {
         coEvery { recovery.recoverInterruptedImport() } returns Unit
         coEvery { resetApp.resumeIfPending() } returns false
         coEvery { repository.reconcileEpisodeStorage(any(), any()) } returns 0
-        coEvery { podcastDao.reconcilePlayedLatestEpisodeBadges() } throws
+        coEvery { podcastDao.reconcileLatestEpisodeBadges() } throws
             IOException("badge reconciliation unavailable")
 
         initializer(backgroundScope).initialize()
         runCurrent()
 
-        coVerify(exactly = 1) { podcastDao.reconcilePlayedLatestEpisodeBadges() }
+        coVerify(exactly = 1) { podcastDao.reconcileLatestEpisodeBadges() }
         coVerify(exactly = 1) { podcastCoverMaintenance.reconcileAndSchedule() }
         verify(exactly = 1) { localRegistry.replaceApprovedFeeds(emptyList()) }
         coVerify(exactly = 1) { schedulingCoordinator.applyObservedCleanupSettings(any(), any()) }

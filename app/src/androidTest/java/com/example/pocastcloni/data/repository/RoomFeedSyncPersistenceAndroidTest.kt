@@ -27,6 +27,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -62,7 +63,12 @@ class RoomFeedSyncPersistenceAndroidTest {
             newPodcast = null,
             episodes = listOf(
                 refreshedEpisode().toDomain(),
-                episode(guid = "new-guid", title = "New episode", episodeId = 0L)
+                episode(
+                    guid = "new-guid",
+                    title = "New episode",
+                    episodeId = 0L,
+                    userState = false
+                )
                     .copy(pubDate = Date(3_000L))
                     .toDomain()
             )
@@ -82,6 +88,7 @@ class RoomFeedSyncPersistenceAndroidTest {
         assertTrue(storedPodcast.allowInsecureHttp)
         assertTrue(storedPodcast.allowLocalNetwork)
         assertTrue(storedPodcast.hasNewEpisodes)
+        assertNull(storedPodcast.lastSeenEpisodeGuid)
         assertEquals("latest-guid", storedPodcast.latestEpisodeGuid)
         assertEquals(Date(900L), storedPodcast.latestEpisodePubDate)
         assertEquals(false, storedPodcast.isLatestEpisodePlayed)
@@ -229,6 +236,7 @@ class RoomFeedSyncPersistenceAndroidTest {
         assertTrue(storedPodcast.allowInsecureHttp)
         assertTrue(storedPodcast.allowLocalNetwork)
         assertFalse(storedPodcast.hasNewEpisodes)
+        assertEquals(EXISTING_GUID, storedPodcast.lastSeenEpisodeGuid)
 
         val storedEpisode = dao.getEpisodeById(episodeId)!!
         assertEquals("Updated episode", storedEpisode.title)
@@ -253,7 +261,9 @@ class RoomFeedSyncPersistenceAndroidTest {
         )
         dao.markAllAsSeen()
 
-        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        val storedPodcast = dao.getPodcastByUrl(FEED_URL)!!
+        assertFalse(storedPodcast.hasNewEpisodes)
+        assertEquals(EXISTING_GUID, storedPodcast.lastSeenEpisodeGuid)
     }
 
     @Test
@@ -268,7 +278,9 @@ class RoomFeedSyncPersistenceAndroidTest {
 
         dao.markAllAsSeen()
 
-        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        val storedPodcast = dao.getPodcastByUrl(FEED_URL)!!
+        assertFalse(storedPodcast.hasNewEpisodes)
+        assertEquals("second", storedPodcast.lastSeenEpisodeGuid)
         val episodes = dao.getEpisodesForPodcastSync(FEED_URL)
         assertTrue(episodes.all { !it.isPlayed && it.datePlayed == null })
         assertTrue(dao.getPlaybackHistory().first().isEmpty())
@@ -276,11 +288,12 @@ class RoomFeedSyncPersistenceAndroidTest {
 
     @Test
     fun olderBackfillDoesNotReactivateClearedBadge() = runBlocking {
-        dao.insertPodcast(podcast())
+        dao.insertPodcast(podcast().copy(hasNewEpisodes = true))
         dao.insertEpisode(
-            episode(guid = "played-latest", episodeId = 0L)
+            episode(guid = "acknowledged-latest", episodeId = 0L, userState = false)
                 .copy(pubDate = Date(3_000L))
         )
+        dao.markAllAsSeen()
 
         persistence.persistFeedUpdate(
             update = feedUpdate(),
@@ -296,8 +309,10 @@ class RoomFeedSyncPersistenceAndroidTest {
             )
         )
 
-        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
-        assertEquals("played-latest", dao.getLatestEpisodeGuid(FEED_URL))
+        val storedPodcast = dao.getPodcastByUrl(FEED_URL)!!
+        assertFalse(storedPodcast.hasNewEpisodes)
+        assertEquals("acknowledged-latest", storedPodcast.lastSeenEpisodeGuid)
+        assertEquals("acknowledged-latest", dao.getLatestEpisodeGuid(FEED_URL))
     }
 
     @Test
@@ -339,7 +354,7 @@ class RoomFeedSyncPersistenceAndroidTest {
     }
 
     @Test
-    fun metadataReorderWithoutInsertDoesNotCreateBadge() = runBlocking {
+    fun metadataReorderToDifferentUnseenLatestActivatesBadge() = runBlocking {
         dao.insertPodcast(podcast())
         dao.insertEpisodes(
             listOf(
@@ -363,7 +378,7 @@ class RoomFeedSyncPersistenceAndroidTest {
 
         assertEquals("reordered", dao.getLatestEpisodeGuid(FEED_URL))
         assertEquals(2, dao.getEpisodesForPodcastSync(FEED_URL).size)
-        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        assertTrue(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
     }
 
     @Test
@@ -528,7 +543,9 @@ class RoomFeedSyncPersistenceAndroidTest {
             )
         )
 
-        assertFalse(dao.getPodcastByUrl(FEED_URL)!!.hasNewEpisodes)
+        val storedPodcast = dao.getPodcastByUrl(FEED_URL)!!
+        assertFalse(storedPodcast.hasNewEpisodes)
+        assertEquals("initial-latest", storedPodcast.lastSeenEpisodeGuid)
         assertEquals(2, dao.getEpisodesForPodcastSync(FEED_URL).size)
     }
 
@@ -609,7 +626,7 @@ class RoomFeedSyncPersistenceAndroidTest {
             database.withTransaction {
                 transactionEntered.complete(Unit)
                 releaseTransaction.await()
-                dao.reconcilePlayedLatestEpisodeBadges()
+                dao.reconcileLatestEpisodeBadges()
             }
         }
         transactionEntered.await()
@@ -739,7 +756,7 @@ class RoomFeedSyncPersistenceAndroidTest {
             fileDatabase = Room.databaseBuilder(context, AppDatabase::class.java, databaseName).build()
             fileDao = fileDatabase.podcastDao()
 
-            assertEquals(1, fileDao.reconcilePlayedLatestEpisodeBadges())
+            assertEquals(1, fileDao.reconcileLatestEpisodeBadges())
             assertTrue(fileDao.getEpisodeById(latestId)!!.isPlayed)
             assertFalse(
                 fileDao.getAllPodcastsWithCoverFlow().first().single().toDomain().hasNewEpisodes
