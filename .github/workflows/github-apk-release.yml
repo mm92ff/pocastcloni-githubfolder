@@ -1,0 +1,479 @@
+name: GitHub APK release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag matching appVersionName, for example v3.73
+        required: true
+        type: string
+      publish_confirmation:
+        description: Type PUBLISH to create the public GitHub release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-apk-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish signed APK
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    environment:
+      name: github-release
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Validate request and existing remote state
+        id: preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          PUBLISH_CONFIRMATION: ${{ inputs.publish_confirmation }}
+        run: |
+          if [ "$PUBLISH_CONFIRMATION" != "PUBLISH" ]; then
+            echo "::error::Set publish_confirmation to PUBLISH."
+            exit 1
+          fi
+
+          if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "::error::Release tag must match vMAJOR.MINOR or vMAJOR.MINOR.PATCH."
+            exit 1
+          fi
+
+          version_name=""
+          while IFS='=' read -r key value; do
+            if [ "$key" = "appVersionName" ]; then
+              version_name="$value"
+            fi
+          done < gradle.properties
+
+          if [ -z "$version_name" ] || [ "v$version_name" != "$RELEASE_TAG" ]; then
+            echo "::error::Release tag '$RELEASE_TAG' does not match appVersionName '$version_name'."
+            exit 1
+          fi
+
+          case "$version_name" in
+            *-dev*|*-alpha*|*-beta*|*-snapshot*|*-SNAPSHOT*)
+              echo "::error::Development version '$version_name' cannot be published."
+              exit 1
+              ;;
+          esac
+
+          set +e
+          tag_output=$(git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" "refs/tags/$RELEASE_TAG^{}" 2>&1)
+          tag_status=$?
+          set -e
+          case "$tag_status" in
+            0)
+              tag_commit=$(printf '%s\n' "$tag_output" | while read -r sha ref; do
+                if [ "$ref" = "refs/tags/$RELEASE_TAG^{}" ]; then
+                  printf '%s\n' "$sha"
+                fi
+              done)
+              if [ -z "$tag_commit" ]; then
+                tag_commit=$(printf '%s\n' "$tag_output" | while read -r sha ref; do
+                  if [ "$ref" = "refs/tags/$RELEASE_TAG" ]; then
+                    printf '%s\n' "$sha"
+                  fi
+                done)
+              fi
+              if [ "$tag_commit" != "$GITHUB_SHA" ]; then
+                echo "::error::Existing tag '$RELEASE_TAG' does not resolve to this commit."
+                exit 1
+              fi
+              ;;
+            2)
+              ;;
+            *)
+              echo "::error::Unable to query the remote tag safely."
+              exit 1
+              ;;
+          esac
+
+          releases=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | [.id,.draft,.prerelease] | @tsv")
+          release_count=$(printf '%s\n' "$releases" | while IFS= read -r line; do
+            if [ -n "$line" ]; then printf '%s\n' "$line"; fi
+          done | wc -l)
+          if [ "$release_count" -gt 1 ]; then
+            echo "::error::Multiple releases unexpectedly use tag '$RELEASE_TAG'."
+            exit 1
+          fi
+
+          if [ "$release_count" -eq 1 ]; then
+            release_id=$(printf '%s' "$releases" | cut -f1)
+            release_draft=$(printf '%s' "$releases" | cut -f2)
+            release_prerelease=$(printf '%s' "$releases" | cut -f3)
+            if [ "$release_draft" = "true" ]; then
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/$release_id"
+            else
+              if [ "$release_prerelease" != "false" ]; then
+                echo "::error::Existing release is unexpectedly marked as a prerelease."
+                exit 1
+              fi
+              echo "already_published=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "already_published=false" >> "$GITHUB_OUTPUT"
+
+      - name: Validate expected signing certificate
+        env:
+          ANDROID_EXPECTED_CERT_SHA256: ${{ secrets.ANDROID_EXPECTED_CERT_SHA256 }}
+        run: |
+          if [ -z "$ANDROID_EXPECTED_CERT_SHA256" ]; then
+            echo "::error::Missing GitHub secret: ANDROID_EXPECTED_CERT_SHA256"
+            exit 1
+          fi
+
+      - name: Validate signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=0
+          for name in \
+            ANDROID_KEYSTORE_BASE64 \
+            ANDROID_KEYSTORE_PASSWORD \
+            ANDROID_KEY_ALIAS \
+            ANDROID_KEY_PASSWORD
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+
+      - name: Restore release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release-keystore.jks"
+          chmod 600 "$RUNNER_TEMP/release-keystore.jks"
+
+      - name: Run release gates and build signed APK
+        env:
+          ANDROID_SIGNING_STORE_FILE: ${{ runner.temp }}/release-keystore.jks
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: >-
+          ./gradlew
+          :app:ktlintCheck
+          :app:detekt
+          :app:testDebugUnitTest
+          :app:lintRelease
+          :app:verifyReleaseManifest
+          :app:assembleRelease
+          --stacktrace
+
+      - name: Verify and prepare release assets
+        env:
+          ANDROID_EXPECTED_CERT_SHA256: ${{ secrets.ANDROID_EXPECTED_CERT_SHA256 }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/release/*.apk)
+          if [ "${#apks[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one release APK, found ${#apks[@]}."
+            exit 1
+          fi
+
+          apksigner_candidates=("$ANDROID_HOME"/build-tools/*/apksigner)
+          if [ "${#apksigner_candidates[@]}" -eq 0 ]; then
+            echo "::error::apksigner was not found in the Android SDK."
+            exit 1
+          fi
+          apksigner=$(printf '%s\n' "${apksigner_candidates[@]}" | sort -V | tail -n 1)
+          "$apksigner" verify --verbose --print-certs "${apks[0]}"
+
+          actual_signers=$(
+            "$apksigner" verify --print-certs "${apks[0]}" |
+              while IFS=':' read -r key value; do
+                case "$key" in
+                  Signer\ \#*\ certificate\ SHA-256\ digest)
+                    printf '%s' "$value" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]'
+                    printf '\n'
+                    ;;
+                esac
+              done | sort -u
+          )
+          signer_count=$(printf '%s\n' "$actual_signers" | while IFS= read -r signer; do
+            if [ -n "$signer" ]; then printf '%s\n' "$signer"; fi
+          done | wc -l)
+          expected_cert=$(printf '%s' "$ANDROID_EXPECTED_CERT_SHA256" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+          if [ "$signer_count" -ne 1 ] || [ "$actual_signers" != "$expected_cert" ]; then
+            echo "::error::APK current signer set does not exactly match the approved certificate."
+            exit 1
+          fi
+
+          version="${RELEASE_TAG#v}"
+          version_code=""
+          while IFS='=' read -r key value; do
+            if [ "$key" = "appVersionCode" ]; then version_code="$value"; fi
+          done < gradle.properties
+          apkanalyzer="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          if [ ! -x "$apkanalyzer" ]; then
+            echo "::error::apkanalyzer was not found in the Android SDK."
+            exit 1
+          fi
+          actual_application_id=$("$apkanalyzer" manifest application-id "${apks[0]}")
+          actual_version_name=$("$apkanalyzer" manifest version-name "${apks[0]}")
+          actual_version_code=$("$apkanalyzer" manifest version-code "${apks[0]}")
+          if [ "$actual_application_id" != "com.example.pocastcloni" ] || \
+             [ "$actual_version_name" != "$version" ] || \
+             [ "$actual_version_code" != "$version_code" ]; then
+            echo "::error::APK identity or embedded version does not match the release request."
+            exit 1
+          fi
+
+          mkdir -p dist/release
+          cp "${apks[0]}" "dist/release/pocastcloni-$version.apk"
+          sha256sum "dist/release/pocastcloni-$version.apk" | \
+            sed 's#dist/release/##' > "dist/release/pocastcloni-$version.apk.sha256"
+
+      - name: Verify existing published release against rebuilt APK
+        if: steps.preflight.outputs.already_published == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          expected_assets=$(printf '%s\n' \
+            "pocastcloni-$version.apk" \
+            "pocastcloni-$version.apk.sha256" | sort)
+          actual_assets=$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort)
+          if [ "$actual_assets" != "$expected_assets" ]; then
+            echo "::error::Existing public release has an unexpected asset set."
+            exit 1
+          fi
+
+          mkdir -p "$RUNNER_TEMP/existing-release"
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/existing-release"
+          local_apk="dist/release/pocastcloni-$version.apk"
+          local_checksum="dist/release/pocastcloni-$version.apk.sha256"
+          remote_apk="$RUNNER_TEMP/existing-release/pocastcloni-$version.apk"
+          remote_checksum="$RUNNER_TEMP/existing-release/pocastcloni-$version.apk.sha256"
+          local_apk_hash=$(sha256sum "$local_apk" | cut -d ' ' -f1)
+          remote_apk_hash=$(sha256sum "$remote_apk" | cut -d ' ' -f1)
+          checksum_lines=$(wc -l < "$remote_checksum")
+          checksum_record=$(<"$remote_checksum")
+          expected_record="$local_apk_hash  pocastcloni-$version.apk"
+          if [ "$checksum_lines" -ne 1 ] || \
+             [ "$checksum_record" != "$expected_record" ] || \
+             [ "$remote_apk_hash" != "$local_apk_hash" ] || \
+             ! cmp --silent "$local_apk" "$remote_apk" || \
+             ! cmp --silent "$local_checksum" "$remote_checksum"; then
+            echo "::error::Published assets do not exactly match the rebuilt and verified APK."
+            exit 1
+          fi
+
+          set +e
+          tag_output=$(git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" "refs/tags/$RELEASE_TAG^{}" 2>&1)
+          tag_status=$?
+          set -e
+          if [ "$tag_status" -ne 0 ]; then
+            echo "::error::Published tag could not be read back after verification."
+            exit 1
+          fi
+          tag_commit=$(printf '%s\n' "$tag_output" | while read -r sha ref; do
+            if [ "$ref" = "refs/tags/$RELEASE_TAG^{}" ]; then printf '%s\n' "$sha"; fi
+          done)
+          if [ -z "$tag_commit" ]; then
+            tag_commit=$(printf '%s\n' "$tag_output" | while read -r sha ref; do
+              if [ "$ref" = "refs/tags/$RELEASE_TAG" ]; then printf '%s\n' "$sha"; fi
+            done)
+          fi
+          if [ "$tag_commit" != "$GITHUB_SHA" ]; then
+            echo "::error::Published tag changed during verification."
+            exit 1
+          fi
+
+          gh release view "$RELEASE_TAG" \
+            --json tagName,targetCommitish,isDraft,isPrerelease,url,assets
+
+      - name: Create or verify release tag
+        id: create_tag
+        if: steps.preflight.outputs.already_published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set +e
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/$RELEASE_TAG" \
+            -f sha="$GITHUB_SHA" >/dev/null 2>&1
+          create_status=$?
+          set -e
+
+          if [ "$create_status" -eq 0 ]; then
+            echo "created_tag=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          set +e
+          tag_output=$(git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" "refs/tags/$RELEASE_TAG^{}" 2>&1)
+          tag_status=$?
+          set -e
+          if [ "$tag_status" -ne 0 ]; then
+            echo "::error::Tag creation failed and its remote state could not be verified."
+            exit 1
+          fi
+          tag_commit=$(printf '%s\n' "$tag_output" | while read -r sha ref; do
+            if [ "$ref" = "refs/tags/$RELEASE_TAG^{}" ]; then printf '%s\n' "$sha"; fi
+          done)
+          if [ -z "$tag_commit" ]; then
+            tag_commit=$(printf '%s\n' "$tag_output" | while read -r sha ref; do
+              if [ "$ref" = "refs/tags/$RELEASE_TAG" ]; then printf '%s\n' "$sha"; fi
+            done)
+          fi
+          if [ "$tag_commit" != "$GITHUB_SHA" ]; then
+            echo "::error::Concurrent tag creation targeted a different commit."
+            exit 1
+          fi
+          echo "created_tag=false" >> "$GITHUB_OUTPUT"
+
+      - name: Create draft release and upload assets
+        id: create_release
+        if: steps.preflight.outputs.already_published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          release_id=$(
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/releases" \
+              -f tag_name="$RELEASE_TAG" \
+              -f target_commitish="$GITHUB_SHA" \
+              -f name="$RELEASE_TAG" \
+              -F draft=true \
+              -F prerelease=false \
+              -F generate_release_notes=true \
+              --jq '.id'
+          )
+          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+          gh release upload "$RELEASE_TAG" dist/release/*
+
+      - name: Verify uploaded APK and publish release
+        if: steps.preflight.outputs.already_published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          expected_assets=$(printf '%s\n' \
+            "pocastcloni-$version.apk" \
+            "pocastcloni-$version.apk.sha256" | sort)
+          actual_assets=$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort)
+          if [ "$actual_assets" != "$expected_assets" ]; then
+            echo "::error::Uploaded release assets do not match the expected asset set."
+            exit 1
+          fi
+
+          mkdir -p "$RUNNER_TEMP/uploaded-release"
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/uploaded-release"
+          local_apk="dist/release/pocastcloni-$version.apk"
+          local_checksum="dist/release/pocastcloni-$version.apk.sha256"
+          remote_apk="$RUNNER_TEMP/uploaded-release/pocastcloni-$version.apk"
+          remote_checksum="$RUNNER_TEMP/uploaded-release/pocastcloni-$version.apk.sha256"
+          local_apk_hash=$(sha256sum "$local_apk" | cut -d ' ' -f1)
+          remote_apk_hash=$(sha256sum "$remote_apk" | cut -d ' ' -f1)
+          checksum_lines=$(wc -l < "$remote_checksum")
+          checksum_record=$(<"$remote_checksum")
+          expected_record="$local_apk_hash  pocastcloni-$version.apk"
+          if [ "$checksum_lines" -ne 1 ] || \
+             [ "$checksum_record" != "$expected_record" ] || \
+             [ "$remote_apk_hash" != "$local_apk_hash" ] || \
+             ! cmp --silent "$local_apk" "$remote_apk" || \
+             ! cmp --silent "$local_checksum" "$remote_checksum"; then
+            echo "::error::Downloaded assets do not exactly match the verified local assets."
+            exit 1
+          fi
+
+          gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+            -F draft=false \
+            -F prerelease=false \
+            -f make_latest=true >/dev/null
+
+          actual_tag=$(gh release view "$RELEASE_TAG" --json tagName --jq '.tagName')
+          actual_target=$(gh release view "$RELEASE_TAG" --json targetCommitish --jq '.targetCommitish')
+          actual_draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft')
+          actual_prerelease=$(gh release view "$RELEASE_TAG" --json isPrerelease --jq '.isPrerelease')
+          if [ "$actual_tag" != "$RELEASE_TAG" ] || \
+             [ "$actual_target" != "$GITHUB_SHA" ] || \
+             [ "$actual_draft" != "false" ] || \
+             [ "$actual_prerelease" != "false" ]; then
+            echo "::error::Published release state does not match the request."
+            exit 1
+          fi
+
+          set +e
+          tag_output=$(git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" "refs/tags/$RELEASE_TAG^{}" 2>&1)
+          tag_status=$?
+          set -e
+          if [ "$tag_status" -ne 0 ]; then
+            echo "::error::Published tag could not be read back."
+            exit 1
+          fi
+          tag_commit=$(printf '%s\n' "$tag_output" | while read -r sha ref; do
+            if [ "$ref" = "refs/tags/$RELEASE_TAG^{}" ]; then printf '%s\n' "$sha"; fi
+          done)
+          if [ -z "$tag_commit" ]; then
+            tag_commit=$(printf '%s\n' "$tag_output" | while read -r sha ref; do
+              if [ "$ref" = "refs/tags/$RELEASE_TAG" ]; then printf '%s\n' "$sha"; fi
+            done)
+          fi
+          if [ "$tag_commit" != "$GITHUB_SHA" ]; then
+            echo "::error::Published tag does not resolve to the built commit."
+            exit 1
+          fi
+
+          gh release view "$RELEASE_TAG" \
+            --json tagName,targetCommitish,isDraft,isPrerelease,url,assets
+
+      - name: Clean up unpublished remote state after failure
+        if: failure() && steps.preflight.outputs.already_published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          if [ -n "$RELEASE_ID" ]; then
+            is_draft=$(gh api "repos/${GITHUB_REPOSITORY}/releases/$RELEASE_ID" --jq '.draft' 2>/dev/null || true)
+            if [ "$is_draft" = "true" ]; then
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/$RELEASE_ID"
+            fi
+          fi
+
+          # Keep a matching tag after failure. The preflight verifies its target,
+          # then safely resumes on the next manual run.
+
+      - name: Remove temporary keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release-keystore.jks"
