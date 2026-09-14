@@ -46,41 +46,20 @@ internal class PodcastCommandAdapter(
         datePlayed: Date?
     ) {
         withContext(dispatcherProvider.io) {
-            val changedRows =
-                if (played) {
-                    podcastDao.markEpisodePlayedIfNeeded(episodeId, datePlayed ?: Date())
-                } else {
-                    podcastDao.markEpisodePlayed(episodeId, false, null)
-                    1
-                }
-            if (changedRows > 0) updatePodcastNewFlagIfLatest(episodeId, played)
+            podcastDao.markEpisodePlayedAndReconcileBadge(
+                episodeId = episodeId,
+                isPlayed = played,
+                datePlayed = if (played) datePlayed ?: Date() else null
+            )
         }
     }
 
     override suspend fun toggleEpisodePlayed(episode: Episode) {
         withContext(dispatcherProvider.io) {
-            val newPlayed = !episode.isPlayed
-            podcastDao.markEpisodePlayed(
-                episode.episodeId,
-                newPlayed,
-                if (newPlayed) Date() else null
+            podcastDao.toggleEpisodePlayedAndReconcileBadge(
+                episodeId = episode.episodeId,
+                datePlayed = Date()
             )
-            updatePodcastNewFlagIfLatest(episode.episodeId, newPlayed)
-        }
-    }
-
-    private suspend fun updatePodcastNewFlagIfLatest(
-        episodeId: Long,
-        isPlayed: Boolean
-    ) {
-        val episode = podcastDao.getEpisodeById(episodeId) ?: return
-        val rssUrl = episode.podcastRssUrl
-        if (rssUrl.isBlank()) return
-
-        val latestGuid = podcastDao.getLatestEpisodeGuid(rssUrl)
-        if (latestGuid != null && latestGuid == episode.guid) {
-            podcastDao.updatePodcastNewFlag(rssUrl, hasNew = !isPlayed)
-            podcastDao.updateLatestEpisodePlayedFlag(rssUrl, isPlayed)
         }
     }
 

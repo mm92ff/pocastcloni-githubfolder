@@ -90,8 +90,9 @@ data class FavoriteOrderUpdate(
  * remain user-owned. Date-ordered episode collections use [EpisodeEntity.episodeId] as their final
  * tie-breaker so paging and reactive lists remain deterministic.
  */
+@Suppress("TooManyFunctions")
 @Dao
-interface PodcastDao {
+interface PodcastDao : PodcastBadgeReconciliationDao {
     // --- PODCASTS ---
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertPodcast(podcast: PodcastEntity)
@@ -249,8 +250,27 @@ interface PodcastDao {
     @Query("SELECT rssUrl FROM podcasts ORDER BY rssUrl ASC")
     fun getSubscribedUrlsFlow(): Flow<List<String>>
 
-    /** Clears subscription badges without changing episode playback state or history. */
-    @Query("UPDATE podcasts SET hasNewEpisodes = 0")
+    /** Acknowledges each current latest episode without changing playback state or history. */
+    @Query(
+        """
+        UPDATE podcasts
+        SET hasNewEpisodes = 0,
+            lastSeenEpisodeGuid = (
+                SELECT guid
+                FROM episodes
+                WHERE podcastRssUrl = podcasts.rssUrl
+                ORDER BY pubDate DESC, episodeId DESC
+                LIMIT 1
+            ),
+            isLatestEpisodePlayed = (
+                SELECT isPlayed
+                FROM episodes
+                WHERE podcastRssUrl = podcasts.rssUrl
+                ORDER BY pubDate DESC, episodeId DESC
+                LIMIT 1
+            )
+        """
+    )
     suspend fun markAllAsSeen(): Int
 
     @Query("UPDATE podcasts SET hasNewEpisodes = :hasNew WHERE rssUrl = :rssUrl")
@@ -264,6 +284,65 @@ interface PodcastDao {
 
     @Query("UPDATE podcasts SET isLatestEpisodePlayed = :isPlayed WHERE rssUrl = :rssUrl")
     suspend fun updateLatestEpisodePlayedFlag(rssUrl: String, isPlayed: Boolean): Int
+
+    @Query(
+        """
+        UPDATE podcasts
+        SET hasNewEpisodes = :hasNewEpisodes,
+            lastSeenEpisodeGuid = :lastSeenEpisodeGuid,
+            isLatestEpisodePlayed = :isLatestEpisodePlayed
+        WHERE rssUrl = :rssUrl
+          AND (
+              hasNewEpisodes != :hasNewEpisodes
+              OR lastSeenEpisodeGuid IS NOT :lastSeenEpisodeGuid
+              OR isLatestEpisodePlayed IS NOT :isLatestEpisodePlayed
+          )
+        """
+    )
+    suspend fun updatePodcastEpisodeBadgeState(
+        rssUrl: String,
+        hasNewEpisodes: Boolean,
+        lastSeenEpisodeGuid: String?,
+        isLatestEpisodePlayed: Boolean?
+    ): Int
+
+    @Query(
+        """
+        UPDATE podcasts
+        SET lastSeenEpisodeGuid = NULL
+        WHERE rssUrl = :rssUrl
+          AND lastSeenEpisodeGuid = :episodeGuid
+        """
+    )
+    suspend fun clearLastSeenEpisodeIfMatches(
+        rssUrl: String,
+        episodeGuid: String
+    ): Int
+
+    /** Recomputes one podcast badge from its latest episode and persisted seen baseline. */
+    @Transaction
+    suspend fun reconcilePodcastLatestEpisodeBadge(
+        rssUrl: String,
+        acknowledgeCurrentEpisode: Boolean = false
+    ): Int {
+        val podcast = getPodcastByUrl(rssUrl) ?: return 0
+        val latestGuid = getLatestEpisodeGuid(rssUrl)
+        val latestPlayed = isLatestEpisodePlayed(rssUrl)
+        val lastSeenGuid =
+            when {
+                latestGuid == null -> null
+                acknowledgeCurrentEpisode || latestPlayed == true -> latestGuid
+                else -> podcast.lastSeenEpisodeGuid
+            }
+        val hasNewEpisodes =
+            latestGuid != null && latestPlayed == false && lastSeenGuid != latestGuid
+        return updatePodcastEpisodeBadgeState(
+            rssUrl = rssUrl,
+            hasNewEpisodes = hasNewEpisodes,
+            lastSeenEpisodeGuid = lastSeenGuid,
+            isLatestEpisodePlayed = latestPlayed
+        )
+    }
 
     // --- EPISODES ---
 
@@ -579,6 +658,31 @@ interface PodcastDao {
         datePlayed: Date
     ): Int
 
+    /** Writes played state and reconciles the owning podcast badge in one Room transaction. */
+    @Transaction
+    suspend fun markEpisodePlayedAndReconcileBadge(
+        episodeId: Long,
+        isPlayed: Boolean,
+        datePlayed: Date?
+    ): Int {
+        val episode = getEpisodeById(episodeId) ?: return 0
+        return writeEpisodePlayedAndReconcileBadge(episode, isPlayed, datePlayed)
+    }
+
+    /** Re-reads and toggles stored played state together with badge reconciliation. */
+    @Transaction
+    suspend fun toggleEpisodePlayedAndReconcileBadge(
+        episodeId: Long,
+        datePlayed: Date
+    ): Int {
+        val episode = getEpisodeById(episodeId) ?: return 0
+        return writeEpisodePlayedAndReconcileBadge(
+            episode = episode,
+            isPlayed = !episode.isPlayed,
+            datePlayed = datePlayed
+        )
+    }
+
     @Query("UPDATE episodes SET downloadStatus = :status, downloadPath = :path WHERE episodeId = :episodeId")
     suspend fun updateDownloadStatus(
         episodeId: Long,
@@ -691,4 +795,27 @@ interface PodcastDao {
 
     @Query("SELECT COUNT(guid) FROM episodes WHERE playbackPositionMs > 0 AND isPlayed = 0")
     fun getEpisodesInProgressCount(): Flow<Int>
+}
+
+private suspend fun PodcastDao.writeEpisodePlayedAndReconcileBadge(
+    episode: EpisodeEntity,
+    isPlayed: Boolean,
+    datePlayed: Date?
+): Int {
+    val changedRows =
+        if (isPlayed) {
+            markEpisodePlayedIfNeeded(episode.episodeId, datePlayed ?: Date())
+        } else {
+            markEpisodePlayed(episode.episodeId, false, null)
+        }
+
+    val rssUrl = episode.podcastRssUrl
+    if (rssUrl.isNotBlank() && getLatestEpisodeGuid(rssUrl) == episode.guid) {
+        if (!isPlayed) clearLastSeenEpisodeIfMatches(rssUrl, episode.guid)
+        reconcilePodcastLatestEpisodeBadge(
+            rssUrl = rssUrl,
+            acknowledgeCurrentEpisode = isPlayed
+        )
+    }
+    return changedRows
 }

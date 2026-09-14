@@ -2,7 +2,6 @@ package com.example.pocastcloni.ui.home.detail
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,6 +33,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
@@ -299,9 +300,13 @@ private fun DownloadAction(
     onDownloadClick: () -> Unit
 ) {
     if (downloadStatus == DownloadStatusUiModel.DOWNLOADING) {
-        Box(
-            modifier = Modifier.size(Dimens.ActionButtonSize),
-            contentAlignment = Alignment.Center
+        val cancelDownloadDescription = stringResource(R.string.desc_cancel_episode_download)
+        IconButton(
+            onClick = onDownloadClick,
+            modifier =
+            Modifier
+                .size(Dimens.ActionButtonSize)
+                .semantics { contentDescription = cancelDownloadDescription }
         ) {
             if (downloadProgress > 0f) {
                 // Progress known -> determinate indicator

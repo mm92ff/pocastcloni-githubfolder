@@ -357,6 +357,7 @@
     <string name="desc_toggle_played">Als wiedergegeben/nicht wiedergegeben markieren</string>
     <string name="desc_episode_downloaded">Episode ist heruntergeladen</string>
     <string name="desc_download_episode">Episode herunterladen</string>
+    <string name="desc_cancel_episode_download">Episoden-Download abbrechen</string>
 
     <string name="delete">Löschen</string>
     <string name="delete_multiple_count"><xliff:g id="podcast_count">%1$d</xliff:g> Podcasts löschen?</string>

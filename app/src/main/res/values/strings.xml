@@ -364,6 +364,7 @@
     <string name="desc_toggle_played">Mark as played/unplayed</string>
     <string name="desc_episode_downloaded">Episode is downloaded</string>
     <string name="desc_download_episode">Download episode</string>
+    <string name="desc_cancel_episode_download">Cancel episode download</string>
 
     <string name="delete">Delete</string>
     <string name="delete_multiple_count">Delete <xliff:g id="podcast_count">%1$d</xliff:g> podcasts?</string>

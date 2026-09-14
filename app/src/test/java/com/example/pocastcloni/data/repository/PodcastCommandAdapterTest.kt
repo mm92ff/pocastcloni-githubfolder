@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.Date
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PodcastCommandAdapterTest {
@@ -34,6 +35,38 @@ class PodcastCommandAdapterTest {
         adapter.markAllAsSeen()
 
         coVerify(exactly = 1) { podcastDao.markAllAsSeen() }
+    }
+
+    @Test
+    fun `mark episode played delegates atomic badge reconciliation`() = runTest(dispatcher) {
+        val playedAt = Date(1_000L)
+
+        adapter.markEpisodePlayed(episodeId = 42L, played = true, datePlayed = playedAt)
+
+        coVerify(exactly = 1) {
+            podcastDao.markEpisodePlayedAndReconcileBadge(
+                episodeId = 42L,
+                isPlayed = true,
+                datePlayed = playedAt
+            )
+        }
+    }
+
+    @Test
+    fun `toggle episode delegates atomic badge reconciliation`() = runTest(dispatcher) {
+        val episode =
+            mockk<com.example.pocastcloni.domain.model.Episode> {
+                every { episodeId } returns 43L
+            }
+
+        adapter.toggleEpisodePlayed(episode)
+
+        coVerify(exactly = 1) {
+            podcastDao.toggleEpisodePlayedAndReconcileBadge(
+                episodeId = 43L,
+                datePlayed = any()
+            )
+        }
     }
 
     @Test

@@ -14,6 +14,7 @@ object AppDatabaseMigrations {
     private const val SCHEMA_VERSION_15 = 15
     private const val SCHEMA_VERSION_16 = 16
     private const val SCHEMA_VERSION_17 = 17
+    private const val SCHEMA_VERSION_18 = 18
 
     private val createEpisodesV15Sql =
         """
@@ -184,6 +185,57 @@ object AppDatabaseMigrations {
         }
     }
 
+    /**
+     * Adds an explicit last-seen episode baseline and repairs legacy badge state.
+     *
+     * Older schemas cannot distinguish an acknowledged unplayed episode from a badge that was
+     * accidentally absent. The safe upgrade choice is to acknowledge played latest episodes and
+     * surface unplayed latest episodes once; subsequent acknowledgements are persisted explicitly.
+     */
+    internal val MIGRATION_17_18 = object : Migration(SCHEMA_VERSION_17, SCHEMA_VERSION_18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `lastSeenEpisodeGuid` TEXT")
+            db.execSQL(
+                """
+                UPDATE `podcasts`
+                SET `lastSeenEpisodeGuid` = CASE
+                        WHEN (
+                            SELECT e.`isPlayed`
+                            FROM `episodes` e
+                            WHERE e.`podcastRssUrl` = `podcasts`.`rssUrl`
+                            ORDER BY e.`pubDate` DESC, e.`episodeId` DESC
+                            LIMIT 1
+                        ) = 1 THEN (
+                            SELECT e.`guid`
+                            FROM `episodes` e
+                            WHERE e.`podcastRssUrl` = `podcasts`.`rssUrl`
+                            ORDER BY e.`pubDate` DESC, e.`episodeId` DESC
+                            LIMIT 1
+                        )
+                        ELSE NULL
+                    END,
+                    `hasNewEpisodes` = CASE
+                        WHEN (
+                            SELECT e.`isPlayed`
+                            FROM `episodes` e
+                            WHERE e.`podcastRssUrl` = `podcasts`.`rssUrl`
+                            ORDER BY e.`pubDate` DESC, e.`episodeId` DESC
+                            LIMIT 1
+                        ) = 0 THEN 1
+                        ELSE 0
+                    END,
+                    `isLatestEpisodePlayed` = (
+                        SELECT e.`isPlayed`
+                        FROM `episodes` e
+                        WHERE e.`podcastRssUrl` = `podcasts`.`rssUrl`
+                        ORDER BY e.`pubDate` DESC, e.`episodeId` DESC
+                        LIMIT 1
+                    )
+                """.trimIndent()
+            )
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Best-effort legacy migrations (v1–v9 → v10).
     // Authentic schemas/DB fixtures for these versions are not tracked, so they are not
@@ -248,7 +300,8 @@ object AppDatabaseMigrations {
         MIGRATION_13_14,
         MIGRATION_14_15,
         MIGRATION_15_16,
-        MIGRATION_16_17
+        MIGRATION_16_17,
+        MIGRATION_17_18
     )
 
     val ALL_MIGRATIONS: Array<Migration> = legacyMigrations + incrementalMigrations

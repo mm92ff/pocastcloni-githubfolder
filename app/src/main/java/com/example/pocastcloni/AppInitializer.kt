@@ -34,9 +34,10 @@ import javax.inject.Singleton
  *
  * [initialize] claims startup atomically and is at-most-once for this singleton instance. A
  * single coordinator repairs interrupted backup imports, resumes a pending reset, and reconciles
- * episode storage, and persistent cover storage in that order. An ordinary phase failure is logged
- * without skipping later cleanup phases. Core recovery phases must succeed before long-lived
- * observers are started; cover repair remains best-effort and never blocks feed scheduling.
+ * episode storage, played-latest badge state, and persistent cover storage in that order. An
+ * ordinary phase failure is logged without skipping later cleanup phases. Core recovery phases must
+ * succeed before long-lived observers are started; badge and cover repair remain best-effort and
+ * never block feed scheduling.
  *
  * The owned scope follows application-scope cancellation. Its [SupervisorJob] keeps observer
  * failures independent, while [CancellationException] is always propagated and prevents any
@@ -84,6 +85,9 @@ constructor(
                     runStartupOperation("reconcile local episode storage state") {
                         reconcileEpisodeStorage()
                     }
+                runStartupOperation("reconcile latest episode badges") {
+                    reconcileLatestEpisodeBadges()
+                }
                 runStartupOperation("reconcile persistent podcast covers") {
                     podcastCoverMaintenance?.reconcileAndSchedule()
                 }
@@ -161,6 +165,13 @@ constructor(
             }
         if (correctedEntries > 0) {
             Timber.i("Reconciled %d stale episode storage states on startup.", correctedEntries)
+        }
+    }
+
+    private suspend fun reconcileLatestEpisodeBadges() {
+        val correctedPodcasts = podcastDao.reconcileLatestEpisodeBadges()
+        if (correctedPodcasts > 0) {
+            Timber.i("Reconciled %d stale new-episode badges on startup.", correctedPodcasts)
         }
     }
 

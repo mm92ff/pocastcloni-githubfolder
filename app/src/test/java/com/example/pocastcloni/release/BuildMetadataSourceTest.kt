@@ -15,8 +15,8 @@ class BuildMetadataSourceTest {
         }
         val appBuild = rootFile("app/build.gradle.kts").readText()
 
-        assertEquals("36900", properties.getProperty("appVersionCode"))
-        assertEquals("3.69-beta", properties.getProperty("appVersionName"))
+        assertEquals("37300", properties.getProperty("appVersionCode"))
+        assertEquals("3.73-dev", properties.getProperty("appVersionName"))
         assertTrue(appBuild.contains("providers.gradleProperty(\"appVersionCode\")"))
         assertTrue(appBuild.contains("providers.gradleProperty(\"appVersionName\")"))
         assertFalse(appBuild.contains("versionCode = 1\n"))
@@ -88,7 +88,7 @@ class BuildMetadataSourceTest {
         val schemaDirectory =
             rootFile("app/schemas/com.example.pocastcloni.data.local.AppDatabase")
         assertEquals(
-            (10..17).map { "$it.json" },
+            (10..18).map { "$it.json" },
             schemaDirectory.listFiles().orEmpty().map { it.name }.sortedBy { it.removeSuffix(".json").toInt() }
         )
         val migrations =

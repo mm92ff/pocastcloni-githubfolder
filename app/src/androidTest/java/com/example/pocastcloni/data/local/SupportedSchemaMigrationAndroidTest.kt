@@ -42,7 +42,8 @@ class SupportedSchemaMigrationAndroidTest(
 
         migrated.query(
             "SELECT title, autoDownloadEnabled, allowInsecureHttp, allowLocalNetwork, " +
-                "sortOrder, lastModifiedHeader, eTagHeader FROM podcasts WHERE rssUrl = ?",
+                "sortOrder, hasNewEpisodes, lastSeenEpisodeGuid, isLatestEpisodePlayed, " +
+                "lastModifiedHeader, eTagHeader FROM podcasts WHERE rssUrl = ?",
             arrayOf(FEED_URL)
         ).use { cursor ->
             assertTrue(cursor.moveToFirst())
@@ -51,8 +52,11 @@ class SupportedSchemaMigrationAndroidTest(
             assertEquals(1, cursor.getInt(2))
             assertEquals(0, cursor.getInt(3))
             assertEquals(7L, cursor.getLong(4))
-            assertTrue(cursor.isNull(5))
-            assertTrue(cursor.isNull(6))
+            assertEquals(0, cursor.getInt(5))
+            assertEquals(EPISODE_GUID, cursor.getString(6))
+            assertEquals(1, cursor.getInt(7))
+            assertTrue(cursor.isNull(8))
+            assertTrue(cursor.isNull(9))
         }
         migrated.query(
             "SELECT guid, isPlayed, playbackPositionMs, downloadStatus, isFavorite, " +
@@ -130,6 +134,25 @@ class SupportedSchemaMigrationAndroidTest(
                 if ("allowLocalNetwork" in podcastColumns) put("allowLocalNetwork", 0)
             }
         assertTrue(insert("podcasts", SQLiteDatabase.CONFLICT_ABORT, podcast) >= 0)
+
+        if (columns("podcast_cover_state").isNotEmpty()) {
+            val coverState =
+                ContentValues().apply {
+                    put("podcastRssUrl", FEED_URL)
+                    putNull("activeSourceUrl")
+                    put("pendingSourceUrl", "http://legacy.example/cover.png")
+                    putNull("pendingFirstSeenAt")
+                    putNull("thumbnailFileName")
+                    put("thumbnailRevision", 0L)
+                    putNull("lastSuccessfulCheckAt")
+                    putNull("contentSha256")
+                    putNull("eTag")
+                    putNull("lastModified")
+                    put("failureCount", 0)
+                    putNull("nextRetryAt")
+                }
+            assertTrue(insert("podcast_cover_state", SQLiteDatabase.CONFLICT_ABORT, coverState) >= 0)
+        }
 
         val episodeColumns = columns("episodes")
         val episode =
