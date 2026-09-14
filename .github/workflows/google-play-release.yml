@@ -134,15 +134,13 @@ jobs:
           :app:bundleRelease
           --stacktrace
 
-      - name: Upload signed AAB and mapping as workflow artifacts
+      - name: Upload signed AAB as workflow artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: google-play-${{ inputs.track }}-${{ github.run_number }}
           if-no-files-found: error
           retention-days: 30
-          path: |
-            app/build/outputs/bundle/release/*.aab
-            app/build/outputs/mapping/release/mapping.txt
+          path: app/build/outputs/bundle/release/*.aab
 
       - name: Publish to Google Play
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5

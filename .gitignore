@@ -91,7 +91,8 @@ xxx/
 .DS_Store
 Thumbs.db
 
-# Local project backup archives
+# Local project backup script and archives
+create-project-backup.bat
 *_backup_*.7z
 
 # Optional local signing files
