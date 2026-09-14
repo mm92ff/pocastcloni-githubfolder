@@ -27,6 +27,22 @@ val instrumentationBuildType =
             "instrumentationBuildType must be debug or releaseSmoke"
         }
     }
+val releaseSigningStoreFile = providers.environmentVariable("ANDROID_SIGNING_STORE_FILE")
+val releaseSigningStorePassword = providers.environmentVariable("ANDROID_SIGNING_STORE_PASSWORD")
+val releaseSigningKeyAlias = providers.environmentVariable("ANDROID_SIGNING_KEY_ALIAS")
+val releaseSigningKeyPassword = providers.environmentVariable("ANDROID_SIGNING_KEY_PASSWORD")
+val releaseSigningValues =
+    listOf(
+        releaseSigningStoreFile,
+        releaseSigningStorePassword,
+        releaseSigningKeyAlias,
+        releaseSigningKeyPassword
+    )
+val hasReleaseSigning = releaseSigningValues.all { it.isPresent }
+
+check(releaseSigningValues.none { it.isPresent } || hasReleaseSigning) {
+    "Release signing is only partially configured. Set all ANDROID_SIGNING_* variables."
+}
 
 android {
     namespace = "com.example.pocastcloni"
@@ -48,6 +64,17 @@ android {
     }
     testBuildType = instrumentationBuildType
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseSigningStoreFile.get())
+                storePassword = releaseSigningStorePassword.get()
+                keyAlias = releaseSigningKeyAlias.get()
+                keyPassword = releaseSigningKeyPassword.get()
+            }
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             isPseudoLocalesEnabled = true
@@ -55,6 +82,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
