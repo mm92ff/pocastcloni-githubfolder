@@ -211,24 +211,34 @@ jobs:
             exit 1
           fi
           apksigner=$(printf '%s\n' "${apksigner_candidates[@]}" | sort -V | tail -n 1)
-          "$apksigner" verify --verbose --print-certs "${apks[0]}"
-
+          signer_report=$("$apksigner" verify --verbose --print-certs "${apks[0]}")
+          printf '%s\n' "$signer_report"
+          reported_signer_count=$(
+            printf '%s\n' "$signer_report" |
+              while IFS=':' read -r key value; do
+                if [ "$key" = "Number of signers" ]; then
+                  printf '%s' "$value" | tr -d '[:space:]'
+                fi
+              done
+          )
           actual_signers=$(
-            "$apksigner" verify --print-certs "${apks[0]}" |
+            printf '%s\n' "$signer_report" |
               while IFS=':' read -r key value; do
                 case "$key" in
-                  Signer\ \#*\ certificate\ SHA-256\ digest)
+                  *Signer*certificate\ SHA-256\ digest)
                     printf '%s' "$value" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]'
                     printf '\n'
                     ;;
                 esac
               done | sort -u
           )
-          signer_count=$(printf '%s\n' "$actual_signers" | while IFS= read -r signer; do
+          unique_signer_count=$(printf '%s\n' "$actual_signers" | while IFS= read -r signer; do
             if [ -n "$signer" ]; then printf '%s\n' "$signer"; fi
           done | wc -l)
           expected_cert=$(printf '%s' "$ANDROID_EXPECTED_CERT_SHA256" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
-          if [ "$signer_count" -ne 1 ] || [ "$actual_signers" != "$expected_cert" ]; then
+          if [ "$reported_signer_count" != "1" ] || \
+             [ "$unique_signer_count" -ne 1 ] || \
+             [ "$actual_signers" != "$expected_cert" ]; then
             echo "::error::APK current signer set does not exactly match the approved certificate."
             exit 1
           fi
