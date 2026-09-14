@@ -215,18 +215,20 @@ jobs:
           printf '%s\n' "$signer_report"
           reported_signer_count=$(
             printf '%s\n' "$signer_report" |
-              while IFS=':' read -r key value; do
-                if [ "$key" = "Number of signers" ]; then
-                  printf '%s' "$value" | tr -d '[:space:]'
-                fi
+              while IFS= read -r line; do
+                case "$line" in
+                  Number\ of\ signers:*)
+                    printf '%s' "${line##*:}" | tr -d '[:space:]'
+                    ;;
+                esac
               done
           )
           actual_signers=$(
             printf '%s\n' "$signer_report" |
-              while IFS=':' read -r key value; do
-                case "$key" in
-                  *Signer*certificate\ SHA-256\ digest)
-                    printf '%s' "$value" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]'
+              while IFS= read -r line; do
+                case "$line" in
+                  Signer\ \#*\ certificate\ SHA-256\ digest:*|V*\ Signer:\ certificate\ SHA-256\ digest:*)
+                    printf '%s' "${line##*:}" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]'
                     printf '\n'
                     ;;
                 esac
